@@ -160,6 +160,14 @@ public enum AgentLaunchSanitizer {
                 continue
             }
 
+            // Drop valueOptions that have no value (orphan flag at end of args).
+            // This prevents emitting e.g. "--append-system-prompt-file" without
+            // its required path argument, which causes the CLI to error.
+            if width == 1, policy.valueOptions.contains(arg), !arg.contains("=") {
+                index += 1
+                continue
+            }
+
             result.append(contentsOf: args[index..<min(args.count, index + width)])
             index += width
         }
