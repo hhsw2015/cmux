@@ -37,7 +37,8 @@ extension GhosttyNSView {
         accumulatedText: [String],
         event: NSEvent? = nil,
         textInputHandledEvent: Bool = false,
-        inputSourceId: String? = nil
+        inputSourceId: String? = nil,
+        commandSelector: Selector? = nil
     ) -> Bool {
         guard accumulatedText.isEmpty else { return false }
 
@@ -50,6 +51,11 @@ extension GhosttyNSView {
             // events out of the terminal so keys such as Down can open
             // candidates instead of moving the shell cursor.
             guard textInputHandledEvent, isInputMethodSource(inputSourceId) else { return false }
+            // If doCommand(by:) was called, the IME passed the event back to
+            // the responder chain without consuming it. This happens when a
+            // CJK input method is active but idle (no private preedit buffer).
+            // Allow the key through so arrow keys work normally.
+            if commandSelector != nil { return false }
             return !shouldAllowDeferredNumpadIMEFallback(event)
         }
 
@@ -180,7 +186,8 @@ extension GhosttyNSView {
         accumulatedText: [String],
         event: NSEvent? = nil,
         textInputHandledEvent: Bool = false,
-        inputSourceId: String? = nil
+        inputSourceId: String? = nil,
+        commandSelector: Selector? = nil
     ) -> Bool {
         shouldSuppressGhosttyKeyForwardingAfterIMEHandling(
             before: (markedTextBefore, markedSelectionBefore),
@@ -188,7 +195,8 @@ extension GhosttyNSView {
             accumulatedText: accumulatedText,
             event: event,
             textInputHandledEvent: textInputHandledEvent,
-            inputSourceId: inputSourceId
+            inputSourceId: inputSourceId,
+            commandSelector: commandSelector
         )
     }
 #endif

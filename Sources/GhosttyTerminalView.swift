@@ -7563,7 +7563,8 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
             accumulatedText: accumulatedText,
             event: translationEvent,
             textInputHandledEvent: textInputHandledEvent,
-            inputSourceId: keyboardIdBefore
+            inputSourceId: keyboardIdBefore,
+            commandSelector: textInputCommandSelectorDuringKeyDown
         ) {
             imeSuppressedKeyUpKeyCodes.insert(event.keyCode)
             return
