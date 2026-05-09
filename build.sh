@@ -4,7 +4,6 @@ set -e
 # cmux 本地编译脚本
 # 用法:
 #   bash build.sh          # 编译 + 安装到 /Applications + 清理
-#   bash build.sh --keep   # 编译 + 安装, 不清理 (下次编译快)
 #   bash build.sh --clean  # 只清理, 不编译
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
