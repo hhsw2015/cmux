@@ -737,19 +737,14 @@ extension Workspace {
             let localWorkingDirectory = remoteTerminalStartupCommand() == nil ? workingDirectory : nil
             let restorableAgent: SessionRestorableAgentSnapshot? = {
                 guard let candidate = snapshot.terminal?.agent else { return nil }
-                if candidate.kind != .claude { return candidate }
                 let cwd = candidate.workingDirectory
                     ?? candidate.launchCommand?.workingDirectory
-                guard let cwd, !cwd.isEmpty else { return candidate }
-                let configDir = RestorableAgentSessionIndex.claudeConfigDir(
-                    in: candidate.launchCommand?.environment
-                )
-                let hasConversation = RestorableAgentSessionIndex.claudeTranscriptHasConversation(
-                    cwd: cwd,
+                return RestorableAgentSessionIndex.claudeAgentIsRestorable(
+                    kind: candidate.kind,
                     sessionId: candidate.sessionId,
-                    claudeConfigDir: configDir
-                )
-                return hasConversation ? candidate : nil
+                    cwd: cwd,
+                    environment: candidate.launchCommand?.environment
+                ) ? candidate : nil
             }()
             let restorableTmuxStartCommand = restorableAgent == nil
                 ? Self.restorableTmuxStartCommand(snapshot.terminal?.tmuxStartCommand)
