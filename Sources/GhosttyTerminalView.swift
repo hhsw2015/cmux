@@ -11106,6 +11106,17 @@ final class GhosttySurfaceScrollView: NSView {
                fr === surfaceView || fr.isDescendant(of: surfaceView) {
                 window.makeFirstResponder(nil)
             }
+            // Release IOSurface GPU buffer when transitioning to hidden.
+            // Each surface holds ~30-75MB of VRAM; with many workspaces this
+            // accumulates to GB. Ghostty renderer is already paused via
+            // setOcclusion(false), so no new frames will refill contents until
+            // setVisibleInUI(true) triggers refreshSurfaceNow.
+            if wasVisible, let metalLayer = surfaceView.layer as? CAMetalLayer {
+                CATransaction.begin()
+                CATransaction.setDisableActions(true)
+                metalLayer.contents = nil
+                CATransaction.commit()
+            }
         } else if !wasVisible {
             // Workspace/sidebar selection can make an already-sized terminal visible again
             // without a portal frame delta or a focus handoff. Reuse the portal refresh
