@@ -9,6 +9,7 @@ extension AgentLaunchSanitizer {
             "--allowedTools",
             "--allowed-tools",
             "--append-system-prompt",
+            "--append-system-prompt-file",
             "--betas",
             "--debug-file",
             "--disallowedTools",

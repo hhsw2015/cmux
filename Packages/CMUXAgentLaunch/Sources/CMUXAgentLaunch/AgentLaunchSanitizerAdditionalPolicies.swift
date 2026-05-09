@@ -10,7 +10,6 @@ extension AgentLaunchSanitizer {
             "--agent",
             "--allow-tool",
             "--allow-url",
-            "--append-system-prompt-file",
             "--available-tools",
             "--bash-env",
             "--connect",
