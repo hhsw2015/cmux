@@ -48,3 +48,6 @@ tests/visual_report.html
 # Local scratch (screenshots, etc.)
 tmp/
 tmp-*/
+.spm-cache/
+.zig/
+GhosttyKit.xcframework/
