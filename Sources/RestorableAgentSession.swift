@@ -39,13 +39,27 @@ enum AgentResumeCommandBuilder {
 
         var commandParts: [String] = []
         let environmentParts = launchEnvironmentParts(kind: kind, environment: launchCommand?.environment)
-        if !environmentParts.isEmpty {
-            commandParts.append("env")
-            commandParts.append(contentsOf: environmentParts)
-        }
+        // Use inline shell variable assignment (VAR=val cmd) instead of `env VAR=val cmd`.
+        // `env` bypasses shell functions, but inline assignment preserves them,
+        // which is needed for wrappers like the claude() shell function.
         commandParts.append(contentsOf: argv)
 
-        var shellCommand = commandParts.map(shellSingleQuoted).joined(separator: " ")
+        var shellCommand: String
+        if !environmentParts.isEmpty {
+            // Format as KEY='value' (not 'KEY=value') so shell treats it as env assignment
+            let envPrefix = environmentParts.map { part -> String in
+                if let eqIdx = part.firstIndex(of: "=") {
+                    let key = String(part[..<eqIdx])
+                    let value = String(part[part.index(after: eqIdx)...])
+                    return "\(key)=\(shellSingleQuoted(value))"
+                }
+                return shellSingleQuoted(part)
+            }.joined(separator: " ")
+            let cmdSuffix = commandParts.map(shellSingleQuoted).joined(separator: " ")
+            shellCommand = "\(envPrefix) \(cmdSuffix)"
+        } else {
+            shellCommand = commandParts.map(shellSingleQuoted).joined(separator: " ")
+        }
         let cwd = !includeWorkingDirectoryPrefix || customRegistration?.cwd == .ignore
             ? nil
             : normalized(workingDirectory ?? launchCommand?.workingDirectory)
