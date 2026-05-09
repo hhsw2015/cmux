@@ -1,0 +1,59 @@
+name: Build unsigned app
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Select Xcode
+        run: |
+          XCODE_APP="$(ls -d /Applications/Xcode*.app 2>/dev/null | head -n 1)"
+          echo "DEVELOPER_DIR=$XCODE_APP/Contents/Developer" >> "$GITHUB_ENV"
+          export DEVELOPER_DIR="$XCODE_APP/Contents/Developer"
+          xcodebuild -version
+
+      - name: Install zig
+        run: ./scripts/install-zig-ci.sh
+
+      - name: Download pre-built GhosttyKit
+        run: ./scripts/download-prebuilt-ghosttykit.sh
+
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: .spm-cache
+          key: spm-${{ hashFiles('GhosttyTabs.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: spm-
+
+      - name: Build universal app (unsigned)
+        run: |
+          xcodebuild -scheme cmux -configuration Release -derivedDataPath build \
+            -destination 'generic/platform=macOS' \
+            -clonedSourcePackagesDirPath .spm-cache \
+            ARCHS="arm64" \
+            ONLY_ACTIVE_ARCH=YES \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="-" \
+            build
+
+      - name: Package .app as zip
+        run: |
+          cd build/Build/Products/Release
+          zip -r -y cmux-unsigned.zip cmux.app
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cmux-unsigned-app
+          path: build/Build/Products/Release/cmux-unsigned.zip
