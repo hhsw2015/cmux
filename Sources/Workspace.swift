@@ -8342,13 +8342,15 @@ final class Workspace: Identifiable, ObservableObject {
         guard let panel = panels[panelId] else { return nil }
         return surfaceKind(for: panel)
     }
-
-    func requestBackgroundTerminalSurfaceStartIfNeeded() {
-        for terminalPanel in panels.values.compactMap({ $0 as? TerminalPanel }) {
-            terminalPanel.surface.requestBackgroundSurfaceStartIfNeeded()
+    private var backgroundPrimeTerminalPanels: [TerminalPanel] {
+        var seenPanelIds = Set<UUID>()
+        return bonsplitController.allPaneIds.compactMap { paneId -> TerminalPanel? in
+            guard let tabId = bonsplitController.selectedTab(inPane: paneId)?.id ?? bonsplitController.tabs(inPane: paneId).first?.id, let panelId = panelIdFromSurfaceId(tabId), seenPanelIds.insert(panelId).inserted else { return nil }
+            return panels[panelId] as? TerminalPanel
         }
     }
-
+    func requestBackgroundPrimeTerminalSurfaceStartIfNeeded() { backgroundPrimeTerminalPanels.forEach { $0.surface.requestBackgroundSurfaceStartIfNeeded() } }
+    func hasLoadedBackgroundPrimeTerminalSurface() -> Bool { backgroundPrimeTerminalPanels.allSatisfy { $0.surface.surface != nil } }
     @discardableResult
     func preloadTerminalPanelForDebugStress(
         tabId: TabID,
@@ -10551,12 +10553,8 @@ final class Workspace: Identifiable, ObservableObject {
     }
 
     /// Tear down all panels in this workspace, freeing their Ghostty surfaces.
-    /// Called before the workspace is removed from TabManager to ensure child
-    /// processes receive SIGHUP even if ARC deallocation is delayed.
+    /// Called before TabManager removes the workspace so child processes receive SIGHUP even if ARC deallocation is delayed.
     func teardownAllPanels() {
-        // Hide portal-hosted content up front so a workspace being torn down
-        // cannot keep drawing above the next selected/restored workspace while
-        // panel close work is still unwinding.
         portalRenderingEnabled = false
         clearLayoutFollowUp()
         hideAllTerminalPortalViews()
@@ -10564,6 +10562,7 @@ final class Workspace: Identifiable, ObservableObject {
         let panelEntries = Array(panels)
         for (panelId, panel) in panelEntries {
             publishCmuxSurfaceClosed(panelId, paneId: paneId(forPanelId: panelId), panel: panel, origin: "workspace_teardown")
+            TerminalController.shared.cleanupSurfaceState(surfaceIds: [panelId, surfaceIdFromPanelId(panelId)?.uuid].compactMap { $0 })
             removePendingTerminalInputObservers(forPanelId: panelId)
             removeBrowserOpenTabSuggestionIfNeeded(panel: panel, panelId: panelId)
             panelSubscriptions.removeValue(forKey: panelId)
@@ -13394,6 +13393,7 @@ extension Workspace: BonsplitDelegate {
             Self.requestSSHControlMasterCleanupIfNeeded(configuration: transferredRemoteCleanupConfiguration)
         }
         AppDelegate.shared?.notificationStore?.clearNotifications(forTabId: id, surfaceId: panelId)
+        if !isDetaching { TerminalController.shared.cleanupSurfaceState(surfaceIds: [panelId, tabId.uuid]) }
 
         // Keep the workspace invariant for normal close paths.
         // Detach/move flows intentionally allow a temporary empty workspace so AppDelegate can
@@ -13534,6 +13534,7 @@ extension Workspace: BonsplitDelegate {
         publishCmuxPaneClosed(paneId, closedPanelIds: closedPanelIds, origin: "pane_close")
         if !closedPanelIds.isEmpty {
             for panelId in closedPanelIds {
+                if !isDetachingCloseTransaction { TerminalController.shared.cleanupSurfaceState(surfaceIds: [panelId, surfaceIdFromPanelId(panelId)?.uuid].compactMap { $0 }) }
                 removePendingTerminalInputObservers(forPanelId: panelId)
                 let panel = panels[panelId]
                 publishCmuxSurfaceClosed(panelId, paneId: paneId, panel: panel, origin: "pane_close")
