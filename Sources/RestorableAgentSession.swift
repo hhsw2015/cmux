@@ -333,7 +333,11 @@ enum AgentResumeCommandBuilder {
         guard let preserved = AgentLaunchSanitizer.preservedArguments(kind: kind, args: original.tail) else {
             return nil
         }
-        return [original.executable, option, sessionId] + preserved
+        // Use the bare command name (fallbackExecutable) instead of the absolute
+        // binary path. This allows shell functions/aliases to intercept the call,
+        // which is needed for wrappers that add flags like --append-system-prompt-file.
+        let executable = fallbackExecutable
+        return [executable, option, sessionId] + preserved
     }
 
     private static func commandParts(
