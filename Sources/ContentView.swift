@@ -2432,7 +2432,7 @@ struct ContentView: View {
     }
 
     private func resumeSession(entry: SessionEntry) {
-        guard let resumeCommand = entry.resumeCommandWithCwd else { return }
+        guard let resumeCommand = entry.resumeCommand else { return }
         let inputWithReturn = resumeCommand + "\n"
         let targetCwd = entry.resumeWorkingDirectory
 
