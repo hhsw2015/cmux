@@ -63,3 +63,22 @@ jobs:
         with:
           name: cmux-unsigned-app
           path: build/Build/Products/Release/cmux-unsigned.zip
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/Build/Products/Release/cmux.app/Contents/Info.plist)"
+          SHA="$(git rev-parse --short HEAD)"
+          echo "tag=v${VERSION}-${SHA}" >> "$GITHUB_OUTPUT"
+          echo "name=cmux ${VERSION} (${SHA}, unsigned arm64)" >> "$GITHUB_OUTPUT"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.name }}
+          body: |
+            Unsigned arm64 build from `${{ github.sha }}`.
+            Remove quarantine after download: `xattr -cr /Applications/cmux.app`
+          files: build/Build/Products/Release/cmux-unsigned.zip
+          prerelease: true
