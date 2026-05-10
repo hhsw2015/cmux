@@ -53,6 +53,11 @@ jobs:
             CODE_SIGN_IDENTITY="-" \
             build
 
+      - name: Ad-hoc sign
+        run: |
+          xattr -cr build/Build/Products/Release/cmux.app
+          codesign --force --deep --sign - build/Build/Products/Release/cmux.app
+
       - name: Package .app as zip
         run: |
           cd build/Build/Products/Release

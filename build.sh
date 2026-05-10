@@ -88,7 +88,12 @@ if [ ! -d "build/Build/Products/Release/cmux.app" ]; then
   exit 1
 fi
 
-echo "=== Step 6: Install to /Applications ==="
+echo "=== Step 6: Ad-hoc sign ==="
+xattr -cr build/Build/Products/Release/cmux.app
+codesign --force --deep --sign - build/Build/Products/Release/cmux.app
+echo "  Signed: ad-hoc"
+
+echo "=== Step 7: Install to /Applications ==="
 osascript -e 'quit app "cmux"' 2>/dev/null || true
 sleep 2
 rm -rf /Applications/cmux.app
