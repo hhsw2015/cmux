@@ -18,10 +18,16 @@ jobs:
 
       - name: Select Xcode
         run: |
-          XCODE_APP="$(ls -d /Applications/Xcode*.app 2>/dev/null | head -n 1)"
+          # Use the latest Xcode available (sort version numbers descending)
+          XCODE_APP="$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -t_ -k2 -rV | head -n 1)"
+          if [ -z "$XCODE_APP" ]; then
+            XCODE_APP="$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -rV | head -n 1)"
+          fi
+          echo "Using: $XCODE_APP"
+          sudo xcode-select -s "$XCODE_APP/Contents/Developer"
           echo "DEVELOPER_DIR=$XCODE_APP/Contents/Developer" >> "$GITHUB_ENV"
-          export DEVELOPER_DIR="$XCODE_APP/Contents/Developer"
           xcodebuild -version
+          swift --version
 
       - name: Install zig
         run: ./scripts/install-zig-ci.sh
