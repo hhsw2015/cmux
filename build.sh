@@ -28,12 +28,29 @@ cleanup() {
   echo "  GhosttyKit.xcframework removed (~536MB)"
 
   rm -rf .zig
-  echo "  .zig/ removed (zig toolchain)"
+  echo "  .zig/ removed (local zig cache)"
 
-  # ghostty submodule: deinit to free space
-  git submodule deinit -f ghostty 2>/dev/null && echo "  ghostty submodule deinited (~538MB)" || true
+  echo "=== Cleaning installed dependencies ==="
 
-  echo "=== Cleanup done (freed ~5GB) ==="
+  # zig (installed by scripts/install-zig-ci.sh to /usr/local)
+  if [ -f /usr/local/bin/zig ]; then
+    sudo rm -f /usr/local/bin/zig
+    sudo rm -rf /usr/local/lib/zig
+    echo "  zig removed (/usr/local/bin/zig + /usr/local/lib/zig, ~388MB)"
+  fi
+
+  # minisign (installed via brew for zig signature verification)
+  if brew list minisign >/dev/null 2>&1; then
+    brew uninstall minisign
+    echo "  minisign removed (brew)"
+  fi
+
+  # downloaded tarballs in /tmp
+  rm -f /tmp/zig-*-macos-*.tar.xz /tmp/zig-*-macos-*.tar.xz.minisig
+  rm -f /tmp/GhosttyKit.xcframework.tar.gz
+  echo "  /tmp downloads removed"
+
+  echo "=== Cleanup done ==="
 }
 
 if [ "$CLEAN_ONLY" = true ]; then

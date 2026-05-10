@@ -56,7 +56,8 @@ extension GhosttyNSView {
             // CJK input method is active but idle (no private preedit buffer).
             // Allow the key through so arrow keys work normally.
             if commandSelector != nil { return false }
-            return !shouldAllowDeferredNumpadIMEFallback(event)
+            return shouldKeepNoMarkedIMECommandInsideTextInput(event)
+                && !shouldAllowDeferredNumpadIMEFallback(event)
         }
 
         if before.text != after.text {
@@ -89,6 +90,27 @@ extension GhosttyNSView {
             .intersection(.deviceIndependentFlagsMask)
             .subtracting([.function, .capsLock])
         return flags == [.numericPad]
+    }
+
+    func hasOnlyTextInputCommandModifiers(_ event: NSEvent) -> Bool {
+        let flags = event.modifierFlags
+            .intersection(.deviceIndependentFlagsMask)
+            .subtracting([.numericPad, .function, .capsLock])
+        return flags.isEmpty || flags == [.shift]
+    }
+
+    func shouldKeepNoMarkedIMECommandInsideTextInput(_ event: NSEvent?) -> Bool {
+        guard let event else { return false }
+        guard hasOnlyTextInputCommandModifiers(event) else { return false }
+
+        switch Int(event.keyCode) {
+        case kVK_LeftArrow, kVK_RightArrow, kVK_UpArrow, kVK_DownArrow,
+             kVK_PageUp, kVK_PageDown, kVK_Home, kVK_End,
+             kVK_Space:
+            return true
+        default:
+            return false
+        }
     }
 
     func isTraditionalZhuyinInputSource(_ sourceId: String?) -> Bool {
@@ -131,10 +153,7 @@ extension GhosttyNSView {
             return false
         }
 
-        let flags = event.modifierFlags
-            .intersection(.deviceIndependentFlagsMask)
-            .subtracting([.numericPad, .function, .capsLock])
-        guard flags.isEmpty || flags == [.shift] else { return false }
+        guard hasOnlyTextInputCommandModifiers(event) else { return false }
 
         switch Int(event.keyCode) {
         case kVK_DownArrow, kVK_UpArrow, kVK_PageUp, kVK_PageDown, kVK_Space:
@@ -161,10 +180,7 @@ extension GhosttyNSView {
     /// Returns true for active-composition command keys that belong to AppKit's
     /// text input manager even when marked text itself does not change.
     func shouldKeepIMECompositionCommandInsideTextInput(_ event: NSEvent) -> Bool {
-        let flags = event.modifierFlags
-            .intersection(.deviceIndependentFlagsMask)
-            .subtracting([.numericPad, .function, .capsLock])
-        guard flags.isEmpty || flags == [.shift] else { return false }
+        guard hasOnlyTextInputCommandModifiers(event) else { return false }
 
         switch Int(event.keyCode) {
         case kVK_LeftArrow, kVK_RightArrow, kVK_UpArrow, kVK_DownArrow,
