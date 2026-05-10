@@ -11972,6 +11972,8 @@ private struct TabItemView: View, Equatable {
     @StateObject private var contextMenuState = SidebarTabItemContextMenuState()
     @State private var rowInteractionState = SidebarWorkspaceRowInteractionState()
     @State private var rowHeight: CGFloat = 1
+    @State private var workspaceFinderDirectoryCache = WorkspaceFinderDirectoryCache()
+    @State private var workspaceFinderDirectoryOpenRequest: WorkspaceFinderDirectoryOpenRequest?
 
     var isMultiSelected: Bool {
         selectedTabIds.contains(tab.id)
@@ -12212,6 +12214,8 @@ private struct TabItemView: View, Equatable {
         let accessibilityHintText = String(localized: "sidebar.workspace.accessibilityHint", defaultValue: "Activate to focus this workspace. Drag to reorder, or use Move Up and Move Down actions.")
         let moveUpActionText = String(localized: "sidebar.workspace.moveUpAction", defaultValue: "Move Up")
         let moveDownActionText = String(localized: "sidebar.workspace.moveDownAction", defaultValue: "Move Down")
+        let finderDirectoryPath = WorkspaceFinderDirectoryResolver.path(for: tab)
+        let finderDirectoryCacheKey = WorkspaceFinderDirectoryCacheKey(path: finderDirectoryPath)
         let latestNotificationSubtitle = latestNotificationText
         let submittedMessageSubtitle = settings.iMessageModeEnabled
             ? workspaceSnapshot.latestSubmittedMessage?
@@ -12520,6 +12524,17 @@ private struct TabItemView: View, Equatable {
         .onAppear {
             refreshWorkspaceSnapshot(force: true)
         }
+        .task(id: finderDirectoryCacheKey) {
+            let cache = await WorkspaceFinderDirectoryResolver.cache(for: finderDirectoryCacheKey)
+            guard !Task.isCancelled else { return }
+            workspaceFinderDirectoryCache = cache
+        }
+        .task(id: workspaceFinderDirectoryOpenRequest) {
+            guard let request = workspaceFinderDirectoryOpenRequest else { return }
+            await WorkspaceFinderDirectoryOpener.openInFinder(request.directoryURL)
+            guard !Task.isCancelled, workspaceFinderDirectoryOpenRequest == request else { return }
+            workspaceFinderDirectoryOpenRequest = nil
+        }
         .onReceive(
             tab.sidebarImmediateObservationPublisher
                 .receive(on: RunLoop.main)
@@ -12699,6 +12714,10 @@ private struct TabItemView: View, Equatable {
         let renameWorkspaceShortcut = KeyboardShortcutSettings.shortcut(for: .renameWorkspace)
         let editWorkspaceDescriptionShortcut = KeyboardShortcutSettings.shortcut(for: .editWorkspaceDescription)
         let closeWorkspaceShortcut = KeyboardShortcutSettings.shortcut(for: .closeWorkspace)
+        let finderDirectoryCacheKey = WorkspaceFinderDirectoryCacheKey(
+            path: isMulti ? nil : WorkspaceFinderDirectoryResolver.path(for: tab)
+        )
+        let finderDirectoryURL = workspaceFinderDirectoryCache.url(for: finderDirectoryCacheKey)
         Button(pinLabel) {
             guard let contextMenuPinState else {
                 NSSound.beep()
@@ -12746,6 +12765,7 @@ private struct TabItemView: View, Equatable {
                     tabManager.clearCustomDescription(tabId: tab.id)
                 }
             }
+
         }
 
         if !remoteContextMenuWorkspaceIds.isEmpty {
@@ -12913,6 +12933,13 @@ private struct TabItemView: View, Equatable {
             copyWorkspaceIdsToPasteboard(targetIds)
         }
         .disabled(targetIds.isEmpty)
+
+        if !isMulti {
+            Button(String(localized: "contextMenu.showWorkspaceInFinder", defaultValue: "Show in Finder")) {
+                workspaceFinderDirectoryOpenRequest = WorkspaceFinderDirectoryOpenRequest(directoryURL: finderDirectoryURL)
+            }
+            .disabled(finderDirectoryURL == nil)
+        }
     }
 
     private var backgroundColor: Color {
