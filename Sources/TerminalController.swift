@@ -16363,13 +16363,17 @@ class TerminalController {
         }
         guard let surfaceRaw = parsed.options["surface"]?.trimmingCharacters(in: .whitespacesAndNewlines),
               !surfaceRaw.isEmpty else {
-            return "ERROR: Usage: agent_session_ended --tab=<id> --surface=<panel-uuid>"
+            return "ERROR: Usage: agent_session_ended --tab=<id> --surface=<panel-uuid> --session=<sessionId>"
         }
         guard let panelId = UUID(uuidString: surfaceRaw) else {
             return "ERROR: --surface must be a UUID, got: \(surfaceRaw)"
         }
+        guard let sessionId = parsed.options["session"]?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !sessionId.isEmpty else {
+            return "ERROR: Usage: agent_session_ended --tab=<id> --surface=<panel-uuid> --session=<sessionId>"
+        }
         scheduleSidebarMutation(target: target) { _, tab in
-            tab.markRestorableAgentSessionEnded(panelId: panelId)
+            tab.markRestorableAgentSessionEnded(panelId: panelId, sessionId: sessionId)
         }
         return "OK"
     }

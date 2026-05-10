@@ -14368,10 +14368,12 @@ struct CMUXCLI {
                 // Tell the live app to drop the restored-agent snapshot for this
                 // panel so the next session save does not re-embed it. Without
                 // this, the next cmux launch tries to resume a session that
-                // was already ended in this lifetime.
-                if !surfaceId.isEmpty {
+                // was already ended in this lifetime. The sessionId scopes the
+                // clear so a late hook for session A can't wipe a freshly-
+                // started session B that has reused the same panel.
+                if !surfaceId.isEmpty, !consumedSession.sessionId.isEmpty {
                     _ = try? sendV1Command(
-                        "agent_session_ended --tab=\(workspaceId) --surface=\(surfaceId)",
+                        "agent_session_ended --tab=\(workspaceId) --surface=\(surfaceId) --session=\(consumedSession.sessionId)",
                         client: client
                     )
                 }
@@ -17429,9 +17431,9 @@ export default function cmuxPiSessionExtension(pi: ExtensionAPI) {
                 sendAgentFeedTelemetry(workspaceId: mapped.workspaceId)
                 _ = try? sendV1Command("clear_status \(def.statusKey) --tab=\(mapped.workspaceId)", client: client)
                 _ = try? sendV1Command("clear_agent_pid \(pidKey) --tab=\(mapped.workspaceId)", client: client)
-                if !mapped.surfaceId.isEmpty {
+                if !mapped.surfaceId.isEmpty, !mapped.sessionId.isEmpty {
                     _ = try? sendV1Command(
-                        "agent_session_ended --tab=\(mapped.workspaceId) --surface=\(mapped.surfaceId)",
+                        "agent_session_ended --tab=\(mapped.workspaceId) --surface=\(mapped.surfaceId) --session=\(mapped.sessionId)",
                         client: client
                     )
                 }
