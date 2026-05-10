@@ -1,4 +1,4 @@
-name: Build unsigned app
+name: Build app
 
 on:
   workflow_dispatch:
@@ -42,7 +42,7 @@ jobs:
           key: spm-${{ hashFiles('GhosttyTabs.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
           restore-keys: spm-
 
-      - name: Build arm64 app (unsigned)
+      - name: Build arm64 app
         run: |
           xcodebuild -scheme cmux -configuration Release -derivedDataPath build \
             -destination 'generic/platform=macOS' \
@@ -61,13 +61,13 @@ jobs:
       - name: Package .app as zip
         run: |
           cd build/Build/Products/Release
-          zip -r -y cmux-unsigned.zip cmux.app
+          zip -r -y cmux-arm64.zip cmux.app
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: cmux-unsigned-app
-          path: build/Build/Products/Release/cmux-unsigned.zip
+          name: cmux-arm64-app
+          path: build/Build/Products/Release/cmux-arm64.zip
 
       - name: Get version
         id: version
@@ -75,7 +75,7 @@ jobs:
           VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/Build/Products/Release/cmux.app/Contents/Info.plist)"
           SHA="$(git rev-parse --short HEAD)"
           echo "tag=v${VERSION}-${SHA}" >> "$GITHUB_OUTPUT"
-          echo "name=cmux ${VERSION} (${SHA}, unsigned arm64)" >> "$GITHUB_OUTPUT"
+          echo "name=cmux ${VERSION} (${SHA}, arm64)" >> "$GITHUB_OUTPUT"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -85,5 +85,5 @@ jobs:
           body: |
             Unsigned arm64 build from `${{ github.sha }}`.
             Remove quarantine after download: `xattr -cr /Applications/cmux.app`
-          files: build/Build/Products/Release/cmux-unsigned.zip
+          files: build/Build/Products/Release/cmux-arm64.zip
           prerelease: true
