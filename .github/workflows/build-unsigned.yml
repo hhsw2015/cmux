@@ -42,7 +42,7 @@ jobs:
           key: spm-${{ hashFiles('GhosttyTabs.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
           restore-keys: spm-
 
-      - name: Build universal app (unsigned)
+      - name: Build arm64 app (unsigned)
         run: |
           xcodebuild -scheme cmux -configuration Release -derivedDataPath build \
             -destination 'generic/platform=macOS' \
