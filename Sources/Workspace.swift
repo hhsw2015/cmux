@@ -10529,7 +10529,8 @@ final class Workspace: Identifiable, ObservableObject {
                 closePanel: true,
                 publishSurfaceClosedEvent: true,
                 clearSurfaceNotifications: true,
-                requestTransferredRemoteCleanup: true
+                requestTransferredRemoteCleanup: true,
+                cleanupControllerSurfaceState: true
             )
         }
         pruneSurfaceMetadata(validSurfaceIds: [])
@@ -13237,7 +13238,7 @@ extension Workspace: BonsplitDelegate {
 
         if explicitUserClose && shouldCloseWorkspaceOnLastSurface(for: tab.id) {
             clearStagedClosedBrowserRestoreSnapshot(for: tab.id)
-            owningTabManager?.closeWorkspaceWithConfirmation(self)
+            owningTabManager?.closeWorkspaceFromCloseTabGesture(self)
             return false
         }
 
@@ -13251,7 +13252,9 @@ extension Workspace: BonsplitDelegate {
         // If confirmation is required, Bonsplit will call into this delegate and we must return false.
         // Show an app-level confirmation, then re-attempt the close with forceCloseTabIds to bypass
         // this gating on the second pass.
-        if panelNeedsConfirmClose(panelId: panelId) {
+        if CloseTabConfirmationPolicy.shouldConfirm(
+            requiresConfirmation: panelNeedsConfirmClose(panelId: panelId)
+        ) {
             clearStagedClosedBrowserRestoreSnapshot(for: tab.id)
             if pendingCloseConfirmTabIds.contains(tab.id) {
                 return false
@@ -13366,7 +13369,8 @@ extension Workspace: BonsplitDelegate {
             closePanel: !isDetaching,
             publishSurfaceClosedEvent: !isDetaching,
             clearSurfaceNotifications: !preservesSurfaceForDetach,
-            requestTransferredRemoteCleanup: false
+            requestTransferredRemoteCleanup: false,
+            cleanupControllerSurfaceState: !isDetaching
         )
         syncRemotePortScanTTYs()
         recomputeListeningPorts()
@@ -13524,7 +13528,8 @@ extension Workspace: BonsplitDelegate {
                     closePanel: true,
                     publishSurfaceClosedEvent: true,
                     clearSurfaceNotifications: true,
-                    requestTransferredRemoteCleanup: true
+                    requestTransferredRemoteCleanup: true,
+                    cleanupControllerSurfaceState: !isDetachingCloseTransaction
                 )
             }
 
@@ -13552,7 +13557,9 @@ extension Workspace: BonsplitDelegate {
         for tab in tabs {
             if forceCloseTabIds.contains(tab.id) { continue }
             if let panelId = panelIdFromSurfaceId(tab.id),
-               panelNeedsConfirmClose(panelId: panelId) {
+               CloseTabConfirmationPolicy.shouldConfirm(
+                   requiresConfirmation: panelNeedsConfirmClose(panelId: panelId)
+               ) {
                 pendingPaneClosePanelIds.removeValue(forKey: pane.id)
                 return false
             }

@@ -18,6 +18,7 @@ extension CmuxSettingsFileStore {
         "app.reorderOnNotification",
         "app.sendAnonymousTelemetry",
         "app.warnBeforeQuit",
+        "app.warnBeforeClosingTab",
         "app.renameSelectsExistingName",
         "app.commandPaletteSearchesAllSurfaces",
         "terminal.showScrollBar",
