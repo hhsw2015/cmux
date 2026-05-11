@@ -7742,16 +7742,9 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         let accumulatedText = keyTextAccumulator ?? []
         if shouldSuppressGhosttyKeyForwardingAfterIMEHandling(
             before: markedStateBefore,
-            after: markedStateAfter,
-            accumulatedText: accumulatedText,
-            event: translationEvent,
-            textInputHandledEvent: textInputHandledEvent,
-            inputSourceId: keyboardIdBefore,
-            commandSelector: textInputCommandSelectorDuringKeyDown
-        ) {
-            imeSuppressedKeyUpKeyCodes.insert(event.keyCode)
-            return
-        }
+            after: (markedText.string, markedSelectedRange),
+            accumulatedText: accumulatedText
+        ) { return }
 
         // Build the key event
         var keyEvent = ghostty_input_key_s()
