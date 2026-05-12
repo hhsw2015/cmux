@@ -37,27 +37,15 @@ extension GhosttyNSView {
         accumulatedText: [String],
         event: NSEvent? = nil,
         textInputHandledEvent: Bool = false,
-        inputSourceId: String? = nil,
-        commandSelector: Selector? = nil
+        inputSourceId: String? = nil
     ) -> Bool {
         guard accumulatedText.isEmpty else { return false }
 
         let hadMarkedTextBefore = !before.text.isEmpty
         let hasMarkedTextAfter = !after.text.isEmpty
         guard hadMarkedTextBefore || hasMarkedTextAfter else {
-            // Some IMEs, including Traditional Chinese Zhuyin, can handle a
-            // command key against their private preedit buffer before they call
-            // setMarkedText on the client. Keep handled no-output input-method
-            // events out of the terminal so keys such as Down can open
-            // candidates instead of moving the shell cursor.
-            guard textInputHandledEvent, isInputMethodSource(inputSourceId) else { return false }
-            // If doCommand(by:) was called, the IME passed the event back to
-            // the responder chain without consuming it. This happens when a
-            // CJK input method is active but idle (no private preedit buffer).
-            // Allow the key through so arrow keys work normally.
-            if commandSelector != nil { return false }
+            guard textInputHandledEvent, isBopomofoInputSource(inputSourceId) else { return false }
             return shouldKeepNoMarkedIMECommandInsideTextInput(event)
-                && !shouldAllowDeferredNumpadIMEFallback(event)
         }
 
         if before.text != after.text {
@@ -79,17 +67,10 @@ extension GhosttyNSView {
         return sourceId.localizedCaseInsensitiveContains("inputmethod")
     }
 
-    func shouldAllowDeferredNumpadIMEFallback(_ event: NSEvent?) -> Bool {
-        guard let event,
-              let text = event.characters,
-              !text.isEmpty,
-              text.allSatisfy(\.isNumber) else {
-            return false
-        }
-        let flags = event.modifierFlags
-            .intersection(.deviceIndependentFlagsMask)
-            .subtracting([.function, .capsLock])
-        return flags == [.numericPad]
+    func isBopomofoInputSource(_ sourceId: String?) -> Bool {
+        guard let sourceId else { return false }
+        return sourceId.localizedCaseInsensitiveContains("Zhuyin")
+            || sourceId.localizedCaseInsensitiveContains("Bopomofo")
     }
 
     func hasOnlyTextInputCommandModifiers(_ event: NSEvent) -> Bool {
@@ -104,61 +85,7 @@ extension GhosttyNSView {
         guard hasOnlyTextInputCommandModifiers(event) else { return false }
 
         switch Int(event.keyCode) {
-        case kVK_LeftArrow, kVK_RightArrow, kVK_UpArrow, kVK_DownArrow,
-             kVK_PageUp, kVK_PageDown, kVK_Home, kVK_End,
-             kVK_Space:
-            return true
-        default:
-            return false
-        }
-    }
-
-    func isBopomofoInputSource(_ sourceId: String?) -> Bool {
-        guard let sourceId else { return false }
-        // Apple's source IDs use "Zhuyin"; McBopomofo/OpenVanilla use "Bopomofo".
-        return sourceId.localizedCaseInsensitiveContains("Zhuyin")
-            || sourceId.localizedCaseInsensitiveContains("Bopomofo")
-    }
-
-    func shouldOpenBopomofoCandidatesWithSyntheticSpace(
-        event: NSEvent,
-        inputSourceId: String?,
-        markedTextBefore: Bool,
-        before: (text: String, selection: NSRange),
-        after: (text: String, selection: NSRange),
-        accumulatedText: [String],
-        commandSelector: Selector?,
-        candidateOpenAlreadyRequested: Bool
-    ) -> Bool {
-        guard !candidateOpenAlreadyRequested,
-              markedTextBefore,
-              accumulatedText.isEmpty,
-              isBopomofoInputSource(inputSourceId),
-              Int(event.keyCode) == kVK_DownArrow,
-              commandSelector == #selector(NSResponder.moveDown(_:)),
-              before.text == after.text,
-              before.selection == after.selection else {
-            return false
-        }
-        return true
-    }
-
-    func shouldRememberBopomofoCandidateInteraction(
-        event: NSEvent,
-        inputSourceId: String?,
-        markedTextBefore: Bool,
-        accumulatedText: [String]
-    ) -> Bool {
-        guard markedTextBefore,
-              accumulatedText.isEmpty,
-              isBopomofoInputSource(inputSourceId) else {
-            return false
-        }
-
-        guard hasOnlyTextInputCommandModifiers(event) else { return false }
-
-        switch Int(event.keyCode) {
-        case kVK_DownArrow, kVK_UpArrow, kVK_PageUp, kVK_PageDown, kVK_Space:
+        case kVK_DownArrow, kVK_PageUp, kVK_PageDown, kVK_Space:
             return true
         default:
             return false
@@ -174,9 +101,13 @@ extension GhosttyNSView {
 
     func shouldRouteTextInputKeyEquivalentToKeyDown(_ event: NSEvent, inputSourceId: String?) -> Bool {
         guard event.type == .keyDown else { return false }
-        guard shouldKeepIMECompositionCommandInsideTextInput(event) else { return false }
-        if hasMarkedText() { return true }
-        return isInputMethodSource(inputSourceId ?? KeyboardLayout.id)
+        let resolvedInputSourceId = inputSourceId ?? KeyboardLayout.id
+        if hasMarkedText() {
+            return isInputMethodSource(resolvedInputSourceId)
+                && shouldKeepIMECompositionCommandInsideTextInput(event)
+        }
+        return isBopomofoInputSource(resolvedInputSourceId)
+            && shouldKeepNoMarkedIMECommandInsideTextInput(event)
     }
 
     /// Returns true for active-composition command keys that belong to AppKit's
@@ -204,8 +135,7 @@ extension GhosttyNSView {
         accumulatedText: [String],
         event: NSEvent? = nil,
         textInputHandledEvent: Bool = false,
-        inputSourceId: String? = nil,
-        commandSelector: Selector? = nil
+        inputSourceId: String? = nil
     ) -> Bool {
         shouldSuppressGhosttyKeyForwardingAfterIMEHandling(
             before: (markedTextBefore, markedSelectionBefore),
@@ -213,8 +143,7 @@ extension GhosttyNSView {
             accumulatedText: accumulatedText,
             event: event,
             textInputHandledEvent: textInputHandledEvent,
-            inputSourceId: inputSourceId,
-            commandSelector: commandSelector
+            inputSourceId: inputSourceId
         )
     }
 #endif

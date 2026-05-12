@@ -133,7 +133,6 @@ class TerminalController {
         "focus_notification",
         "activate_app",
         "debug_right_sidebar_focus",
-        "right_sidebar",
     ]
 
     private nonisolated static let focusIntentV2Methods: Set<String> = [
@@ -319,7 +318,23 @@ class TerminalController {
             return focusIntentV2Methods.contains(commandKey)
                 || explicitFocusParamAllowsFocus(commandKey: commandKey, params: params)
         }
+        if commandKey == "right_sidebar" {
+            return rightSidebarCommandAllowsInAppFocusMutations(args: params["args"] as? String ?? "")
+        }
         return focusIntentV1Commands.contains(commandKey)
+    }
+
+    private nonisolated static func rightSidebarCommandAllowsInAppFocusMutations(args: String) -> Bool {
+        let parsed = RightSidebarRemoteRequest.parse(tokens: Self.tokenizeArgs(args))
+        guard case .success(let request) = parsed else { return false }
+        switch request.command {
+        case .toggle, .show, .focus:
+            return true
+        case .setMode(_, let focus):
+            return focus
+        case .hide, .getState:
+            return false
+        }
     }
 
     nonisolated func withSocketCommandPolicy<T>(commandKey: String, isV2: Bool, params: [String: Any] = [:], _ body: () -> T) -> T {
@@ -2041,7 +2056,8 @@ class TerminalController {
         let cmd = parts[0].lowercased()
         let args = parts.count > 1 ? parts[1] : ""
 
-        return withSocketCommandPolicy(commandKey: cmd, isV2: false) {
+        let policyParams = cmd == "right_sidebar" ? ["args": args] : [:]
+        return withSocketCommandPolicy(commandKey: cmd, isV2: false, params: policyParams) {
             switch cmd {
         case "ping":
             return "PONG"
@@ -2144,9 +2160,6 @@ class TerminalController {
 
         case "clear_agent_pid":
             return clearAgentPID(args)
-
-        case "agent_session_ended":
-            return agentSessionEnded(args)
 
         case "clear_meta":
             return clearMeta(args)
@@ -15930,7 +15943,7 @@ class TerminalController {
 
     // MARK: - Option Parsing (sidebar metadata commands)
 
-    private func tokenizeArgs(_ args: String) -> [String] {
+    private nonisolated static func tokenizeArgs(_ args: String) -> [String] {
         let trimmed = args.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return [] }
 
@@ -16006,7 +16019,7 @@ class TerminalController {
     }
 
     private func parseOptions(_ args: String) -> (positional: [String], options: [String: String]) {
-        let tokens = tokenizeArgs(args)
+        let tokens = Self.tokenizeArgs(args)
         guard !tokens.isEmpty else { return ([], [:]) }
 
         var positional: [String] = []
@@ -16042,7 +16055,7 @@ class TerminalController {
     }
 
     private func parseOptionsNoStop(_ args: String) -> (positional: [String], options: [String: String]) {
-        let tokens = tokenizeArgs(args)
+        let tokens = Self.tokenizeArgs(args)
         guard !tokens.isEmpty else { return ([], [:]) }
 
         var positional: [String] = []
@@ -16384,29 +16397,6 @@ class TerminalController {
                 return
             }
             tab.recordAgentPID(key: key, pid: pid, panelId: panelResolution.panelId)
-        }
-        return "OK"
-    }
-
-    private func agentSessionEnded(_ args: String) -> String {
-        let parsed = parseOptions(args)
-        let targetResolution = parseSidebarMutationTabTarget(options: parsed.options)
-        guard let target = targetResolution.target else {
-            return targetResolution.error ?? "ERROR: No tab selected"
-        }
-        guard let surfaceRaw = parsed.options["surface"]?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !surfaceRaw.isEmpty else {
-            return "ERROR: Usage: agent_session_ended --tab=<id> --surface=<panel-uuid> --session=<sessionId>"
-        }
-        guard let panelId = UUID(uuidString: surfaceRaw) else {
-            return "ERROR: --surface must be a UUID, got: \(surfaceRaw)"
-        }
-        guard let sessionId = parsed.options["session"]?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !sessionId.isEmpty else {
-            return "ERROR: Usage: agent_session_ended --tab=<id> --surface=<panel-uuid> --session=<sessionId>"
-        }
-        scheduleSidebarMutation(target: target) { _, tab in
-            tab.markRestorableAgentSessionEnded(panelId: panelId, sessionId: sessionId)
         }
         return "OK"
     }
@@ -17319,7 +17309,7 @@ class TerminalController {
     }
 
     private func rightSidebar(_ args: String) -> String {
-        let parsed = RightSidebarRemoteRequest.parse(tokens: tokenizeArgs(args))
+        let parsed = RightSidebarRemoteRequest.parse(tokens: Self.tokenizeArgs(args))
         let request: RightSidebarRemoteRequest
         switch parsed {
         case .success(let value):
@@ -17353,7 +17343,14 @@ class TerminalController {
         guard parts.first?.lowercased() == "right_sidebar" else {
             return .failure(.init(message: "ERROR: Usage: right_sidebar <toggle|show|hide|focus|set|mode>"))
         }
-        return RightSidebarRemoteRequest.parse(tokens: tokenizeArgs(parts.count > 1 ? parts[1] : ""))
+        return RightSidebarRemoteRequest.parse(tokens: Self.tokenizeArgs(parts.count > 1 ? parts[1] : ""))
+    }
+
+    func rightSidebarCommandAllowsInAppFocusMutationsForTesting(_ commandLine: String) -> Bool {
+        let trimmed = commandLine.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = trimmed.split(separator: " ", maxSplits: 1).map(String.init)
+        guard parts.first?.lowercased() == "right_sidebar" else { return false }
+        return Self.rightSidebarCommandAllowsInAppFocusMutations(args: parts.count > 1 ? parts[1] : "")
     }
 #endif
 

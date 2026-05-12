@@ -10479,7 +10479,15 @@ struct CMUXCLI {
             guard parsed.positional.count == 2 else {
                 throw CLIError(message: String(localized: "cli.rightSidebar.error.setRequiresMode", defaultValue: "right-sidebar set requires a mode: files, find, vault, sessions, feed, or dock"))
             }
+<<<<<<< HEAD
             var args = ["set", parsed.positional[1]]
+=======
+            let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            guard isRightSidebarCLIMode(mode) else {
+                throw CLIError(message: String(localized: "cli.rightSidebar.error.unknownMode", defaultValue: "Unknown right-sidebar mode '\(parsed.positional[1])'"))
+            }
+            var args = ["set", mode]
+>>>>>>> upstream/main
             if parsed.noFocus {
                 args.append("--no-focus")
             }
@@ -10499,6 +10507,7 @@ struct CMUXCLI {
         }
     }
 
+<<<<<<< HEAD
     private func resolveRightSidebarWindowId(_ raw: String?, client: SocketClient) throws -> String? {
         guard let raw else { return nil }
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -10522,6 +10531,28 @@ struct CMUXCLI {
             )
         }
         throw CLIError(message: String(localized: "cli.rightSidebar.error.invalidWindow", defaultValue: "Invalid window handle: \(trimmed)"))
+=======
+    private func isRightSidebarCLIMode(_ value: String) -> Bool {
+        switch value {
+        case "files", "find", "vault", "sessions", "feed", "dock":
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func resolveRightSidebarWindowId(_ raw: String?, client: SocketClient) throws -> String? {
+        guard let normalized = try normalizeWindowHandle(raw, client: client) else { return nil }
+        return try resolvedRightSidebarHandleID(
+            normalized,
+            expectedRefKind: "window",
+            invalidMessage: String(localized: "cli.rightSidebar.error.invalidWindow", defaultValue: "Invalid window handle: \(normalized)"),
+            missingRefMessage: String(localized: "cli.rightSidebar.error.windowRefNotFound", defaultValue: "Window ref not found"),
+            listMethod: "window.list",
+            listKey: "windows",
+            client: client
+        )
+>>>>>>> upstream/main
     }
 
     private func resolveRightSidebarWorkspaceId(
@@ -10529,15 +10560,19 @@ struct CMUXCLI {
         windowId: String?,
         client: SocketClient
     ) throws -> String? {
+<<<<<<< HEAD
         guard let raw else { return nil }
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         if isUUID(trimmed) { return trimmed }
 
+=======
+>>>>>>> upstream/main
         var params: [String: Any] = [:]
         if let windowId {
             params["window_id"] = windowId
         }
+<<<<<<< HEAD
         let listed = try client.sendV2(method: "workspace.list", params: params)
         let workspaces = listed["workspaces"] as? [[String: Any]] ?? []
         if let refIndex = handleIndex(trimmed, kind: "workspace") {
@@ -10572,6 +10607,55 @@ struct CMUXCLI {
             if let id = item["id"] as? String { return id }
         }
         throw CLIError(message: missingMessage)
+=======
+        guard let normalized = try normalizeWorkspaceHandle(raw, client: client, windowHandle: windowId) else { return nil }
+        return try resolvedRightSidebarHandleID(
+            normalized,
+            expectedRefKind: "workspace",
+            invalidMessage: String(localized: "cli.rightSidebar.error.invalidWorkspace", defaultValue: "Invalid workspace handle: \(normalized)"),
+            missingRefMessage: String(localized: "cli.rightSidebar.error.workspaceRefNotFound", defaultValue: "Workspace ref not found"),
+            listMethod: "workspace.list",
+            listKey: "workspaces",
+            listParams: params,
+            client: client
+        )
+    }
+
+    private func resolvedRightSidebarHandleID(
+        _ handle: String,
+        expectedRefKind: String,
+        invalidMessage: String,
+        missingRefMessage: String,
+        listMethod: String,
+        listKey: String,
+        listParams: [String: Any] = [:],
+        client: SocketClient
+    ) throws -> String {
+        let trimmed = handle.trimmingCharacters(in: .whitespacesAndNewlines)
+        if isUUID(trimmed) { return trimmed }
+        let refIndex: Int?
+        if isHandleRef(trimmed) {
+            let pieces = trimmed.split(separator: ":", omittingEmptySubsequences: false)
+            guard pieces.count == 2, pieces[0].lowercased() == expectedRefKind else {
+                throw CLIError(message: invalidMessage)
+            }
+            refIndex = Int(pieces[1])
+        } else {
+            refIndex = nil
+        }
+
+        let listed = try client.sendV2(method: listMethod, params: listParams)
+        let items = listed[listKey] as? [[String: Any]] ?? []
+        for item in items {
+            guard let id = item["id"] as? String else { continue }
+            if id == trimmed ||
+                (item["ref"] as? String) == trimmed ||
+                (refIndex != nil && intFromAny(item["index"]) == refIndex) {
+                return id
+            }
+        }
+        throw CLIError(message: missingRefMessage)
+>>>>>>> upstream/main
     }
 
     /// Pick the display handle for an item dict based on --id-format.
@@ -17319,25 +17403,13 @@ export default function cmuxPiSessionExtension(pi: ExtensionAPI) {
             switch action {
             case .codexConfigToml:
                 let configPath = "\(configDir)/config.toml"
-                let existingContent: String = fm.fileExists(atPath: configPath)
-                    ? ((try? String(contentsOfFile: configPath, encoding: .utf8)) ?? "")
-                    : ""
-                let newContent: String
-                if existingContent.contains("codex_hooks") {
-                    // Replace existing value (might be false) with true
-                    newContent = existingContent.replacingOccurrences(
-                        of: "codex_hooks\\s*=\\s*\\w+",
-                        with: "codex_hooks = true",
-                        options: .regularExpression
-                    )
-                } else if existingContent.contains("[features]") {
-                    newContent = existingContent.replacingOccurrences(
-                        of: "[features]",
-                        with: "[features]\ncodex_hooks = true"
-                    )
+                let existingContent: String
+                if fm.fileExists(atPath: configPath) {
+                    existingContent = try String(contentsOfFile: configPath, encoding: .utf8)
                 } else {
-                    newContent = existingContent + "\n[features]\ncodex_hooks = true\n"
+                    existingContent = ""
                 }
+                let newContent = Self.codexConfigTomlInstallingHooksFeature(in: existingContent)
                 if newContent != existingContent {
                     if !skipConfirm {
                         Self.printInstallPreview(
@@ -17353,7 +17425,7 @@ export default function cmuxPiSessionExtension(pi: ExtensionAPI) {
                         }
                     }
                     try newContent.write(toFile: configPath, atomically: true, encoding: .utf8)
-                    print("Enabled codex_hooks in \(configPath)")
+                    print("Enabled hooks in \(configPath)")
                 }
             }
         }
@@ -17433,18 +17505,12 @@ export default function cmuxPiSessionExtension(pi: ExtensionAPI) {
             switch action {
             case .codexConfigToml:
                 let configPath = "\(configDir)/config.toml"
-                guard fm.fileExists(atPath: configPath),
-                      let content = try? String(contentsOfFile: configPath, encoding: .utf8),
-                      content.contains("codex_hooks") else { return }
-                // Remove the codex_hooks line
-                let newContent = content.replacingOccurrences(
-                    of: "\\n?codex_hooks\\s*=\\s*\\w+",
-                    with: "",
-                    options: .regularExpression
-                )
+                guard fm.fileExists(atPath: configPath) else { return }
+                let content = try String(contentsOfFile: configPath, encoding: .utf8)
+                let newContent = Self.codexConfigTomlUninstallingHooksFeature(from: content)
                 if newContent != content {
                     try newContent.write(toFile: configPath, atomically: true, encoding: .utf8)
-                    print("Removed codex_hooks from \(configPath)")
+                    print("Updated hooks in \(configPath)")
                 }
             }
         }
