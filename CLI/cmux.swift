@@ -10974,7 +10974,7 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
         }
     }
 
-private func isRightSidebarCLIMode(_ value: String) -> Bool {
+    private func isRightSidebarCLIMode(_ value: String) -> Bool {
         switch value {
         case "files", "find", "vault", "sessions", "feed", "dock":
             return true
