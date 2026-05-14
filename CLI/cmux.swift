@@ -10993,6 +10993,7 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
             listMethod: "window.list",
             listKey: "windows",
             client: client
+        )
     }
 
     private func resolveRightSidebarWorkspaceId(
@@ -11000,7 +11001,7 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
         windowId: String?,
         client: SocketClient
     ) throws -> String? {
-var params: [String: Any] = [:]
+        var params: [String: Any] = [:]
         if let windowId {
             params["window_id"] = windowId
         }
