@@ -555,8 +555,8 @@ struct cmuxApp: App {
                     }
                 }
 
-                splitCommandButton(title: String(localized: "menu.file.reopenClosedBrowserPanel", defaultValue: "Reopen Closed Browser Panel"), shortcut: menuShortcut(for: .reopenClosedBrowserPanel)) {
-                    _ = activeTabManager.reopenMostRecentlyClosedBrowserPanel()
+                splitCommandButton(title: String(localized: "menu.history.reopenClosedItem", defaultValue: "Reopen Closed Item"), shortcut: menuShortcut(for: .reopenClosedBrowserPanel)) {
+                    _ = AppDelegate.shared?.reopenMostRecentlyClosedItem(preferredTabManager: activeTabManager)
                 }
             }
 
@@ -646,6 +646,20 @@ struct cmuxApp: App {
                 activeTabManager.navigateForward()
             }
             .disabled(!canNavigateFocusHistoryForward)
+
+            Divider()
+
+            splitCommandButton(title: String(localized: "menu.history.reopenClosedItem", defaultValue: "Reopen Closed Item"), shortcut: menuShortcut(for: .reopenClosedBrowserPanel)) {
+                if AppDelegate.shared?.reopenMostRecentlyClosedItem(preferredTabManager: activeTabManager) != true {
+                    NSSound.beep()
+                }
+            }
+
+            splitCommandButton(title: String(localized: "menu.file.reopenPreviousSession", defaultValue: "Reopen Previous Session"), shortcut: menuShortcut(for: .reopenPreviousSession)) {
+                if AppDelegate.shared?.reopenPreviousSession() != true {
+                    NSSound.beep()
+                }
+            }
         }
     }
 
