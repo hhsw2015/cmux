@@ -8647,7 +8647,7 @@ final class Workspace: Identifiable, ObservableObject {
               restored.sessionId == sessionId else { return }
         invalidatedRestoredAgentFingerprintsByPanelId[panelId] = TabManager.restorableAgentSnapshotFingerprint(restored)
         restoredAgentSnapshotsByPanelId.removeValue(forKey: panelId)
-        restoredAgentAutoResumePendingPanelIds.remove(panelId)
+        restoredAgentResumeStatesByPanelId[panelId] = nil
 #if DEBUG
         cmuxDebugLog(
             "session.restore.agent.session-ended panel=\(panelId.uuidString.prefix(5)) " +
