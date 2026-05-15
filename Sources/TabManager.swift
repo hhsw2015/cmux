@@ -1227,7 +1227,11 @@ class TabManager: ObservableObject {
                 let explicitFocusIntent = notification.userInfo?[GhosttyNotificationKey.explicitFocusIntent] as? Bool ?? false
                 let panelId = panelIdForFocusHistorySurface(surfaceId, workspaceId: tabId)
                 if selectedTabId == tabId {
-                    recordFocusInHistory(workspaceId: tabId, panelId: panelId)
+                    if explicitFocusIntent {
+                        recordFocusInHistory(workspaceId: tabId, panelId: panelId)
+                    } else {
+                        recordImplicitFocusInHistory(workspaceId: tabId, panelId: panelId)
+                    }
                 }
                 dismissPanelNotificationOnFocus(tabId: tabId, panelId: panelId, explicitFocusIntent: explicitFocusIntent)
             }
@@ -5689,7 +5693,11 @@ class TabManager: ObservableObject {
         return try body()
     }
 
-    private func recordFocusInHistory(workspaceId: UUID, panelId: UUID?) {
+    private func recordFocusInHistory(
+        workspaceId: UUID,
+        panelId: UUID?,
+        preservingForwardBranch: Bool = false
+    ) {
         guard shouldRecordFocusHistory else { return }
         let entry = FocusHistoryEntry(workspaceId: workspaceId, panelId: panelId)
         guard focusHistoryEntryIsValid(entry) else { return }
@@ -5702,8 +5710,29 @@ class TabManager: ObservableObject {
 
         var didMutateHistory = false
         if historyIndex < focusHistory.count - 1 {
-            focusHistory = Array(focusHistory.prefix(historyIndex + 1))
-            didMutateHistory = true
+            if preservingForwardBranch {
+                let insertionIndex = max(0, historyIndex + 1)
+                if focusHistory[insertionIndex] == entry {
+                    let oldHistoryIndex = historyIndex
+                    historyIndex = insertionIndex
+                    if historyIndex != oldHistoryIndex {
+                        focusHistoryRevision &+= 1
+                    }
+                    return
+                }
+
+                focusHistory.insert(entry, at: insertionIndex)
+                let overflow = max(0, focusHistory.count - maxHistorySize)
+                if overflow > 0 {
+                    focusHistory.removeFirst(overflow)
+                }
+                historyIndex = max(-1, insertionIndex - overflow)
+                focusHistoryRevision &+= 1
+                return
+            } else {
+                focusHistory = Array(focusHistory.prefix(historyIndex + 1))
+                didMutateHistory = true
+            }
         }
 
         if focusHistory.last == entry {
@@ -5723,9 +5752,34 @@ class TabManager: ObservableObject {
         focusHistoryRevision &+= 1
     }
 
-    private func recordFocusInHistory(_ entry: FocusHistoryEntry?) {
+    private func recordFocusInHistory(
+        _ entry: FocusHistoryEntry?,
+        preservingForwardBranch: Bool = false
+    ) {
         guard let entry else { return }
-        recordFocusInHistory(workspaceId: entry.workspaceId, panelId: entry.panelId)
+        recordFocusInHistory(
+            workspaceId: entry.workspaceId,
+            panelId: entry.panelId,
+            preservingForwardBranch: preservingForwardBranch
+        )
+    }
+
+    private func recordImplicitFocusInHistory(workspaceId: UUID, panelId: UUID?) {
+        guard shouldRecordFocusHistory else { return }
+        let entry = FocusHistoryEntry(workspaceId: workspaceId, panelId: panelId)
+        guard focusHistoryEntryIsValid(entry) else { return }
+
+        if historyIndex >= 0,
+           historyIndex < focusHistory.count - 1,
+           focusHistory[historyIndex].workspaceId == workspaceId {
+            if focusHistory[historyIndex] != entry {
+                focusHistory[historyIndex] = entry
+                focusHistoryRevision &+= 1
+            }
+            return
+        }
+
+        recordFocusInHistory(workspaceId: workspaceId, panelId: panelId)
     }
 
     private func panelIdForFocusHistorySurface(_ surfaceId: UUID, workspaceId: UUID) -> UUID {
@@ -6251,16 +6305,17 @@ class TabManager: ObservableObject {
         }
 
         let preRestoreFocus = currentFocusHistoryEntry
-        if selectedTabId != workspace.id {
-            withFocusHistoryRecordingSuppressed {
+        let panelId = withFocusHistoryRecordingSuppressed {
+            if selectedTabId != workspace.id {
                 selectedTabId = workspace.id
             }
+            return workspace.restoreClosedPanel(entry)
         }
 
-        guard let panelId = workspace.restoreClosedPanel(entry) else { return false }
-        recordFocusInHistory(preRestoreFocus)
+        guard let panelId else { return false }
+        recordFocusInHistory(preRestoreFocus, preservingForwardBranch: true)
         rememberFocusedSurface(tabId: workspace.id, surfaceId: panelId)
-        recordFocusInHistory(workspaceId: workspace.id, panelId: panelId)
+        recordFocusInHistory(workspaceId: workspace.id, panelId: panelId, preservingForwardBranch: true)
         return true
     }
 
@@ -6285,10 +6340,10 @@ class TabManager: ObservableObject {
             selectedTabId = workspace.id
         }
         if let focusedPanelId = workspace.focusedPanelId {
-            recordFocusInHistory(preRestoreFocus)
+            recordFocusInHistory(preRestoreFocus, preservingForwardBranch: true)
             rememberFocusedSurface(tabId: workspace.id, surfaceId: focusedPanelId)
             workspace.triggerFocusFlash(panelId: focusedPanelId)
-            recordFocusInHistory(workspaceId: workspace.id, panelId: focusedPanelId)
+            recordFocusInHistory(workspaceId: workspace.id, panelId: focusedPanelId, preservingForwardBranch: true)
         }
         return true
     }
