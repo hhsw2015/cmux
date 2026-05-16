@@ -18,7 +18,6 @@ extension AgentLaunchSanitizer {
             "--effort",
             "--fallback-model",
             "--file",
-            "--fork-session",
             "--from-pr",
             "--input-format",
             "--json-schema",
@@ -127,8 +126,7 @@ extension AgentLaunchSanitizer {
         ],
         variadicOptions: [
             "--image",
-            "-i",
-            "--add-dir"
+            "-i"
         ],
         nonRestorableCommands: [
             "exec",
@@ -469,6 +467,7 @@ extension AgentLaunchSanitizer {
             "--prompt"
         ],
         droppedOptionPrefixes: [
+            "--fork=",
             "--session=",
             "--prompt="
         ],
