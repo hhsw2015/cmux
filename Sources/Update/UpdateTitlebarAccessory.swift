@@ -2044,6 +2044,7 @@ final class TitlebarRightSidebarToggleAccessoryViewController: NSTitlebarAccesso
         let nextLayoutSnapshot = TitlebarControlsLayoutSnapshot(
             contentSize: contentSize,
             containerHeight: containerHeight,
+            xOffset: 0,
             yOffset: yOffset
         )
         guard titlebarControlsShouldApplyLayout(

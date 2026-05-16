@@ -569,7 +569,9 @@ extension Workspace {
         guard let snapshot = sessionPanelSnapshot(
             panelId: panelId,
             includeScrollback: true,
-            restorableAgent: restorableAgentIndex.snapshot(workspaceId: id, panelId: panelId)
+            restorableAgent: restorableAgentIndex.snapshot(workspaceId: id, panelId: panelId),
+            defaults: .standard,
+            terminalScrollbackReader: SessionTerminalSnapshotScrollbackReader()
         ) else {
             return nil
         }
