@@ -571,7 +571,7 @@ extension Workspace {
             includeScrollback: true,
             restorableAgent: restorableAgentIndex.snapshot(workspaceId: id, panelId: panelId),
             defaults: .standard,
-            terminalScrollbackReader: SessionTerminalSnapshotScrollbackReader()
+            terminalScrollbackReader: Self.defaultSessionTerminalSnapshotScrollback
         ) else {
             return nil
         }
