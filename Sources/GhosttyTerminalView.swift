@@ -6466,7 +6466,8 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         }
         return UserDefaults.standard.bool(forKey: "cmuxKeyLatencyProbe")
     }()
-    static var debugGhosttySurfaceKeyEventObserver: ((ghostty_input_key_s) -> Void)?
+    @MainActor static var debugGhosttySurfaceKeyEventObserver: ((ghostty_input_key_s) -> Void)?
+    @MainActor static var debugTextInputEventHandler: ((GhosttyNSView, NSEvent) -> Bool)?
 #endif
     private var eventMonitor: Any?
     private var trackingArea: NSTrackingArea?
@@ -7793,7 +7794,6 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         var interpretMs: Double = 0
         var syncPreeditMs: Double = 0
         var ghosttySendMs: Double = 0
-        var refreshMs: Double = 0
         defer {
             let totalMs = (ProcessInfo.processInfo.systemUptime - phaseTotalStart) * 1000.0
             CmuxTypingTiming.logBreakdown(
@@ -7808,7 +7808,6 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                     ("interpretMs", interpretMs),
                     ("syncPreeditMs", syncPreeditMs),
                     ("ghosttySendMs", ghosttySendMs),
-                    ("refreshMs", refreshMs),
                 ],
                 extra: "marked=\(hasMarkedText() ? 1 : 0)"
             )
@@ -8067,7 +8066,6 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         keyEvent.composing = markedText.length > 0 || markedTextBefore
 
         // Use accumulated text from insertText (for IME), or compute text for key
-        var shouldRefreshAfterTextInput = false
         if !accumulatedText.isEmpty {
             // Accumulated text comes from insertText (IME composition result).
             // These never have "composing" set to true because these are the
@@ -8075,7 +8073,6 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
             keyEvent.composing = false
             for text in accumulatedText {
                 if shouldSendText(text) {
-                    shouldRefreshAfterTextInput = true
 #if DEBUG
                     let sendTimingStart = CmuxTypingTiming.start()
                     let ghosttySendStart = ProcessInfo.processInfo.systemUptime
@@ -8154,7 +8151,6 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                 if shouldSendText(text),
                    !suppressShiftSpaceFallbackText,
                    !suppressComposingFallbackText {
-                    shouldRefreshAfterTextInput = true
                     var handled = false
 #if DEBUG
                     let sendTimingStart = CmuxTypingTiming.start()
@@ -8218,16 +8214,6 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                 _ = ghostty_surface_key(surface, keyEvent)
                 #endif
             }
-        }
-
-        if shouldRefreshAfterTextInput {
-#if DEBUG
-            let refreshStart = ProcessInfo.processInfo.systemUptime
-#endif
-            terminalSurface?.forceRefresh(reason: "keyDown.textInput")
-#if DEBUG
-            refreshMs = (ProcessInfo.processInfo.systemUptime - refreshStart) * 1000.0
-#endif
         }
 
         // Rendering is driven by Ghostty's wakeups/renderer.
