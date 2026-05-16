@@ -8,6 +8,16 @@ import XCTest
 
 @MainActor
 final class TabManagerSessionSnapshotTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        ClosedItemHistoryStore.shared.removeAll()
+    }
+
+    override func tearDown() {
+        ClosedItemHistoryStore.shared.removeAll()
+        super.tearDown()
+    }
+
     func testSessionSnapshotSerializesWorkspacesAndRestoreRebuildsSelection() {
         let manager = TabManager()
         guard let firstWorkspace = manager.selectedWorkspace else {
@@ -32,6 +42,293 @@ final class TabManagerSessionSnapshotTests: XCTestCase {
         XCTAssertEqual(restored.selectedTabId, restored.tabs[1].id)
         XCTAssertEqual(restored.tabs[0].customTitle, "First")
         XCTAssertEqual(restored.tabs[1].customTitle, "Second")
+    }
+
+    func testFocusHistoryNavigatesWithinWorkspacePanels() throws {
+        let manager = TabManager()
+        let workspace = try XCTUnwrap(manager.selectedWorkspace)
+        let pane = try XCTUnwrap(workspace.bonsplitController.allPaneIds.first)
+        let firstPanelId = try XCTUnwrap(workspace.focusedPanelId)
+        let secondPanelId = try XCTUnwrap(workspace.newTerminalSurface(inPane: pane, focus: true)?.id)
+
+        workspace.focusPanel(firstPanelId)
+        workspace.focusPanel(secondPanelId)
+
+        XCTAssertTrue(manager.canNavigateBack)
+
+        manager.navigateBack()
+
+        XCTAssertEqual(workspace.focusedPanelId, firstPanelId)
+        XCTAssertTrue(manager.canNavigateForward)
+    }
+
+    func testFocusHistoryBackFallsBackWhenRecordedPanelWasClosed() throws {
+        let manager = TabManager()
+        let firstWorkspace = try XCTUnwrap(manager.selectedWorkspace)
+        let pane = try XCTUnwrap(firstWorkspace.bonsplitController.allPaneIds.first)
+        let closedPanelId = try XCTUnwrap(firstWorkspace.focusedPanelId)
+        let fallbackPanelId = try XCTUnwrap(firstWorkspace.newTerminalSurface(inPane: pane, focus: true)?.id)
+
+        firstWorkspace.focusPanel(closedPanelId)
+        let secondWorkspace = manager.addWorkspace(select: true)
+        _ = firstWorkspace.closePanel(closedPanelId, force: true)
+
+        XCTAssertEqual(manager.selectedTabId, secondWorkspace.id)
+        XCTAssertTrue(manager.canNavigateBack)
+
+        manager.navigateBack()
+
+        XCTAssertEqual(manager.selectedTabId, firstWorkspace.id)
+        XCTAssertEqual(firstWorkspace.focusedPanelId, fallbackPanelId)
+        XCTAssertNil(firstWorkspace.panels[closedPanelId])
+    }
+
+    func testFocusHistoryBackSkipsStaleEntriesThatResolveToCurrentPanel() throws {
+        let manager = TabManager()
+        let workspace = try XCTUnwrap(manager.selectedWorkspace)
+        let pane = try XCTUnwrap(workspace.bonsplitController.allPaneIds.first)
+        let closedPanelId = try XCTUnwrap(workspace.focusedPanelId)
+        let fallbackPanelId = try XCTUnwrap(workspace.newTerminalSurface(inPane: pane, focus: true)?.id)
+
+        workspace.focusPanel(closedPanelId)
+        _ = workspace.closePanel(closedPanelId, force: true)
+        drainMainQueue()
+
+        XCTAssertEqual(workspace.focusedPanelId, fallbackPanelId)
+        XCTAssertFalse(manager.canNavigateBack)
+
+        var notificationCount = 0
+        let observer = NotificationCenter.default.addObserver(
+            forName: .tabManagerFocusHistoryRevisionDidChange,
+            object: manager,
+            queue: nil
+        ) { _ in
+            notificationCount += 1
+        }
+        defer {
+            NotificationCenter.default.removeObserver(observer)
+        }
+
+        manager.navigateBack()
+
+        XCTAssertEqual(workspace.focusedPanelId, fallbackPanelId)
+        XCTAssertEqual(notificationCount, 0)
+    }
+
+    func testGhosttyFocusSurfaceIdRecordsMappedPanelInFocusHistory() throws {
+        let manager = TabManager()
+        let workspace = try XCTUnwrap(manager.selectedWorkspace)
+        let pane = try XCTUnwrap(workspace.bonsplitController.allPaneIds.first)
+        let secondPanelId = try XCTUnwrap(workspace.newTerminalSurface(inPane: pane, focus: true)?.id)
+        let secondSurfaceId = try XCTUnwrap(workspace.surfaceIdFromPanelId(secondPanelId))
+        XCTAssertNotEqual(secondSurfaceId.uuid, secondPanelId)
+
+        let firstPanelId = try XCTUnwrap(workspace.panels.keys.first { $0 != secondPanelId })
+        workspace.focusPanel(firstPanelId)
+        let revision = manager.focusHistoryRevision
+
+        NotificationCenter.default.post(
+            name: .ghosttyDidFocusSurface,
+            object: nil,
+            userInfo: [
+                GhosttyNotificationKey.tabId: workspace.id,
+                GhosttyNotificationKey.surfaceId: secondSurfaceId.uuid,
+            ]
+        )
+        drainMainQueue()
+
+        XCTAssertGreaterThan(manager.focusHistoryRevision, revision)
+    }
+
+    func testFocusHistoryNavigatesBetweenFreshWorkspaces() throws {
+        let manager = TabManager()
+        let firstWorkspace = try XCTUnwrap(manager.selectedWorkspace)
+        let secondWorkspace = manager.addWorkspace(select: true)
+
+        XCTAssertEqual(manager.selectedTabId, secondWorkspace.id)
+        XCTAssertTrue(manager.canNavigateBack)
+
+        manager.navigateBack()
+
+        XCTAssertEqual(manager.selectedTabId, firstWorkspace.id)
+        XCTAssertTrue(manager.canNavigateForward)
+        NotificationCenter.default.post(
+            name: .ghosttyDidFocusSurface,
+            object: nil,
+            userInfo: [
+                GhosttyNotificationKey.tabId: firstWorkspace.id,
+                GhosttyNotificationKey.surfaceId: try XCTUnwrap(firstWorkspace.focusedPanelId),
+            ]
+        )
+        drainMainQueue()
+        XCTAssertTrue(manager.canNavigateForward)
+
+        manager.navigateForward()
+
+        XCTAssertEqual(manager.selectedTabId, secondWorkspace.id)
+    }
+
+    func testFocusHistoryRevisionPostsMenuInvalidationNotification() {
+        let manager = TabManager()
+        var notificationCount = 0
+        let observer = NotificationCenter.default.addObserver(
+            forName: .tabManagerFocusHistoryRevisionDidChange,
+            object: manager,
+            queue: nil
+        ) { _ in
+            notificationCount += 1
+        }
+        defer {
+            NotificationCenter.default.removeObserver(observer)
+        }
+
+        _ = manager.addWorkspace(select: true)
+
+        XCTAssertGreaterThan(notificationCount, 0)
+    }
+
+    func testFocusHistoryNavigationNotificationSeesUpdatedDirectionState() throws {
+        let manager = TabManager()
+        let firstWorkspace = try XCTUnwrap(manager.selectedWorkspace)
+        let secondWorkspace = manager.addWorkspace(select: true)
+        XCTAssertEqual(manager.selectedTabId, secondWorkspace.id)
+        XCTAssertTrue(manager.canNavigateBack)
+
+        var observedCanNavigateForward = false
+        let observer = NotificationCenter.default.addObserver(
+            forName: .tabManagerFocusHistoryRevisionDidChange,
+            object: manager,
+            queue: nil
+        ) { _ in
+            observedCanNavigateForward = manager.canNavigateForward
+        }
+        defer {
+            NotificationCenter.default.removeObserver(observer)
+        }
+
+        manager.navigateBack()
+
+        XCTAssertEqual(manager.selectedTabId, firstWorkspace.id)
+        XCTAssertTrue(observedCanNavigateForward)
+    }
+
+    func testReopenClosedItemRestoresClosedPanelSnapshot() throws {
+        let manager = TabManager()
+        let workspace = try XCTUnwrap(manager.selectedWorkspace)
+        let pane = try XCTUnwrap(workspace.bonsplitController.allPaneIds.first)
+        let panelId = try XCTUnwrap(workspace.newTerminalSurface(inPane: pane, focus: true)?.id)
+
+        workspace.markCloseHistoryEligible(panelId: panelId)
+        XCTAssertTrue(workspace.closePanel(panelId, force: true))
+        drainMainQueue()
+        XCTAssertNil(workspace.panels[panelId])
+        XCTAssertTrue(ClosedItemHistoryStore.shared.canReopen)
+
+        XCTAssertTrue(manager.reopenMostRecentlyClosedItem())
+        XCTAssertEqual(workspace.panels.count, 2)
+        XCTAssertNotNil(workspace.focusedPanelId.flatMap { workspace.panels[$0] })
+    }
+
+    func testReopenClosedPanelBackReturnsToPreviousWorkspaceFocus() throws {
+        let manager = TabManager()
+        let firstWorkspace = try XCTUnwrap(manager.selectedWorkspace)
+        let secondWorkspace = manager.addWorkspace(select: false)
+        let pane = try XCTUnwrap(secondWorkspace.bonsplitController.allPaneIds.first)
+        let panelId = try XCTUnwrap(secondWorkspace.newTerminalSurface(inPane: pane, focus: true)?.id)
+
+        secondWorkspace.markCloseHistoryEligible(panelId: panelId)
+        XCTAssertTrue(secondWorkspace.closePanel(panelId, force: true))
+        drainMainQueue()
+
+        XCTAssertTrue(manager.reopenMostRecentlyClosedItem())
+        XCTAssertEqual(manager.selectedTabId, secondWorkspace.id)
+        XCTAssertTrue(manager.canNavigateBack)
+
+        manager.navigateBack()
+
+        XCTAssertEqual(manager.selectedTabId, firstWorkspace.id)
+    }
+
+    func testReopenClosedPanelPreservesForwardFocusHistoryBranch() throws {
+        let manager = TabManager()
+        let firstWorkspace = try XCTUnwrap(manager.selectedWorkspace)
+        let secondWorkspace = manager.addWorkspace(select: true)
+
+        manager.navigateBack()
+
+        XCTAssertEqual(manager.selectedTabId, firstWorkspace.id)
+        XCTAssertTrue(manager.canNavigateForward)
+
+        let pane = try XCTUnwrap(firstWorkspace.bonsplitController.allPaneIds.first)
+        let panelId = try XCTUnwrap(firstWorkspace.newTerminalSurface(inPane: pane, focus: false)?.id)
+
+        firstWorkspace.markCloseHistoryEligible(panelId: panelId)
+        XCTAssertTrue(firstWorkspace.closePanel(panelId, force: true))
+        drainMainQueue()
+
+        XCTAssertTrue(manager.reopenMostRecentlyClosedItem())
+        XCTAssertTrue(manager.canNavigateForward)
+
+        manager.navigateForward()
+
+        XCTAssertEqual(manager.selectedTabId, secondWorkspace.id)
+    }
+
+    func testReopenClosedItemRestoresClosedWorkspaceSnapshot() throws {
+        let manager = TabManager()
+        let firstWorkspace = try XCTUnwrap(manager.selectedWorkspace)
+        let secondWorkspace = manager.addWorkspace(select: true)
+        secondWorkspace.setCustomTitle("Recovered")
+
+        manager.closeWorkspace(secondWorkspace)
+
+        XCTAssertEqual(manager.tabs.map(\.id), [firstWorkspace.id])
+        XCTAssertTrue(manager.reopenMostRecentlyClosedItem())
+        XCTAssertEqual(manager.tabs.count, 2)
+        XCTAssertEqual(manager.selectedWorkspace?.customTitle, "Recovered")
+    }
+
+    func testReopenClosedWorkspaceBackReturnsToPreviousWorkspaceFocus() throws {
+        let manager = TabManager()
+        let firstWorkspace = try XCTUnwrap(manager.selectedWorkspace)
+        let secondWorkspace = manager.addWorkspace(select: true)
+        secondWorkspace.setCustomTitle("Recovered")
+
+        manager.closeWorkspace(secondWorkspace)
+
+        XCTAssertEqual(manager.selectedTabId, firstWorkspace.id)
+        XCTAssertTrue(manager.reopenMostRecentlyClosedItem())
+        XCTAssertEqual(manager.selectedWorkspace?.customTitle, "Recovered")
+        XCTAssertTrue(manager.canNavigateBack)
+
+        manager.navigateBack()
+
+        XCTAssertEqual(manager.selectedTabId, firstWorkspace.id)
+    }
+
+    func testReopenClosedWindowWithoutAppDelegatePreservesHistoryEntry() throws {
+        let originalAppDelegate = AppDelegate.shared
+        AppDelegate.shared = nil
+        defer {
+            AppDelegate.shared = originalAppDelegate
+        }
+
+        let manager = TabManager()
+        let snapshot = SessionWindowSnapshot(
+            frame: nil,
+            display: nil,
+            tabManager: manager.sessionSnapshot(includeScrollback: false),
+            sidebar: SessionSidebarSnapshot(isVisible: true, selection: .tabs, width: nil)
+        )
+        ClosedItemHistoryStore.shared.push(.window(ClosedWindowHistoryEntry(snapshot: snapshot)))
+
+        XCTAssertFalse(manager.reopenMostRecentlyClosedItem())
+        XCTAssertTrue(ClosedItemHistoryStore.shared.canReopen)
+        XCTAssertEqual(ClosedItemHistoryStore.shared.entries.count, 1)
+        guard case .window = ClosedItemHistoryStore.shared.entries.last else {
+            XCTFail("Expected closed window history to remain queued")
+            return
+        }
     }
 
     func testRestoreSessionSnapshotWithNoWorkspacesKeepsSingleFallbackWorkspace() {

@@ -1056,7 +1056,7 @@ struct ContentView: View {
     @EnvironmentObject var fileExplorerState: FileExplorerState
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage("titlebarControlsStyle") private var titlebarControlsStyleRawValue = TitlebarControlsStyle.classic.rawValue
-    @State private var sidebarWidth: CGFloat = 200
+    @State private var sidebarWidth: CGFloat = CGFloat(SessionPersistencePolicy.defaultSidebarWidth)
     @State private var hoveredResizerHandles: Set<SidebarResizerHandle> = []
     @State private var isResizerDragging = false
     @State private var sidebarDragStartWidth: CGFloat?
@@ -2271,8 +2271,15 @@ struct ContentView: View {
                     debugSource: "titlebar.fullscreenNewWorkspace"
                 )
             },
+            onFocusHistoryBack: {
+                tabManager.navigateBack()
+            },
+            onFocusHistoryForward: {
+                tabManager.navigateForward()
+            },
             visibilityMode: .alwaysVisible
         )
+        .offset(y: -TitlebarControlsVisualMetrics.verticalLift)
     }
 
     private var titlebarControlsConfig: TitlebarControlsStyleConfig {
@@ -6152,8 +6159,6 @@ struct ContentView: View {
             return "⌘W"
         case "palette.closeWorkspace":
             return "⌘⇧W"
-        case "palette.reopenClosedBrowserTab":
-            return "⌘⇧T"
         case "palette.openSettings":
             return "⌘,"
         case "palette.browserBack":
@@ -6456,11 +6461,9 @@ struct ContentView: View {
         contributions.append(
             CommandPaletteCommandContribution(
                 commandId: "palette.reopenClosedBrowserTab",
-                title: constant(String(localized: "command.reopenClosedBrowserTab.title", defaultValue: "Reopen Closed Browser Tab")),
-                subtitle: constant(String(localized: "command.reopenClosedBrowserTab.subtitle", defaultValue: "Browser")),
-                shortcutHint: "⌘⇧T",
-                keywords: ["reopen", "closed", "browser"],
-                when: { !$0.bool(CommandPaletteContextKeys.browserDisabled) }
+                title: constant(String(localized: "menu.history.reopenClosedItem", defaultValue: "Reopen Closed Item")),
+                subtitle: constant(String(localized: "menu.history.title", defaultValue: "History")),
+                keywords: ["reopen", "closed", "history", "tab", "workspace", "window"]
             )
         )
         contributions.append(
@@ -7425,7 +7428,7 @@ struct ContentView: View {
             window.toggleFullScreen(nil)
         }
         registry.register(commandId: "palette.reopenClosedBrowserTab") {
-            _ = tabManager.reopenMostRecentlyClosedBrowserPanel()
+            _ = AppDelegate.shared?.reopenMostRecentlyClosedItem(preferredTabManager: tabManager)
         }
         registry.register(commandId: "palette.toggleSidebar") {
             sidebarState.toggle()
@@ -9668,7 +9671,13 @@ struct VerticalTabsSidebar: View {
                                     anchorView: anchorView
                                 )
                             },
-                            onNewTab: onNewTab
+                            onNewTab: onNewTab,
+                            onFocusHistoryBack: {
+                                tabManager.navigateBack()
+                            },
+                            onFocusHistoryForward: {
+                                tabManager.navigateForward()
+                            }
                         )
                             .padding(
                                 .leading,
@@ -9676,7 +9685,7 @@ struct VerticalTabsSidebar: View {
                             )
                             .padding(
                                 .top,
-                                MinimalModeTitlebarDebugSettings.leftControlsTopInset()
+                                MinimalModeSidebarTitlebarControlsMetrics.topInset
                             )
                     }
                 }

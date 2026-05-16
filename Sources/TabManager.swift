@@ -628,6 +628,73 @@ struct RecentlyClosedBrowserStack {
     }
 }
 
+struct FocusHistoryEntry: Equatable {
+    let workspaceId: UUID
+    let panelId: UUID?
+}
+
+struct ClosedPanelHistoryEntry {
+    let workspaceId: UUID
+    let paneId: UUID
+    let tabIndex: Int
+    let snapshot: SessionPanelSnapshot
+}
+
+struct ClosedWorkspaceHistoryEntry {
+    let windowId: UUID?
+    let workspaceIndex: Int
+    let snapshot: SessionWorkspaceSnapshot
+}
+
+struct ClosedWindowHistoryEntry {
+    let snapshot: SessionWindowSnapshot
+}
+
+enum ClosedItemHistoryEntry {
+    case panel(ClosedPanelHistoryEntry)
+    case workspace(ClosedWorkspaceHistoryEntry)
+    case window(ClosedWindowHistoryEntry)
+}
+
+@MainActor
+final class ClosedItemHistoryStore: ObservableObject {
+    static let shared = ClosedItemHistoryStore(capacity: 50)
+
+    @Published private(set) var revision: UInt64 = 0
+    private(set) var entries: [ClosedItemHistoryEntry] = []
+    private let capacity: Int
+
+    init(capacity: Int) {
+        self.capacity = max(1, capacity)
+    }
+
+    var canReopen: Bool {
+        !entries.isEmpty
+    }
+
+    func push(_ entry: ClosedItemHistoryEntry) {
+        entries.append(entry)
+        if entries.count > capacity {
+            entries.removeFirst(entries.count - capacity)
+        }
+        revision &+= 1
+    }
+
+    func pop() -> ClosedItemHistoryEntry? {
+        let entry = entries.popLast()
+        if entry != nil {
+            revision &+= 1
+        }
+        return entry
+    }
+
+    func removeAll() {
+        guard !entries.isEmpty else { return }
+        entries.removeAll(keepingCapacity: false)
+        revision &+= 1
+    }
+}
+
 #if DEBUG
 // Sample the actual IOSurface-backed terminal layer at vsync cadence so UI tests can reliably
 // catch a single compositor-frame blank flash and any transient compositor scaling (stretched text).
@@ -1006,8 +1073,21 @@ class TabManager: ObservableObject {
                let previousPanelId = focusedPanelId(for: previousTabId) {
                 lastFocusedPanelByTab[previousTabId] = previousPanelId
             }
-            if !isNavigatingHistory, let selectedTabId {
-                recordTabInHistory(selectedTabId)
+            if shouldRecordFocusHistory {
+                if let previousTabId {
+                    recordFocusInHistory(workspaceId: previousTabId, panelId: focusedPanelId(for: previousTabId))
+                }
+                if let selectedTabId,
+                   let selectedWorkspace = tabs.first(where: { $0.id == selectedTabId }) {
+                    let selectedEntry = FocusHistoryEntry(
+                        workspaceId: selectedTabId,
+                        panelId: lastFocusedPanelByTab[selectedTabId]
+                    )
+                    recordFocusInHistory(
+                        workspaceId: selectedTabId,
+                        panelId: resolvedFocusHistoryPanelId(for: selectedEntry, in: selectedWorkspace)
+                    )
+                }
             }
             publishCmuxWorkspaceSelectedChange(from: previousTabId)
 #if DEBUG
@@ -1067,10 +1147,20 @@ class TabManager: ObservableObject {
     private var workspacePullRequestRefreshTask: Task<Void, Never>?
     private var workspacePullRequestFollowUpShouldBypassRepoCache = false
 
-    // Recent tab history for back/forward navigation (like browser history)
-    private var tabHistory: [UUID] = []
+    @Published private(set) var focusHistoryRevision: UInt64 = 0 {
+        didSet {
+            guard focusHistoryRevision != oldValue else { return }
+            NotificationCenter.default.post(name: .tabManagerFocusHistoryRevisionDidChange, object: self)
+        }
+    }
+    // Recent focus history for back/forward navigation across workspaces and panes.
+    private var focusHistory: [FocusHistoryEntry] = []
     private var historyIndex: Int = -1
     private var isNavigatingHistory = false
+    private var focusHistoryRecordingSuppressionDepth = 0
+    private var shouldRecordFocusHistory: Bool {
+        !isNavigatingHistory && focusHistoryRecordingSuppressionDepth == 0
+    }
     private let maxHistorySize = 50
     private var selectionSideEffectsGeneration: UInt64 = 0
     private var workspaceCycleGeneration: UInt64 = 0
@@ -1135,7 +1225,15 @@ class TabManager: ObservableObject {
                 guard let tabId = notification.userInfo?[GhosttyNotificationKey.tabId] as? UUID else { return }
                 guard let surfaceId = notification.userInfo?[GhosttyNotificationKey.surfaceId] as? UUID else { return }
                 let explicitFocusIntent = notification.userInfo?[GhosttyNotificationKey.explicitFocusIntent] as? Bool ?? false
-                dismissPanelNotificationOnFocus(tabId: tabId, panelId: surfaceId, explicitFocusIntent: explicitFocusIntent)
+                let panelId = panelIdForFocusHistorySurface(surfaceId, workspaceId: tabId)
+                if selectedTabId == tabId {
+                    if explicitFocusIntent {
+                        recordFocusInHistory(workspaceId: tabId, panelId: panelId)
+                    } else {
+                        recordImplicitFocusInHistory(workspaceId: tabId, panelId: panelId)
+                    }
+                }
+                dismissPanelNotificationOnFocus(tabId: tabId, panelId: panelId, explicitFocusIntent: explicitFocusIntent)
             }
         })
 
@@ -4213,15 +4311,29 @@ class TabManager: ObservableObject {
         return trimmed
     }
 
-    func closeWorkspace(_ workspace: Workspace) {
+    func closeWorkspace(_ workspace: Workspace, recordHistory: Bool = true) {
         guard tabs.count > 1 else { return }
         sentryBreadcrumb("workspace.close", data: ["tabCount": tabs.count - 1])
+        if recordHistory,
+           let index = tabs.firstIndex(where: { $0.id == workspace.id }) {
+            let snapshot = workspace.sessionSnapshot(
+                includeScrollback: true,
+                restorableAgentIndex: RestorableAgentSessionIndex.load()
+            )
+            ClosedItemHistoryStore.shared.push(.workspace(ClosedWorkspaceHistoryEntry(
+                windowId: AppDelegate.shared?.windowId(for: self),
+                workspaceIndex: index,
+                snapshot: snapshot
+            )))
+        }
         clearWorkspaceGitProbes(workspaceId: workspace.id)
         clearWorkspacePullRequestTracking(workspaceId: workspace.id)
         sidebarSelectedWorkspaceIds.remove(workspace.id)
 
         AppDelegate.shared?.notificationStore?.clearNotifications(forTabId: workspace.id)
-        workspace.teardownAllPanels()
+        workspace.withClosedPanelHistorySuppressed {
+            workspace.teardownAllPanels()
+        }
         workspace.teardownRemoteConnection()
         unwireClosedBrowserTracking(for: workspace)
         workspace.owningTabManager = nil
@@ -4321,6 +4433,7 @@ class TabManager: ObservableObject {
         }
 
         for panelId in plan.panelIds {
+            plan.workspace.markCloseHistoryEligible(panelId: panelId)
             _ = plan.workspace.closePanel(panelId, force: true)
         }
     }
@@ -4705,6 +4818,7 @@ class TabManager: ObservableObject {
            let surfaceId = tab.surfaceIdFromPanelId(panelId) {
             tab.markExplicitClose(surfaceId: surfaceId)
         }
+        tab.markCloseHistoryEligible(panelId: panelId)
         let closed = tab.closePanel(panelId)
 #if DEBUG
         cmuxDebugLog(
@@ -4835,7 +4949,7 @@ class TabManager: ObservableObject {
                     closeRuntimeSurface(tabId: tabId, surfaceId: surfaceId)
                 }
             } else {
-                closeWorkspace(tab)
+                closeWorkspace(tab, recordHistory: false)
             }
             return
         }
@@ -5573,79 +5687,265 @@ class TabManager: ObservableObject {
         tab.moveFocus(direction: direction)
     }
 
-    // MARK: - Recent Tab History Navigation
+    // MARK: - Focus History Navigation
 
-    private func recordTabInHistory(_ tabId: UUID) {
-        // If we're not at the end of history, truncate forward history
-        if historyIndex < tabHistory.count - 1 {
-            tabHistory = Array(tabHistory.prefix(historyIndex + 1))
-        }
+    @discardableResult
+    private func withFocusHistoryRecordingSuppressed<Result>(_ body: () throws -> Result) rethrows -> Result {
+        focusHistoryRecordingSuppressionDepth += 1
+        defer { focusHistoryRecordingSuppressionDepth -= 1 }
+        return try body()
+    }
 
-        // Don't add duplicate consecutive entries
-        if tabHistory.last == tabId {
+    private func recordFocusInHistory(
+        workspaceId: UUID,
+        panelId: UUID?,
+        preservingForwardBranch: Bool = false
+    ) {
+        guard shouldRecordFocusHistory else { return }
+        let entry = FocusHistoryEntry(workspaceId: workspaceId, panelId: panelId)
+        guard focusHistoryEntryIsValid(entry) else { return }
+
+        if historyIndex >= 0,
+           historyIndex < focusHistory.count,
+           focusHistory[historyIndex] == entry {
             return
         }
 
-        tabHistory.append(tabId)
+        var didMutateHistory = false
+        if historyIndex < focusHistory.count - 1 {
+            if preservingForwardBranch {
+                let insertionIndex = max(0, historyIndex + 1)
+                if focusHistory[insertionIndex] == entry {
+                    let oldHistoryIndex = historyIndex
+                    historyIndex = insertionIndex
+                    if historyIndex != oldHistoryIndex {
+                        focusHistoryRevision &+= 1
+                    }
+                    return
+                }
 
-        // Trim history if it exceeds max size
-        if tabHistory.count > maxHistorySize {
-            tabHistory.removeFirst(tabHistory.count - maxHistorySize)
+                focusHistory.insert(entry, at: insertionIndex)
+                let overflow = max(0, focusHistory.count - maxHistorySize)
+                if overflow > 0 {
+                    focusHistory.removeFirst(overflow)
+                }
+                historyIndex = max(-1, insertionIndex - overflow)
+                focusHistoryRevision &+= 1
+                return
+            } else {
+                focusHistory = Array(focusHistory.prefix(historyIndex + 1))
+                didMutateHistory = true
+            }
         }
 
-        historyIndex = tabHistory.count - 1
+        if focusHistory.last == entry {
+            historyIndex = focusHistory.count - 1
+            if didMutateHistory {
+                focusHistoryRevision &+= 1
+            }
+            return
+        }
+
+        focusHistory.append(entry)
+        if focusHistory.count > maxHistorySize {
+            focusHistory.removeFirst(focusHistory.count - maxHistorySize)
+        }
+
+        historyIndex = focusHistory.count - 1
+        focusHistoryRevision &+= 1
+    }
+
+    private func recordFocusInHistory(
+        _ entry: FocusHistoryEntry?,
+        preservingForwardBranch: Bool = false
+    ) {
+        guard let entry else { return }
+        recordFocusInHistory(
+            workspaceId: entry.workspaceId,
+            panelId: entry.panelId,
+            preservingForwardBranch: preservingForwardBranch
+        )
+    }
+
+    private func recordImplicitFocusInHistory(workspaceId: UUID, panelId: UUID?) {
+        guard shouldRecordFocusHistory else { return }
+        let entry = FocusHistoryEntry(workspaceId: workspaceId, panelId: panelId)
+        guard focusHistoryEntryIsValid(entry) else { return }
+
+        if historyIndex >= 0,
+           historyIndex < focusHistory.count - 1,
+           focusHistory[historyIndex].workspaceId == workspaceId {
+            if focusHistory[historyIndex] != entry {
+                focusHistory[historyIndex] = entry
+                focusHistoryRevision &+= 1
+            }
+            return
+        }
+
+        recordFocusInHistory(workspaceId: workspaceId, panelId: panelId)
+    }
+
+    private func panelIdForFocusHistorySurface(_ surfaceId: UUID, workspaceId: UUID) -> UUID {
+        tabs.first(where: { $0.id == workspaceId })?.panelIdFromSurfaceId(TabID(uuid: surfaceId)) ?? surfaceId
+    }
+
+    private func focusHistoryEntryIsValid(_ entry: FocusHistoryEntry) -> Bool {
+        guard let workspace = tabs.first(where: { $0.id == entry.workspaceId }) else { return false }
+        guard let panelId = entry.panelId else { return true }
+        return workspace.panels[panelId] != nil
+    }
+
+    private func focusHistoryWorkspace(for entry: FocusHistoryEntry) -> Workspace? {
+        tabs.first(where: { $0.id == entry.workspaceId })
+    }
+
+    private func resolvedFocusHistoryPanelId(for entry: FocusHistoryEntry, in workspace: Workspace) -> UUID? {
+        if let panelId = entry.panelId, workspace.panels[panelId] != nil {
+            return panelId
+        }
+
+        if let rememberedPanelId = focusedPanelId(for: workspace.id),
+           workspace.panels[rememberedPanelId] != nil {
+            return rememberedPanelId
+        }
+
+        if let workspacePanelId = workspace.focusedPanelId,
+           workspace.panels[workspacePanelId] != nil {
+            return workspacePanelId
+        }
+
+        return workspace.panels.keys.sorted { $0.uuidString < $1.uuidString }.first
+    }
+
+    private var currentFocusHistoryEntry: FocusHistoryEntry? {
+        guard let selectedTabId else { return nil }
+        return FocusHistoryEntry(workspaceId: selectedTabId, panelId: focusedPanelId(for: selectedTabId))
+    }
+
+    private func resolvedFocusHistoryEntry(for entry: FocusHistoryEntry) -> FocusHistoryEntry? {
+        guard let workspace = focusHistoryWorkspace(for: entry) else { return nil }
+        // Closed panels still leave a useful workspace-level history entry.
+        // Resolve them to the workspace's current remembered panel instead of
+        // discarding the user's ability to jump back to that workspace.
+        return FocusHistoryEntry(
+            workspaceId: workspace.id,
+            panelId: resolvedFocusHistoryPanelId(for: entry, in: workspace)
+        )
+    }
+
+    private func focusHistoryEntryResolvesToCurrent(_ entry: FocusHistoryEntry, currentEntry: FocusHistoryEntry?) -> Bool {
+        guard let currentEntry,
+              let resolvedEntry = resolvedFocusHistoryEntry(for: entry) else { return false }
+        return resolvedEntry == currentEntry
+    }
+
+    private func focusHistoryEntryIsNavigable(_ entry: FocusHistoryEntry, currentEntry: FocusHistoryEntry?) -> Bool {
+        guard resolvedFocusHistoryEntry(for: entry) != nil else { return false }
+        if focusHistoryEntryResolvesToCurrent(entry, currentEntry: currentEntry) { return false }
+        return true
+    }
+
+    @discardableResult
+    private func restoreFocusHistoryEntry(_ entry: FocusHistoryEntry) -> Bool {
+        guard let workspace = tabs.first(where: { $0.id == entry.workspaceId }) else { return false }
+
+        if selectedTabId != workspace.id {
+            selectedTabId = workspace.id
+        }
+
+        let targetPanelId = resolvedFocusHistoryPanelId(for: entry, in: workspace)
+
+        if let targetPanelId {
+            rememberFocusedSurface(tabId: workspace.id, surfaceId: targetPanelId)
+            workspace.focusPanel(targetPanelId)
+            workspace.triggerFocusFlash(panelId: targetPanelId)
+        } else {
+            focusSelectedTabPanel(previousTabId: nil)
+        }
+
+        return true
+    }
+
+    @discardableResult
+    private func navigateToFocusHistoryEntry(_ entry: FocusHistoryEntry, targetIndex: Int) -> Bool {
+        isNavigatingHistory = true
+        var didNavigate = false
+        defer {
+            isNavigatingHistory = false
+            if didNavigate {
+                focusHistoryRevision &+= 1
+            }
+        }
+
+        guard restoreFocusHistoryEntry(entry) else { return false }
+        historyIndex = targetIndex
+        didNavigate = true
+        return true
     }
 
     func navigateBack() {
         guard historyIndex > 0 else { return }
 
-        // Find the previous valid tab in history (skip closed tabs)
+        let currentEntry = currentFocusHistoryEntry
         var targetIndex = historyIndex - 1
         while targetIndex >= 0 {
-            let tabId = tabHistory[targetIndex]
-            if tabs.contains(where: { $0.id == tabId }) {
-                isNavigatingHistory = true
-                historyIndex = targetIndex
-                selectedTabId = tabId
-                isNavigatingHistory = false
+            let entry = focusHistory[targetIndex]
+            guard focusHistoryWorkspace(for: entry) != nil else {
+                focusHistory.remove(at: targetIndex)
+                historyIndex -= 1
+                targetIndex -= 1
+                focusHistoryRevision &+= 1
+                continue
+            }
+            if focusHistoryEntryResolvesToCurrent(entry, currentEntry: currentEntry) {
+                targetIndex -= 1
+                continue
+            }
+            if navigateToFocusHistoryEntry(entry, targetIndex: targetIndex) {
                 return
             }
-            // Remove closed tab from history
-            tabHistory.remove(at: targetIndex)
+            focusHistory.remove(at: targetIndex)
             historyIndex -= 1
             targetIndex -= 1
+            focusHistoryRevision &+= 1
         }
     }
 
     func navigateForward() {
-        guard historyIndex < tabHistory.count - 1 else { return }
+        guard historyIndex < focusHistory.count - 1 else { return }
 
-        // Find the next valid tab in history (skip closed tabs)
-        let targetIndex = historyIndex + 1
-        while targetIndex < tabHistory.count {
-            let tabId = tabHistory[targetIndex]
-            if tabs.contains(where: { $0.id == tabId }) {
-                isNavigatingHistory = true
-                historyIndex = targetIndex
-                selectedTabId = tabId
-                isNavigatingHistory = false
+        let currentEntry = currentFocusHistoryEntry
+        var targetIndex = historyIndex + 1
+        while targetIndex < focusHistory.count {
+            let entry = focusHistory[targetIndex]
+            guard focusHistoryWorkspace(for: entry) != nil else {
+                focusHistory.remove(at: targetIndex)
+                focusHistoryRevision &+= 1
+                continue
+            }
+            if focusHistoryEntryResolvesToCurrent(entry, currentEntry: currentEntry) {
+                targetIndex += 1
+                continue
+            }
+            if navigateToFocusHistoryEntry(entry, targetIndex: targetIndex) {
                 return
             }
-            // Remove closed tab from history
-            tabHistory.remove(at: targetIndex)
-            // Don't increment targetIndex since we removed the element
+            focusHistory.remove(at: targetIndex)
+            focusHistoryRevision &+= 1
         }
     }
 
     var canNavigateBack: Bool {
-        historyIndex > 0 && tabHistory.prefix(historyIndex).contains { tabId in
-            tabs.contains { $0.id == tabId }
+        let currentEntry = currentFocusHistoryEntry
+        return historyIndex > 0 && focusHistory.prefix(historyIndex).contains { entry in
+            focusHistoryEntryIsNavigable(entry, currentEntry: currentEntry)
         }
     }
 
     var canNavigateForward: Bool {
-        historyIndex < tabHistory.count - 1 && tabHistory.suffix(from: historyIndex + 1).contains { tabId in
-            tabs.contains { $0.id == tabId }
+        let currentEntry = currentFocusHistoryEntry
+        return historyIndex < focusHistory.count - 1 && focusHistory.suffix(from: historyIndex + 1).contains { entry in
+            focusHistoryEntryIsNavigable(entry, currentEntry: currentEntry)
         }
     }
 
@@ -5942,6 +6242,10 @@ class TabManager: ObservableObject {
     /// No-op when no browser panel restore snapshot is available.
     @discardableResult
     func reopenMostRecentlyClosedBrowserPanel() -> Bool {
+        if reopenMostRecentlyClosedItem() {
+            return true
+        }
+
         guard BrowserAvailabilitySettings.isEnabled() else { return false }
 
         while let snapshot = recentlyClosedBrowsers.pop() {
@@ -5968,6 +6272,84 @@ class TabManager: ObservableObject {
         }
 
         return false
+    }
+
+    @discardableResult
+    func reopenMostRecentlyClosedItem() -> Bool {
+        if let appDelegate = AppDelegate.shared {
+            return appDelegate.reopenMostRecentlyClosedItem(preferredTabManager: self)
+        }
+
+        while let entry = ClosedItemHistoryStore.shared.pop() {
+            switch entry {
+            case .panel(let panelEntry):
+                if restoreClosedPanel(panelEntry) {
+                    return true
+                }
+            case .workspace(let workspaceEntry):
+                if restoreClosedWorkspace(workspaceEntry) {
+                    return true
+                }
+            case .window(let windowEntry):
+                ClosedItemHistoryStore.shared.push(.window(windowEntry))
+                return false
+            }
+        }
+
+        return false
+    }
+
+    @discardableResult
+    func restoreClosedPanel(_ entry: ClosedPanelHistoryEntry) -> Bool {
+        guard let workspace =
+            tabs.first(where: { $0.id == entry.workspaceId })
+            ?? selectedWorkspace
+            ?? tabs.first else {
+            return false
+        }
+
+        let preRestoreFocus = currentFocusHistoryEntry
+        let panelId = withFocusHistoryRecordingSuppressed {
+            if selectedTabId != workspace.id {
+                selectedTabId = workspace.id
+            }
+            return workspace.restoreClosedPanel(entry)
+        }
+
+        guard let panelId else { return false }
+        recordFocusInHistory(preRestoreFocus, preservingForwardBranch: true)
+        rememberFocusedSurface(tabId: workspace.id, surfaceId: panelId)
+        recordFocusInHistory(workspaceId: workspace.id, panelId: panelId, preservingForwardBranch: true)
+        return true
+    }
+
+    @discardableResult
+    func restoreClosedWorkspace(_ entry: ClosedWorkspaceHistoryEntry) -> Bool {
+        let preRestoreFocus = currentFocusHistoryEntry
+        let workspace = addWorkspace(
+            title: entry.snapshot.customTitle ?? entry.snapshot.processTitle,
+            workingDirectory: entry.snapshot.currentDirectory,
+            select: false,
+            autoWelcomeIfNeeded: false
+        )
+        workspace.restoreSessionSnapshot(entry.snapshot)
+
+        if let currentIndex = tabs.firstIndex(where: { $0.id == workspace.id }) {
+            let removed = tabs.remove(at: currentIndex)
+            let insertIndex = min(max(entry.workspaceIndex, 0), tabs.count)
+            tabs.insert(removed, at: insertIndex)
+        }
+
+        withFocusHistoryRecordingSuppressed {
+            selectedTabId = workspace.id
+        }
+        if let focusedPanelId = workspace.focusedPanelId {
+            recordFocusInHistory(preRestoreFocus, preservingForwardBranch: true)
+            rememberFocusedSurface(tabId: workspace.id, surfaceId: focusedPanelId)
+            workspace.triggerFocusFlash(panelId: focusedPanelId)
+            recordFocusInHistory(workspaceId: workspace.id, panelId: focusedPanelId, preservingForwardBranch: true)
+        }
+        return true
     }
 
     private func enforceReopenedBrowserFocus(
@@ -7502,9 +7884,11 @@ extension TabManager {
         // Clear non-@Published state without touching tabs/selectedTabId yet.
         lastFocusedPanelByTab.removeAll()
         pendingPanelTitleUpdates.removeAll()
-        tabHistory.removeAll()
+        focusHistory.removeAll()
         historyIndex = -1
         isNavigatingHistory = false
+        focusHistoryRecordingSuppressionDepth = 0
+        focusHistoryRevision &+= 1
         pendingWorkspaceUnfocusTarget = nil
         workspaceCycleCooldownTask?.cancel()
         workspaceCycleCooldownTask = nil
@@ -7607,6 +7991,7 @@ extension Notification.Name {
     static let terminalPortalVisibilityDidChange = Notification.Name("cmux.terminalPortalVisibilityDidChange")
     static let browserPortalRegistryDidChange = Notification.Name("cmux.browserPortalRegistryDidChange")
     static let workspaceOrderDidChange = Notification.Name("cmux.workspaceOrderDidChange")
+    static let tabManagerFocusHistoryRevisionDidChange = Notification.Name("cmux.tabManagerFocusHistoryRevisionDidChange")
 }
 
 enum BrowserFirstResponderNotificationUserInfoKey {

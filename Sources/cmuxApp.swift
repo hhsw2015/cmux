@@ -15,6 +15,7 @@ struct cmuxApp: App {
     private var showSidebarDevBuildBanner = DevBuildBannerDebugSettings.defaultShowSidebarBanner
     @AppStorage(SocketControlSettings.appStorageKey) private var socketControlMode = SocketControlSettings.defaultMode.rawValue
     @AppStorage(BrowserToolbarAccessorySpacingDebugSettings.key) private var browserToolbarAccessorySpacingRaw = BrowserToolbarAccessorySpacingDebugSettings.defaultSpacing
+    @State private var focusHistoryMenuRevision: UInt64 = 0
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @Environment(\.openWindow) private var openWindow
 
@@ -208,6 +209,12 @@ struct cmuxApp: App {
                 }
                 .onChange(of: socketControlMode) { _ in
                     updateSocketController()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .tabManagerFocusHistoryRevisionDidChange)) { _ in
+                    invalidateFocusHistoryMenuState()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+                    invalidateFocusHistoryMenuState()
                 }
         }
         .windowStyle(.hiddenTitleBar)
@@ -542,15 +549,6 @@ struct cmuxApp: App {
                     workspaceCommandMenuContent(manager: activeTabManager)
                 }
 
-                splitCommandButton(title: String(localized: "menu.file.reopenPreviousSession", defaultValue: "Reopen Previous Session"), shortcut: menuShortcut(for: .reopenPreviousSession)) {
-                    if AppDelegate.shared?.reopenPreviousSession() != true {
-                        NSSound.beep()
-                    }
-                }
-
-                splitCommandButton(title: String(localized: "menu.file.reopenClosedBrowserPanel", defaultValue: "Reopen Closed Browser Panel"), shortcut: menuShortcut(for: .reopenClosedBrowserPanel)) {
-                    _ = activeTabManager.reopenMostRecentlyClosedBrowserPanel()
-                }
             }
 
             // Find
@@ -628,6 +626,35 @@ struct cmuxApp: App {
     }
 
     @CommandsBuilder
+    private var historyCommands: some Commands {
+        CommandMenu(String(localized: "menu.history.title", defaultValue: "History")) {
+            splitCommandButton(title: String(localized: "menu.history.focusBack", defaultValue: "Focus Back"), shortcut: menuShortcut(for: .focusHistoryBack)) {
+                activeTabManager.navigateBack()
+            }
+            .disabled(!canNavigateFocusHistoryBack)
+
+            splitCommandButton(title: String(localized: "menu.history.focusForward", defaultValue: "Focus Forward"), shortcut: menuShortcut(for: .focusHistoryForward)) {
+                activeTabManager.navigateForward()
+            }
+            .disabled(!canNavigateFocusHistoryForward)
+
+            Divider()
+
+            splitCommandButton(title: String(localized: "menu.history.reopenClosedItem", defaultValue: "Reopen Closed Item"), shortcut: menuShortcut(for: .reopenClosedBrowserPanel)) {
+                if AppDelegate.shared?.reopenMostRecentlyClosedItem(preferredTabManager: activeTabManager) != true {
+                    NSSound.beep()
+                }
+            }
+
+            splitCommandButton(title: String(localized: "menu.file.reopenPreviousSession", defaultValue: "Reopen Previous Session"), shortcut: menuShortcut(for: .reopenPreviousSession)) {
+                if AppDelegate.shared?.reopenPreviousSession() != true {
+                    NSSound.beep()
+                }
+            }
+        }
+    }
+
+    @CommandsBuilder
     private var windowAndViewCommands: some Commands {
         CommandGroup(after: .windowArrangement) {
             Button(String(localized: "menu.window.taskManager", defaultValue: "Task Manager...")) {
@@ -635,6 +662,7 @@ struct cmuxApp: App {
             }
         }
         helpCommands
+        historyCommands
         CommandGroup(after: .toolbar) {
             splitCommandButton(title: String(localized: "menu.view.toggleLeftSidebar", defaultValue: "Toggle Left Sidebar"), shortcut: menuShortcut(for: .toggleSidebar)) {
                 if AppDelegate.shared?.toggleSidebarInActiveMainWindow() != true {
@@ -858,6 +886,24 @@ struct cmuxApp: App {
         AppDelegate.shared?.activeTabManagerForCommands(
             preferredWindow: NSApp.keyWindow ?? NSApp.mainWindow
         ) ?? tabManager
+    }
+
+    private var canNavigateFocusHistoryBack: Bool {
+        let _ = focusHistoryMenuRevision
+        let manager = activeTabManager
+        return manager.canNavigateBack
+    }
+
+    private var canNavigateFocusHistoryForward: Bool {
+        let _ = focusHistoryMenuRevision
+        let manager = activeTabManager
+        return manager.canNavigateForward
+    }
+
+    private func invalidateFocusHistoryMenuState() {
+        Task { @MainActor in
+            focusHistoryMenuRevision &+= 1
+        }
     }
     private func notificationMenuItemTitle(for notification: TerminalNotification) -> String {
         let tabTitle = appDelegate.tabTitle(for: notification.tabId)

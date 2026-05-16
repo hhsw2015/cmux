@@ -35,67 +35,67 @@ enum TitlebarControlsStyle: Int, CaseIterable, Identifiable {
         switch self {
         case .classic:
             return TitlebarControlsStyleConfig(
-                spacing: 10,
-                iconSize: 15,
-                buttonSize: 24,
-                badgeSize: 14,
-                badgeOffset: CGSize(width: 2, height: -2),
-                groupBackground: false,
-                groupPadding: EdgeInsets(),
-                buttonBackground: false,
-                buttonCornerRadius: 8,
-                hoverBackground: false
-            )
-        case .compact:
-            return TitlebarControlsStyleConfig(
                 spacing: 6,
-                iconSize: 13,
+                iconSize: 12,
                 buttonSize: 20,
                 badgeSize: 12,
-                badgeOffset: CGSize(width: 1, height: -1),
+                badgeOffset: CGSize(width: 3, height: -3),
                 groupBackground: false,
                 groupPadding: EdgeInsets(),
                 buttonBackground: false,
                 buttonCornerRadius: 6,
                 hoverBackground: false
             )
-        case .roomy:
+        case .compact:
             return TitlebarControlsStyleConfig(
-                spacing: 14,
-                iconSize: 16,
-                buttonSize: 28,
-                badgeSize: 16,
+                spacing: 5,
+                iconSize: 11,
+                buttonSize: 18,
+                badgeSize: 11,
                 badgeOffset: CGSize(width: 3, height: -3),
                 groupBackground: false,
                 groupPadding: EdgeInsets(),
                 buttonBackground: false,
-                buttonCornerRadius: 10,
+                buttonCornerRadius: 5,
+                hoverBackground: false
+            )
+        case .roomy:
+            return TitlebarControlsStyleConfig(
+                spacing: 7,
+                iconSize: 13,
+                buttonSize: 22,
+                badgeSize: 13,
+                badgeOffset: CGSize(width: 3, height: -3),
+                groupBackground: false,
+                groupPadding: EdgeInsets(),
+                buttonBackground: false,
+                buttonCornerRadius: 7,
                 hoverBackground: false
             )
         case .pillGroup:
             return TitlebarControlsStyleConfig(
-                spacing: 8,
-                iconSize: 14,
-                buttonSize: 24,
-                badgeSize: 14,
-                badgeOffset: CGSize(width: 2, height: -2),
+                spacing: 5,
+                iconSize: 12,
+                buttonSize: 20,
+                badgeSize: 12,
+                badgeOffset: CGSize(width: 3, height: -3),
                 groupBackground: false,
-                groupPadding: EdgeInsets(top: 1, leading: 4, bottom: 1, trailing: 4),
+                groupPadding: EdgeInsets(top: 1, leading: 3, bottom: 1, trailing: 3),
                 buttonBackground: false,
-                buttonCornerRadius: 8,
+                buttonCornerRadius: 6,
                 hoverBackground: true
             )
         case .softButtons:
             return TitlebarControlsStyleConfig(
-                spacing: 8,
-                iconSize: 15,
-                buttonSize: 26,
-                badgeSize: 14,
-                badgeOffset: CGSize(width: 2, height: -2),
+                spacing: 6,
+                iconSize: 12,
+                buttonSize: 21,
+                badgeSize: 12,
+                badgeOffset: CGSize(width: 3, height: -3),
                 groupBackground: false,
                 groupPadding: EdgeInsets(),
                 buttonBackground: true,
-                buttonCornerRadius: 8,
+                buttonCornerRadius: 6,
                 hoverBackground: false
             )
         }
@@ -113,6 +113,22 @@ struct TitlebarControlsStyleConfig {
     let buttonBackground: Bool
     let buttonCornerRadius: CGFloat
     let hoverBackground: Bool
+}
+
+enum TitlebarControlsVisualMetrics {
+    static let verticalLift: CGFloat = 2
+
+    static func liftedYOffset(_ yOffset: CGFloat) -> CGFloat {
+        yOffset + verticalLift
+    }
+}
+
+func titlebarNotificationBadgeFontSize(for config: TitlebarControlsStyleConfig) -> CGFloat {
+    max(7, config.badgeSize - 6)
+}
+
+func titlebarControlPressedScale(isPressed _: Bool) -> CGFloat {
+    1
 }
 
 final class TitlebarControlsViewModel: ObservableObject {
@@ -347,47 +363,199 @@ func titlebarShortcutHintVerticalOffset(for config: TitlebarControlsStyleConfig)
     max(0, floor(config.buttonSize - titlebarShortcutHintHeight(for: config)))
 }
 
+private enum TitlebarControlIconStyle {
+    static let opacity = 0.72
+    static let hoveredOpacity = 0.88
+    static let pressedOpacity = 0.96
+    static let weight: Font.Weight = .regular
+    static let foregroundColor = Color(nsColor: .secondaryLabelColor)
+    static let sidebarGlyphStrokeWidth: CGFloat = 1
+
+    static func iconFrameSize(for config: TitlebarControlsStyleConfig) -> CGFloat {
+        max(14, config.iconSize + 2)
+    }
+}
+
+func titlebarControlForegroundOpacity(isHovering: Bool, isPressed: Bool) -> Double {
+    titlebarControlForegroundOpacity(isHovering: isHovering, isPressed: isPressed, isEnabled: true)
+}
+
+func titlebarControlForegroundOpacity(isHovering: Bool, isPressed: Bool, isEnabled: Bool) -> Double {
+    guard isEnabled else { return 0.34 }
+    if isPressed {
+        return TitlebarControlIconStyle.pressedOpacity
+    }
+    if isHovering {
+        return TitlebarControlIconStyle.hoveredOpacity
+    }
+    return TitlebarControlIconStyle.opacity
+}
+
+func titlebarControlBackgroundOpacity(
+    config: TitlebarControlsStyleConfig,
+    isHovering: Bool,
+    isPressed: Bool
+) -> Double {
+    titlebarControlBackgroundOpacity(config: config, isHovering: isHovering, isPressed: isPressed, isEnabled: true)
+}
+
+func titlebarControlBackgroundOpacity(
+    config: TitlebarControlsStyleConfig,
+    isHovering: Bool,
+    isPressed: Bool,
+    isEnabled: Bool
+) -> Double {
+    guard isEnabled else { return 0 }
+    if isPressed {
+        return 0.14
+    }
+    if isHovering {
+        return config.hoverBackground ? 0.09 : 0.07
+    }
+    return 0
+}
+
+func titlebarControlBorderOpacity(
+    config: TitlebarControlsStyleConfig,
+    isHovering: Bool,
+    isPressed: Bool
+) -> Double {
+    titlebarControlBorderOpacity(config: config, isHovering: isHovering, isPressed: isPressed, isEnabled: true)
+}
+
+func titlebarControlBorderOpacity(
+    config: TitlebarControlsStyleConfig,
+    isHovering: Bool,
+    isPressed: Bool,
+    isEnabled: Bool
+) -> Double {
+    guard isEnabled else { return config.buttonBackground ? 0.04 : 0 }
+    if isPressed {
+        return 0.11
+    }
+    if isHovering {
+        return 0.07
+    }
+    return config.buttonBackground ? 0.05 : 0
+}
+
 struct TitlebarControlButton<Content: View>: View {
     let config: TitlebarControlsStyleConfig
     let accessibilityIdentifier: String
     let accessibilityLabel: String
     let action: () -> Void
+    var isEnabled = true
     var rightClickAction: ((NSView, NSEvent) -> Void)? = nil
     @ViewBuilder let content: () -> Content
-    @State private var isHovering = false
 
     var body: some View {
-        let baseButton = Button(action: action) {
+        Button(action: action) {
             content()
-                .frame(width: config.buttonSize, height: config.buttonSize)
-                .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .buttonStyle(TitlebarControlButtonStyle(config: config))
         .frame(width: config.buttonSize, height: config.buttonSize)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier(accessibilityIdentifier)
         .accessibilityLabel(accessibilityLabel)
-        .background(hoverBackground)
         .overlay {
             if let rightClickAction {
                 TitlebarControlRightClickView(onRightMouseDown: rightClickAction)
             }
         }
+    }
+}
 
-        if titlebarControlsShouldTrackButtonHover(config: config) {
-            baseButton.onHover { isHovering = $0 }
-        } else {
-            baseButton
-        }
+struct FocusHistoryNavigationAvailability: Equatable {
+    let canNavigateBack: Bool
+    let canNavigateForward: Bool
+
+    static let unavailable = FocusHistoryNavigationAvailability(
+        canNavigateBack: false,
+        canNavigateForward: false
+    )
+}
+
+@MainActor
+func focusHistoryNavigationAvailability(preferredWindow: NSWindow?) -> FocusHistoryNavigationAvailability {
+    guard let manager = AppDelegate.shared?.activeTabManagerForCommands(preferredWindow: preferredWindow) else {
+        return .unavailable
+    }
+    return FocusHistoryNavigationAvailability(
+        canNavigateBack: manager.canNavigateBack,
+        canNavigateForward: manager.canNavigateForward
+    )
+}
+
+private struct TitlebarControlButtonStyle: ButtonStyle {
+    let config: TitlebarControlsStyleConfig
+
+    func makeBody(configuration: Configuration) -> some View {
+        TitlebarControlButtonStyleBody(configuration: configuration, config: config)
+    }
+}
+
+private struct TitlebarControlButtonStyleBody: View {
+    let configuration: ButtonStyle.Configuration
+    let config: TitlebarControlsStyleConfig
+    @State private var isHovering = false
+    @Environment(\.isEnabled) private var isEnabled
+
+    var body: some View {
+        configuration.label
+            .frame(width: config.buttonSize, height: config.buttonSize)
+            .foregroundStyle(TitlebarControlIconStyle.foregroundColor.opacity(foregroundOpacity))
+            .background {
+                if backgroundOpacity > 0 {
+                    RoundedRectangle(cornerRadius: config.buttonCornerRadius, style: .continuous)
+                        .fill(Color.primary.opacity(backgroundOpacity))
+                } else if config.buttonBackground {
+                    RoundedRectangle(cornerRadius: config.buttonCornerRadius, style: .continuous)
+                        .fill(Color(nsColor: .controlBackgroundColor).opacity(0.45))
+                }
+            }
+            .overlay {
+                if borderOpacity > 0 {
+                    RoundedRectangle(cornerRadius: config.buttonCornerRadius, style: .continuous)
+                        .stroke(Color.primary.opacity(borderOpacity), lineWidth: 0.5)
+                }
+            }
+            .scaleEffect(titlebarControlPressedScale(isPressed: configuration.isPressed))
+            .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
+            .animation(.easeInOut(duration: 0.12), value: isHovering)
+            .contentShape(Rectangle())
+            .onHover { hovering in
+                if titlebarControlsShouldTrackButtonHover(config: config) {
+                    isHovering = hovering
+                }
+            }
     }
 
-    @ViewBuilder
-    private var hoverBackground: some View {
-        if config.hoverBackground && isHovering {
-            RoundedRectangle(cornerRadius: config.buttonCornerRadius, style: .continuous)
-                .fill(Color.primary.opacity(0.08))
-        }
+    private var foregroundOpacity: Double {
+        titlebarControlForegroundOpacity(
+            isHovering: isHovering,
+            isPressed: configuration.isPressed,
+            isEnabled: isEnabled
+        )
+    }
+
+    private var backgroundOpacity: Double {
+        titlebarControlBackgroundOpacity(
+            config: config,
+            isHovering: isHovering,
+            isPressed: configuration.isPressed,
+            isEnabled: isEnabled
+        )
+    }
+
+    private var borderOpacity: Double {
+        titlebarControlBorderOpacity(
+            config: config,
+            isHovering: isHovering,
+            isPressed: configuration.isPressed,
+            isEnabled: isEnabled
+        )
     }
 }
 
@@ -429,12 +597,15 @@ struct TitlebarControlsView: View {
     let onToggleSidebar: () -> Void
     let onToggleNotifications: () -> Void
     let onNewTab: () -> Void
+    let onFocusHistoryBack: () -> Void
+    let onFocusHistoryForward: () -> Void
     let visibilityMode: TitlebarControlsVisibilityMode
     @ObservedObject private var popoverVisibilityState = NotificationsPopoverVisibilityState.shared
     @AppStorage("titlebarControlsStyle") private var styleRawValue = TitlebarControlsStyle.classic.rawValue
     @State private var shortcutRefreshTick = 0
     @State private var isHoveringControls = false
     @State private var hostWindowNumber: Int?
+    @State private var focusHistoryAvailabilityRevision: UInt64 = 0
     @StateObject private var modifierKeyMonitor = TitlebarShortcutHintModifierMonitor()
     private let titlebarShortcutHintXOffset = ShortcutHintDebugSettings.defaultTitlebarHintX
     private let titlebarShortcutHintYOffset = ShortcutHintDebugSettings.defaultTitlebarHintY
@@ -501,6 +672,7 @@ struct TitlebarControlsView: View {
                         DispatchQueue.main.async {
                             if hostWindowNumber != nextWindowNumber {
                                 hostWindowNumber = nextWindowNumber
+                                focusHistoryAvailabilityRevision &+= 1
                             }
                         }
                     }
@@ -513,6 +685,12 @@ struct TitlebarControlsView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: KeyboardShortcutSettings.didChangeNotification)) { _ in
                 shortcutRefreshTick &+= 1
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .tabManagerFocusHistoryRevisionDidChange)) { _ in
+                focusHistoryAvailabilityRevision &+= 1
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+                focusHistoryAvailabilityRevision &+= 1
             }
             .onAppear {
                 modifierKeyMonitor.start()
@@ -532,9 +710,11 @@ struct TitlebarControlsView: View {
         titlebarShortcutHintVerticalOffset(for: config)
     }
 
+    @MainActor
     @ViewBuilder
     private func controlsGroup(config: TitlebarControlsStyleConfig) -> some View {
         let hintLayoutItems = titlebarHintLayoutItems(config: config)
+        let focusHistoryAvailability = focusHistoryNavigationAvailabilitySnapshot
         let content = HStack(spacing: config.spacing) {
             TitlebarControlButton(
                 config: config,
@@ -546,7 +726,7 @@ struct TitlebarControlsView: View {
                 #endif
                 onToggleSidebar()
             }) {
-                iconLabel(systemName: "sidebar.left", config: config)
+                sidebarIconLabel(config: config)
             }
             .safeHelp(KeyboardShortcutSettings.Action.toggleSidebar.tooltip(String(localized: "titlebar.sidebar.tooltip", defaultValue: "Show or hide the sidebar")))
 
@@ -565,7 +745,7 @@ struct TitlebarControlsView: View {
 
                     if notificationStore.unreadCount > 0 {
                         Text("\(min(notificationStore.unreadCount, 99))")
-                            .font(.system(size: max(8, config.badgeSize - 5), weight: .semibold))
+                            .font(.system(size: titlebarNotificationBadgeFontSize(for: config), weight: .semibold))
                             .foregroundColor(.white)
                             .frame(width: config.badgeSize, height: config.badgeSize)
                             .background(
@@ -596,6 +776,28 @@ struct TitlebarControlsView: View {
             }
             .safeHelp(KeyboardShortcutSettings.Action.newTab.tooltip(String(localized: "titlebar.newWorkspace.tooltip", defaultValue: "New workspace")))
 
+            TitlebarControlButton(
+                config: config,
+                accessibilityIdentifier: "titlebarControl.focusHistoryBack",
+                accessibilityLabel: String(localized: "menu.history.focusBack", defaultValue: "Focus Back"),
+                action: onFocusHistoryBack,
+                isEnabled: focusHistoryAvailability.canNavigateBack
+            ) {
+                iconLabel(systemName: "arrow.left", config: config)
+            }
+            .safeHelp(KeyboardShortcutSettings.Action.focusHistoryBack.tooltip(String(localized: "menu.history.focusBack", defaultValue: "Focus Back")))
+
+            TitlebarControlButton(
+                config: config,
+                accessibilityIdentifier: "titlebarControl.focusHistoryForward",
+                accessibilityLabel: String(localized: "menu.history.focusForward", defaultValue: "Focus Forward"),
+                action: onFocusHistoryForward,
+                isEnabled: focusHistoryAvailability.canNavigateForward
+            ) {
+                iconLabel(systemName: "arrow.right", config: config)
+            }
+            .safeHelp(KeyboardShortcutSettings.Action.focusHistoryForward.tooltip(String(localized: "menu.history.focusForward", defaultValue: "Focus Forward")))
+
         }
 
         let paddedContent = content.padding(config.groupPadding)
@@ -619,6 +821,21 @@ struct TitlebarControlsView: View {
                     titlebarShortcutHintOverlay(items: hintLayoutItems, config: config)
                 }
         }
+    }
+
+    @MainActor
+    private var focusHistoryNavigationAvailabilitySnapshot: FocusHistoryNavigationAvailability {
+        let _ = focusHistoryAvailabilityRevision
+        return focusHistoryNavigationAvailability(preferredWindow: focusHistoryTargetWindow)
+    }
+
+    @MainActor
+    private var focusHistoryTargetWindow: NSWindow? {
+        if let hostWindowNumber,
+           let hostWindow = NSApp.windows.first(where: { $0.windowNumber == hostWindowNumber }) {
+            return hostWindow
+        }
+        return NSApp.keyWindow ?? NSApp.mainWindow
     }
 
     private func titlebarHintLayoutItems(config: TitlebarControlsStyleConfig) -> [TitlebarHintLayoutItem] {
@@ -712,19 +929,62 @@ struct TitlebarControlsView: View {
 
     @ViewBuilder
     private func iconLabel(systemName: String, config: TitlebarControlsStyleConfig) -> some View {
-        let icon = Image(systemName: systemName)
-            .font(.system(size: config.iconSize, weight: .semibold))
-            .frame(width: config.buttonSize, height: config.buttonSize)
-
-        if config.buttonBackground {
-            icon
-                .background(
-                    RoundedRectangle(cornerRadius: config.buttonCornerRadius)
-                        .fill(Color(nsColor: .controlBackgroundColor).opacity(0.7))
-                )
-        } else {
-            icon
+        titlebarIconChrome(config: config) {
+            Image(systemName: systemName)
+                .symbolRenderingMode(.monochrome)
+                .font(.system(size: config.iconSize, weight: TitlebarControlIconStyle.weight))
         }
+    }
+
+    @ViewBuilder
+    private func sidebarIconLabel(config: TitlebarControlsStyleConfig) -> some View {
+        titlebarIconChrome(config: config) {
+            TitlebarSidebarGlyph(iconSize: config.iconSize)
+        }
+    }
+
+    @ViewBuilder
+    private func titlebarIconChrome<Icon: View>(
+        config: TitlebarControlsStyleConfig,
+        @ViewBuilder icon: () -> Icon
+    ) -> some View {
+        icon()
+            .frame(
+                width: TitlebarControlIconStyle.iconFrameSize(for: config),
+                height: TitlebarControlIconStyle.iconFrameSize(for: config)
+            )
+    }
+}
+
+private struct TitlebarSidebarGlyph: View {
+    let iconSize: CGFloat
+
+    var body: some View {
+        TitlebarSidebarGlyphShape()
+            .stroke(
+                style: StrokeStyle(
+                    lineWidth: TitlebarControlIconStyle.sidebarGlyphStrokeWidth,
+                    lineCap: .round,
+                    lineJoin: .round
+                )
+            )
+            .frame(width: max(13, iconSize + 2), height: max(11, iconSize - 1))
+    }
+}
+
+private struct TitlebarSidebarGlyphShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let insetRect = rect.insetBy(dx: 0.5, dy: 0.5)
+        path.addRoundedRect(
+            in: insetRect,
+            cornerSize: CGSize(width: 2, height: 2)
+        )
+
+        let dividerX = insetRect.minX + insetRect.width * 0.36
+        path.move(to: CGPoint(x: dividerX, y: insetRect.minY + 1.5))
+        path.addLine(to: CGPoint(x: dividerX, y: insetRect.maxY - 1.5))
+        return path
     }
 }
 
@@ -823,6 +1083,8 @@ struct HiddenTitlebarSidebarControlsView: View {
     let onToggleSidebar: () -> Void
     let onToggleNotifications: (NSView?) -> Void
     let onNewTab: () -> Void
+    let onFocusHistoryBack: () -> Void
+    let onFocusHistoryForward: () -> Void
     @StateObject private var viewModel = TitlebarControlsViewModel()
     @ObservedObject private var popoverVisibilityState = NotificationsPopoverVisibilityState.shared
     @State private var isHoveringHost = false
@@ -874,6 +1136,8 @@ struct HiddenTitlebarSidebarControlsView: View {
                     onToggleNotifications(viewModel.notificationsAnchorView)
                 },
                 onNewTab: onNewTab,
+                onFocusHistoryBack: onFocusHistoryBack,
+                onFocusHistoryForward: onFocusHistoryForward,
                 visibilityMode: .alwaysVisible
             )
             .frame(
@@ -903,6 +1167,10 @@ struct HiddenTitlebarSidebarControlsView: View {
                     onToggleNotifications(anchorView)
                 case .newTab:
                     onNewTab()
+                case .focusHistoryBack:
+                    onFocusHistoryBack()
+                case .focusHistoryForward:
+                    onFocusHistoryForward()
                 }
             }
             .frame(
@@ -1300,7 +1568,7 @@ struct TitlebarControlsLayoutSnapshot: Equatable {
 }
 
 func titlebarControlsShouldTrackButtonHover(config: TitlebarControlsStyleConfig) -> Bool {
-    config.hoverBackground
+    true
 }
 
 func titlebarControlsShouldScheduleForViewSizeChange(
@@ -1353,6 +1621,12 @@ final class TitlebarControlsAccessoryViewController: NSTitlebarAccessoryViewCont
             _ = AppDelegate.shared?.toggleNotificationsPopover(animated: true, anchorView: containerView)
         }
         let newTab = { _ = AppDelegate.shared?.performNewWorkspaceAction(debugSource: "titlebar.accessoryNewWorkspace") }
+        let focusHistoryBack = { [weak containerView] in
+            _ = AppDelegate.shared?.activeTabManagerForCommands(preferredWindow: containerView?.window)?.navigateBack()
+        }
+        let focusHistoryForward = { [weak containerView] in
+            _ = AppDelegate.shared?.activeTabManagerForCommands(preferredWindow: containerView?.window)?.navigateForward()
+        }
         hostingView = NonDraggableHostingView(
             rootView: TitlebarControlsView(
                 notificationStore: notificationStore,
@@ -1360,6 +1634,8 @@ final class TitlebarControlsAccessoryViewController: NSTitlebarAccessoryViewCont
                 onToggleSidebar: toggleSidebar,
                 onToggleNotifications: toggleNotifications,
                 onNewTab: newTab,
+                onFocusHistoryBack: focusHistoryBack,
+                onFocusHistoryForward: focusHistoryForward,
                 visibilityMode: .alwaysVisible
             )
         )
@@ -1467,8 +1743,9 @@ final class TitlebarControlsAccessoryViewController: NSTitlebarAccessoryViewCont
         let xOffset = MinimalModeTitlebarDebugSettings.leftControlsXOffset(
             leadingInset: debugSnapshot.leftControlsLeadingInset
         )
-        let yOffset = max(0, (containerHeight - contentSize.height) / 2.0)
+        let baseYOffset = max(0, (containerHeight - contentSize.height) / 2.0)
             + CGFloat(MinimalModeTitlebarDebugSettings.defaultLeftControlsTopInset - debugSnapshot.leftControlsTopInset)
+        let yOffset = TitlebarControlsVisualMetrics.liftedYOffset(baseYOffset)
         let nextLayoutSnapshot = TitlebarControlsLayoutSnapshot(
             contentSize: contentSize,
             containerHeight: containerHeight,

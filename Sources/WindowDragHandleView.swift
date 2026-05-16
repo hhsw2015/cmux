@@ -553,15 +553,17 @@ enum MinimalModeSidebarTitlebarControlsMetrics {
         MinimalModeTitlebarDebugSettings.leftControlsTopInset(defaults: defaults)
     }
 
-    static let hostWidth: CGFloat = 124
+    static let hostWidth: CGFloat = 164
     static let hostHeight: CGFloat = 28
     static let singleButtonHostWidth: CGFloat = hostHeight
 }
 
-enum MinimalModeSidebarControlActionSlot: Int {
+enum MinimalModeSidebarControlActionSlot: Int, CaseIterable {
     case toggleSidebar
     case showNotifications
     case newTab
+    case focusHistoryBack
+    case focusHistoryForward
 
     var accessibilityIdentifier: String {
         switch self {
@@ -571,6 +573,10 @@ enum MinimalModeSidebarControlActionSlot: Int {
             return "titlebarControl.showNotifications"
         case .newTab:
             return "titlebarControl.newTab"
+        case .focusHistoryBack:
+            return "titlebarControl.focusHistoryBack"
+        case .focusHistoryForward:
+            return "titlebarControl.focusHistoryForward"
         }
     }
 
@@ -582,6 +588,10 @@ enum MinimalModeSidebarControlActionSlot: Int {
             return String(localized: "titlebar.notifications.accessibilityLabel", defaultValue: "Notifications")
         case .newTab:
             return String(localized: "titlebar.newWorkspace.accessibilityLabel", defaultValue: "New Workspace")
+        case .focusHistoryBack:
+            return String(localized: "menu.history.focusBack", defaultValue: "Focus Back")
+        case .focusHistoryForward:
+            return String(localized: "menu.history.focusForward", defaultValue: "Focus Forward")
         }
     }
 
@@ -593,6 +603,10 @@ enum MinimalModeSidebarControlActionSlot: Int {
             return "showNotifications"
         case .newTab:
             return "newTab"
+        case .focusHistoryBack:
+            return "focusHistoryBack"
+        case .focusHistoryForward:
+            return "focusHistoryForward"
         }
     }
 }
@@ -884,6 +898,16 @@ func windowDragHandleShouldCaptureHit(
         return false
     }
 
+    if let dragHandleWindow {
+        let locationInWindow = dragHandleView.convert(point, to: nil)
+        if isMinimalModeTitlebarControlHit(window: dragHandleWindow, locationInWindow: locationInWindow) {
+            #if DEBUG
+            cmuxDebugLog("titlebar.dragHandle.hitTest capture=false reason=minimalTitlebarControl point=\(windowDragHandleFormatPoint(point))")
+            #endif
+            return false
+        }
+    }
+
     guard let superview = dragHandleView.superview else {
         #if DEBUG
         cmuxDebugLog("titlebar.dragHandle.hitTest capture=true reason=noSuperview point=\(windowDragHandleFormatPoint(point))")
@@ -1058,54 +1082,11 @@ struct WindowDragHandleView: NSViewRepresentable {
     }
 }
 
-private func titlebarDoubleClickMonitorHasCapturingDragHandle(
-    in rootView: NSView,
-    window: NSWindow,
-    locationInWindow: NSPoint
-) -> Bool {
-    if rootView.identifier == WindowDragHandleView.viewIdentifier {
-        let localPoint = rootView.convert(locationInWindow, from: nil)
-        if rootView.bounds.contains(localPoint),
-           windowDragHandleShouldCaptureHit(
-               localPoint,
-               in: rootView,
-               eventType: .leftMouseDown,
-               eventWindow: window
-           ) {
-            return true
-        }
-    }
-
-    for subview in rootView.subviews {
-        if titlebarDoubleClickMonitorHasCapturingDragHandle(
-            in: subview,
-            window: window,
-            locationInWindow: locationInWindow
-        ) {
-            return true
-        }
-    }
-
-    return false
-}
-
 private func titlebarDoubleClickMonitorShouldDeferToRegisteredControl(
     window: NSWindow,
     locationInWindow: NSPoint
 ) -> Bool {
-    guard isMinimalModeTitlebarControlHit(window: window, locationInWindow: locationInWindow) else {
-        return false
-    }
-
-    guard let contentView = window.contentView else {
-        return true
-    }
-
-    return !titlebarDoubleClickMonitorHasCapturingDragHandle(
-        in: contentView,
-        window: window,
-        locationInWindow: locationInWindow
-    )
+    isMinimalModeTitlebarControlHit(window: window, locationInWindow: locationInWindow)
 }
 
 /// Local monitor that guarantees double-clicks in custom titlebar surfaces trigger
