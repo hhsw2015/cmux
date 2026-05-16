@@ -12,15 +12,14 @@ When we change the fork, update this document and the parent submodule SHA.
 
 ## Current fork changes
 
-The fork was refreshed from upstream `main` again on May 1, 2026.
-Current cmux pinned fork head: `fe972c095`, based on `41ab6c5ab`, with the
-manual embedded IO patch in https://github.com/manaflow-ai/ghostty/pull/53
-plus the Metal renderer row rebuild guard for cmux issue #3369. This head keeps
+The fork was refreshed from upstream `main` again on May 12, 2026.
+Current cmux pinned fork head: `7e4cf8a2f`, based on `41ab6c5ab`, with the
+manual embedded IO patch in https://github.com/manaflow-ai/ghostty/pull/53,
+the cursor-line selection API in https://github.com/manaflow-ai/ghostty/pull/56,
+and the Metal renderer row rebuild guard for cmux issue #3369. This head keeps
 the cmux theme picker hooks, exposes the manual surface IO needed by libghostty
-iOS clients, and bounds shaped glyph iteration during IME/preedit row rebuilds.
-The corresponding prebuilt archive is published at
-https://github.com/manaflow-ai/ghostty/releases/tag/xcframework-fe972c09579a7943f6fe9607fdd24f0f7c999cb1
-and pinned in `scripts/ghosttykit-checksums.txt`.
+iOS clients, exposes semantic cursor-line selection for cmux terminal Select All,
+and bounds shaped glyph iteration during IME/preedit row rebuilds.
 
 ### 1) macOS display link restart on display changes
 
@@ -100,13 +99,16 @@ tend to conflict together during rebases.
 
 ### 6) Keyboard copy mode selection C API
 
-- Commit: `0b231db94` (Re-export cmux selection APIs removed from upstream)
+- Commits:
+  - `0b231db94` (Re-export cmux selection APIs removed from upstream)
+  - `7e4cf8a2f` (Expose cursor line selection API)
 - Files:
   - `include/ghostty.h`
   - `src/Surface.zig`
   - `src/apprt/embedded.zig`
 - Summary:
   - Restores `ghostty_surface_select_cursor_cell` and `ghostty_surface_clear_selection`.
+  - Adds `ghostty_surface_select_cursor_line` so cmux can route terminal Select All to Ghostty's semantic `Screen.selectLine` path without synthesizing mouse clicks.
   - Keeps cmux keyboard copy mode working against the refreshed Ghostty base after upstream removed those exports.
 
 ### 7) macos-background-from-layer config flag
@@ -190,12 +192,24 @@ tend to conflict together during rebases.
     required failing-test-then-fix history for issue #3369.
 
 The current cmux pin is the head listed above. It is reachable from
-`manaflow-ai/ghostty` through the `xcframework-fe972c09579a7943f6fe9607fdd24f0f7c999cb1`
-release tag and branch `issue-3369-metal-renderer-crash`.
-Published `xcframework-fe972c09579a7943f6fe9607fdd24f0f7c999cb1` and pinned its
-archive checksum in `scripts/ghosttykit-checksums.txt`. The release and checksum
-pin must be regenerated whenever this commit changes, even for comment-only
-amends, because the release tag is keyed by the Ghostty commit SHA.
+`manaflow-ai/ghostty` through the `xcframework-7e4cf8a2fd2539d68240aa046e2cc892d21d2e89`
+release tag.
+Published `xcframework-7e4cf8a2fd2539d68240aa046e2cc892d21d2e89` and pinned its
+`GhosttyKit.xcframework.tar.gz` archive checksum
+`6161b00fe4737abcdad9ec9cb456deb50e3cfdd2682cce2bdf83f024637c69d2` in
+`scripts/ghosttykit-checksums.txt`. The release and checksum pin must be
+regenerated whenever this commit changes, even for comment-only amends, because
+the release tag is keyed by the Ghostty commit SHA.
+
+Merge note, May 14, 2026: cmux `main` temporarily pinned Ghostty `aef980e27b`
+for the `-Dcrash-report-subdir` build option while this issue branch pins
+`7e4cf8a2f` for the cursor-line selection API. The parent merge keeps `7e4cf8a2f`
+because terminal Select All depends on `ghostty_surface_select_cursor_line`, and
+cmux build scripts detect whether a Ghostty checkout supports
+`crash-report-subdir` before selecting crash-flavored release tags or Zig flags.
+When the fork next advances, prefer a single Ghostty head that contains both
+patches and publish the crash-flavored `xcframework-<sha>-crashsubdir-cmux-crash-v1`
+artifact.
 
 ## Upstreamed fork changes
 
@@ -287,7 +301,8 @@ These files change frequently upstream; be careful when rebasing the fork:
 
 - `include/ghostty.h`, `src/Surface.zig`, `src/apprt/embedded.zig`
   - Upstream removed cmux-used selection exports. Preserve the re-exported
-    `ghostty_surface_select_cursor_cell` and `ghostty_surface_clear_selection` functions.
+    `ghostty_surface_select_cursor_cell`, `ghostty_surface_select_cursor_line`, and
+    `ghostty_surface_clear_selection` functions.
 
 - `src/renderer/generic.zig`
   - The `macos-background-from-layer` check sits next to the glass-style check in `updateFrame`.

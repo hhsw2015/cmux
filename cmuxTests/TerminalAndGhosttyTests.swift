@@ -1623,6 +1623,7 @@ final class TerminalKeyboardCopyModeViewportRowTests: XCTestCase {
             23
         )
     }
+
 }
 
 
