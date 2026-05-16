@@ -5186,6 +5186,7 @@ class TerminalController {
               !ttyName.isEmpty else {
             return .err(code: "invalid_params", message: "Missing tty_name", data: nil)
         }
+        let clientTTYName = normalizedReportedTTYName(v2RawString(params, "client_tty_name"))
 
         var result: V2CallResult = .err(
             code: "not_found",
@@ -5208,7 +5209,8 @@ class TerminalController {
             let surfaceId = self.resolveReportedSurfaceId(
                 in: tab,
                 requestedSurfaceId: requestedSurfaceId,
-                validSurfaceIds: validSurfaceIds
+                validSurfaceIds: validSurfaceIds,
+                clientTTYName: clientTTYName
             )
             guard let surfaceId, validSurfaceIds.contains(surfaceId) else {
                 if tab.isRemoteWorkspace, validSurfaceIds.isEmpty {
@@ -5237,6 +5239,9 @@ class TerminalController {
             }
 
             tab.surfaceTTYNames[surfaceId] = ttyName
+            if let clientTTYName {
+                tab.surfaceTmuxClientTTYNames[surfaceId] = clientTTYName
+            }
             if tab.isRemoteWorkspace {
                 tab.syncRemotePortScanTTYs()
                 _ = tab.applyPendingRemoteSurfacePortKickIfNeeded(to: surfaceId)
@@ -5250,6 +5255,7 @@ class TerminalController {
                 "surface_id": surfaceId.uuidString,
                 "surface_ref": v2Ref(kind: .surface, uuid: surfaceId),
                 "tty_name": ttyName,
+                "client_tty_name": v2OrNull(clientTTYName),
             ])
         }
 
@@ -5521,11 +5527,26 @@ class TerminalController {
     private func resolveReportedSurfaceId(
         in workspace: Workspace,
         requestedSurfaceId: UUID?,
-        validSurfaceIds: Set<UUID>
+        validSurfaceIds: Set<UUID>,
+        clientTTYName: String? = nil
     ) -> UUID? {
         if let requestedSurfaceId {
             guard validSurfaceIds.contains(requestedSurfaceId) else { return nil }
             return requestedSurfaceId
+        }
+
+        if let clientTTYName {
+            for (surfaceId, ttyName) in workspace.surfaceTmuxClientTTYNames
+                where validSurfaceIds.contains(surfaceId)
+                    && normalizedReportedTTYName(ttyName) == clientTTYName {
+                return surfaceId
+            }
+            for (surfaceId, ttyName) in workspace.surfaceTTYNames
+                where validSurfaceIds.contains(surfaceId)
+                    && workspace.surfaceTmuxClientTTYNames[surfaceId] == nil
+                    && normalizedReportedTTYName(ttyName) == clientTTYName {
+                return surfaceId
+            }
         }
 
         if let focusedSurfaceId = workspace.focusedPanelId,
@@ -5546,6 +5567,15 @@ class TerminalController {
         }
 
         return nil
+    }
+
+    private func normalizedReportedTTYName(_ raw: String?) -> String? {
+        guard let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty,
+              trimmed != "not a tty" else {
+            return nil
+        }
+        return trimmed.split(separator: "/").last.map(String.init) ?? trimmed
     }
 
     private func v2WorkspaceAction(params: [String: Any]) -> V2CallResult {
