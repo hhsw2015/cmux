@@ -957,12 +957,22 @@ private enum CLISocketPathSource {
 
 private enum CLISocketPathResolver {
     private static let appSupportDirectoryName = "cmux"
-    private static let stableSocketFileName = "cmux.sock"
+    private static let stableSocketFileName = "com.cmuxterm.app.sock"
+    private static let legacyStableSocketFileName = "cmux.sock"
     private static let lastSocketPathFileName = "last-socket-path"
+    private static let unixSocketPathMaxLength: Int = {
+        var addr = sockaddr_un()
+        return MemoryLayout.size(ofValue: addr.sun_path) - 1
+    }()
     static let legacyDefaultSocketPath = "/tmp/cmux.sock"
     private static let fallbackSocketPath = "/tmp/cmux-debug.sock"
-    private static let stagingSocketPath = "/tmp/cmux-staging.sock"
     private static let legacyLastSocketPathFile = "/tmp/cmux-last-socket-path"
+    private enum SocketProbeResult {
+        case cmux
+        case notCmux
+        case indeterminate
+        case unavailable
+    }
 
     static var defaultSocketPath: String {
         let stablePath: String? = stableSocketDirectoryURL()?
@@ -972,7 +982,9 @@ private enum CLISocketPathResolver {
     }
 
     static func isImplicitDefaultPath(_ path: String) -> Bool {
-        path == defaultSocketPath || path == legacyDefaultSocketPath
+        path == defaultSocketPath ||
+            path == legacyDefaultSocketPath ||
+            path == legacyStableSocketPath
     }
 
     static func resolve(
@@ -985,14 +997,24 @@ private enum CLISocketPathResolver {
         }
 
         let candidates = dedupe(candidatePaths(requestedPath: requestedPath, environment: environment))
+        var rejectedPaths: Set<String> = []
 
-        // Prefer sockets that are currently accepting connections.
-        for path in candidates where canConnect(to: path) {
-            return path
+        // Prefer sockets that prove they speak the cmux protocol. A different
+        // daemon can squat on a Unix socket path and accept connections.
+        for path in candidates {
+            switch probeCmuxSocket(at: path) {
+            case .cmux:
+                return path
+            case .notCmux:
+                rejectedPaths.insert(path)
+            case .indeterminate, .unavailable:
+                break
+            }
         }
 
-        // If the listener is still starting, prefer existing socket files.
-        for path in candidates where isSocketFile(path) {
+        // If the listener is still starting, prefer existing socket files that
+        // were not proven to belong to another process/protocol.
+        for path in candidates where !rejectedPaths.contains(path) && isSocketFile(path) {
             return path
         }
 
@@ -1004,6 +1026,7 @@ private enum CLISocketPathResolver {
 
         if let tag = normalized(environment["CMUX_TAG"]) {
             let slug = sanitizeTagSlug(tag)
+            candidates.append(taggedAppSupportSocketPath(slug: slug))
             candidates.append("/tmp/cmux-debug-\(slug).sock")
             candidates.append("/tmp/cmux-\(slug).sock")
         }
@@ -1013,11 +1036,13 @@ private enum CLISocketPathResolver {
 
         candidates.append(requestedPath)
         candidates.append(defaultSocketPath)
+        candidates.append(userScopedStableSocketPath())
+        candidates.append(legacyStableSocketPath)
         candidates.append(legacyDefaultSocketPath)
         candidates.append(fallbackSocketPath)
-        candidates.append(stagingSocketPath)
-        candidates.append(contentsOf: discoverTaggedSockets(limit: 12))
-        if let last = readLastSocketPath() {
+        candidates.append(contentsOf: discoverLegacyFallbackSockets(limit: 12))
+        if let last = readLastSocketPath(),
+           shouldUseLastSocketPath(last) {
             candidates.append(last)
         }
         return candidates
@@ -1104,21 +1129,22 @@ private enum CLISocketPathResolver {
         return nil
     }
 
-    private static func discoverTaggedSockets(limit: Int) -> [String] {
+    private static func discoverLegacyFallbackSockets(limit: Int) -> [String] {
         var discovered: [(path: String, mtime: TimeInterval)] = []
+        let excludedPaths = discoveryExcludedSocketPaths()
         for directory in socketDiscoveryDirectories() {
             guard let entries = try? FileManager.default.contentsOfDirectory(atPath: directory) else {
                 continue
             }
             discovered.reserveCapacity(min(limit, discovered.count + entries.count))
-            for name in entries where name.hasPrefix("cmux") && name.hasSuffix(".sock") {
+            for name in entries where isDiscoverableLegacyFallbackSocketName(name) {
                 let path = URL(fileURLWithPath: directory)
                     .appendingPathComponent(name, isDirectory: false)
                     .path
                 var st = stat()
                 guard lstat(path, &st) == 0 else { continue }
                 guard (st.st_mode & mode_t(S_IFMT)) == mode_t(S_IFSOCK) else { continue }
-                if path == defaultSocketPath || path == legacyDefaultSocketPath || path == fallbackSocketPath || path == stagingSocketPath {
+                if excludedPaths.contains(path) {
                     continue
                 }
                 let modified = TimeInterval(st.st_mtimespec.tv_sec) + TimeInterval(st.st_mtimespec.tv_nsec) / 1_000_000_000
@@ -1130,20 +1156,68 @@ private enum CLISocketPathResolver {
         return dedupe(discovered.prefix(limit).map(\.path))
     }
 
+    private static func isDiscoverableLegacyFallbackSocketName(_ name: String) -> Bool {
+        guard name.hasSuffix(".sock") else { return false }
+        if name == "cmux.sock" { return true }
+        guard name.hasPrefix("cmux-") else { return false }
+        let suffix = ".sock"
+        let portStart = name.index(name.startIndex, offsetBy: "cmux-".count)
+        let portEnd = name.index(name.endIndex, offsetBy: -suffix.count)
+        let port = name[portStart..<portEnd]
+        return !port.isEmpty && port.allSatisfy(\.isNumber)
+    }
+
+    private static func discoveryExcludedSocketPaths() -> Set<String> {
+        Set([
+            defaultSocketPath,
+            userScopedStableSocketPath(),
+            legacyStableSocketPath,
+            legacyDefaultSocketPath,
+            fallbackSocketPath,
+        ])
+    }
+
+    private static func shouldUseLastSocketPath(_ path: String) -> Bool {
+        !isNonReleaseVariantSocketName(URL(fileURLWithPath: path).lastPathComponent)
+    }
+
+    private static func isNonReleaseVariantSocketName(_ name: String) -> Bool {
+        guard name.hasSuffix(".sock") else { return false }
+        if name == "cmux-staging.sock" || name.hasPrefix("cmux-staging-") {
+            return true
+        }
+        if name == "cmux-debug.sock" || name.hasPrefix("cmux-debug-") {
+            return true
+        }
+        if name == "com.cmuxterm.app.dev.sock" || name.hasPrefix("com.cmuxterm.app.dev.") {
+            return true
+        }
+        if name == "com.cmuxterm.app.nightly.sock" || name.hasPrefix("com.cmuxterm.app.nightly.") {
+            return true
+        }
+        if name == "com.cmuxterm.app.staging.sock" || name.hasPrefix("com.cmuxterm.app.staging.") {
+            return true
+        }
+        return false
+    }
+
     private static func isSocketFile(_ path: String) -> Bool {
         var st = stat()
         return lstat(path, &st) == 0 && (st.st_mode & mode_t(S_IFMT)) == mode_t(S_IFSOCK)
     }
 
-    private static func canConnect(to path: String) -> Bool {
-        guard isSocketFile(path) else { return false }
+    private static func probeCmuxSocket(at path: String) -> SocketProbeResult {
+        guard isSocketFile(path) else { return .unavailable }
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
-        guard fd >= 0 else { return false }
+        guard fd >= 0 else { return .unavailable }
         defer { Darwin.close(fd) }
+        configureSocketTimeouts(fd, timeout: 0.35)
+        configureNoSigPipe(fd)
 
         var addr = sockaddr_un()
         addr.sun_family = sa_family_t(AF_UNIX)
         let maxLength = MemoryLayout.size(ofValue: addr.sun_path)
+        guard path.utf8CString.count <= maxLength else { return .unavailable }
         path.withCString { ptr in
             withUnsafeMutablePointer(to: &addr.sun_path) { pathPtr in
                 let buf = UnsafeMutableRawPointer(pathPtr).assumingMemoryBound(to: CChar.self)
@@ -1156,7 +1230,80 @@ private enum CLISocketPathResolver {
                 Darwin.connect(fd, sockaddrPtr, socklen_t(MemoryLayout<sockaddr_un>.size))
             }
         }
-        return result == 0
+        guard result == 0 else { return .unavailable }
+        guard writeAll(Data("ping\n".utf8), to: fd) else { return .notCmux }
+        guard let response = readFirstLine(from: fd) else {
+            // A timeout or early EOF does not prove another protocol owns the
+            // socket; leave it eligible for the startup fallback below.
+            return .indeterminate
+        }
+        return response == "PONG" ? .cmux : .notCmux
+    }
+
+    private static func configureSocketTimeouts(_ fd: Int32, timeout: TimeInterval) {
+        let clamped = max(timeout, 0.01)
+        var socketTimeout = timeval(
+            tv_sec: Int(clamped),
+            tv_usec: Int32((clamped - floor(clamped)) * 1_000_000)
+        )
+        _ = withUnsafePointer(to: &socketTimeout) { ptr in
+            setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, ptr, socklen_t(MemoryLayout<timeval>.size))
+        }
+        _ = withUnsafePointer(to: &socketTimeout) { ptr in
+            setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, ptr, socklen_t(MemoryLayout<timeval>.size))
+        }
+    }
+
+    private static func configureNoSigPipe(_ fd: Int32) {
+#if os(macOS)
+        var noSigPipe: Int32 = 1
+        _ = withUnsafePointer(to: &noSigPipe) { ptr in
+            setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, ptr, socklen_t(MemoryLayout<Int32>.size))
+        }
+#else
+        _ = fd
+#endif
+    }
+
+    private static func writeAll(_ data: Data, to fd: Int32) -> Bool {
+        data.withUnsafeBytes { rawBuffer in
+            guard var cursor = rawBuffer.baseAddress else { return true }
+            var remaining = rawBuffer.count
+            while remaining > 0 {
+                let written = Darwin.write(fd, cursor, remaining)
+                if written < 0 {
+                    if errno == EINTR { continue }
+                    return false
+                }
+                guard written > 0 else { return false }
+                remaining -= written
+                cursor = cursor.advanced(by: written)
+            }
+            return true
+        }
+    }
+
+    private static func readFirstLine(from fd: Int32) -> String? {
+        var bytes: [UInt8] = []
+        var buffer = [UInt8](repeating: 0, count: 128)
+        while bytes.count < 512 {
+            let count = Darwin.read(fd, &buffer, buffer.count)
+            if count < 0 {
+                if errno == EINTR { continue }
+                return nil
+            }
+            guard count > 0 else { break }
+            bytes.append(contentsOf: buffer.prefix(count))
+            if bytes.contains(0x0A) { break }
+        }
+        guard !bytes.isEmpty,
+              let response = String(bytes: bytes, encoding: .utf8) else {
+            return nil
+        }
+        return response
+            .components(separatedBy: .newlines)
+            .first
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
     }
 
     private static func sanitizeTagSlug(_ raw: String) -> String {
@@ -1179,6 +1326,60 @@ private enum CLISocketPathResolver {
             return nil
         }
         return appSupportDirectory.appendingPathComponent(appSupportDirectoryName, isDirectory: true)
+    }
+
+    private static func taggedAppSupportSocketPath(slug: String) -> String {
+        socketPath(fileName: "com.cmuxterm.app.dev.\(slug).sock")
+    }
+
+    private static func userScopedStableSocketPath(currentUserID: uid_t = getuid()) -> String {
+        socketPath(fileName: "com.cmuxterm.app.\(currentUserID).sock")
+    }
+
+    private static func socketPath(fileName: String) -> String {
+        guard let directoryURL = stableSocketDirectoryURL() else {
+            return "/tmp/\(shortenedSocketFileName(fileName, directoryPath: "/tmp"))"
+        }
+        let candidate = directoryURL.appendingPathComponent(fileName, isDirectory: false).path
+        guard candidate.utf8.count > unixSocketPathMaxLength else {
+            return candidate
+        }
+        return directoryURL
+            .appendingPathComponent(shortenedSocketFileName(fileName, directoryPath: directoryURL.path), isDirectory: false)
+            .path
+    }
+
+    private static func shortenedSocketFileName(_ fileName: String, directoryPath: String) -> String {
+        let separatorLength = 1
+        let budget = unixSocketPathMaxLength - directoryPath.utf8.count - separatorLength
+        let suffix = ".sock"
+        let hashSuffixLength = 9
+        guard fileName.utf8.count > budget, budget >= suffix.utf8.count + hashSuffixLength + 1 else {
+            return fileName
+        }
+
+        let stem = fileName.hasSuffix(suffix) ? String(fileName.dropLast(suffix.count)) : fileName
+        let hashSuffix = "-\(fnv1a32Hex(fileName))"
+        let stemBudget = budget - hashSuffix.utf8.count - suffix.utf8.count
+        let shortenedStem = String(stem.prefix(stemBudget)).trimmingCharacters(in: CharacterSet(charactersIn: ".-"))
+        let safeStem = shortenedStem.isEmpty ? "cmux" : shortenedStem
+        return "\(safeStem)\(hashSuffix)\(suffix)"
+    }
+
+    private static func fnv1a32Hex(_ value: String) -> String {
+        var hash: UInt32 = 2_166_136_261
+        for byte in value.utf8 {
+            hash ^= UInt32(byte)
+            hash = hash &* 16_777_619
+        }
+        return String(format: "%08x", hash)
+    }
+
+    private static var legacyStableSocketPath: String {
+        let stablePath: String? = stableSocketDirectoryURL()?
+            .appendingPathComponent(legacyStableSocketFileName, isDirectory: false)
+            .path
+        return stablePath ?? legacyDefaultSocketPath
     }
 
     private static func socketDiscoveryDirectories() -> [String] {
@@ -24731,7 +24932,7 @@ export default function cmuxPiSessionExtension(pi: ExtensionAPI) {
           CMUX_TAB_ID         Optional alias used by `tab-action`/`rename-tab` as default --tab.
           CMUX_SURFACE_ID     Auto-set in cmux terminals. Used as default --surface.
           CMUX_SOCKET_PATH    Override the Unix socket path. Without this, the CLI defaults
-                              to ~/Library/Application Support/cmux/cmux.sock and auto-discovers tagged/debug sockets.
+                              to ~/Library/Application Support/cmux/com.cmuxterm.app.sock and auto-discovers tagged/debug sockets.
         """
     }
 

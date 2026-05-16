@@ -179,10 +179,21 @@ def resolve_target_socket() -> str:
     socket_path = os.environ.get("CMUX_SOCKET_PATH")
     if not socket_path:
         raise cmuxError(
-            "CMUX_SOCKET_PATH is required. Point it to a tagged dev socket (for example /tmp/cmux-debug-<tag>.sock)."
+            "CMUX_SOCKET_PATH is required. Point it to a tagged DEV socket."
         )
     base = os.path.basename(socket_path)
-    if not ALLOW_MAIN_SOCKET and base in {"cmux.sock", "cmux-debug.sock"}:
+    # Tagged DEV sockets are the intended target for this harness; reject
+    # release, staging, nightly, and untagged DEV App Support sockets.
+    is_app_support_main_socket = (
+        base == "com.cmuxterm.app.dev.sock"
+        or (
+            base.startswith("com.cmuxterm.app")
+            and not base.startswith("com.cmuxterm.app.dev.")
+        )
+    )
+    if not ALLOW_MAIN_SOCKET and (
+        base in {"cmux.sock", "cmux-debug.sock"} or is_app_support_main_socket
+    ):
         raise cmuxError(
             f"Refusing to run against main socket '{socket_path}'. Set CMUX_SOCKET_PATH to a tagged dev instance."
         )

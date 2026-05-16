@@ -8,7 +8,10 @@ import os
 import shutil
 import socket
 import subprocess
+import tempfile
 import threading
+import time
+from pathlib import Path
 
 
 def resolve_cmux_cli() -> str:
@@ -32,8 +35,15 @@ def resolve_cmux_cli() -> str:
 
 
 class PingServer:
-    def __init__(self, socket_path: str):
+    def __init__(
+        self,
+        socket_path: str,
+        response: bytes = b"PONG\n",
+        max_ping_requests: int = 1,
+    ):
         self.socket_path = socket_path
+        self.response = response
+        self.max_ping_requests = max_ping_requests
         self.ready = threading.Event()
         self.error: Exception | None = None
         self._thread = threading.Thread(target=self._run, daemon=True)
@@ -47,9 +57,26 @@ class PingServer:
     def join(self, timeout: float) -> None:
         self._thread.join(timeout=timeout)
 
+    def stop(self) -> None:
+        deadline = time.monotonic() + 2.0
+        while self._thread.is_alive() and time.monotonic() < deadline:
+            try:
+                with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+                    client.settimeout(0.2)
+                    client.connect(self.socket_path)
+                    client.sendall(b"ping\n")
+                    try:
+                        client.recv(1024)
+                    except OSError:
+                        pass
+            except OSError:
+                pass
+            self.join(timeout=0.1)
+
     def _run(self) -> None:
         server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
+            os.makedirs(os.path.dirname(self.socket_path), exist_ok=True)
             if os.path.exists(self.socket_path):
                 os.remove(self.socket_path)
             server.bind(self.socket_path)
@@ -57,9 +84,10 @@ class PingServer:
             server.settimeout(6.0)
             self.ready.set()
 
-            # The CLI may probe candidate sockets with a connect-only check before
-            # issuing the actual command, so handle more than one connection.
-            for _ in range(4):
+            # The CLI probes candidate sockets with a real ping before issuing
+            # the command, so tests can opt into serving both requests.
+            handled_pings = 0
+            for _ in range(max(4, self.max_ping_requests + 2)):
                 conn, _ = server.accept()
                 with conn:
                     conn.settimeout(2.0)
@@ -71,8 +99,10 @@ class PingServer:
                         data += chunk
 
                     if b"ping" in data:
-                        conn.sendall(b"PONG\n")
-                        return
+                        conn.sendall(self.response)
+                        handled_pings += 1
+                        if handled_pings >= self.max_ping_requests:
+                            return
             raise RuntimeError("Did not receive ping command on test socket")
         except Exception as exc:  # pragma: no cover - explicit surface on failure
             self.error = exc
@@ -88,61 +118,253 @@ def main() -> int:
         print(f"FAIL: {exc}")
         return 1
 
-    tag = f"cli-autodiscover-{os.getpid()}"
-    socket_path = f"/tmp/cmux-debug-{tag}.sock"
-    server = PingServer(socket_path)
-    server.start()
+    with tempfile.TemporaryDirectory(prefix="cmux-cli-autodiscover-home-") as temp_home:
+        tag = f"cli-autodiscover-{os.getpid()}"
+        app_support_dir = Path(temp_home) / "Library/Application Support/cmux"
+        socket_path = str(app_support_dir / f"com.cmuxterm.app.dev.{tag}.sock")
+        release_socket_path = str(app_support_dir / "com.cmuxterm.app.sock")
+        server = PingServer(socket_path, max_ping_requests=2)
+        release_server = PingServer(release_socket_path, response=b"RELEASE\n")
+        server.start()
+        release_server.start()
 
-    if not server.wait_ready(2.0):
-        print("FAIL: socket server did not become ready")
-        return 1
+        if not server.wait_ready(2.0) or not release_server.wait_ready(2.0):
+            print("FAIL: socket server did not become ready")
+            return 1
 
-    if server.error is not None:
-        print(f"FAIL: socket server failed to start: {server.error}")
-        return 1
+        if server.error is not None or release_server.error is not None:
+            print(f"FAIL: socket server failed to start: {server.error or release_server.error}")
+            return 1
 
-    env = os.environ.copy()
-    env["CMUX_SOCKET_PATH"] = "/tmp/cmux.sock"
-    env["CMUX_TAG"] = tag
-    env["CMUX_CLI_SENTRY_DISABLED"] = "1"
-    env["CMUX_CLAUDE_HOOK_SENTRY_DISABLED"] = "1"
+        env = os.environ.copy()
+        env["HOME"] = temp_home
+        env["CMUX_SOCKET_PATH"] = "/tmp/cmux.sock"
+        env["CMUX_TAG"] = tag
+        env["CMUX_CLI_SENTRY_DISABLED"] = "1"
+        env["CMUX_CLAUDE_HOOK_SENTRY_DISABLED"] = "1"
 
-    try:
-        proc = subprocess.run(
-            [cli_path, "ping"],
-            text=True,
-            capture_output=True,
-            env=env,
-            timeout=8,
-            check=False,
-        )
-    except Exception as exc:
-        print(f"FAIL: invoking cmux ping failed: {exc}")
-        return 1
-    finally:
-        server.join(timeout=2.0)
         try:
-            os.remove(socket_path)
-        except OSError:
-            pass
+            proc = subprocess.run(
+                [cli_path, "ping"],
+                text=True,
+                capture_output=True,
+                env=env,
+                timeout=8,
+                check=False,
+            )
+        except Exception as exc:
+            print(f"FAIL: invoking cmux ping failed: {exc}")
+            return 1
+        finally:
+            server.stop()
+            release_server.stop()
 
-    if server.error is not None:
-        print(f"FAIL: socket server error: {server.error}")
-        return 1
+        if server.error is not None:
+            print(f"FAIL: socket server error: {server.error}")
+            return 1
 
-    if proc.returncode != 0:
-        print("FAIL: cmux ping returned non-zero status")
-        print(f"stdout={proc.stdout!r}")
-        print(f"stderr={proc.stderr!r}")
-        return 1
+        if proc.returncode != 0:
+            print("FAIL: cmux ping returned non-zero status")
+            print(f"stdout={proc.stdout!r}")
+            print(f"stderr={proc.stderr!r}")
+            return 1
 
-    if proc.stdout.strip() != "PONG":
-        print("FAIL: cmux ping did not use auto-discovered socket")
-        print(f"stdout={proc.stdout!r}")
-        print(f"stderr={proc.stderr!r}")
-        return 1
+        if proc.stdout.strip() != "PONG":
+            print("FAIL: cmux ping did not use auto-discovered tagged socket")
+            print(f"stdout={proc.stdout!r}")
+            print(f"stderr={proc.stderr!r}")
+            return 1
 
-    print("PASS: cmux ping auto-discovers tagged socket from CMUX_TAG")
+    with tempfile.TemporaryDirectory(prefix="cmux-cli-autodiscover-home-") as temp_home:
+        app_support_dir = Path(temp_home) / "Library/Application Support/cmux"
+        default_socket_path = str(app_support_dir / "com.cmuxterm.app.sock")
+        fallback_socket_path = str(app_support_dir / "com.cmuxterm.app.501.sock")
+        app_support_dir.mkdir(parents=True, exist_ok=True)
+        (app_support_dir / "last-socket-path").write_text(fallback_socket_path + "\n", encoding="utf-8")
+
+        squatter_server = PingServer(default_socket_path, response=b"NOT_CMUX\n")
+        fallback_server = PingServer(fallback_socket_path, max_ping_requests=2)
+        squatter_server.start()
+        fallback_server.start()
+
+        if not squatter_server.wait_ready(2.0) or not fallback_server.wait_ready(2.0):
+            print("FAIL: squatter/fallback socket server did not become ready")
+            return 1
+
+        if squatter_server.error is not None or fallback_server.error is not None:
+            print(f"FAIL: socket server failed to start: {squatter_server.error or fallback_server.error}")
+            return 1
+
+        env = os.environ.copy()
+        env["HOME"] = temp_home
+        env.pop("CMUX_SOCKET_PATH", None)
+        env.pop("CMUX_SOCKET", None)
+        env.pop("CMUX_TAG", None)
+        env["CMUX_CLI_SENTRY_DISABLED"] = "1"
+        env["CMUX_CLAUDE_HOOK_SENTRY_DISABLED"] = "1"
+
+        try:
+            proc = subprocess.run(
+                [cli_path, "ping"],
+                text=True,
+                capture_output=True,
+                env=env,
+                timeout=8,
+                check=False,
+            )
+        except Exception as exc:
+            print(f"FAIL: invoking cmux ping for fallback failed: {exc}")
+            return 1
+        finally:
+            squatter_server.stop()
+            fallback_server.stop()
+
+        if squatter_server.error is not None:
+            print(f"FAIL: squatter socket server error: {squatter_server.error}")
+            return 1
+        if fallback_server.error is not None:
+            print(f"FAIL: fallback socket server error: {fallback_server.error}")
+            return 1
+
+        if proc.returncode != 0:
+            print("FAIL: cmux ping fallback returned non-zero status")
+            print(f"stdout={proc.stdout!r}")
+            print(f"stderr={proc.stderr!r}")
+            return 1
+
+        if proc.stdout.strip() != "PONG":
+            print("FAIL: cmux ping did not skip non-cmux default socket")
+            print(f"stdout={proc.stdout!r}")
+            print(f"stderr={proc.stderr!r}")
+            return 1
+
+    with tempfile.TemporaryDirectory(prefix="cmux-cli-autodiscover-home-") as temp_home:
+        app_support_dir = Path(temp_home) / "Library/Application Support/cmux"
+        fallback_socket_path = str(app_support_dir / "com.cmuxterm.app.501.sock")
+        variant_socket_paths = [
+            str(app_support_dir / "com.cmuxterm.app.staging.sock"),
+            str(app_support_dir / "com.cmuxterm.app.nightly.sock"),
+            str(app_support_dir / "com.cmuxterm.app.dev.sock"),
+        ]
+        app_support_dir.mkdir(parents=True, exist_ok=True)
+        (app_support_dir / "last-socket-path").write_text(fallback_socket_path + "\n", encoding="utf-8")
+
+        variant_servers = [
+            PingServer(path, max_ping_requests=1)
+            for path in variant_socket_paths
+        ]
+        fallback_server = PingServer(fallback_socket_path, max_ping_requests=2)
+        for server in variant_servers:
+            server.start()
+        fallback_server.start()
+
+        if not all(server.wait_ready(2.0) for server in [*variant_servers, fallback_server]):
+            print("FAIL: variant/fallback socket server did not become ready")
+            return 1
+
+        first_error = next((server.error for server in [*variant_servers, fallback_server] if server.error is not None), None)
+        if first_error is not None:
+            print(f"FAIL: socket server failed to start: {first_error}")
+            return 1
+
+        env = os.environ.copy()
+        env["HOME"] = temp_home
+        env.pop("CMUX_SOCKET_PATH", None)
+        env.pop("CMUX_SOCKET", None)
+        env.pop("CMUX_TAG", None)
+        env["CMUX_CLI_SENTRY_DISABLED"] = "1"
+        env["CMUX_CLAUDE_HOOK_SENTRY_DISABLED"] = "1"
+
+        try:
+            proc = subprocess.run(
+                [cli_path, "ping"],
+                text=True,
+                capture_output=True,
+                env=env,
+                timeout=8,
+                check=False,
+            )
+        except Exception as exc:
+            print(f"FAIL: invoking cmux ping for variant isolation failed: {exc}")
+            return 1
+        finally:
+            for server in variant_servers:
+                server.stop()
+            fallback_server.stop()
+
+        first_error = next((server.error for server in [*variant_servers, fallback_server] if server.error is not None), None)
+        if first_error is not None:
+            print(f"FAIL: socket server error: {first_error}")
+            return 1
+
+        if proc.returncode != 0:
+            print("FAIL: cmux ping variant isolation returned non-zero status")
+            print(f"stdout={proc.stdout!r}")
+            print(f"stderr={proc.stderr!r}")
+            return 1
+
+        if proc.stdout.strip() != "PONG":
+            print("FAIL: cmux ping did not skip non-release variant sockets")
+            print(f"stdout={proc.stdout!r}")
+            print(f"stderr={proc.stderr!r}")
+            return 1
+
+    for variant_name in [
+        "com.cmuxterm.app.staging.review.sock",
+        "com.cmuxterm.app.nightly.review.sock",
+    ]:
+        with tempfile.TemporaryDirectory(prefix="cmux-cli-autodiscover-home-") as temp_home:
+            app_support_dir = Path(temp_home) / "Library/Application Support/cmux"
+            variant_socket_path = str(app_support_dir / variant_name)
+            app_support_dir.mkdir(parents=True, exist_ok=True)
+            (app_support_dir / "last-socket-path").write_text(variant_socket_path + "\n", encoding="utf-8")
+
+            variant_server = PingServer(variant_socket_path, max_ping_requests=2)
+            variant_server.start()
+
+            if not variant_server.wait_ready(2.0):
+                print("FAIL: dotted variant socket server did not become ready")
+                return 1
+
+            if variant_server.error is not None:
+                print(f"FAIL: dotted variant socket server failed to start: {variant_server.error}")
+                return 1
+
+            env = os.environ.copy()
+            env["HOME"] = temp_home
+            env.pop("CMUX_SOCKET_PATH", None)
+            env.pop("CMUX_SOCKET", None)
+            env.pop("CMUX_TAG", None)
+            env["CMUX_CLI_SENTRY_DISABLED"] = "1"
+            env["CMUX_CLAUDE_HOOK_SENTRY_DISABLED"] = "1"
+
+            try:
+                proc = subprocess.run(
+                    [cli_path, "ping"],
+                    text=True,
+                    capture_output=True,
+                    env=env,
+                    timeout=8,
+                    check=False,
+                )
+            except Exception as exc:
+                print(f"FAIL: invoking cmux ping for dotted variant isolation failed: {exc}")
+                return 1
+            finally:
+                variant_server.stop()
+
+            if variant_server.error is not None:
+                print(f"FAIL: dotted variant socket server error: {variant_server.error}")
+                return 1
+
+            if proc.returncode == 0 and proc.stdout.strip() == "PONG":
+                print("FAIL: cmux ping used non-release dotted variant last-socket-path")
+                print(f"variant={variant_name!r}")
+                print(f"stdout={proc.stdout!r}")
+                print(f"stderr={proc.stderr!r}")
+                return 1
+
+    print("PASS: cmux ping auto-discovers tagged and protocol-verified fallback sockets")
     return 0
 
 
