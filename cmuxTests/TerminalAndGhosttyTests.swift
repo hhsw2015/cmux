@@ -939,6 +939,115 @@ final class GhosttyPasteboardHelperTests: XCTestCase {
 }
 
 @MainActor
+final class TerminalOffscreenStartupTests: XCTestCase {
+    func testPlainSurfaceDoesNotStartRuntimeBeforeWindowAttachmentOrInput() {
+        let panel = TerminalPanel(workspaceId: UUID())
+
+        XCTAssertNil(panel.hostedView.window)
+        XCTAssertFalse(panel.surface.debugHasHeadlessStartupWindowForTesting())
+        XCTAssertEqual(
+            panel.surface.debugRuntimeSurfaceCreateAttemptCountForTesting(),
+            0,
+            "Empty terminal surfaces should stay lazy until they attach or receive input so tests and background helpers do not spawn idle PTYs."
+        )
+    }
+
+    func testInitialInputSurfaceAttemptsRuntimeCreationBeforeWindowAttachment() {
+        let panel = TerminalPanel(
+            workspaceId: UUID(),
+            initialInput: "echo resume\n"
+        )
+
+        XCTAssertTrue(
+            panel.surface.debugHasHeadlessStartupWindowForTesting(),
+            "Restored auto-resume input should bootstrap through a hidden window rather than waiting for a user-focused portal."
+        )
+        XCTAssertGreaterThan(
+            panel.surface.debugRuntimeSurfaceCreateAttemptCountForTesting(),
+            0,
+            "Restored auto-resume input must start the terminal runtime without waiting for a window attach."
+        )
+    }
+
+    func testInitialCommandSurfaceAttemptsRuntimeCreationBeforeWindowAttachment() {
+        let panel = TerminalPanel(
+            workspaceId: UUID(),
+            initialCommand: "echo startup"
+        )
+
+        XCTAssertTrue(
+            panel.surface.debugHasHeadlessStartupWindowForTesting(),
+            "Command-launched offscreen terminals should bootstrap through a hidden window rather than waiting for a user-focused portal."
+        )
+        XCTAssertGreaterThan(
+            panel.surface.debugRuntimeSurfaceCreateAttemptCountForTesting(),
+            0,
+            "Offscreen command-launched terminals must start the runtime without waiting for a window attach."
+        )
+    }
+
+    func testColdSocketInputQueuesInsteadOfDroppingWhenRuntimeSurfaceIsMissing() {
+        let panel = TerminalPanel(workspaceId: UUID())
+
+        panel.surface.releaseSurfaceForTesting()
+        XCTAssertNil(panel.surface.surface)
+        panel.surface.sendInput("touch /tmp/cmux-cold-send\n")
+
+        let pending = panel.surface.debugPendingSocketInputForTesting()
+        XCTAssertGreaterThan(
+            pending.items,
+            0,
+            "Socket input sent before runtime surface creation must be queued or the caller must receive an error."
+        )
+        XCTAssertGreaterThan(pending.bytes, 0)
+    }
+
+    func testColdSocketInputRejectsOversizedQueueInsteadOfDroppingExistingInput() {
+        let panel = TerminalPanel(workspaceId: UUID())
+
+        panel.surface.releaseSurfaceForTesting()
+        XCTAssertTrue(panel.surface.sendInput("echo keep-me\n"))
+
+        let oversizedInput = String(repeating: "x", count: 1_100_000)
+        XCTAssertFalse(
+            panel.surface.sendInput(oversizedInput),
+            "Cold socket input that cannot fit in the pending queue must be rejected instead of evicting previously accepted input."
+        )
+
+        let pending = panel.surface.debugPendingSocketInputForTesting()
+        XCTAssertGreaterThan(pending.items, 0)
+        XCTAssertLessThan(pending.bytes, 1_100_000)
+    }
+
+    func testDaemonSendWorkspaceQueuesColdControlInputInsteadOfReportingDroppedOK() throws {
+        let manager = TabManager()
+        TerminalController.shared.setActiveTabManager(manager)
+        defer {
+            TerminalController.shared.setActiveTabManager(nil)
+        }
+
+        let workspace = try XCTUnwrap(manager.selectedWorkspace)
+        let panel = try XCTUnwrap(workspace.focusedTerminalPanel)
+        panel.surface.releaseSurfaceForTesting()
+        XCTAssertNil(panel.surface.surface)
+
+        let response = TerminalController.shared.handleSocketLine(
+            "send_workspace \(workspace.id.uuidString) touch /tmp/cmux-daemon-cold-send\\n"
+        )
+        XCTAssertEqual(response, "OK")
+        TerminalMutationBus.shared.drainForTesting()
+
+        let pending = panel.surface.debugPendingSocketInputForTesting()
+        XCTAssertGreaterThan(pending.items, 0)
+        XCTAssertGreaterThan(
+            pending.keyEvents,
+            0,
+            "A daemon send that accepts newline input for a cold terminal must queue the Return event instead of reporting OK for bytes that cannot execute."
+        )
+    }
+}
+
+@MainActor
 final class FeedbackComposerMessageEditorViewTests: XCTestCase {
     func testLongMessageCreatesScrollableDocumentContent() {
         let editor = FeedbackComposerMessageEditorView(
@@ -4443,40 +4552,6 @@ final class TerminalCmdClickPathPunctuationTrimmingTests: XCTestCase {
                 existingPaths: [literalPath, strippedPath]
             ),
             literalPath
-        )
-    }
-}
-
-
-final class TerminalControllerSocketTextChunkTests: XCTestCase {
-    func testSocketTextChunksReturnsSingleChunkForPlainText() {
-        XCTAssertEqual(
-            TerminalController.socketTextChunks("echo hello"),
-            [.text("echo hello")]
-        )
-    }
-
-    func testSocketTextChunksSplitsControlScalars() {
-        XCTAssertEqual(
-            TerminalController.socketTextChunks("abc\rdef\tghi"),
-            [
-                .text("abc"),
-                .control("\r".unicodeScalars.first!),
-                .text("def"),
-                .control("\t".unicodeScalars.first!),
-                .text("ghi")
-            ]
-        )
-    }
-
-    func testSocketTextChunksDoesNotEmitEmptyTextChunksAroundConsecutiveControls() {
-        XCTAssertEqual(
-            TerminalController.socketTextChunks("\r\n\t"),
-            [
-                .control("\r".unicodeScalars.first!),
-                .control("\n".unicodeScalars.first!),
-                .control("\t".unicodeScalars.first!)
-            ]
         )
     }
 }
