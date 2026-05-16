@@ -314,15 +314,33 @@ func writeShimIfChanged(path string, content string) error {
 }
 
 func ensureClaudeNodeOptionsRestoreModule() (string, error) {
-	dir := filepath.Join(os.TempDir(), "cmux-claude-node-options")
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return "", err
+	dirs := claudeNodeOptionsRestoreDirs()
+	var lastErr error
+	for _, dir := range dirs {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			lastErr = err
+			continue
+		}
+		restoreModulePath := filepath.Join(dir, "restore-node-options.cjs")
+		if err := writeShimIfChanged(restoreModulePath, claudeNodeOptionsRestoreModuleScript); err != nil {
+			lastErr = err
+			continue
+		}
+		return restoreModulePath, nil
 	}
-	restoreModulePath := filepath.Join(dir, "restore-node-options.cjs")
-	if err := writeShimIfChanged(restoreModulePath, claudeNodeOptionsRestoreModuleScript); err != nil {
-		return "", err
+	if lastErr != nil {
+		return "", lastErr
 	}
-	return restoreModulePath, nil
+	return "", fmt.Errorf("no NODE_OPTIONS restore module directory candidates")
+}
+
+func claudeNodeOptionsRestoreDirs() []string {
+	dirs := make([]string, 0, 2)
+	if home, err := os.UserHomeDir(); err == nil && strings.TrimSpace(home) != "" {
+		dirs = append(dirs, filepath.Join(home, ".claude", "cmux"))
+	}
+	dirs = append(dirs, filepath.Join(os.TempDir(), "cmux-claude-node-options"))
+	return dirs
 }
 
 // --- Focused context ---
@@ -377,6 +395,9 @@ func getFocusedContext(rc *rpcContext) *focusedContext {
 func configureClaudeNodeOptions(restoreModulePath string) {
 	existing, hadExisting := os.LookupEnv("NODE_OPTIONS")
 	if hadExisting {
+		existing = nodeOptionsForRestore(existing)
+	}
+	if existing != "" {
 		os.Setenv("CMUX_ORIGINAL_NODE_OPTIONS_PRESENT", "1")
 		os.Setenv("CMUX_ORIGINAL_NODE_OPTIONS", existing)
 	} else {
@@ -396,27 +417,110 @@ func mergeNodeOptions(existing string, restoreModulePath string) string {
 	return requireFlag + " " + memoryFlag + " " + cleaned
 }
 
+type nodeOptionsHeapMode int
+
+const (
+	nodeOptionsStripHeapCap nodeOptionsHeapMode = iota
+	nodeOptionsNormalizeHeapCap
+)
+
 func cleanedNodeOptions(existing string) string {
+	return walkNodeOptions(existing, nodeOptionsStripHeapCap)
+}
+
+func nodeOptionsForRestore(existing string) string {
+	return walkNodeOptions(existing, nodeOptionsNormalizeHeapCap)
+}
+
+func walkNodeOptions(existing string, heapMode nodeOptionsHeapMode) string {
 	tokens := strings.Fields(existing)
 	if len(tokens) == 0 {
 		return ""
 	}
 
 	filtered := make([]string, 0, len(tokens))
+	dropInjectedHeapCap := false
 	for i := 0; i < len(tokens); i++ {
 		token := tokens[i]
-		if token == "--max-old-space-size" {
-			if i+1 < len(tokens) {
-				i++
-			}
+		if dropInjectedHeapCap && isInjectedNodeHeapCap(tokens, i) {
+			i += nodeHeapCapWidth(tokens, i) - 1
+			dropInjectedHeapCap = false
 			continue
 		}
-		if strings.HasPrefix(token, "--max-old-space-size=") {
+		dropInjectedHeapCap = false
+
+		if isRequireOption(token) && i+1 < len(tokens) && isCmuxNodeOptionsRestoreModulePath(tokens[i+1]) {
+			i++
+			dropInjectedHeapCap = true
 			continue
+		}
+		if path, ok := inlineRequireOptionPath(token); ok && isCmuxNodeOptionsRestoreModulePath(path) {
+			dropInjectedHeapCap = true
+			continue
+		}
+		switch heapMode {
+		case nodeOptionsStripHeapCap:
+			if token == "--max-old-space-size" {
+				if i+1 < len(tokens) {
+					i++
+				}
+				continue
+			}
+			if strings.HasPrefix(token, "--max-old-space-size=") {
+				continue
+			}
+		case nodeOptionsNormalizeHeapCap:
+			if token == "--max-old-space-size" && i+1 < len(tokens) {
+				filtered = append(filtered, "--max-old-space-size="+tokens[i+1])
+				i++
+				continue
+			}
 		}
 		filtered = append(filtered, token)
 	}
 	return strings.Join(filtered, " ")
+}
+
+func isRequireOption(token string) bool {
+	return token == "--require" || token == "-r"
+}
+
+func inlineRequireOptionPath(token string) (string, bool) {
+	for _, prefix := range []string{"--require=", "-r="} {
+		if strings.HasPrefix(token, prefix) {
+			return strings.TrimPrefix(token, prefix), true
+		}
+	}
+	return "", false
+}
+
+func isCmuxNodeOptionsRestoreModulePath(value string) bool {
+	trimmed := strings.Trim(value, "'\"")
+	if filepath.Base(trimmed) != "restore-node-options.cjs" {
+		return false
+	}
+	return strings.Contains(trimmed, "/cmux-") || strings.Contains(trimmed, "/.claude/cmux/")
+}
+
+func isInjectedNodeHeapCap(tokens []string, index int) bool {
+	if index >= len(tokens) {
+		return false
+	}
+	token := tokens[index]
+	if token == "--max-old-space-size" {
+		return index+1 < len(tokens) && tokens[index+1] == "4096"
+	}
+	return token == "--max-old-space-size=4096"
+}
+
+func nodeHeapCapWidth(tokens []string, index int) int {
+	if index >= len(tokens) {
+		return 1
+	}
+	if tokens[index] == "--max-old-space-size" && index+1 < len(tokens) {
+		return 2
+	}
+	return 1
 }
 
 func stringFromAny(values ...any) string {
