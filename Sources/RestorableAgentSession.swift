@@ -83,7 +83,7 @@ enum AgentResumeCommandBuilder {
         workingDirectory: String?,
         customRegistration: CmuxVaultAgentRegistration?,
         includeWorkingDirectoryPrefix: Bool
-    ) -> String {
+    ) -> String? {
         var commandParts: [String] = []
         let environmentParts = launchEnvironmentParts(kind: kind, environment: launchCommand?.environment)
         // Use inline shell variable assignment (VAR=val cmd) instead of `env VAR=val cmd`.
