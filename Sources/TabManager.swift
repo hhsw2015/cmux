@@ -7837,7 +7837,8 @@ extension TabManager {
 
     func sessionSnapshot(
         includeScrollback: Bool,
-        restorableAgentIndex: RestorableAgentSessionIndex = .empty
+        restorableAgentIndex: RestorableAgentSessionIndex = .empty,
+        defaults: UserDefaults = .standard
     ) -> SessionTabManagerSnapshot {
         let restorableTabs = tabs
             .filter(\.isRestorableInSessionSnapshot)
@@ -7846,7 +7847,8 @@ extension TabManager {
             .map {
                 $0.sessionSnapshot(
                     includeScrollback: includeScrollback,
-                    restorableAgentIndex: restorableAgentIndex
+                    restorableAgentIndex: restorableAgentIndex,
+                    defaults: defaults
                 )
             }
         let selectedWorkspaceIndex = selectedTabId.flatMap { selectedTabId in

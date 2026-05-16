@@ -140,6 +140,8 @@ struct WorkspaceRemoteDaemonManifest: Decodable, Equatable {
 }
 
 extension Workspace {
+    typealias SessionTerminalSnapshotScrollbackReader = (_ terminalPanel: TerminalPanel, _ lineLimit: Int) -> String?
+
     nonisolated static let remoteDaemonManifestInfoKey = WorkspaceRemoteSessionController.remoteDaemonManifestInfoKey
 
     nonisolated static func remoteDaemonManifest(from infoDictionary: [String: Any]?) -> WorkspaceRemoteDaemonManifest? {
@@ -162,10 +164,13 @@ extension Workspace {
 
     func sessionSnapshot(
         includeScrollback: Bool,
-        restorableAgentIndex: RestorableAgentSessionIndex? = nil
+        restorableAgentIndex: RestorableAgentSessionIndex? = nil,
+        defaults: UserDefaults = .standard,
+        terminalScrollbackReader: SessionTerminalSnapshotScrollbackReader? = nil
     ) -> SessionWorkspaceSnapshot {
         let tree = bonsplitController.treeSnapshot()
         let layout = sessionLayoutSnapshot(from: tree)
+        let terminalScrollbackReader = terminalScrollbackReader ?? Self.defaultSessionTerminalSnapshotScrollback
 
         let orderedPanelIds = sidebarOrderedPanelIds()
         var seen: Set<UUID> = []
@@ -183,7 +188,9 @@ extension Workspace {
                 sessionPanelSnapshot(
                     panelId: panelId,
                     includeScrollback: includeScrollback,
-                    restorableAgent: restorableAgentIndex?.snapshot(workspaceId: id, panelId: panelId)
+                    restorableAgent: restorableAgentIndex?.snapshot(workspaceId: id, panelId: panelId),
+                    defaults: defaults,
+                    terminalScrollbackReader: terminalScrollbackReader
                 )
             }
 
@@ -392,7 +399,9 @@ extension Workspace {
     private func sessionPanelSnapshot(
         panelId: UUID,
         includeScrollback: Bool,
-        restorableAgent: SessionRestorableAgentSnapshot?
+        restorableAgent: SessionRestorableAgentSnapshot?,
+        defaults: UserDefaults,
+        terminalScrollbackReader: SessionTerminalSnapshotScrollbackReader
     ) -> SessionPanelSnapshot? {
         guard let panel = panels[panelId] else { return nil }
 
@@ -470,17 +479,17 @@ extension Workspace {
             let allowDebugFallbackScrollback = false
 #endif
             let capturedScrollback = includeScrollback && shouldPersistScrollback
-                ? TerminalController.shared.readTerminalTextForSnapshot(
-                    terminalPanel: terminalPanel,
-                    includeScrollback: true,
-                    lineLimit: SessionPersistencePolicy.maxScrollbackLinesPerTerminal
+                ? terminalScrollbackReader(
+                    terminalPanel,
+                    SessionPersistencePolicy.resolvedMaxScrollbackLinesPerTerminal(defaults: defaults)
                 )
                 : nil
             let resolvedScrollback = terminalSnapshotScrollback(
                 panelId: panelId,
                 capturedScrollback: capturedScrollback,
                 includeScrollback: includeScrollback,
-                allowFallbackScrollback: shouldPersistScrollback || allowDebugFallbackScrollback
+                allowFallbackScrollback: shouldPersistScrollback || allowDebugFallbackScrollback,
+                defaults: defaults
             )
             terminalSnapshot = SessionTerminalPanelSnapshot(
                 workingDirectory: directory,
@@ -614,13 +623,14 @@ extension Workspace {
     nonisolated static func resolvedSnapshotTerminalScrollback(
         capturedScrollback: String?,
         fallbackScrollback: String?,
-        allowFallbackScrollback: Bool = true
+        allowFallbackScrollback: Bool = true,
+        defaults: UserDefaults = .standard
     ) -> String? {
-        if let captured = SessionPersistencePolicy.truncatedScrollback(capturedScrollback) {
+        if let captured = SessionPersistencePolicy.truncatedScrollback(capturedScrollback, defaults: defaults) {
             return captured
         }
         guard allowFallbackScrollback else { return nil }
-        return SessionPersistencePolicy.truncatedScrollback(fallbackScrollback)
+        return SessionPersistencePolicy.truncatedScrollback(fallbackScrollback, defaults: defaults)
     }
 
     nonisolated static func shouldReplaySessionScrollback(
@@ -670,7 +680,8 @@ extension Workspace {
         panelId: UUID,
         capturedScrollback: String?,
         includeScrollback: Bool,
-        allowFallbackScrollback: Bool = true
+        allowFallbackScrollback: Bool = true,
+        defaults: UserDefaults = .standard
     ) -> String? {
         guard includeScrollback else { return nil }
 #if DEBUG
@@ -686,7 +697,8 @@ extension Workspace {
         let resolved = Self.resolvedSnapshotTerminalScrollback(
             capturedScrollback: capturedScrollback,
             fallbackScrollback: fallback,
-            allowFallbackScrollback: allowFallbackScrollback
+            allowFallbackScrollback: allowFallbackScrollback,
+            defaults: defaults
         )
 #if DEBUG
         if debugFallback != nil {
@@ -701,6 +713,17 @@ extension Workspace {
             restoredTerminalScrollbackByPanelId.removeValue(forKey: panelId)
         }
         return resolved
+    }
+
+    private static func defaultSessionTerminalSnapshotScrollback(
+        terminalPanel: TerminalPanel,
+        lineLimit: Int
+    ) -> String? {
+        TerminalController.shared.readTerminalTextForSnapshot(
+            terminalPanel: terminalPanel,
+            includeScrollback: true,
+            lineLimit: lineLimit
+        )
     }
 
 #if DEBUG
