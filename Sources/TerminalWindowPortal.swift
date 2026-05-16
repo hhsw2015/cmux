@@ -692,6 +692,7 @@ final class WindowTerminalPortal: NSObject {
         hostView.layer?.masksToBounds = true
         hostView.postsFrameChangedNotifications = true
         hostView.postsBoundsChangedNotifications = true
+        hostView.translatesAutoresizingMaskIntoConstraints = false
         dividerOverlayView.translatesAutoresizingMaskIntoConstraints = true
         dividerOverlayView.autoresizingMask = [.width, .height]
         installGeometryObservers(for: window)
@@ -827,15 +828,9 @@ final class WindowTerminalPortal: NSObject {
     }
 
     private func synchronizeLayoutHierarchy() {
-        guard let container = installedContainerView,
-              let reference = installedReferenceView else {
-            return
-        }
-
-        container.layoutSubtreeIfNeeded()
-        if reference !== container {
-            reference.layoutSubtreeIfNeeded()
-        }
+        installedContainerView?.layoutSubtreeIfNeeded()
+        installedReferenceView?.layoutSubtreeIfNeeded()
+        hostView.superview?.layoutSubtreeIfNeeded()
         hostView.layoutSubtreeIfNeeded()
         _ = synchronizeHostFrameToReference()
     }
@@ -895,8 +890,7 @@ final class WindowTerminalPortal: NSObject {
         guard let window else { return false }
         guard let (container, reference) = installedTargetIfStillValid(for: window) ?? installationTarget(for: window)
         else { return false }
-        let installsInsideReference = container === reference
-        let browserHost = installsInsideReference ? nil : preferredBrowserHost(in: container)
+        let browserHost = preferredBrowserHost(in: container)
 
         if hostView.superview !== container ||
             installedContainerView !== container ||
@@ -905,34 +899,21 @@ final class WindowTerminalPortal: NSObject {
             installConstraints.removeAll()
 
             hostView.removeFromSuperview()
-            if installsInsideReference {
-                hostView.translatesAutoresizingMaskIntoConstraints = true
-                hostView.autoresizingMask = [.width, .height]
-                hostView.frame = reference.bounds
-                container.addSubview(hostView, positioned: .above, relativeTo: nil)
+            if let browserHost {
+                container.addSubview(hostView, positioned: .below, relativeTo: browserHost)
             } else {
-                hostView.translatesAutoresizingMaskIntoConstraints = false
-                hostView.autoresizingMask = []
-                if let browserHost {
-                    container.addSubview(hostView, positioned: .below, relativeTo: browserHost)
-                } else {
-                    container.addSubview(hostView, positioned: .above, relativeTo: reference)
-                }
-
-                installConstraints = [
-                    hostView.leadingAnchor.constraint(equalTo: reference.leadingAnchor),
-                    hostView.trailingAnchor.constraint(equalTo: reference.trailingAnchor),
-                    hostView.topAnchor.constraint(equalTo: reference.topAnchor),
-                    hostView.bottomAnchor.constraint(equalTo: reference.bottomAnchor),
-                ]
-                NSLayoutConstraint.activate(installConstraints)
+                container.addSubview(hostView, positioned: .above, relativeTo: reference)
             }
+
+            installConstraints = [
+                hostView.leadingAnchor.constraint(equalTo: reference.leadingAnchor),
+                hostView.trailingAnchor.constraint(equalTo: reference.trailingAnchor),
+                hostView.topAnchor.constraint(equalTo: reference.topAnchor),
+                hostView.bottomAnchor.constraint(equalTo: reference.bottomAnchor),
+            ]
+            NSLayoutConstraint.activate(installConstraints)
             installedContainerView = container
             installedReferenceView = reference
-        } else if installsInsideReference {
-            if hostView.superview === container, container.subviews.last !== hostView {
-                container.addSubview(hostView, positioned: .above, relativeTo: nil)
-            }
         } else if let browserHost {
             if !Self.isView(browserHost, above: hostView, in: container) {
                 container.addSubview(hostView, positioned: .below, relativeTo: browserHost)
@@ -941,10 +922,7 @@ final class WindowTerminalPortal: NSObject {
             container.addSubview(hostView, positioned: .above, relativeTo: reference)
         }
 
-        // Keep the drag/mouse forwarding overlay above portal-hosted terminal views
-        // when glass mode puts both in the same app-owned foreground container.
-        // In non-glass mode the overlay lives in the theme frame above contentView,
-        // so hierarchy already keeps it above this content-hosted portal.
+        // Keep the drag/mouse forwarding overlay above portal-hosted terminal views.
         if let overlay = objc_getAssociatedObject(window, &fileDropOverlayKey) as? NSView,
            overlay.superview === container,
            !Self.isView(overlay, above: hostView, in: container) {
@@ -966,11 +944,10 @@ final class WindowTerminalPortal: NSObject {
             return nil
         }
 
-        let referenceIsValid = reference === container || reference.superview === container
         guard hostView.superview === container,
               container.window === window,
               reference.window === window,
-              referenceIsValid else {
+              reference.superview === container else {
             return nil
         }
 
@@ -983,7 +960,9 @@ final class WindowTerminalPortal: NSObject {
         }
 
         guard let contentView = window.contentView else { return nil }
-        return (contentView, contentView)
+
+        guard let themeFrame = contentView.superview else { return nil }
+        return (themeFrame, contentView)
     }
 
     private static func isHiddenOrAncestorHidden(_ view: NSView) -> Bool {

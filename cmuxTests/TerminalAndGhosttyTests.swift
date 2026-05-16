@@ -3851,36 +3851,6 @@ final class TerminalWindowPortalLifecycleTests: XCTestCase {
         XCTWaiter().wait(for: [expectation], timeout: 1.0)
     }
 
-    func testPortalHostInstallsInsideContentViewInsteadOfThemeFrame() {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 320, height: 240),
-            styleMask: [.titled, .closable],
-            backing: .buffered,
-            defer: false
-        )
-        defer { window.orderOut(nil) }
-
-        guard let contentView = window.contentView,
-              let themeFrame = contentView.superview else {
-            XCTFail("Expected AppKit content hierarchy")
-            return
-        }
-
-        let portal = WindowTerminalPortal(window: window)
-        _ = portal.viewAtWindowPoint(NSPoint(x: 1, y: 1))
-
-        guard let host = contentView.subviews.first(where: { $0 is WindowTerminalHostView }) else {
-            XCTFail("Expected terminal portal host inside the app-owned content view")
-            return
-        }
-
-        XCTAssertTrue(host.superview === contentView)
-        XCTAssertFalse(
-            themeFrame.subviews.contains(where: { $0 === host }),
-            "The terminal portal must not mutate AppKit's private theme frame during window attachment"
-        )
-    }
-
     func testPortalHostInstallsAboveContentViewForVisibility() {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 320, height: 240),
@@ -3888,26 +3858,25 @@ final class TerminalWindowPortalLifecycleTests: XCTestCase {
             backing: .buffered,
             defer: false
         )
-        defer { window.orderOut(nil) }
         let portal = WindowTerminalPortal(window: window)
         _ = portal.viewAtWindowPoint(NSPoint(x: 1, y: 1))
 
-        guard let contentView = window.contentView else {
-            XCTFail("Expected content view")
+        guard let contentView = window.contentView,
+              let container = contentView.superview else {
+            XCTFail("Expected content container")
             return
         }
 
-        guard let hostIndex = contentView.subviews.firstIndex(where: { $0 is WindowTerminalHostView }),
-              let host = contentView.subviews[hostIndex] as? WindowTerminalHostView else {
-            XCTFail("Expected terminal portal host inside the content view")
+        guard let hostIndex = container.subviews.firstIndex(where: { $0 is WindowTerminalHostView }),
+              let contentIndex = container.subviews.firstIndex(where: { $0 === contentView }) else {
+            XCTFail("Expected host/content views in same container")
             return
         }
 
-        XCTAssertEqual(hostIndex, contentView.subviews.count - 1)
-        XCTAssertEqual(
-            host.frame,
-            contentView.bounds,
-            "Portal host must cover the app content view so portal-hosted terminals stay visible"
+        XCTAssertGreaterThan(
+            hostIndex,
+            contentIndex,
+            "Portal host must remain above content view so portal-hosted terminals stay visible"
         )
     }
 
@@ -3933,17 +3902,15 @@ final class TerminalWindowPortalLifecycleTests: XCTestCase {
         }
 
         func assertHostOrder(_ message: String) {
-            guard let terminalHost = contentView.subviews.first(where: { $0 is WindowTerminalHostView }),
-                  let browserHostIndex = container.subviews.firstIndex(where: { $0 is WindowBrowserHostView }),
-                  let contentIndex = container.subviews.firstIndex(where: { $0 === contentView }) else {
-                XCTFail("Expected terminal host in content view and browser host above content view")
+            guard let terminalHostIndex = container.subviews.firstIndex(where: { $0 is WindowTerminalHostView }),
+                  let browserHostIndex = container.subviews.firstIndex(where: { $0 is WindowBrowserHostView }) else {
+                XCTFail("Expected both portal hosts in same container")
                 return
             }
 
-            XCTAssertTrue(terminalHost.superview === contentView)
-            XCTAssertGreaterThan(
+            XCTAssertLessThan(
+                terminalHostIndex,
                 browserHostIndex,
-                contentIndex,
                 message
             )
         }

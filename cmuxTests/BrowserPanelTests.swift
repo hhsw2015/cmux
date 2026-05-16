@@ -2314,16 +2314,14 @@ final class BrowserWindowPortalLifecycleTests: XCTestCase {
 
         func assertHostOrder(_ message: String) {
             guard let browserHostIndex = container.subviews.firstIndex(where: { $0 is WindowBrowserHostView }),
-                  let contentIndex = container.subviews.firstIndex(where: { $0 === contentView }),
-                  let terminalHost = contentView.subviews.first(where: { $0 is WindowTerminalHostView }) else {
-                XCTFail("Expected browser host above content view and terminal host inside content view")
+                  let terminalHostIndex = container.subviews.firstIndex(where: { $0 is WindowTerminalHostView }) else {
+                XCTFail("Expected both portal hosts in same container")
                 return
             }
 
-            XCTAssertTrue(terminalHost.superview === contentView)
             XCTAssertGreaterThan(
                 browserHostIndex,
-                contentIndex,
+                terminalHostIndex,
                 message
             )
         }
