@@ -3,6 +3,7 @@ import SwiftUI
 import AppKit
 import Metal
 import QuartzCore
+import CoreImage
 import Combine
 import CoreText
 import Darwin
@@ -4398,6 +4399,30 @@ final class TerminalSurfaceRegistry {
     }
 }
 
+private final class TerminalSharedBackdropCutoutFilter: CIFilter {
+    private static let filterInputKeys = [kCIInputImageKey, kCIInputBackgroundImageKey]
+    private static let filterOutputKeys = [kCIOutputImageKey]
+
+    @objc dynamic var inputImage: CIImage?
+    @objc dynamic var inputBackgroundImage: CIImage?
+
+    override var inputKeys: [String] {
+        Self.filterInputKeys
+    }
+
+    override var outputKeys: [String] {
+        Self.filterOutputKeys
+    }
+
+    override var outputImage: CIImage? {
+        guard let inputImage, let inputBackgroundImage else { return nil }
+        return CIBlendKernel.destinationOut.apply(
+            foreground: inputImage,
+            background: inputBackgroundImage
+        )
+    }
+}
+
 // MARK: - Terminal Surface (owns the ghostty_surface_t lifecycle)
 
 enum TerminalSurfaceFocusPlacement: Equatable {
@@ -6570,12 +6595,6 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         registerForDraggedTypes(Array(Self.dropTypes))
     }
 
-    private func effectiveBackgroundColor() -> NSColor {
-        let base = backgroundColor ?? GhosttyApp.shared.defaultBackgroundColor
-        let opacity = GhosttyApp.shared.defaultBackgroundOpacity
-        return base.withAlphaComponent(opacity)
-    }
-
     func applySurfaceBackground() {
         let renderingMode = WindowAppearanceSnapshot.terminalRenderingMode(
             usesHostLayerBackground: GhosttyApp.shared.usesHostLayerBackground
@@ -6585,15 +6604,15 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
             renderingMode: renderingMode,
             sharesWindowBackdrop: sharesWindowBackdrop
         )
-        // The window root backdrop is the single surface fill for solid-color
-        // terminal backgrounds. Painting the terminal host layer too would
-        // double-composite it against the surrounding chrome.
-        let usesHostLayerFill = renderingMode.usesWindowHostBackdrop &&
-            !sharesWindowBackdrop &&
-            !usesBonsplitPaneBackdrop
-        let color = usesHostLayerFill
-            ? effectiveBackgroundColor()
-            : .clear
+        let fillPlan = TerminalSurfaceBackgroundFillPlan.resolve(
+            renderingMode: renderingMode,
+            surfaceBackgroundColor: backgroundColor,
+            defaultBackgroundColor: GhosttyApp.shared.defaultBackgroundColor,
+            backgroundOpacity: GhosttyApp.shared.defaultBackgroundOpacity,
+            sharesWindowBackdrop: sharesWindowBackdrop,
+            usesBonsplitPaneBackdrop: usesBonsplitPaneBackdrop
+        )
+        let color = fillPlan.hostLayerColor
         if let layer {
             CATransaction.begin()
             CATransaction.setDisableActions(true)
@@ -6603,21 +6622,18 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
             layer.isOpaque = false
             CATransaction.commit()
         }
-        terminalSurface?.hostedView.setBackgroundColor(color)
+        terminalSurface?.hostedView.setBackgroundColor(
+            color,
+            clearsSharedWindowBackdrop: fillPlan.clearsSharedWindowBackdrop
+        )
         if GhosttyApp.shared.backgroundLogEnabled {
-            let signature = "\(usesHostLayerFill ? color.hexString() : "transparent-host"):\(String(format: "%.3f", color.alphaComponent)):\(sharesWindowBackdrop ? "shared" : (usesBonsplitPaneBackdrop ? "bonsplit-pane" : "terminal"))"
+            let signature = "\(fillPlan.usesHostLayerFill ? color.hexString() : "transparent-host"):\(String(format: "%.3f", color.alphaComponent)):\(fillPlan.logBackdropLabel)"
             if signature != lastLoggedSurfaceBackgroundSignature {
                 lastLoggedSurfaceBackgroundSignature = signature
                 let hasOverride = backgroundColor != nil
                 let overrideHex = backgroundColor?.hexString() ?? "nil"
                 let defaultHex = GhosttyApp.shared.defaultBackgroundColor.hexString()
-                let source = usesHostLayerFill
-                    ? (hasOverride ? "surfaceOverride" : "defaultBackground")
-                    : (
-                        sharesWindowBackdrop
-                            ? "sharedWindowBackdrop"
-                            : (usesBonsplitPaneBackdrop ? "bonsplitPaneBackdrop" : "ghosttyNativeBackground")
-                    )
+                let source = fillPlan.logSource(hasSurfaceOverride: hasOverride)
                 GhosttyApp.shared.logBackground(
                     "surface background applied tab=\(tabId?.uuidString ?? "unknown") surface=\(terminalSurface?.id.uuidString ?? "unknown") source=\(source) override=\(overrideHex) default=\(defaultHex) sharedWindowBackdrop=\(sharesWindowBackdrop ? 1 : 0) bonsplitPaneBackdrop=\(usesBonsplitPaneBackdrop ? 1 : 0) color=\(color.hexString()) opacity=\(String(format: "%.3f", color.alphaComponent))"
                 )
@@ -6660,10 +6676,10 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
             return
         }
         applySurfaceBackground()
-        let color = effectiveBackgroundColor()
-        let snapshot = WindowAppearanceSnapshot
-            .currentFromUserDefaults(app: GhosttyApp.shared)
-            .replacingTerminalBackgroundColor(backgroundColor ?? GhosttyApp.shared.defaultBackgroundColor)
+        // OSC 11 is pane-local state. The shared root remains the default
+        // workspace backdrop; surface-owned fills cut out that root locally.
+        let snapshot = WindowAppearanceSnapshot.currentFromUserDefaults(app: GhosttyApp.shared)
+        let color = snapshot.compositedTerminalBackgroundColor
         let plan = snapshot.backdropPlan()
         _ = WindowBackdropController.apply(plan: plan, to: window)
         if GhosttyApp.shared.backgroundLogEnabled {
@@ -6673,7 +6689,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                 let hasOverride = backgroundColor != nil
                 let overrideHex = backgroundColor?.hexString() ?? "nil"
                 let defaultHex = GhosttyApp.shared.defaultBackgroundColor.hexString()
-                let source = hasOverride ? "surfaceOverride" : "defaultBackground"
+                let source = hasOverride ? "defaultBackground(surfaceOverrideLocal)" : "defaultBackground"
                 GhosttyApp.shared.logBackground(
                     "window background applied tab=\(tabId?.uuidString ?? "unknown") surface=\(terminalSurface?.id.uuidString ?? "unknown") source=\(source) override=\(overrideHex) default=\(defaultHex) phase=\(plan.hostingPhase.rawValue) transparent=\(plan.usesTransparentWindow) color=\(color.hexString()) opacity=\(String(format: "%.3f", color.alphaComponent)) blur=\(GhosttyApp.shared.defaultBackgroundBlur)"
                 )
@@ -10047,6 +10063,7 @@ final class GhosttySurfaceScrollView: NSView {
         static let lineWidth = PanelOverlayRingMetrics.lineWidth
     }
 
+    private var sharedBackdropCutoutView: NSView?
     private let backgroundView: NSView
     private let scrollView: GhosttyScrollView
     private let documentView: NSView
@@ -10748,6 +10765,9 @@ final class GhosttySurfaceScrollView: NSView {
 
         let didScrollbarAppearanceChange = synchronizeScrollbarAppearance()
         let previousSurfaceSize = surfaceView.frame.size
+        if let sharedBackdropCutoutView {
+            _ = setFrameIfNeeded(sharedBackdropCutoutView, to: bounds)
+        }
         _ = setFrameIfNeeded(backgroundView, to: bounds)
         _ = setFrameIfNeeded(scrollView, to: bounds)
         let targetSize = scrollView.bounds.size
@@ -11007,13 +11027,41 @@ final class GhosttySurfaceScrollView: NSView {
         surfaceView.onTriggerFlash = handler
     }
 
-    func setBackgroundColor(_ color: NSColor) {
+    func setBackgroundColor(_ color: NSColor, clearsSharedWindowBackdrop: Bool) {
         guard let layer = backgroundView.layer else { return }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
+        synchronizeSharedBackdropCutout(visible: clearsSharedWindowBackdrop)
         layer.backgroundColor = color.cgColor
         layer.isOpaque = color.alphaComponent >= 1.0
         CATransaction.commit()
+    }
+
+    private func synchronizeSharedBackdropCutout(visible: Bool) {
+        if visible {
+            let cutoutView = sharedBackdropCutoutView ?? makeSharedBackdropCutoutView()
+            _ = setFrameIfNeeded(cutoutView, to: bounds)
+            return
+        }
+
+        sharedBackdropCutoutView?.removeFromSuperview()
+        sharedBackdropCutoutView = nil
+    }
+
+    // AppKit requires layerUsesCoreImageFilters to be configured before display.
+    // Create the filtered view only while a pane-local cutout is needed.
+    private func makeSharedBackdropCutoutView() -> NSView {
+        let sharedBackdropCutoutFilter = TerminalSharedBackdropCutoutFilter()
+        sharedBackdropCutoutFilter.name = "terminalSharedBackdropCutout"
+        let cutoutView = NSView(frame: bounds)
+        cutoutView.wantsLayer = true
+        cutoutView.layerUsesCoreImageFilters = true
+        cutoutView.compositingFilter = sharedBackdropCutoutFilter
+        cutoutView.layer?.backgroundColor = NSColor.white.cgColor
+        cutoutView.layer?.isOpaque = true
+        addSubview(cutoutView, positioned: .below, relativeTo: backgroundView)
+        sharedBackdropCutoutView = cutoutView
+        return cutoutView
     }
 
     func setInactiveOverlay(color: NSColor, opacity: CGFloat, visible: Bool) {
