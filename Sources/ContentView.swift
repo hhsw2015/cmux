@@ -14508,6 +14508,9 @@ enum SidebarTabDragPayload {
     static let dropContentType = UTType(exportedAs: typeIdentifier)
     static let dropContentTypes: [UTType] = [dropContentType]
     private static let prefix = "cmux.sidebar-tab."
+    private static let currentProcessId = Int32(ProcessInfo.processInfo.processIdentifier)
+    private static let processMarkerTypePrefix = "\(typeIdentifier).source-process."
+    static let currentProcessMarkerType = NSPasteboard.PasteboardType("\(processMarkerTypePrefix)\(currentProcessId)")
 
     static func provider(for tabId: UUID) -> NSItemProvider {
         let provider = NSItemProvider()
@@ -14516,7 +14519,20 @@ enum SidebarTabDragPayload {
             completion(payload.data(using: .utf8), nil)
             return nil
         }
+        provider.registerDataRepresentation(
+            forTypeIdentifier: currentProcessMarkerType.rawValue,
+            visibility: .ownProcess
+        ) { completion in
+            completion(Data(), nil)
+            return nil
+        }
         return provider
+    }
+
+    static func hasTransferType(in pasteboard: NSPasteboard) -> Bool {
+        guard let types = pasteboard.types else { return false }
+        return types.contains(NSPasteboard.PasteboardType(typeIdentifier)) &&
+            types.contains(currentProcessMarkerType)
     }
 }
 
@@ -14525,6 +14541,18 @@ enum BonsplitTabDragPayload {
     static let dropContentType = UTType(exportedAs: typeIdentifier)
     static let dropContentTypes: [UTType] = [dropContentType]
     private static let currentProcessId = Int32(ProcessInfo.processInfo.processIdentifier)
+    private static let processMarkerTypePrefix = "\(typeIdentifier).source-process."
+    static let currentProcessMarkerType = NSPasteboard.PasteboardType("\(processMarkerTypePrefix)\(currentProcessId)")
+
+    static func registerCurrentProcessMarker(on provider: NSItemProvider) {
+        provider.registerDataRepresentation(
+            forTypeIdentifier: currentProcessMarkerType.rawValue,
+            visibility: .ownProcess
+        ) { completion in
+            completion(Data(), nil)
+            return nil
+        }
+    }
 
     struct Transfer: Decodable {
         struct TabInfo: Decodable {
@@ -14557,6 +14585,19 @@ enum BonsplitTabDragPayload {
 
     static func currentTransfer() -> Transfer? {
         transfer(from: NSPasteboard(name: .drag))
+    }
+
+    static func currentDragPasteboardHasTransferType() -> Bool {
+        hasTransferType(in: NSPasteboard(name: .drag))
+    }
+
+    static func hasTransferType(in pasteboard: NSPasteboard) -> Bool {
+        guard let types = pasteboard.types else { return false }
+        guard !DragOverlayRoutingPolicy.hasFilePreviewTransfer(types) else {
+            return false
+        }
+        return types.contains(NSPasteboard.PasteboardType(typeIdentifier)) &&
+            types.contains(currentProcessMarkerType)
     }
 
     static func transfer(from pasteboard: NSPasteboard) -> Transfer? {
