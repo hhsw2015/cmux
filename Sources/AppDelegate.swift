@@ -1001,6 +1001,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let isRunningUnderXCTest = isRunningUnderXCTest(env)
         let telemetryEnabled = TelemetrySettings.enabledForCurrentLaunch
         AppIconLaunchState.markDidFinishLaunching()
+        // Reconcile zmx bindings against the live daemon: any session that
+        // disappeared while cmux was off (manual `zmx kill`, host reboot, …)
+        // gets flipped to `.lost` so panel restore won't try to attach.
+        // Fire-and-forget; never blocks launch.
+        if !isRunningUnderXCTest {
+            Task.detached(priority: .utility) {
+                _ = await ZmxCommandHooks.reconcile()
+            }
+        }
         if isRunningUnderXCTest {
             NSApp.setActivationPolicy(.regular)
         } else {
