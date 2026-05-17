@@ -31,15 +31,35 @@ enum PanelKeepAliveDispatcher {
         }
 #if DEBUG
         SessionPersistenceLog.event(
-            "panel.keepAlive.detach.requested",
+            "panel.keepAlive.detach",
             "panel=\(terminalPanel.id.uuidString.prefix(8)) session=\(session)"
         )
 #endif
-        // Phase 2.2 wires the chokepoint and the dispatcher contract; the
-        // actual detach (backend call + move into BackgroundSessionStore +
-        // skip panels.removeValue) lands in Phase 2.3 once the full UX is
-        // ready. Returning false here keeps current behavior (close +
-        // remove) so this phase ships zero behavior change.
+        // Move the session metadata into BackgroundSessionStore so the
+        // sidebar (Phase 3) and the project save path (Phase 4) can find
+        // it after the panel UI is gone.
+        BackgroundSessionStore.shared.add(.init(
+            id: terminalPanel.id,
+            workspaceId: terminalPanel.workspaceId,
+            sessionName: session,
+            cmd: "",
+            dir: terminalPanel.surface.requestedWorkingDirectory ?? "",
+            detachedAt: .init()
+        ))
+        // Detach the daemon-side client asynchronously; the daemon keeps
+        // the PTY alive until the session is killed explicitly. We don't
+        // wait — the chokepoint must stay synchronous.
+        Task.detached(priority: .utility) {
+            guard let backend = SessionDaemonResolver.shared.activeDeepBackend() else {
+                return
+            }
+            try? await backend.detachSession(session)
+        }
+        // We *return false* even though the panel is "kept alive" because
+        // the cmux UI still needs to remove the panel from the workspace
+        // (the user closed it). The session lives in BackgroundSessionStore
+        // until Phase 3 surfaces a "Reattach" UI. Phase 4 will cover the
+        // skip-panels.removeValue case for in-place reattach scenarios.
         return false
     }
 }

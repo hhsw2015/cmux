@@ -66,6 +66,7 @@
 		D3610B010000000000000001 /* AgentSessionAutoResumeSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3610B010000000000000002 /* AgentSessionAutoResumeSettingsTests.swift */; };
 		C420Z000C420Z000C42FT102 /* SessionPersistenceFeatureFlagsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42FT101 /* SessionPersistenceFeatureFlagsTests.swift */; };
 		C420Z000C420Z000C42CT102 /* ClosePanelReasonTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42CT101 /* ClosePanelReasonTests.swift */; };
+		C420Z000C420Z000C42BT102 /* BackgroundSessionStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42BT101 /* BackgroundSessionStoreTests.swift */; };
 		C0DEF0A40000000000000001 /* CmuxConfigContextMenuTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DEF0A40000000000000002 /* CmuxConfigContextMenuTests.swift */; };
 		D0B10000A1B2C3D4E5F60001 /* TerminalPaneDropTargetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0B10001A1B2C3D4E5F60001 /* TerminalPaneDropTargetView.swift */; };
 		D0B10002A1B2C3D4E5F60001 /* BonsplitTabBarPassThrough.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0B10003A1B2C3D4E5F60001 /* BonsplitTabBarPassThrough.swift */; };
@@ -310,6 +311,7 @@
 		C420Z000C420Z000C42DL102 /* SessionPersistenceDebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42DL101 /* SessionPersistenceDebugLog.swift */; };
 		C420Z000C420Z000C42CR102 /* ClosePanelReason.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42CR101 /* ClosePanelReason.swift */; };
 		C420Z000C420Z000C42KD102 /* PanelKeepAliveDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42KD101 /* PanelKeepAliveDispatcher.swift */; };
+		C420Z000C420Z000C42BS102 /* BackgroundSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42BS101 /* BackgroundSessionStore.swift */; };
 		C7A501000000000000000002 /* CmuxTopSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A501000000000000000001 /* CmuxTopSnapshot.swift */; };
 		B35750000000000000000004 /* CmuxTopProcessArguments.swift in Sources */ = {isa = PBXBuildFile; fileRef = B35750000000000000000003 /* CmuxTopProcessArguments.swift */; };
 		C7A508000000000000000002 /* CmuxTopSnapshotScopeCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A508000000000000000001 /* CmuxTopSnapshotScopeCache.swift */; };
@@ -624,6 +626,7 @@
 		D3610B010000000000000002 /* AgentSessionAutoResumeSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSessionAutoResumeSettingsTests.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42FT101 /* SessionPersistenceFeatureFlagsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPersistenceFeatureFlagsTests.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42CT101 /* ClosePanelReasonTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClosePanelReasonTests.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42BT101 /* BackgroundSessionStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundSessionStoreTests.swift; sourceTree = "<group>"; };
 		7E7E6EF344A568AC7FEE3715 /* cmuxUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = cmuxUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		818DBCD4AB69EB72573E8138 /* SidebarResizeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarResizeUITests.swift; sourceTree = "<group>"; };
 		970226F3C99D0D937CD00539 /* BrowserConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserConfigTests.swift; sourceTree = "<group>"; };
@@ -865,6 +868,7 @@
 		C420Z000C420Z000C42DL101 /* SessionPersistenceDebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPersistenceDebugLog.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42CR101 /* ClosePanelReason.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClosePanelReason.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42KD101 /* PanelKeepAliveDispatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelKeepAliveDispatcher.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42BS101 /* BackgroundSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundSessionStore.swift; sourceTree = "<group>"; };
 		A5001544 /* TerminalImageTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalImageTransfer.swift; sourceTree = "<group>"; };
 		A5001545 /* TerminalSSHSessionDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSSHSessionDetector.swift; sourceTree = "<group>"; };
 		A5001600 /* SentryHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentryHelper.swift; sourceTree = "<group>"; };
@@ -1333,6 +1337,7 @@
 				C420Z000C420Z000C42DL101 /* SessionPersistenceDebugLog.swift */,
 				C420Z000C420Z000C42CR101 /* ClosePanelReason.swift */,
 				C420Z000C420Z000C42KD101 /* PanelKeepAliveDispatcher.swift */,
+				C420Z000C420Z000C42BS101 /* BackgroundSessionStore.swift */,
 				A5001544 /* TerminalImageTransfer.swift */,
 				A5001545 /* TerminalSSHSessionDetector.swift */,
 				A5001225 /* SocketControlSettings.swift */,
@@ -1516,6 +1521,7 @@
 					D3610B010000000000000002 /* AgentSessionAutoResumeSettingsTests.swift */,
 				C420Z000C420Z000C42FT101 /* SessionPersistenceFeatureFlagsTests.swift */,
 				C420Z000C420Z000C42CT101 /* ClosePanelReasonTests.swift */,
+				C420Z000C420Z000C42BT101 /* BackgroundSessionStoreTests.swift */,
 					F5410001A1B2C3D4E5F60718 /* RestorableAgentHookProviderResumeTests.swift */,
 					F5410005A1B2C3D4E5F60718 /* RestorableAgentHookProviderHermesTests.swift */,
 					F5410003A1B2C3D4E5F60718 /* RestorableAgentNonInteractiveTests.swift */,
@@ -2069,6 +2075,7 @@
 				C420Z000C420Z000C42DL102 /* SessionPersistenceDebugLog.swift in Sources */,
 				C420Z000C420Z000C42CR102 /* ClosePanelReason.swift in Sources */,
 				C420Z000C420Z000C42KD102 /* PanelKeepAliveDispatcher.swift in Sources */,
+				C420Z000C420Z000C42BS102 /* BackgroundSessionStore.swift in Sources */,
 				A5001542 /* TerminalImageTransfer.swift in Sources */,
 				A5001543 /* TerminalSSHSessionDetector.swift in Sources */,
 				A5001226 /* SocketControlSettings.swift in Sources */,
@@ -2293,6 +2300,7 @@
 					D3610B010000000000000001 /* AgentSessionAutoResumeSettingsTests.swift in Sources */,
 				C420Z000C420Z000C42FT102 /* SessionPersistenceFeatureFlagsTests.swift in Sources */,
 				C420Z000C420Z000C42CT102 /* ClosePanelReasonTests.swift in Sources */,
+				C420Z000C420Z000C42BT102 /* BackgroundSessionStoreTests.swift in Sources */,
 					F5410000A1B2C3D4E5F60718 /* RestorableAgentHookProviderResumeTests.swift in Sources */,
 					F5410004A1B2C3D4E5F60718 /* RestorableAgentHookProviderHermesTests.swift in Sources */,
 					F5410002A1B2C3D4E5F60718 /* RestorableAgentNonInteractiveTests.swift in Sources */,

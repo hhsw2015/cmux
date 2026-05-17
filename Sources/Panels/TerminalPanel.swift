@@ -89,6 +89,12 @@ final class TerminalPanel: Panel, ObservableObject {
         self.id = surface.id
         self.workspaceId = workspaceId
         self.surface = surface
+        // Apply user's "Keep new panels alive" default. Off by default so
+        // existing behavior is unchanged.
+        if SessionPersistenceFeatureFlags.effective(.keepAlive),
+           UserDefaults.standard.bool(forKey: "zmx.integration.defaultKeepAlive") {
+            self.keepAlive = true
+        }
         self.zmxPanelBox = ZmxPanelRegistry.PanelBox(
             workspaceId: workspaceId,
             surface: surface.surface,

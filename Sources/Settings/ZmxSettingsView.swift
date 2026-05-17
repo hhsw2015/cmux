@@ -7,6 +7,7 @@ import SwiftUI
 /// this file just owns the view so the eventual hookup is a one-liner.
 struct ZmxSettingsView: View {
     @AppStorage(ZmxSettings.enabledKey) private var integrationEnabled = ZmxSettings.defaultEnabled
+    @AppStorage(ZmxSettings.defaultKeepAliveKey) private var defaultKeepAlive = ZmxSettings.defaultKeepAliveDefault
 
     @State private var detection: Detection = .unknown
     @State private var reconcileMessage: String?
@@ -34,6 +35,27 @@ struct ZmxSettingsView: View {
                     .accessibilityLabel(
                         String(localized: "settings.zmx.enable", defaultValue: "Track zmx attach sessions")
                     )
+            }
+
+            SettingsCardDivider()
+
+            SettingsCardRow(
+                configurationReview: .settingsOnly,
+                String(
+                    localized: "settings.zmx.defaultKeepAlive",
+                    defaultValue: "Keep new terminals alive by default"
+                ),
+                subtitle: String(
+                    localized: "settings.zmx.defaultKeepAlive.subtitle",
+                    defaultValue: "Newly-created panels start with keep-alive on. Individual panels can override from their context menu."
+                ),
+                searchAnchorID: "zmx.defaultKeepAlive"
+            ) {
+                Toggle("", isOn: $defaultKeepAlive)
+                    .labelsHidden()
+                    .controlSize(.small)
+                    .accessibilityIdentifier("SettingsZmxDefaultKeepAliveToggle")
+                    .disabled(!integrationEnabled)
             }
 
             SettingsCardDivider()
@@ -153,4 +175,10 @@ struct ZmxSettingsView: View {
 enum ZmxSettings {
     static let enabledKey = "zmx.integration.enabled"
     static let defaultEnabled = true
+
+    /// When true, every newly-created terminal panel gets keepAlive=on
+    /// by default. Off by default — users opt panels in individually
+    /// via the right-click menu.
+    static let defaultKeepAliveKey = "zmx.integration.defaultKeepAlive"
+    static let defaultKeepAliveDefault = false
 }
