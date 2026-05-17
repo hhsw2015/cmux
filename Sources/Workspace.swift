@@ -949,6 +949,13 @@ extension Workspace {
             } else {
                 restoredTerminalScrollbackByPanelId.removeValue(forKey: terminalPanel.id)
             }
+            // Seed the zmx badge + cache immediately on restore so the panel
+            // shows '⚡ session-name' the moment the surface appears, instead
+            // of waiting up to 30 s for the next binder sweep.
+            if let zmx = snapshot.terminal?.zmx {
+                terminalPanel.updateZmxSessionName(zmx.zmxSessionName)
+                ZmxPanelBindingCache.record(zmx, panelId: terminalPanel.id)
+            }
             if let restorableAgent {
                 restoredAgentSnapshotsByPanelId[terminalPanel.id] = restorableAgent
                 if restoredAgentResumeInput != nil {
