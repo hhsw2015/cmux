@@ -98,26 +98,28 @@ not a destructive sweep.
 
 ## Auto-restore on launch (work in progress)
 
-`ZmxCommandHooks.resumeCommand(forPanelId:)` returns a cd-guarded
-`zmx attach <name>` shell command when the planner says the panel
-should auto-attach. cmux's panel-restore path can feed this into a
-terminal's `initialCommand` to reattach without user input.
+`ZmxCommandHooks.resumeShellInput(forPanelId:)` returns the shell
+input that reattaches a panel — fed to Ghostty's `initialInput`, not
+`initialCommand`, because the latter is the shell binary itself.
 
 The hook is currently **not wired** into Workspace's session-restore
-flow because cmux's saved-state schema regenerates `surface.id` (the
-panelId we key bindings on) on every launch. To enable real
-auto-restore the binding lookup needs a stable per-panel identity that
-survives the workspace UUID regeneration:
+flow. cmux's `SessionPanelSnapshot` serializes a per-panel UUID, but
+the runtime regenerates that UUID on every launch, so a binding looked
+up by `panelId` can't survive a full app restart. The right fix
+mirrors how `RestorableAgentSession` handles Claude/Codex resume:
 
-* Option A — store the binding by `(workspaceRef, panelOrdinalInPane)`
-  rather than by surface UUID.
-* Option B — extend the saved panel state to carry a stable ID
-  (already partially done by `RestorableAgentSessionIndex` for agent
-  sessions; the same ID could key zmx bindings).
+* Add `SessionPanelSnapshot.terminal?.zmx: SessionZmxBindingSnapshot?`.
+* Persist the binding's `zmxSessionName` + `originalArgv` + `cwd`
+  alongside the panel when cmux writes its session JSON.
+* On restore, the same path that already injects
+  `restorableAgent.resumeCommand` into `initialInput` checks for a
+  `zmx` snapshot first (or chains both — `zmx attach foo` is itself a
+  shell parent for the agent CLI).
 
-Until that lands, the integration writes bindings (so cmux remembers
-which session each panel was hosting) and supports manual reattach via
-the cmd palette, but doesn't auto-attach on the next launch.
+Until that lands, the integration writes bindings within a single cmux
+launch (so the badge / palette / reconcile keep working), but a full
+quit-and-relaunch loses the auto-attach affordance and the user has
+to invoke "Reattach…" manually.
 
 ## Race protection
 
@@ -146,7 +148,7 @@ the cmd palette, but doesn't auto-attach on the next launch.
 
 ## Tests
 
-`swift test --package-path Packages/CMUXZmx` runs 36 unit tests:
+`swift test --package-path Packages/CMUXZmx` runs 39 unit tests:
 
 * `ZmxArgvParserTests` — alias coverage for every zmx subcommand
 * `ZmxLocatorTests` — PATH lookup, candidate paths, executable check
