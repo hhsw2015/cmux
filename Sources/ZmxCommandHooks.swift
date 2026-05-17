@@ -65,10 +65,18 @@ enum ZmxCommandHooks {
 
     // MARK: - Off-main subprocess wrappers
 
+    /// Returns nil when zmx ls failed for a reason other than "0 sessions"
+    /// (subprocess crash, timeout, daemon socket missing). Returns an empty
+    /// Set when zmx ls succeeded but no sessions exist — this is the only
+    /// case where reconcile should mark every binding as lost.
     private static func runListAlive(binary: URL) async -> Set<String>? {
         await Task.detached(priority: .utility) {
             let client = ZmxClient(binaryPath: binary)
-            return try? client.listAlive()
+            do {
+                return try client.listAlive()
+            } catch {
+                return nil
+            }
         }.value
     }
 
