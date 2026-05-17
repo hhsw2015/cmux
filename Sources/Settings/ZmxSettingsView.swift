@@ -75,7 +75,7 @@ struct ZmxSettingsView: View {
                 }
             }
         }
-        .task { detection = await Detection.detect() }
+        .task(id: integrationEnabled) { detection = await Detection.detect() }
     }
 
     private var enableSubtitle: String {
