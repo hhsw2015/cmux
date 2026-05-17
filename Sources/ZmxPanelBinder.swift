@@ -48,7 +48,8 @@ final class ZmxPanelRegistry {
                 panelId: panelId,
                 surface: box.surface,
                 surfaceLive: box.surfaceLive,
-                workingDirectory: box.workingDirectory
+                workingDirectory: box.workingDirectory,
+                publishSessionName: box.publishSessionName
             ))
         }
         for id in dead {
@@ -64,12 +65,22 @@ final class ZmxPanelRegistry {
         var surface: ghostty_surface_t?
         var surfaceLive: Bool
         var workingDirectory: String?
+        /// Push session name updates back to the panel (badges, titles…).
+        /// Called on the main actor after each binder reconcile.
+        var publishSessionName: (String?) -> Void
 
-        init(workspaceId: UUID, surface: ghostty_surface_t?, surfaceLive: Bool, workingDirectory: String?) {
+        init(
+            workspaceId: UUID,
+            surface: ghostty_surface_t?,
+            surfaceLive: Bool,
+            workingDirectory: String?,
+            publishSessionName: @escaping (String?) -> Void = { _ in }
+        ) {
             self.workspaceId = workspaceId
             self.surface = surface
             self.surfaceLive = surfaceLive
             self.workingDirectory = workingDirectory
+            self.publishSessionName = publishSessionName
         }
     }
 }
@@ -102,6 +113,7 @@ enum ZmxPanelBinder {
             if existing != nil {
                 await ZmxBindingIndex.shared.update(panelId: panel.panelId, state: .detached)
             }
+            panel.publishSessionName(nil)
             return
         }
         let rawPid = ghostty_surface_foreground_pid(surface)
@@ -109,6 +121,7 @@ enum ZmxPanelBinder {
             if existing != nil {
                 await ZmxBindingIndex.shared.update(panelId: panel.panelId, state: .detached)
             }
+            panel.publishSessionName(nil)
             return
         }
         let foregroundPid = pid_t(rawPid)
@@ -120,6 +133,7 @@ enum ZmxPanelBinder {
             if existing != nil {
                 await ZmxBindingIndex.shared.update(panelId: panel.panelId, state: .detached)
             }
+            panel.publishSessionName(nil)
             return
         }
         // Preserve the original attachedAt across re-attaches so the model
@@ -141,17 +155,19 @@ enum ZmxPanelBinder {
             lastSeenAt: .init()
         )
         await ZmxBindingIndex.shared.upsert(binding)
+        panel.publishSessionName(parsed.sessionName)
     }
 
     /// Plain-data view of what `ZmxPanelBinder` needs from cmux: a panel id,
-    /// its workspace id, the Ghostty surface handle, a liveness flag, and an
-    /// optional cwd. Decoupled from `TerminalPanel` so the binder is testable
-    /// without Ghostty in scope.
+    /// its workspace id, the Ghostty surface handle, a liveness flag, an
+    /// optional cwd, and a `publishSessionName` callback so the binder can
+    /// surface state changes back into the panel (badges, titles…).
     struct PanelSnapshot {
         let workspaceId: UUID
         let panelId: UUID
         let surface: ghostty_surface_t?
         let surfaceLive: Bool
         let workingDirectory: String?
+        let publishSessionName: (String?) -> Void
     }
 }

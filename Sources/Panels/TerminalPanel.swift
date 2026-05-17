@@ -23,6 +23,11 @@ final class TerminalPanel: Panel, ObservableObject {
     @Published private(set) var directory: String = ""
 
     @Published private(set) var tmuxLayoutReport: TmuxPaneLayoutReport?
+    /// Latest known zmx session name this panel is attached to. Nil when
+    /// the panel's foreground process is not a tracked `zmx attach`.
+    /// Updated by `ZmxPanelBinder` during periodic sweeps; SwiftUI views can
+    /// observe it to render a "⚡ session-name" badge.
+    @Published private(set) var zmxSessionName: String?
 
     /// Search state for find functionality
     @Published var searchState: TerminalSurface.SearchState? {
@@ -84,6 +89,11 @@ final class TerminalPanel: Panel, ObservableObject {
             surfaceLive: surface.hasLiveSurface,
             workingDirectory: surface.requestedWorkingDirectory
         )
+        // After self is fully initialized, install a publisher closure that
+        // forwards session-name changes from the binder back to this panel.
+        zmxPanelBox.publishSessionName = { [weak self] name in
+            self?.updateZmxSessionName(name)
+        }
         ZmxPanelRegistry.shared.register(
             workspaceId: workspaceId,
             panelId: surface.id,
@@ -147,6 +157,12 @@ final class TerminalPanel: Panel, ObservableObject {
         let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty && title != trimmed {
             title = trimmed
+        }
+    }
+
+    func updateZmxSessionName(_ newValue: String?) {
+        if zmxSessionName != newValue {
+            zmxSessionName = newValue
         }
     }
 
