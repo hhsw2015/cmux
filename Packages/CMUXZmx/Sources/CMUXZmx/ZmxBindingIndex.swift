@@ -92,6 +92,19 @@ public actor ZmxBindingIndex {
         if removed { persist() }
     }
 
+    /// Remove every binding pointing at the given session name. Returns the
+    /// count of removed bindings so callers can decide whether to surface UI.
+    @discardableResult
+    public func purge(sessionName: String) -> Int {
+        ensureLoaded()
+        let toRemove = cache.filter { $0.value.zmxSessionName == sessionName }.map(\.key)
+        for id in toRemove {
+            cache.removeValue(forKey: id)
+        }
+        if !toRemove.isEmpty { persist() }
+        return toRemove.count
+    }
+
     private func ensureLoaded() {
         guard !loaded else { return }
         loaded = true

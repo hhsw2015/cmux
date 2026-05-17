@@ -66,6 +66,31 @@ final class ZmxBindingIndexTests: XCTestCase {
         XCTAssertEqual(found?.attachState, .attached)
     }
 
+    func testPurgeBySessionNameRemovesEveryMatch() async {
+        let index = ZmxBindingIndex(storeURL: storeURL)
+        let workspaceA = UUID()
+        let workspaceB = UUID()
+        // Two panels in different workspaces both attached to "shared"
+        await index.upsert(makeBinding(workspaceId: workspaceA, name: "shared"))
+        await index.upsert(makeBinding(workspaceId: workspaceB, name: "shared"))
+        // Plus an unrelated binding
+        let other = makeBinding(name: "other")
+        await index.upsert(other)
+
+        let removed = await index.purge(sessionName: "shared")
+        XCTAssertEqual(removed, 2)
+        let remaining = await index.all()
+        XCTAssertEqual(remaining.count, 1)
+        XCTAssertEqual(remaining.first?.zmxSessionName, "other")
+    }
+
+    func testPurgeBySessionNameNoMatchReturnsZero() async {
+        let index = ZmxBindingIndex(storeURL: storeURL)
+        await index.upsert(makeBinding(name: "alpha"))
+        let removed = await index.purge(sessionName: "missing")
+        XCTAssertEqual(removed, 0)
+    }
+
     func testCorruptFileBackedUpAndCleared() async {
         try? "{ this is not json".write(to: storeURL, atomically: true, encoding: .utf8)
         let index = ZmxBindingIndex(storeURL: storeURL)
