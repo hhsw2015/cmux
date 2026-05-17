@@ -40,6 +40,41 @@ struct TerminalPanelView: View {
         // This prevents transient teardown/recreate that can momentarily detach the hosted terminal view.
         .id(panel.id)
         .background(Color.clear)
+        .overlay(alignment: .topTrailing) {
+            if let session = panel.zmxSessionName, !session.isEmpty {
+                ZmxPanelBadge(sessionName: session)
+                    .padding(.top, 4)
+                    .padding(.trailing, 6)
+                    .allowsHitTesting(false)
+            }
+        }
+    }
+}
+
+/// Lightweight ⚡ pill rendered in a terminal panel's top-right corner when
+/// the panel's foreground process is a tracked `zmx attach`. Read-only —
+/// reattach / kill flows live in the command palette.
+struct ZmxPanelBadge: View {
+    let sessionName: String
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "bolt.horizontal.circle.fill")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.yellow)
+            Text(sessionName)
+                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .foregroundStyle(.primary)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(.thinMaterial, in: Capsule())
+        .accessibilityLabel(
+            String(
+                localized: "panel.zmx.badge",
+                defaultValue: "Persistent zmx session: \(sessionName)"
+            )
+        )
     }
 }
 
