@@ -161,7 +161,8 @@ extension Workspace {
         publishSurfaceClosedEvent: Bool,
         clearSurfaceNotifications: Bool,
         requestTransferredRemoteCleanup: Bool,
-        cleanupControllerSurfaceState: Bool = false
+        cleanupControllerSurfaceState: Bool = false,
+        closeReason: ClosePanelReason = .automated
     ) -> WorkspaceRemoteConfiguration? {
         if publishSurfaceClosedEvent {
             publishCmuxSurfaceClosed(panelId, paneId: paneId, panel: panel, origin: origin)
@@ -176,7 +177,17 @@ extension Workspace {
             TerminalController.shared.cleanupSurfaceState(surfaceIds: [panelId, tabId?.uuid].compactMap { $0 })
         }
         if closePanel {
-            panel?.close()
+            // Phase 2.2: keep-alive panels detach instead of closing when
+            // the close came from a non-terminating user action. The
+            // detachKeepAlivePanelIfApplicable returns true if it took
+            // ownership (the panel object stays alive, no close). False
+            // means we proceed with the regular close.
+            if !PanelKeepAliveDispatcher.detachIfKeepAlive(
+                panel: panel,
+                reason: closeReason
+            ) {
+                panel?.close()
+            }
         }
 
         panels.removeValue(forKey: panelId)

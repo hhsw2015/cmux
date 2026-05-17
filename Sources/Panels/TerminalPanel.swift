@@ -29,6 +29,12 @@ final class TerminalPanel: Panel, ObservableObject {
     /// observe it to render a "⚡ session-name" badge.
     @Published private(set) var zmxSessionName: String?
 
+    /// User-visible "Keep Alive" toggle. Phase 2.3 surfaces it in the
+    /// right-click menu + Settings default. When on, closing this panel
+    /// detaches the underlying session daemon process instead of killing
+    /// it, so reopening cmux reattaches without losing scrollback.
+    @Published var keepAlive: Bool = false
+
     /// Search state for find functionality
     @Published var searchState: TerminalSurface.SearchState? {
         didSet {
