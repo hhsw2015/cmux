@@ -80,21 +80,28 @@ enum ZmxCommandHooks {
         return ZmxLocator.isExecutable(binary)
     }
 
-    /// Look up the resume command for a panel that was previously bound to a
-    /// zmx attach. Returns the shell command (cd-guarded) when the planner
-    /// says the session is alive and was last in `.attached` state. Returns
-    /// nil when no auto-attach is appropriate; callers should fall through to
-    /// the panel's normal restore path (or surface a "reattach" affordance).
-    static func resumeCommand(forPanelId panelId: UUID) async -> String? {
+    /// Look up the shell input that reattaches a panel to its previous zmx
+    /// session. Result is meant to be fed to the panel's `initialInput`
+    /// (typed into the freshly-spawned shell), not its `initialCommand`
+    /// (which is the shell binary itself). Returns nil when the planner
+    /// says no auto-attach is appropriate; callers should fall through to
+    /// the panel's normal restore path or surface a "reattach" affordance.
+    static func resumeShellInput(forPanelId panelId: UUID) async -> String? {
         guard let binding = await ZmxBindingIndex.shared.lookup(panelId: panelId) else {
             return nil
         }
         guard let binary = ZmxLocator.resolveBinary() else { return nil }
-        let alive = await Self.runListAlive(binary: binary)
+        // Subprocess failure (timeout, daemon socket missing) is *not* the
+        // same signal as "the daemon answered with zero sessions", so don't
+        // pass it through to the planner — that would treat every binding
+        // as lost. Bail out instead and let the next sweep retry.
+        guard let alive = await Self.runListAlive(binary: binary) else {
+            return nil
+        }
         let env = ZmxRestorePlanner.Environment(
             zmxBinaryAvailable: true,
             zmxBinaryExecutable: ZmxLocator.isExecutable(binary),
-            aliveSessions: alive ?? []
+            aliveSessions: alive
         )
         let action = ZmxRestorePlanner.plan(binding: binding, environment: env)
         switch action {

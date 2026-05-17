@@ -80,7 +80,7 @@ final class TerminalPanel: Panel, ObservableObject {
         self.surface = surface
         self.zmxPanelBox = ZmxPanelRegistry.PanelBox(
             workspaceId: workspaceId,
-            surface: surface.runtimeSurface,
+            surface: surface.surface,
             surfaceLive: surface.hasLiveSurface,
             workingDirectory: surface.requestedWorkingDirectory
         )
@@ -98,7 +98,7 @@ final class TerminalPanel: Panel, ObservableObject {
             queue: .main
         ) { [weak self] _ in
             guard let self else { return }
-            self.zmxPanelBox.surface = self.surface.runtimeSurface
+            self.zmxPanelBox.surface = self.surface.surface
             self.zmxPanelBox.surfaceLive = self.surface.hasLiveSurface
             self.zmxPanelBox.workingDirectory = self.surface.requestedWorkingDirectory
         }
