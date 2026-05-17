@@ -1,3 +1,4 @@
+import CMUXZmx
 import Foundation
 
 /// Bridges the panel-close chokepoint to the session-persistence

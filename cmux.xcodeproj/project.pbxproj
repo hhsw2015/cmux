@@ -315,6 +315,7 @@
 		C420Z000C420Z000C42SB102 /* BackgroundSessionsSidebarSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42SB101 /* BackgroundSessionsSidebarSection.swift */; };
 		C420Z000C420Z000C42EB102 /* SessionExitBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42EB101 /* SessionExitBannerView.swift */; };
 		C420Z000C420Z000C42ET102 /* SessionExitTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42ET101 /* SessionExitTracker.swift */; };
+		C420Z000C420Z000C42WB102 /* WorkspaceProjectBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42WB101 /* WorkspaceProjectBridge.swift */; };
 		C7A501000000000000000002 /* CmuxTopSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A501000000000000000001 /* CmuxTopSnapshot.swift */; };
 		B35750000000000000000004 /* CmuxTopProcessArguments.swift in Sources */ = {isa = PBXBuildFile; fileRef = B35750000000000000000003 /* CmuxTopProcessArguments.swift */; };
 		C7A508000000000000000002 /* CmuxTopSnapshotScopeCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A508000000000000000001 /* CmuxTopSnapshotScopeCache.swift */; };
@@ -875,6 +876,7 @@
 		C420Z000C420Z000C42SB101 /* BackgroundSessionsSidebarSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sidebar/BackgroundSessionsSidebarSection.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42EB101 /* SessionExitBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/SessionExitBannerView.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42ET101 /* SessionExitTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionExitTracker.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42WB101 /* WorkspaceProjectBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceProjectBridge.swift; sourceTree = "<group>"; };
 		A5001544 /* TerminalImageTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalImageTransfer.swift; sourceTree = "<group>"; };
 		A5001545 /* TerminalSSHSessionDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSSHSessionDetector.swift; sourceTree = "<group>"; };
 		A5001600 /* SentryHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentryHelper.swift; sourceTree = "<group>"; };
@@ -1347,6 +1349,7 @@
 				C420Z000C420Z000C42SB101 /* BackgroundSessionsSidebarSection.swift */,
 				C420Z000C420Z000C42EB101 /* SessionExitBannerView.swift */,
 				C420Z000C420Z000C42ET101 /* SessionExitTracker.swift */,
+				C420Z000C420Z000C42WB101 /* WorkspaceProjectBridge.swift */,
 				A5001544 /* TerminalImageTransfer.swift */,
 				A5001545 /* TerminalSSHSessionDetector.swift */,
 				A5001225 /* SocketControlSettings.swift */,
@@ -2088,6 +2091,7 @@
 				C420Z000C420Z000C42SB102 /* BackgroundSessionsSidebarSection.swift in Sources */,
 				C420Z000C420Z000C42EB102 /* SessionExitBannerView.swift in Sources */,
 				C420Z000C420Z000C42ET102 /* SessionExitTracker.swift in Sources */,
+				C420Z000C420Z000C42WB102 /* WorkspaceProjectBridge.swift in Sources */,
 				A5001542 /* TerminalImageTransfer.swift in Sources */,
 				A5001543 /* TerminalSSHSessionDetector.swift in Sources */,
 				A5001226 /* SocketControlSettings.swift in Sources */,

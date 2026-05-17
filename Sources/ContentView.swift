@@ -7363,6 +7363,36 @@ struct ContentView: View {
                     keywords: ["zmx", "tsm", "background", "detached", "session"]
                 )
             )
+            if SessionDaemonResolver.shared.activeDeepBackend() != nil {
+                contributions.append(
+                    CommandPaletteCommandContribution(
+                        commandId: "palette.tsmSaveProject",
+                        title: constant(String(
+                            localized: "commandPalette.tsm.saveProject.title",
+                            defaultValue: "Save Project Layout…"
+                        )),
+                        subtitle: constant(String(
+                            localized: "commandPalette.tsm.saveProject.subtitle",
+                            defaultValue: "Capture current panels + sessions as a named tsm project"
+                        )),
+                        keywords: ["tsm", "project", "save", "layout"]
+                    )
+                )
+                contributions.append(
+                    CommandPaletteCommandContribution(
+                        commandId: "palette.tsmOpenProject",
+                        title: constant(String(
+                            localized: "commandPalette.tsm.openProject.title",
+                            defaultValue: "Open tsm Project…"
+                        )),
+                        subtitle: constant(String(
+                            localized: "commandPalette.tsm.openProject.subtitle",
+                            defaultValue: "Restore a saved tsm project layout"
+                        )),
+                        keywords: ["tsm", "project", "open", "restore", "layout"]
+                    )
+                )
+            }
         }
 
         return contributions
@@ -8026,6 +8056,110 @@ struct ContentView: View {
                 alert.runModal()
             }
         }
+
+        registry.register(commandId: "palette.tsmSaveProject") {
+            Task { @MainActor in
+                guard let workspace = focusedWorkspaceForProjectBridge() else {
+                    NSSound.beep()
+                    return
+                }
+                let prompt = NSAlert()
+                prompt.messageText = String(
+                    localized: "tsm.alert.saveProject.title",
+                    defaultValue: "Save project layout"
+                )
+                prompt.informativeText = String(
+                    localized: "tsm.alert.saveProject.subtitle",
+                    defaultValue: "Captures every panel + zmx/tsm session in this workspace."
+                )
+                let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 22))
+                textField.placeholderString = "project name"
+                prompt.accessoryView = textField
+                prompt.addButton(withTitle: String(
+                    localized: "tsm.alert.saveProject.save",
+                    defaultValue: "Save"
+                ))
+                prompt.addButton(withTitle: String(
+                    localized: "tsm.alert.cancel",
+                    defaultValue: "Cancel"
+                ))
+                guard prompt.runModal() == .alertFirstButtonReturn else { return }
+                let name = textField.stringValue.trimmingCharacters(in: .whitespaces)
+                guard !name.isEmpty else { return }
+                do {
+                    _ = try WorkspaceProjectBridge.save(workspace: workspace, name: name)
+                } catch {
+                    let alert = NSAlert()
+                    alert.messageText = String(
+                        localized: "tsm.alert.saveProject.failed",
+                        defaultValue: "Failed to save project"
+                    )
+                    alert.informativeText = error.localizedDescription
+                    alert.runModal()
+                }
+            }
+        }
+
+        registry.register(commandId: "palette.tsmOpenProject") {
+            Task { @MainActor in
+                let names = WorkspaceProjectBridge.availableProjectNames()
+                guard !names.isEmpty else {
+                    let alert = NSAlert()
+                    alert.messageText = String(
+                        localized: "tsm.alert.openProject.empty",
+                        defaultValue: "No saved projects"
+                    )
+                    alert.informativeText = String(
+                        localized: "tsm.alert.openProject.emptyHint",
+                        defaultValue: "Use 'Save Project Layout' to capture the current workspace first."
+                    )
+                    alert.runModal()
+                    return
+                }
+                let alert = NSAlert()
+                alert.messageText = String(
+                    localized: "tsm.alert.openProject.title",
+                    defaultValue: "Open project"
+                )
+                let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 240, height: 24), pullsDown: false)
+                popup.addItems(withTitles: names)
+                alert.accessoryView = popup
+                alert.addButton(withTitle: String(localized: "tsm.alert.openProject.open", defaultValue: "Open"))
+                alert.addButton(withTitle: String(localized: "tsm.alert.cancel", defaultValue: "Cancel"))
+                guard alert.runModal() == .alertFirstButtonReturn,
+                      let pick = popup.titleOfSelectedItem else { return }
+                guard WorkspaceProjectBridge.loadLayout(name: pick) != nil else {
+                    let err = NSAlert()
+                    err.messageText = String(
+                        localized: "tsm.alert.openProject.notFound",
+                        defaultValue: "Project layout not found"
+                    )
+                    err.runModal()
+                    return
+                }
+                // Materializing the layout into bonsplit splits is a
+                // follow-up that needs deeper integration with the
+                // panel-creation path. For now, surface the layout to the
+                // user so the data round-trips even if the UI restore
+                // doesn't fire yet.
+                let info = NSAlert()
+                info.messageText = String(
+                    localized: "tsm.alert.openProject.loaded",
+                    defaultValue: "Project '\(pick)' loaded"
+                )
+                info.informativeText = String(
+                    localized: "tsm.alert.openProject.loadedHint",
+                    defaultValue: "Layout materialization will land in a follow-up; sessions remain in tsm."
+                )
+                info.runModal()
+            }
+        }
+    }
+
+    @MainActor
+    private func focusedWorkspaceForProjectBridge() -> Workspace? {
+        guard let selectedId = tabManager.selectedTabId else { return nil }
+        return tabManager.tabs.first(where: { $0.id == selectedId })
     }
 
     @MainActor

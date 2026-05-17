@@ -12464,7 +12464,7 @@ final class GhosttySurfaceScrollView: NSView {
               isActive,
               let window = uiWindow,
               window.isKeyWindow,
-              surfaceView.isVisibleInUI else { return }
+              surfaceView.isVisibleInUI else { return false }
 
         let now = CACurrentMediaTime()
         if now - lastVisibleSurfaceRefreshAt < 0.05 {
