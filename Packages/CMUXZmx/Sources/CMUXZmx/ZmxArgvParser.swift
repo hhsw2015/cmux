@@ -24,12 +24,6 @@ public enum ZmxArgvParser {
             self.subcommand = subcommand
             self.detached = detached
         }
-
-        public static func == (lhs: ParsedSession, rhs: ParsedSession) -> Bool {
-            lhs.sessionName == rhs.sessionName &&
-            lhs.subcommand == rhs.subcommand &&
-            lhs.detached == rhs.detached
-        }
     }
 
     /// Detect a `zmx attach <name>` / `zmx run <name>` invocation in argv.

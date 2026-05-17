@@ -120,9 +120,9 @@ public actor ZmxBindingIndex {
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         guard let data = try? encoder.encode(payload) else { return }
-        let tmp = storeURL.appendingPathExtension("tmp")
-        try? data.write(to: tmp, options: .atomic)
-        _ = try? FileManager.default.replaceItemAt(storeURL, withItemAt: tmp)
+        let dir = storeURL.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try? data.write(to: storeURL, options: .atomic)
     }
 
     private struct IndexPayload: Codable {

@@ -1,11 +1,17 @@
 import Foundation
 
 public enum ZmxLocator {
-    public static let candidatePaths: [String] = [
-        "/opt/homebrew/bin/zmx",
-        "/usr/local/bin/zmx",
-        "/usr/bin/zmx",
-    ]
+    public static var candidatePaths: [String] {
+        var paths: [String] = [
+            "/opt/homebrew/bin/zmx",
+            "/usr/local/bin/zmx",
+            "/usr/bin/zmx",
+        ]
+        let home = NSHomeDirectory()
+        paths.append("\(home)/.local/bin/zmx")
+        paths.append("\(home)/.cargo/bin/zmx")
+        return paths
+    }
 
     public static func resolveBinary(
         environment: [String: String] = ProcessInfo.processInfo.environment,
