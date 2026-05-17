@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import AppKit
 import Bonsplit
+import CMUXZmx
 import Combine
 import CryptoKit
 import Darwin
