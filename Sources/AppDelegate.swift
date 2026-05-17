@@ -1043,16 +1043,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 _ = await ZmxCommandHooks.reconcile()
                 await ZmxCommandHooks.sweepLiveSessions()
             }
-            // Periodic sweep: discover newly-spawned zmx attach invocations
-            // (the user runs `zmx attach foo` in any panel) so the known-
-            // sessions tracker stays current. 30s cadence is cheap (one
-            // sysctl + per-zmx-pid argv read) and matches PortScanner.
+            // Fast panel-only sweep: 3s cadence so attach/detach badges
+            // update promptly. Each tick reads ghostty_surface_foreground_pid
+            // per registered panel + one argv read for any panel running
+            // zmx — cheap.
+            Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in
+                guard ZmxCommandHooks.integrationEnabled else { return }
+                NotificationCenter.default.post(name: .zmxPanelBinderSweepRequested, object: nil)
+            }
+            // Slow system sweep: 30s for the proc-table scan that keeps the
+            // known-sessions tracker current (covers zmx attach invocations
+            // started from outside cmux).
             Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
                 guard ZmxCommandHooks.integrationEnabled else { return }
                 Task.detached(priority: .utility) {
                     await ZmxCommandHooks.sweepLiveSessions()
                 }
-                NotificationCenter.default.post(name: .zmxPanelBinderSweepRequested, object: nil)
             }
             NotificationCenter.default.addObserver(
                 forName: .zmxPanelBinderSweepRequested,
