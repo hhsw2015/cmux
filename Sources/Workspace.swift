@@ -190,7 +190,8 @@ extension Workspace {
                     includeScrollback: includeScrollback,
                     restorableAgent: restorableAgentIndex?.snapshot(workspaceId: id, panelId: panelId),
                     defaults: defaults,
-                    terminalScrollbackReader: terminalScrollbackReader
+                    terminalScrollbackReader: terminalScrollbackReader,
+                    zmxBinding: ZmxPanelBindingCache.snapshot(panelId: panelId)
                 )
             }
 
@@ -401,7 +402,8 @@ extension Workspace {
         includeScrollback: Bool,
         restorableAgent: SessionRestorableAgentSnapshot?,
         defaults: UserDefaults,
-        terminalScrollbackReader: SessionTerminalSnapshotScrollbackReader
+        terminalScrollbackReader: SessionTerminalSnapshotScrollbackReader,
+        zmxBinding: SessionZmxBindingSnapshot? = nil
     ) -> SessionPanelSnapshot? {
         guard let panel = panels[panelId] else { return nil }
 
@@ -495,7 +497,8 @@ extension Workspace {
                 workingDirectory: directory,
                 scrollback: resolvedScrollback,
                 agent: effectiveRestorableAgent,
-                tmuxStartCommand: restorableTmuxStartCommand
+                tmuxStartCommand: restorableTmuxStartCommand,
+                zmx: zmxBinding
             )
             browserSnapshot = nil
             markdownSnapshot = nil
@@ -571,7 +574,8 @@ extension Workspace {
             includeScrollback: true,
             restorableAgent: restorableAgentIndex.snapshot(workspaceId: id, panelId: panelId),
             defaults: .standard,
-            terminalScrollbackReader: Self.defaultSessionTerminalSnapshotScrollback
+            terminalScrollbackReader: Self.defaultSessionTerminalSnapshotScrollback,
+            zmxBinding: ZmxPanelBindingCache.snapshot(panelId: panelId)
         ) else {
             return nil
         }
@@ -715,6 +719,13 @@ extension Workspace {
             restoredTerminalScrollbackByPanelId.removeValue(forKey: panelId)
         }
         return resolved
+    }
+
+    fileprivate static func zmxShellQuote(_ s: String) -> String {
+        if s.isEmpty { return "''" }
+        let safe = s.allSatisfy { $0.isLetter || $0.isNumber || "_-./:@".contains($0) }
+        if safe { return s }
+        return "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 
     private static func defaultSessionTerminalSnapshotScrollback(
@@ -889,6 +900,18 @@ extension Workspace {
             let restoredAgentResumeInput = autoResumeAgentSessions
                 ? restorableAgent?.resumeStartupInput()
                 : nil
+
+            // zmx attach wraps the entire PTY (the agent is a child of the
+            // zmx-attached shell), so reattaching the session restores both
+            // the shell and any agent that was running inside it. Take
+            // precedence over restorableAgent.resumeStartupInput when present.
+            let zmxStartupInput: String? = {
+                guard let zmx = snapshot.terminal?.zmx else { return nil }
+                let argv = zmx.originalArgv.map(Self.zmxShellQuote).joined(separator: " ")
+                let cd = "cd \(Self.zmxShellQuote(zmx.workingDirectory)) 2>/dev/null; "
+                return cd + argv + "\n"
+            }()
+            let panelStartupInput = zmxStartupInput ?? restoredAgentResumeInput
 #if DEBUG
             if let restorableAgent {
                 let sessionPreview = String(restorableAgent.sessionId.prefix(8))
@@ -912,7 +935,7 @@ extension Workspace {
                 workingDirectory: localWorkingDirectory,
                 initialCommand: restoredTmuxStartupScript?.path,
                 tmuxStartCommand: restoredTmuxStartCommand,
-                initialInput: restoredAgentResumeInput,
+                initialInput: panelStartupInput,
                 startupEnvironment: replayEnvironment
             ) else {
                 return nil

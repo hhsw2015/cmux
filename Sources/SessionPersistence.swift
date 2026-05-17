@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import Bonsplit
+import CMUXZmx
 
 enum SessionSnapshotSchema {
     static let currentVersion = 1
@@ -262,6 +263,11 @@ struct SessionTerminalPanelSnapshot: Codable, Sendable {
     var scrollback: String?
     var agent: SessionRestorableAgentSnapshot?
     var tmuxStartCommand: String?
+    /// Set when this panel was hosting a tracked `zmx attach <name>` at the
+    /// time of the snapshot. On restore the panel's `initialInput` is seeded
+    /// with `zmx attach <name>` so the user reattaches without lifting a
+    /// finger. Optional + nil-on-decode-failure so older session files load.
+    var zmx: SessionZmxBindingSnapshot?
 }
 struct SessionBrowserPanelSnapshot: Codable, Sendable {
     var urlString: String?

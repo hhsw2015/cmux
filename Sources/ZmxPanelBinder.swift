@@ -85,6 +85,27 @@ final class ZmxPanelRegistry {
     }
 }
 
+/// Synchronous @MainActor mirror of the binding index. Populated by the
+/// binder after each successful upsert so cmux's session-save path (which
+/// is sync) can ask for "what zmx session is this panel currently in" in
+/// O(1) without awaiting an actor hop.
+@MainActor
+enum ZmxPanelBindingCache {
+    private static var bindings: [UUID: SessionZmxBindingSnapshot] = [:]
+
+    static func record(_ snapshot: SessionZmxBindingSnapshot, panelId: UUID) {
+        bindings[panelId] = snapshot
+    }
+
+    static func clear(panelId: UUID) {
+        bindings.removeValue(forKey: panelId)
+    }
+
+    static func snapshot(panelId: UUID) -> SessionZmxBindingSnapshot? {
+        bindings[panelId]
+    }
+}
+
 /// Bridges Ghostty's foreground-pid API (`ghostty_surface_foreground_pid`)
 /// into the CMUXZmx binding model so panels can be matched to the live
 /// `zmx attach <name>` invocations they host.
@@ -113,6 +134,7 @@ enum ZmxPanelBinder {
             if existing != nil {
                 await ZmxBindingIndex.shared.update(panelId: panel.panelId, state: .detached)
             }
+            ZmxPanelBindingCache.clear(panelId: panel.panelId)
             panel.publishSessionName(nil)
             return
         }
@@ -121,6 +143,7 @@ enum ZmxPanelBinder {
             if existing != nil {
                 await ZmxBindingIndex.shared.update(panelId: panel.panelId, state: .detached)
             }
+            ZmxPanelBindingCache.clear(panelId: panel.panelId)
             panel.publishSessionName(nil)
             return
         }
@@ -133,6 +156,7 @@ enum ZmxPanelBinder {
             if existing != nil {
                 await ZmxBindingIndex.shared.update(panelId: panel.panelId, state: .detached)
             }
+            ZmxPanelBindingCache.clear(panelId: panel.panelId)
             panel.publishSessionName(nil)
             return
         }
@@ -155,6 +179,10 @@ enum ZmxPanelBinder {
             lastSeenAt: .init()
         )
         await ZmxBindingIndex.shared.upsert(binding)
+        ZmxPanelBindingCache.record(
+            SessionZmxBindingSnapshot(binding: binding),
+            panelId: panel.panelId
+        )
         panel.publishSessionName(parsed.sessionName)
     }
 
