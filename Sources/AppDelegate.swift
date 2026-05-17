@@ -1034,6 +1034,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         // failure. Fire-and-forget; never blocks launch.
         if !isRunningUnderXCTest {
             Task.detached(priority: .utility) {
+                // Small delay so reconcile doesn't compete with the launch
+                // burst of socket connects, panel restores, and Ghostty
+                // surface init. Race protection inside reconcile means a
+                // transient zmx ls failure here is harmless either way.
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
                 _ = await ZmxCommandHooks.reconcile()
             }
         }

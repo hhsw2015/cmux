@@ -74,6 +74,20 @@ Sources/AppDelegate.swift
 | `.detached` | OK | OK | yes | `.offerReattach(binding)` |
 | `.lost` | OK | OK | yes | `.offerReattach(binding)` |
 
+## When zmx is not installed
+
+`ZmxLocator.resolveBinary()` returns nil. Every entry point in
+`ZmxCommandHooks` short-circuits without spawning subprocesses:
+
+* `listOrphanSessions()` → `[]`
+* `killSession(_:force:)` → `.failure(.zmxNotInstalled)`
+* `reconcile()` → `[]` (no bindings flipped)
+* `isAvailable()` → `false`
+
+Existing bindings on disk are kept untouched so reinstalling zmx restores
+the previous panel-to-session map. The launch reconcile becomes a no-op,
+not a destructive sweep.
+
 ## Race protection
 
 * `ZmxCommandHooks.runListAlive` returns nil on subprocess failure (timeout,
