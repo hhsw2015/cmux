@@ -19,12 +19,14 @@ public enum ZmxPanelDetector {
         let parents = parentByPid ?? Self.buildParentMap()
         let descendants = Self.descendants(of: Int(rootPid), parents: parents)
         var deepest: Detection?
+        var deepestDepth = -1
         for pid in descendants {
             guard let argv = ProcessArgvReader.argv(forPid: pid_t(pid)) else { continue }
             guard let parsed = ZmxArgvParser.parse(argv) else { continue }
             // Prefer the zmx process closer to the leaf so latest reattaches win.
-            if deepest == nil || depth(of: pid, parents: parents, root: Int(rootPid)) >
-                depth(of: Int(deepest!.pid), parents: parents, root: Int(rootPid)) {
+            let d = depth(of: pid, parents: parents, root: Int(rootPid))
+            if d > deepestDepth {
+                deepestDepth = d
                 deepest = Detection(parsed: parsed, pid: pid_t(pid), argv: argv)
             }
         }
@@ -35,13 +37,15 @@ public enum ZmxPanelDetector {
         var name: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
         var size = 0
         if sysctl(&name, 3, nil, &size, nil, 0) != 0 { return [:] }
-        let count = size / MemoryLayout<kinfo_proc>.stride
+        let stride = MemoryLayout<kinfo_proc>.stride
+        let count = (size / stride) + 16
+        size = count * stride
         var procs = [kinfo_proc](repeating: kinfo_proc(), count: count)
         let res = procs.withUnsafeMutableBufferPointer { ptr -> Int32 in
             sysctl(&name, 3, ptr.baseAddress, &size, nil, 0)
         }
         guard res == 0 else { return [:] }
-        let actualCount = size / MemoryLayout<kinfo_proc>.stride
+        let actualCount = min(size / stride, count)
         var map: [Int: Int] = [:]
         for i in 0..<actualCount {
             let pid = Int(procs[i].kp_proc.p_pid)

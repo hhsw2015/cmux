@@ -17,13 +17,17 @@ public enum ZmxSystemScanner {
         var name: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
         var size = 0
         if sysctl(&name, 3, nil, &size, nil, 0) != 0 { return [] }
-        let count = size / MemoryLayout<kinfo_proc>.stride
+        // Add headroom: process table can grow between the size query and the
+        // data fetch. Round up to next 16-process slack.
+        let stride = MemoryLayout<kinfo_proc>.stride
+        let count = (size / stride) + 16
+        size = count * stride
         var procs = [kinfo_proc](repeating: kinfo_proc(), count: count)
         let res = procs.withUnsafeMutableBufferPointer { ptr -> Int32 in
             sysctl(&name, 3, ptr.baseAddress, &size, nil, 0)
         }
         guard res == 0 else { return [] }
-        let actualCount = size / MemoryLayout<kinfo_proc>.stride
+        let actualCount = min(size / stride, count)
 
         var live: [LiveAttach] = []
         for i in 0..<actualCount {
