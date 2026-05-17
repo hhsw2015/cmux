@@ -1040,6 +1040,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 // transient zmx ls failure here is harmless either way.
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
                 _ = await ZmxCommandHooks.reconcile()
+                await ZmxCommandHooks.sweepLiveSessions()
+            }
+            // Periodic sweep: discover newly-spawned zmx attach invocations
+            // (the user runs `zmx attach foo` in any panel) so the known-
+            // sessions tracker stays current. 30s cadence is cheap (one
+            // sysctl + per-zmx-pid argv read) and matches PortScanner.
+            Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
+                Task.detached(priority: .utility) {
+                    await ZmxCommandHooks.sweepLiveSessions()
+                }
             }
         }
 

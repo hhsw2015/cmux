@@ -12,16 +12,19 @@ enum ZmxCommandHooks {
         let name: String
     }
 
-    /// `zmx ls --short` filtered to entries cmux has no binding for.
-    /// Returns [] when zmx is not installed or fails. UI can display this list
-    /// behind a "List orphan zmx sessions" command.
+    /// `zmx ls --short` filtered to entries cmux has neither a panel binding
+    /// nor a tracker entry for. Returns [] when zmx is not installed or
+    /// `zmx ls` fails. UI can display this list behind a "List orphan zmx
+    /// sessions" command.
     static func listOrphanSessions() async -> [OrphanSession] {
         guard let binary = ZmxLocator.resolveBinary() else { return [] }
         let alive = await Self.runListAlive(binary: binary)
         guard let alive else { return [] }
         let bindings = await ZmxBindingIndex.shared.all()
-        let knownNames = Set(bindings.map(\.zmxSessionName))
-        let orphans = alive.subtracting(knownNames).sorted()
+        let known = await ZmxKnownSessionsTracker.shared.all()
+        let claimedNames = Set(bindings.map(\.zmxSessionName))
+            .union(known.map(\.sessionName))
+        let orphans = alive.subtracting(claimedNames).sorted()
         return orphans.map(OrphanSession.init(name:))
     }
 
@@ -47,13 +50,27 @@ enum ZmxCommandHooks {
         }
     }
 
-    /// One-shot reconcile: call `zmx ls`, mark dead sessions as `.lost`,
-    /// return the bindings that flipped state for caller-side notifications.
+    /// One-shot reconcile: call `zmx ls`, mark dead bindings as `.lost`,
+    /// drop disappeared known sessions. Returns the bindings that flipped
+    /// state so callers can surface notifications.
     static func reconcile() async -> [RestorableZmxBinding] {
         guard let binary = ZmxLocator.resolveBinary() else { return [] }
         let alive = await Self.runListAlive(binary: binary)
         guard let alive else { return [] }
-        return await ZmxBindingIndex.shared.reconcile(aliveSessions: alive)
+        let lostBindings = await ZmxBindingIndex.shared.reconcile(aliveSessions: alive)
+        _ = await ZmxKnownSessionsTracker.shared.reconcile(aliveSessions: alive)
+        return lostBindings
+    }
+
+    /// Sweep proc table for live `zmx attach` invocations and record them in
+    /// the session-level tracker so cmux remembers which zmx sessions ever
+    /// existed in this user's environment. Run periodically (every 30s) and
+    /// at app launch.
+    static func sweepLiveSessions() async {
+        let live = await Task.detached(priority: .utility) {
+            ZmxSystemScanner.scan()
+        }.value
+        await ZmxKnownSessionsTracker.shared.record(live: live)
     }
 
     /// Whether the zmx binary is installed and runnable. Used to gate
