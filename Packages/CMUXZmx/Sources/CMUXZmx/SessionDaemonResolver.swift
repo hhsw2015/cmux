@@ -41,10 +41,8 @@ public final class SessionDaemonResolver: @unchecked Sendable {
             let backend = ZmxBackend()
             return backend.locateBinary() != nil ? backend : nil
         case .tsm:
-            // Phase 1 will land TsmBackend; until then this is a no-op so
-            // selecting "tsm" gracefully degrades to vanilla mode instead
-            // of crashing.
-            return nil
+            let backend = TsmBackend()
+            return backend.locateBinary() != nil ? backend : nil
         }
     }
 

@@ -49,11 +49,24 @@ final class SessionDaemonResolverTests: XCTestCase {
         XCTAssertNil(resolver.activeBackend())
     }
 
-    func testActiveBackendNilForTsmUntilPhase1() {
-        // Phase 0 ships the protocol but no TsmBackend yet; selecting tsm
-        // should degrade gracefully instead of crashing.
+    func testActiveBackendForTsmRequiresBinary() {
         resolver.setSelectedKind(.tsm)
-        XCTAssertNil(resolver.activeBackend())
+        // After Phase 1: a backend is returned only if tsm is on PATH.
+        // Otherwise we degrade gracefully.
+        let backend = resolver.activeBackend()
+        if TsmLocator.resolveBinary() == nil {
+            XCTAssertNil(backend)
+        } else {
+            XCTAssertEqual(backend?.kind, .tsm)
+        }
+    }
+
+    func testActiveDeepBackendForTsmCastSucceeds() {
+        resolver.setSelectedKind(.tsm)
+        guard TsmLocator.resolveBinary() != nil else {
+            return // no tsm on host, can't assert
+        }
+        XCTAssertNotNil(resolver.activeDeepBackend())
     }
 
     func testActiveDeepBackendIsNilForZmx() {
