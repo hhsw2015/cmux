@@ -7349,6 +7349,20 @@ struct ContentView: View {
                     keywords: ["zmx", "tsm", "keep", "alive", "persistent", "session"]
                 )
             )
+            contributions.append(
+                CommandPaletteCommandContribution(
+                    commandId: "palette.zmxShowBackground",
+                    title: constant(String(
+                        localized: "commandPalette.zmx.background.title",
+                        defaultValue: "Show background sessions"
+                    )),
+                    subtitle: constant(String(
+                        localized: "commandPalette.zmx.background.subtitle",
+                        defaultValue: "List sessions whose panels are closed but daemon is still running"
+                    )),
+                    keywords: ["zmx", "tsm", "background", "detached", "session"]
+                )
+            )
         }
 
         return contributions
@@ -7988,6 +8002,28 @@ struct ContentView: View {
                 cmuxDebugLog("session-persistence.panel.keepAlive.toggle " +
                              "panel=\(panel.id.uuidString.prefix(8)) value=\(panel.keepAlive)")
                 #endif
+            }
+        }
+
+        registry.register(commandId: "palette.zmxShowBackground") {
+            Task { @MainActor in
+                let entries = BackgroundSessionStore.shared.sessions
+                let alert = NSAlert()
+                if entries.isEmpty {
+                    alert.messageText = String(
+                        localized: "zmx.alert.background.empty",
+                        defaultValue: "No background sessions"
+                    )
+                } else {
+                    alert.messageText = String(
+                        localized: "zmx.alert.background.title",
+                        defaultValue: "Background sessions"
+                    )
+                    alert.informativeText = entries
+                        .map { "• \($0.sessionName)" }
+                        .joined(separator: "\n")
+                }
+                alert.runModal()
             }
         }
     }
