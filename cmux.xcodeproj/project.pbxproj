@@ -306,6 +306,7 @@
 		C420Z000C420Z000C42PB102 /* ZmxPanelBinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42PB101 /* ZmxPanelBinder.swift */; };
 		C420Z000C420Z000C42SV102 /* ZmxSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42SV101 /* ZmxSettingsView.swift */; };
 		C420Z000C420Z000C42FF102 /* SessionPersistenceFeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42FF101 /* SessionPersistenceFeatureFlags.swift */; };
+		C420Z000C420Z000C42DL102 /* SessionPersistenceDebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42DL101 /* SessionPersistenceDebugLog.swift */; };
 		C7A501000000000000000002 /* CmuxTopSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A501000000000000000001 /* CmuxTopSnapshot.swift */; };
 		B35750000000000000000004 /* CmuxTopProcessArguments.swift in Sources */ = {isa = PBXBuildFile; fileRef = B35750000000000000000003 /* CmuxTopProcessArguments.swift */; };
 		C7A508000000000000000002 /* CmuxTopSnapshotScopeCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A508000000000000000001 /* CmuxTopSnapshotScopeCache.swift */; };
@@ -857,6 +858,7 @@
 		C420Z000C420Z000C42PB101 /* ZmxPanelBinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZmxPanelBinder.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42SV101 /* ZmxSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings/ZmxSettingsView.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42FF101 /* SessionPersistenceFeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPersistenceFeatureFlags.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42DL101 /* SessionPersistenceDebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPersistenceDebugLog.swift; sourceTree = "<group>"; };
 		A5001544 /* TerminalImageTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalImageTransfer.swift; sourceTree = "<group>"; };
 		A5001545 /* TerminalSSHSessionDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSSHSessionDetector.swift; sourceTree = "<group>"; };
 		A5001600 /* SentryHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentryHelper.swift; sourceTree = "<group>"; };
@@ -1322,6 +1324,7 @@
 				C420Z000C420Z000C42PB101 /* ZmxPanelBinder.swift */,
 				C420Z000C420Z000C42SV101 /* ZmxSettingsView.swift */,
 				C420Z000C420Z000C42FF101 /* SessionPersistenceFeatureFlags.swift */,
+				C420Z000C420Z000C42DL101 /* SessionPersistenceDebugLog.swift */,
 				A5001544 /* TerminalImageTransfer.swift */,
 				A5001545 /* TerminalSSHSessionDetector.swift */,
 				A5001225 /* SocketControlSettings.swift */,
@@ -2054,6 +2057,7 @@
 				C420Z000C420Z000C42PB102 /* ZmxPanelBinder.swift in Sources */,
 				C420Z000C420Z000C42SV102 /* ZmxSettingsView.swift in Sources */,
 				C420Z000C420Z000C42FF102 /* SessionPersistenceFeatureFlags.swift in Sources */,
+				C420Z000C420Z000C42DL102 /* SessionPersistenceDebugLog.swift in Sources */,
 				A5001542 /* TerminalImageTransfer.swift in Sources */,
 				A5001543 /* TerminalSSHSessionDetector.swift in Sources */,
 				A5001226 /* SocketControlSettings.swift in Sources */,
