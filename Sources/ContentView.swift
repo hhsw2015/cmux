@@ -7321,6 +7321,20 @@ struct ContentView: View {
                     keywords: ["zmx", "reconcile", "refresh", "session"]
                 )
             )
+            contributions.append(
+                CommandPaletteCommandContribution(
+                    commandId: "palette.zmxKillSession",
+                    title: constant(String(
+                        localized: "commandPalette.zmx.kill.title",
+                        defaultValue: "Kill zmx session…"
+                    )),
+                    subtitle: constant(String(
+                        localized: "commandPalette.zmx.kill.subtitle",
+                        defaultValue: "Pick an active zmx session to terminate (zmx kill --force)"
+                    )),
+                    keywords: ["zmx", "kill", "terminate", "stop", "session"]
+                )
+            )
         }
 
         return contributions
@@ -7922,6 +7936,33 @@ struct ContentView: View {
                 alert.runModal()
             }
         }
+
+        registry.register(commandId: "palette.zmxKillSession") {
+            Task { @MainActor in
+                guard let pickedName = await ZmxCommandHooks.promptForSessionName(
+                    title: String(localized: "zmx.alert.kill.pickTitle", defaultValue: "Kill which zmx session?"),
+                    confirmLabel: String(localized: "zmx.alert.kill.confirm", defaultValue: "Kill (force)")
+                ) else { return }
+                let result = await ZmxCommandHooks.killSession(pickedName, force: true)
+                let alert = NSAlert()
+                switch result {
+                case .success:
+                    alert.messageText = String(
+                        localized: "zmx.alert.kill.success.title",
+                        defaultValue: "zmx session killed"
+                    )
+                    alert.informativeText = pickedName
+                case .failure(let error):
+                    alert.messageText = String(
+                        localized: "zmx.alert.kill.failure.title",
+                        defaultValue: "Failed to kill zmx session"
+                    )
+                    alert.informativeText = error.localizedDescription
+                }
+                alert.runModal()
+            }
+        }
+
     }
 
     private func openCmuxConfigIssue(_ issue: CmuxConfigIssue) {

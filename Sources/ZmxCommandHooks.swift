@@ -127,6 +127,39 @@ enum ZmxCommandHooks {
         }
     }
 
+    /// Modal picker that asks the user which live zmx session to act on.
+    /// Returns nil when the user cancels or no live sessions exist. Pulled
+    /// out of the per-command handlers so the kill / reattach flows share
+    /// the same UX.
+    @MainActor
+    static func promptForSessionName(title: String, confirmLabel: String) async -> String? {
+        guard let binary = ZmxLocator.resolveBinary(),
+              let alive = await runListAlive(binary: binary),
+              !alive.isEmpty else {
+            let alert = NSAlert()
+            alert.messageText = String(
+                localized: "zmx.alert.prompt.noSessions",
+                defaultValue: "No live zmx sessions"
+            )
+            alert.runModal()
+            return nil
+        }
+        let names = alive.sorted()
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.addButton(withTitle: confirmLabel)
+        alert.addButton(withTitle: String(localized: "zmx.alert.prompt.cancel", defaultValue: "Cancel"))
+        let popup = NSPopUpButton(
+            frame: NSRect(x: 0, y: 0, width: 240, height: 24),
+            pullsDown: false
+        )
+        popup.addItems(withTitles: names)
+        alert.accessoryView = popup
+        let response = alert.runModal()
+        guard response == .alertFirstButtonReturn else { return nil }
+        return popup.titleOfSelectedItem
+    }
+
     private static func shellQuote(_ s: String) -> String {
         if s.isEmpty { return "''" }
         if s.allSatisfy({ $0.isLetter || $0.isNumber || "_-./:@".contains($0) }) {
