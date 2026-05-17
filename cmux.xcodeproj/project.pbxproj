@@ -64,6 +64,7 @@
 		E3309A0B /* KeyboardShortcutSettingsEqualizeSplitsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3309A0C /* KeyboardShortcutSettingsEqualizeSplitsTests.swift */; };
 		A17110000000000000000001 /* KeyboardShortcutSpaceKeyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17110000000000000000002 /* KeyboardShortcutSpaceKeyTests.swift */; };
 		D3610B010000000000000001 /* AgentSessionAutoResumeSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3610B010000000000000002 /* AgentSessionAutoResumeSettingsTests.swift */; };
+		C420Z000C420Z000C42FT102 /* SessionPersistenceFeatureFlagsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42FT101 /* SessionPersistenceFeatureFlagsTests.swift */; };
 		C0DEF0A40000000000000001 /* CmuxConfigContextMenuTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DEF0A40000000000000002 /* CmuxConfigContextMenuTests.swift */; };
 		D0B10000A1B2C3D4E5F60001 /* TerminalPaneDropTargetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0B10001A1B2C3D4E5F60001 /* TerminalPaneDropTargetView.swift */; };
 		D0B10002A1B2C3D4E5F60001 /* BonsplitTabBarPassThrough.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0B10003A1B2C3D4E5F60001 /* BonsplitTabBarPassThrough.swift */; };
@@ -304,6 +305,7 @@
 		C420Z000C420Z000C42HK102 /* ZmxCommandHooks.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42HK101 /* ZmxCommandHooks.swift */; };
 		C420Z000C420Z000C42PB102 /* ZmxPanelBinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42PB101 /* ZmxPanelBinder.swift */; };
 		C420Z000C420Z000C42SV102 /* ZmxSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42SV101 /* ZmxSettingsView.swift */; };
+		C420Z000C420Z000C42FF102 /* SessionPersistenceFeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42FF101 /* SessionPersistenceFeatureFlags.swift */; };
 		C7A501000000000000000002 /* CmuxTopSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A501000000000000000001 /* CmuxTopSnapshot.swift */; };
 		B35750000000000000000004 /* CmuxTopProcessArguments.swift in Sources */ = {isa = PBXBuildFile; fileRef = B35750000000000000000003 /* CmuxTopProcessArguments.swift */; };
 		C7A508000000000000000002 /* CmuxTopSnapshotScopeCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A508000000000000000001 /* CmuxTopSnapshotScopeCache.swift */; };
@@ -616,6 +618,7 @@
 		E3309A0C /* KeyboardShortcutSettingsEqualizeSplitsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcutSettingsEqualizeSplitsTests.swift; sourceTree = "<group>"; };
 		A17110000000000000000002 /* KeyboardShortcutSpaceKeyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcutSpaceKeyTests.swift; sourceTree = "<group>"; };
 		D3610B010000000000000002 /* AgentSessionAutoResumeSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSessionAutoResumeSettingsTests.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42FT101 /* SessionPersistenceFeatureFlagsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPersistenceFeatureFlagsTests.swift; sourceTree = "<group>"; };
 		7E7E6EF344A568AC7FEE3715 /* cmuxUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = cmuxUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		818DBCD4AB69EB72573E8138 /* SidebarResizeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarResizeUITests.swift; sourceTree = "<group>"; };
 		970226F3C99D0D937CD00539 /* BrowserConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserConfigTests.swift; sourceTree = "<group>"; };
@@ -853,6 +856,7 @@
 		C420Z000C420Z000C42HK101 /* ZmxCommandHooks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZmxCommandHooks.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42PB101 /* ZmxPanelBinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZmxPanelBinder.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42SV101 /* ZmxSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings/ZmxSettingsView.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42FF101 /* SessionPersistenceFeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPersistenceFeatureFlags.swift; sourceTree = "<group>"; };
 		A5001544 /* TerminalImageTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalImageTransfer.swift; sourceTree = "<group>"; };
 		A5001545 /* TerminalSSHSessionDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSSHSessionDetector.swift; sourceTree = "<group>"; };
 		A5001600 /* SentryHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentryHelper.swift; sourceTree = "<group>"; };
@@ -1317,6 +1321,7 @@
 				C420Z000C420Z000C42HK101 /* ZmxCommandHooks.swift */,
 				C420Z000C420Z000C42PB101 /* ZmxPanelBinder.swift */,
 				C420Z000C420Z000C42SV101 /* ZmxSettingsView.swift */,
+				C420Z000C420Z000C42FF101 /* SessionPersistenceFeatureFlags.swift */,
 				A5001544 /* TerminalImageTransfer.swift */,
 				A5001545 /* TerminalSSHSessionDetector.swift */,
 				A5001225 /* SocketControlSettings.swift */,
@@ -1498,6 +1503,7 @@
 					F5000001A1B2C3D4E5F60718 /* SessionPersistenceTests.swift */,
 					B35750000000000000000009 /* PiVaultAgentPersistenceTests.swift */,
 					D3610B010000000000000002 /* AgentSessionAutoResumeSettingsTests.swift */,
+				C420Z000C420Z000C42FT101 /* SessionPersistenceFeatureFlagsTests.swift */,
 					F5410001A1B2C3D4E5F60718 /* RestorableAgentHookProviderResumeTests.swift */,
 					F5410005A1B2C3D4E5F60718 /* RestorableAgentHookProviderHermesTests.swift */,
 					F5410003A1B2C3D4E5F60718 /* RestorableAgentNonInteractiveTests.swift */,
@@ -2047,6 +2053,7 @@
 				C420Z000C420Z000C42HK102 /* ZmxCommandHooks.swift in Sources */,
 				C420Z000C420Z000C42PB102 /* ZmxPanelBinder.swift in Sources */,
 				C420Z000C420Z000C42SV102 /* ZmxSettingsView.swift in Sources */,
+				C420Z000C420Z000C42FF102 /* SessionPersistenceFeatureFlags.swift in Sources */,
 				A5001542 /* TerminalImageTransfer.swift in Sources */,
 				A5001543 /* TerminalSSHSessionDetector.swift in Sources */,
 				A5001226 /* SocketControlSettings.swift in Sources */,
@@ -2269,6 +2276,7 @@
 					F5000000A1B2C3D4E5F60718 /* SessionPersistenceTests.swift in Sources */,
 					B3575000000000000000000A /* PiVaultAgentPersistenceTests.swift in Sources */,
 					D3610B010000000000000001 /* AgentSessionAutoResumeSettingsTests.swift in Sources */,
+				C420Z000C420Z000C42FT102 /* SessionPersistenceFeatureFlagsTests.swift in Sources */,
 					F5410000A1B2C3D4E5F60718 /* RestorableAgentHookProviderResumeTests.swift in Sources */,
 					F5410004A1B2C3D4E5F60718 /* RestorableAgentHookProviderHermesTests.swift in Sources */,
 					F5410002A1B2C3D4E5F60718 /* RestorableAgentNonInteractiveTests.swift in Sources */,
