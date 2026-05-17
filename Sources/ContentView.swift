@@ -7366,6 +7366,20 @@ struct ContentView: View {
             if SessionDaemonResolver.shared.activeDeepBackend() != nil {
                 contributions.append(
                     CommandPaletteCommandContribution(
+                        commandId: "palette.tsmSwitchBranch",
+                        title: constant(String(
+                            localized: "commandPalette.tsm.switchBranch.title",
+                            defaultValue: "Switch Branch Workspace…"
+                        )),
+                        subtitle: constant(String(
+                            localized: "commandPalette.tsm.switchBranch.subtitle",
+                            defaultValue: "Detach current sessions and attach branch worktree's"
+                        )),
+                        keywords: ["tsm", "branch", "worktree", "switch", "git"]
+                    )
+                )
+                contributions.append(
+                    CommandPaletteCommandContribution(
                         commandId: "palette.tsmSaveProject",
                         title: constant(String(
                             localized: "commandPalette.tsm.saveProject.title",
@@ -8054,6 +8068,39 @@ struct ContentView: View {
                         .joined(separator: "\n")
                 }
                 alert.runModal()
+            }
+        }
+
+        registry.register(commandId: "palette.tsmSwitchBranch") {
+            Task { @MainActor in
+                guard let backend = SessionDaemonResolver.shared.activeDeepBackend() else {
+                    NSSound.beep()
+                    return
+                }
+                let prompt = NSAlert()
+                prompt.messageText = String(
+                    localized: "tsm.alert.switchBranch.title",
+                    defaultValue: "Switch branch workspace"
+                )
+                let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 22))
+                textField.placeholderString = "branch name (e.g. feature-x)"
+                prompt.accessoryView = textField
+                prompt.addButton(withTitle: String(localized: "tsm.alert.switchBranch.go", defaultValue: "Switch"))
+                prompt.addButton(withTitle: String(localized: "tsm.alert.cancel", defaultValue: "Cancel"))
+                guard prompt.runModal() == .alertFirstButtonReturn else { return }
+                let branch = textField.stringValue.trimmingCharacters(in: .whitespaces)
+                guard !branch.isEmpty else { return }
+                do {
+                    try await backend.switchWorktree(branch: branch)
+                } catch {
+                    let err = NSAlert()
+                    err.messageText = String(
+                        localized: "tsm.alert.switchBranch.failed",
+                        defaultValue: "Failed to switch branch"
+                    )
+                    err.informativeText = error.localizedDescription
+                    err.runModal()
+                }
             }
         }
 
