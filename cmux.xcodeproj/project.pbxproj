@@ -301,6 +301,7 @@
 		A5001534 /* BrowserWindowPortal.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001533 /* BrowserWindowPortal.swift */; };
 		A5001540 /* PortScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001541 /* PortScanner.swift */; };
 		A5001550 /* ProcessScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001551 /* ProcessScanner.swift */; };
+		C420Z000C420Z000C42HK102 /* ZmxCommandHooks.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42HK101 /* ZmxCommandHooks.swift */; };
 		C7A501000000000000000002 /* CmuxTopSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A501000000000000000001 /* CmuxTopSnapshot.swift */; };
 		B35750000000000000000004 /* CmuxTopProcessArguments.swift in Sources */ = {isa = PBXBuildFile; fileRef = B35750000000000000000003 /* CmuxTopProcessArguments.swift */; };
 		C7A508000000000000000002 /* CmuxTopSnapshotScopeCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A508000000000000000001 /* CmuxTopSnapshotScopeCache.swift */; };
@@ -845,6 +846,7 @@
 		D0B10011A1B2C3D4E5F60001 /* BonsplitTabBarDebug.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BonsplitTabBarDebug.swift; sourceTree = "<group>"; };
 		A5001541 /* PortScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortScanner.swift; sourceTree = "<group>"; };
 		A5001551 /* ProcessScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessScanner.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42HK101 /* ZmxCommandHooks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZmxCommandHooks.swift; sourceTree = "<group>"; };
 		A5001544 /* TerminalImageTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalImageTransfer.swift; sourceTree = "<group>"; };
 		A5001545 /* TerminalSSHSessionDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSSHSessionDetector.swift; sourceTree = "<group>"; };
 		A5001600 /* SentryHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentryHelper.swift; sourceTree = "<group>"; };
@@ -1306,6 +1308,7 @@
 				C7A504000000000000000001 /* TaskManagerTypes.swift */,
 				A5001541 /* PortScanner.swift */,
 				A5001551 /* ProcessScanner.swift */,
+				C420Z000C420Z000C42HK101 /* ZmxCommandHooks.swift */,
 				A5001544 /* TerminalImageTransfer.swift */,
 				A5001545 /* TerminalSSHSessionDetector.swift */,
 				A5001225 /* SocketControlSettings.swift */,
@@ -2032,6 +2035,7 @@
 				C7A504000000000000000002 /* TaskManagerTypes.swift in Sources */,
 				A5001540 /* PortScanner.swift in Sources */,
 				A5001550 /* ProcessScanner.swift in Sources */,
+				C420Z000C420Z000C42HK102 /* ZmxCommandHooks.swift in Sources */,
 				A5001542 /* TerminalImageTransfer.swift in Sources */,
 				A5001543 /* TerminalSSHSessionDetector.swift in Sources */,
 				A5001226 /* SocketControlSettings.swift in Sources */,
