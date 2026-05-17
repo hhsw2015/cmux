@@ -72,6 +72,7 @@ final class TerminalPanel: Panel, ObservableObject {
     }
 
     private let zmxPanelBox: ZmxPanelRegistry.PanelBox
+    private var zmxBinderSweepObserver: NSObjectProtocol?
 
     init(workspaceId: UUID, surface: TerminalSurface) {
         self.id = surface.id
@@ -91,7 +92,7 @@ final class TerminalPanel: Panel, ObservableObject {
 
         // Refresh the registry box whenever the binder sweeps so it sees the
         // latest live surface handle, liveness flag, and cwd for this panel.
-        NotificationCenter.default.addObserver(
+        zmxBinderSweepObserver = NotificationCenter.default.addObserver(
             forName: .zmxPanelBinderSweepRequested,
             object: nil,
             queue: .main
@@ -194,6 +195,9 @@ final class TerminalPanel: Panel, ObservableObject {
     }
 
     deinit {
+        if let observer = zmxBinderSweepObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
         ZmxPanelRegistry.shared.scheduleUnregister(panelId: id)
     }
 

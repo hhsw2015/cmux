@@ -2,12 +2,6 @@ import CMUXZmx
 import Foundation
 import GhosttyKit
 
-/// Bridges Ghostty's foreground-pid API (`ghostty_surface_foreground_pid`)
-/// into the CMUXZmx binding model so panels can be matched to the live
-/// `zmx attach <name>` invocations they host.
-///
-/// Lives outside the package because it depends on GhosttyKit, which the
-/// package can't import without dragging the whole xcframework into Swift PM.
 extension Notification.Name {
     /// Posted by the AppDelegate timer; the panel registry's observer runs
     /// the binder sweep against every registered terminal panel.
@@ -41,7 +35,7 @@ final class ZmxPanelRegistry {
         }
     }
 
-    func snapshot(refresh: (UUID, PanelBox) -> Void = { _, _ in }) -> [ZmxPanelBinder.PanelSnapshot] {
+    func snapshot() -> [ZmxPanelBinder.PanelSnapshot] {
         var snapshots: [ZmxPanelBinder.PanelSnapshot] = []
         var dead: [UUID] = []
         for (panelId, entry) in entries {
@@ -49,7 +43,6 @@ final class ZmxPanelRegistry {
                 dead.append(panelId)
                 continue
             }
-            refresh(panelId, box)
             snapshots.append(ZmxPanelBinder.PanelSnapshot(
                 workspaceId: box.workspaceId,
                 panelId: panelId,
@@ -81,10 +74,17 @@ final class ZmxPanelRegistry {
     }
 }
 
+/// Bridges Ghostty's foreground-pid API (`ghostty_surface_foreground_pid`)
+/// into the CMUXZmx binding model so panels can be matched to the live
+/// `zmx attach <name>` invocations they host.
+///
+/// Lives outside the package because it depends on GhosttyKit, which the
+/// package can't import without dragging the whole xcframework into Swift PM.
 enum ZmxPanelBinder {
     /// Sweep every live terminal panel; for any whose foreground process is a
-    /// tracked zmx attach, write/refresh its `RestorableZmxBinding`. Drop
-    /// stale bindings when a panel no longer hosts a zmx process.
+    /// tracked zmx attach, write/refresh its `RestorableZmxBinding`. Marks
+    /// panels whose foreground left zmx (or whose surface is no longer live)
+    /// as `.detached` so the next launch doesn't auto-attach a stale binding.
     @MainActor
     static func sweep(panels: [PanelSnapshot]) async {
         for panel in panels {
@@ -94,22 +94,40 @@ enum ZmxPanelBinder {
 
     @MainActor
     static func reconcile(panel: PanelSnapshot) async {
+        let existing = await ZmxBindingIndex.shared.lookup(panelId: panel.panelId)
+
         guard let surface = panel.surface, panel.surfaceLive else {
+            // Surface gone: keep the existing binding around but flag it
+            // detached so RestorePlanner falls into the offerReattach branch.
+            if existing != nil {
+                await ZmxBindingIndex.shared.update(panelId: panel.panelId, state: .detached)
+            }
             return
         }
-        let foregroundPid = pid_t(ghostty_surface_foreground_pid(surface))
-        guard foregroundPid > 0 else {
-            await ZmxBindingIndex.shared.update(panelId: panel.panelId, state: .detached)
+        let rawPid = ghostty_surface_foreground_pid(surface)
+        guard rawPid > 0, rawPid <= UInt64(Int32.max) else {
+            if existing != nil {
+                await ZmxBindingIndex.shared.update(panelId: panel.panelId, state: .detached)
+            }
             return
         }
+        let foregroundPid = pid_t(rawPid)
         guard let argv = ProcessArgvReader.argv(forPid: foregroundPid),
               let parsed = ZmxArgvParser.parse(argv) else {
             // Foreground process is not a tracked zmx attach. If we previously
             // bound this panel, mark it as detached — the user dropped out of
             // zmx but the daemon may still be alive.
-            await ZmxBindingIndex.shared.update(panelId: panel.panelId, state: .detached)
+            if existing != nil {
+                await ZmxBindingIndex.shared.update(panelId: panel.panelId, state: .detached)
+            }
             return
         }
+        // Preserve the original attachedAt across re-attaches so the model
+        // captures "when did this panel first join this session" rather than
+        // "when did the binder last sweep".
+        let attachedAt = (existing?.zmxSessionName == parsed.sessionName)
+            ? (existing?.attachedAt ?? .init())
+            : .init()
         let binding = RestorableZmxBinding(
             workspaceId: panel.workspaceId,
             panelId: panel.panelId,
@@ -119,7 +137,7 @@ enum ZmxPanelBinder {
             originalArgv: argv,
             workingDirectory: panel.workingDirectory ?? FileManager.default.currentDirectoryPath,
             attachState: .attached,
-            attachedAt: .init(),
+            attachedAt: attachedAt,
             lastSeenAt: .init()
         )
         await ZmxBindingIndex.shared.upsert(binding)
