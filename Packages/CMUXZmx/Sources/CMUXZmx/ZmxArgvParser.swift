@@ -1,14 +1,15 @@
 import Foundation
 
 public enum ZmxArgvParser {
+    /// Subcommands that *bind a panel to a session* (attach to a live PTY).
+    /// Non-attaching subcommands (run/send/print/tail/history/kill/list/detach/...)
+    /// are ignored: they don't represent a panel taking over a session view.
     public enum Subcommand: String, Sendable {
         case attach
-        case run
 
         static func from(_ token: String) -> Subcommand? {
             switch token {
             case "attach", "a": return .attach
-            case "run", "r": return .run
             default: return nil
             }
         }
@@ -17,12 +18,10 @@ public enum ZmxArgvParser {
     public struct ParsedSession: Sendable, Equatable {
         public let sessionName: String
         public let subcommand: Subcommand
-        public let detached: Bool
 
-        public init(sessionName: String, subcommand: Subcommand, detached: Bool = false) {
+        public init(sessionName: String, subcommand: Subcommand) {
             self.sessionName = sessionName
             self.subcommand = subcommand
-            self.detached = detached
         }
     }
 
@@ -39,36 +38,32 @@ public enum ZmxArgvParser {
         guard let sub = Subcommand.from(argv[index]) else { return nil }
         index += 1
 
-        var detached = false
         var sessionName: String?
 
         while index < argv.count {
             let token = argv[index]
             switch token {
-            case "-d", "--detach":
-                detached = true
-                index += 1
             case "--fish":
                 index += 1
             case "--":
-                // remainder is the command for the session, stop parsing
+                // Remainder is the command for the session; stop parsing.
                 index = argv.count
             default:
                 if token.hasPrefix("-") {
-                    // Unknown flag, skip
+                    // Unknown flag, skip.
                     index += 1
                 } else if sessionName == nil {
                     sessionName = token
                     index += 1
                 } else {
-                    // first positional after session name is command, stop
+                    // First positional after session name is the command; stop.
                     index = argv.count
                 }
             }
         }
 
         guard let name = sessionName, !name.isEmpty else { return nil }
-        return ParsedSession(sessionName: name, subcommand: sub, detached: detached)
+        return ParsedSession(sessionName: name, subcommand: sub)
     }
 
     private static func firstZmxBinaryIndex(_ argv: [String]) -> Int? {

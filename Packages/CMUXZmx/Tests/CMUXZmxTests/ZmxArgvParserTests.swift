@@ -6,7 +6,6 @@ final class ZmxArgvParserTests: XCTestCase {
         let parsed = ZmxArgvParser.parse(["zmx", "attach", "work"])
         XCTAssertEqual(parsed?.sessionName, "work")
         XCTAssertEqual(parsed?.subcommand, .attach)
-        XCTAssertEqual(parsed?.detached, false)
     }
 
     func testParsesAttachWithFullPath() {
@@ -20,11 +19,10 @@ final class ZmxArgvParserTests: XCTestCase {
         XCTAssertEqual(parsed?.subcommand, .attach)
     }
 
-    func testParsesRunDetached() {
-        let parsed = ZmxArgvParser.parse(["zmx", "run", "-d", "logs", "tail", "-f", "/tmp/log"])
-        XCTAssertEqual(parsed?.sessionName, "logs")
-        XCTAssertEqual(parsed?.subcommand, .run)
-        XCTAssertEqual(parsed?.detached, true)
+    func testIgnoresRunSubcommand() {
+        // run = "send command without attaching" — not a panel binding
+        XCTAssertNil(ZmxArgvParser.parse(["zmx", "run", "logs", "tail", "-f", "/tmp/log"]))
+        XCTAssertNil(ZmxArgvParser.parse(["zmx", "r", "logs", "echo"]))
     }
 
     func testIgnoresNonZmxCommand() {
@@ -34,8 +32,26 @@ final class ZmxArgvParserTests: XCTestCase {
 
     func testIgnoresZmxMetaCommands() {
         XCTAssertNil(ZmxArgvParser.parse(["zmx", "ls"]))
+        XCTAssertNil(ZmxArgvParser.parse(["zmx", "l"]))
         XCTAssertNil(ZmxArgvParser.parse(["zmx", "kill", "foo"]))
+        XCTAssertNil(ZmxArgvParser.parse(["zmx", "k", "foo"]))
         XCTAssertNil(ZmxArgvParser.parse(["zmx", "send", "foo", "ls\n"]))
+        XCTAssertNil(ZmxArgvParser.parse(["zmx", "s", "foo", "x"]))
+        XCTAssertNil(ZmxArgvParser.parse(["zmx", "detach", "foo"]))
+        XCTAssertNil(ZmxArgvParser.parse(["zmx", "d", "foo"]))
+        XCTAssertNil(ZmxArgvParser.parse(["zmx", "tail", "foo"]))
+        XCTAssertNil(ZmxArgvParser.parse(["zmx", "t", "foo"]))
+        XCTAssertNil(ZmxArgvParser.parse(["zmx", "history", "foo"]))
+        XCTAssertNil(ZmxArgvParser.parse(["zmx", "hi", "foo"]))
+        XCTAssertNil(ZmxArgvParser.parse(["zmx", "print", "foo", "msg"]))
+        XCTAssertNil(ZmxArgvParser.parse(["zmx", "p", "foo", "msg"]))
+        XCTAssertNil(ZmxArgvParser.parse(["zmx", "write", "foo", "/tmp/x"]))
+        XCTAssertNil(ZmxArgvParser.parse(["zmx", "wr", "foo", "/tmp/x"]))
+        XCTAssertNil(ZmxArgvParser.parse(["zmx", "wait", "foo"]))
+        XCTAssertNil(ZmxArgvParser.parse(["zmx", "w", "foo"]))
+        XCTAssertNil(ZmxArgvParser.parse(["zmx", "completions", "zsh"]))
+        XCTAssertNil(ZmxArgvParser.parse(["zmx", "version"]))
+        XCTAssertNil(ZmxArgvParser.parse(["zmx", "help"]))
     }
 
     func testHandlesGlobalFlagsBeforeSubcommand() {
@@ -53,9 +69,9 @@ final class ZmxArgvParserTests: XCTestCase {
         XCTAssertNil(ZmxArgvParser.parse(["zmx", "attach", "--fish"]))
     }
 
-    func testRunWithFishFlag() {
-        let parsed = ZmxArgvParser.parse(["zmx", "run", "--fish", "shell", "fish"])
+    func testAttachWithFishFlag() {
+        let parsed = ZmxArgvParser.parse(["zmx", "attach", "--fish", "shell"])
         XCTAssertEqual(parsed?.sessionName, "shell")
-        XCTAssertEqual(parsed?.subcommand, .run)
+        XCTAssertEqual(parsed?.subcommand, .attach)
     }
 }
