@@ -10759,12 +10759,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             notificationStore.markRead(forTabId: target.tabId)
             return true
         }
-<<<<<<< HEAD
-        return markFocusedNotificationAsOldestUnread(target: target, notificationStore: notificationStore) != nil
-=======
         notificationStore.markUnread(forTabId: target.tabId)
         return true
->>>>>>> upstream/main
     }
 
     @discardableResult

@@ -4468,11 +4468,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
             case .inputText(let text):
                 return text.utf8.count
             case .key(let event):
-<<<<<<< HEAD
-                return max(event.queuedByteCost, 1)
-=======
                 return event.queuedByteCost
->>>>>>> upstream/main
             }
         }
     }
@@ -4484,17 +4480,11 @@ final class TerminalSurface: Identifiable, ObservableObject {
 
     enum NamedKeySendResult: Equatable {
         case sent
-<<<<<<< HEAD
-        case unknownKey
-        case inputQueueFull
-        case surfaceUnavailable
-=======
         case queued
         case unknownKey
         case inputQueueFull
         case surfaceUnavailable
         case processExited
->>>>>>> upstream/main
     }
 
     enum InputSendResult: Equatable {
@@ -4502,20 +4492,13 @@ final class TerminalSurface: Identifiable, ObservableObject {
         case queued
         case inputQueueFull
         case surfaceUnavailable
-<<<<<<< HEAD
-=======
         case processExited
->>>>>>> upstream/main
 
         var accepted: Bool {
             switch self {
             case .sent, .queued:
                 return true
-<<<<<<< HEAD
-            case .inputQueueFull, .surfaceUnavailable:
-=======
             case .inputQueueFull, .surfaceUnavailable, .processExited:
->>>>>>> upstream/main
                 return false
             }
         }
@@ -4705,10 +4688,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
         self.surfaceView = view
         self.hostedView = GhosttySurfaceScrollView(surfaceView: view)
         TerminalSurfaceRegistry.shared.register(self)
-<<<<<<< HEAD
-=======
         self.hostedView.attachSurface(self)
->>>>>>> upstream/main
 
         let inheritedCommand = configTemplate?.command?.trimmingCharacters(in: .whitespacesAndNewlines)
         let inheritedInput = configTemplate?.initialInput
@@ -4722,13 +4702,9 @@ final class TerminalSurface: Identifiable, ObservableObject {
         // Ghostty's embedded surface creation still expects a view with a window, so use
         // a hidden bootstrap window until the real portal host is ready.
         if hasStartupWork {
-<<<<<<< HEAD
-            startRuntimeUsingHeadlessWindowIfNeeded(reason: "startup")
-=======
             MainActor.assumeIsolated {
                 scheduleHeadlessRuntimeStartIfNeeded(reason: "startup")
             }
->>>>>>> upstream/main
         }
     }
 
@@ -4738,16 +4714,6 @@ final class TerminalSurface: Identifiable, ObservableObject {
         surfaceView.tabId = newTabId
     }
 
-<<<<<<< HEAD
-    private func startRuntimeUsingHeadlessWindowIfNeeded(reason: String) {
-        if !Thread.isMainThread {
-            DispatchQueue.main.async { [weak self] in
-                self?.startRuntimeUsingHeadlessWindowIfNeeded(reason: reason)
-            }
-            return
-        }
-
-=======
     @MainActor
     private func scheduleHeadlessRuntimeStartIfNeeded(reason: String) {
         startRuntimeUsingHeadlessWindowIfNeeded(reason: reason)
@@ -4755,17 +4721,13 @@ final class TerminalSurface: Identifiable, ObservableObject {
 
     @MainActor
     private func startRuntimeUsingHeadlessWindowIfNeeded(reason: String) {
->>>>>>> upstream/main
         guard allowsRuntimeSurfaceCreation() else { return }
         guard surface == nil else { return }
         ensureHeadlessStartupWindowIfNeeded(reason: reason)
         hostedView.attachSurface(self)
     }
 
-<<<<<<< HEAD
-=======
     @MainActor
->>>>>>> upstream/main
     private func ensureHeadlessStartupWindowIfNeeded(reason: String) {
         guard headlessStartupWindow == nil else { return }
         guard hostedView.window == nil else { return }
@@ -4792,11 +4754,8 @@ final class TerminalSurface: Identifiable, ObservableObject {
         contentView.addSubview(hostedView)
         window.contentView = contentView
         headlessStartupWindow = window
-<<<<<<< HEAD
-=======
         hostedView.setVisibleInUI(false)
         hostedView.setActive(false)
->>>>>>> upstream/main
 
 #if DEBUG
         cmuxDebugLog(
@@ -4806,10 +4765,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
 #endif
     }
 
-<<<<<<< HEAD
-=======
     @MainActor
->>>>>>> upstream/main
     private func releaseHeadlessStartupWindowIfNeeded(for view: GhosttyNSView) {
         guard let window = headlessStartupWindow else { return }
         guard let currentWindow = view.window, currentWindow !== window else { return }
@@ -4824,8 +4780,6 @@ final class TerminalSurface: Identifiable, ObservableObject {
 #endif
     }
 
-<<<<<<< HEAD
-=======
     private func closeHeadlessStartupWindowIfNeeded() {
         let startupWindow = headlessStartupWindow
         headlessStartupWindow = nil
@@ -4843,19 +4797,13 @@ final class TerminalSurface: Identifiable, ObservableObject {
     }
 
     @MainActor
->>>>>>> upstream/main
     func reconcileAttachedWindowIfNeeded(for view: GhosttyNSView) {
         guard attachedView === view else { return }
         releaseHeadlessStartupWindowIfNeeded(for: view)
         guard let screen = view.window?.screen ?? NSScreen.main,
               let displayID = screen.displayID,
-<<<<<<< HEAD
-              displayID != 0,
-              let s = surface else { return }
-=======
               displayID != 0 else { return }
         guard let s = liveSurfaceForGhosttyAccess(reason: "reconcileAttachedWindow") else { return }
->>>>>>> upstream/main
         ghostty_surface_set_display_id(s, displayID)
     }
 
@@ -5789,12 +5737,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
         cmuxDebugLog("forceRefresh: \(id) reason=\(reason) \(viewState)")
 #endif
         guard let view = attachedView,
-<<<<<<< HEAD
-              surface != nil,
-              view.window != nil,
-=======
               let window = uiWindow,
->>>>>>> upstream/main
               view.bounds.width > 0,
               view.bounds.height > 0 else {
             return
@@ -5890,10 +5833,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
     func sendText(_ text: String) -> Bool {
         guard let data = text.data(using: .utf8), !data.isEmpty else { return true }
         guard surface != nil else {
-<<<<<<< HEAD
-=======
             guard allowsRuntimeSurfaceCreation() else { return false }
->>>>>>> upstream/main
             let queued = enqueuePendingSocketInput(.pasteText(data))
             if queued {
                 requestBackgroundSurfaceStartIfNeeded()
@@ -5903,10 +5843,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
         guard let liveSurface = liveSurfaceForSocketWrite(reason: "socket.sendText") else {
             return false
         }
-<<<<<<< HEAD
-=======
         guard !ghostty_surface_process_exited(liveSurface) else { return false }
->>>>>>> upstream/main
         writeTextData(data, to: liveSurface)
         return true
     }
@@ -5915,29 +5852,17 @@ final class TerminalSurface: Identifiable, ObservableObject {
     @discardableResult
     func sendNamedKey(_ keyName: String) -> NamedKeySendResult {
         guard let event = pendingKeyEvent(for: keyName) else { return .unknownKey }
-<<<<<<< HEAD
-        if surface != nil {
-            guard let liveSurface = liveSurfaceForSocketWrite(reason: "socket.sendNamedKey") else {
-                return .surfaceUnavailable
-            }
-            sendKeyEvent(surface: liveSurface, keycode: event.keycode, mods: event.mods)
-        } else {
-=======
         guard surface != nil else {
             guard allowsRuntimeSurfaceCreation() else { return .surfaceUnavailable }
->>>>>>> upstream/main
             guard enqueuePendingSocketInput(.key(event)) else { return .inputQueueFull }
             requestBackgroundSurfaceStartIfNeeded()
             return .queued
         }
-<<<<<<< HEAD
-=======
         guard let liveSurface = liveSurfaceForSocketWrite(reason: "socket.sendNamedKey") else {
             return .surfaceUnavailable
         }
         guard !ghostty_surface_process_exited(liveSurface) else { return .processExited }
         sendKeyEvent(surface: liveSurface, keycode: event.keycode, mods: event.mods)
->>>>>>> upstream/main
         return .sent
     }
 
@@ -5956,10 +5881,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
     func sendInputResult(_ text: String) -> InputSendResult {
         guard !text.isEmpty else { return .sent }
         guard surface != nil else {
-<<<<<<< HEAD
-=======
             guard allowsRuntimeSurfaceCreation() else { return .surfaceUnavailable }
->>>>>>> upstream/main
             let queued = enqueuePendingSocketInput(text)
             if queued {
                 requestBackgroundSurfaceStartIfNeeded()
@@ -5969,10 +5891,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
         guard let liveSurface = liveSurfaceForSocketWrite(reason: "socket.sendInput") else {
             return .surfaceUnavailable
         }
-<<<<<<< HEAD
-=======
         guard !ghostty_surface_process_exited(liveSurface) else { return .processExited }
->>>>>>> upstream/main
         sendInput(text, to: liveSurface)
         return .sent
     }
@@ -6046,15 +5965,9 @@ final class TerminalSurface: Identifiable, ObservableObject {
                 flushBufferedText()
                 appendKey(UInt32(kVK_Escape), label: "escape")
                 previousWasCR = false
-<<<<<<< HEAD
-            case 0x7F:
-                flushBufferedText()
-                appendKey(UInt32(kVK_Delete), label: "delete")
-=======
             case 0x08, 0x7F:
                 flushBufferedText()
                 appendKey(UInt32(kVK_Delete), label: "backspace")
->>>>>>> upstream/main
                 previousWasCR = false
             default:
                 bufferedText.unicodeScalars.append(scalar)
@@ -6106,11 +6019,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
     // start a terminal in a background workspace without selecting that workspace.
     // When there is no real window yet, bootstrap Ghostty in a hidden window and
     // reconcile display/window state when the terminal is later presented.
-<<<<<<< HEAD
-    func requestBackgroundSurfaceStartIfNeeded(allowOffWindow: Bool = false) {
-=======
     func requestBackgroundSurfaceStartIfNeeded() {
->>>>>>> upstream/main
         if !Thread.isMainThread {
             DispatchQueue.main.async { [weak self] in
                 self?.requestBackgroundSurfaceStartIfNeeded()
@@ -6125,26 +6034,6 @@ final class TerminalSurface: Identifiable, ObservableObject {
 
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-<<<<<<< HEAD
-            self.backgroundSurfaceStartQueued = false
-            guard self.allowsRuntimeSurfaceCreation() else { return }
-            guard self.surface == nil else { return }
-            #if DEBUG
-            let startedAt = ProcessInfo.processInfo.systemUptime
-            #endif
-            if let view = self.attachedView, view.window != nil {
-                self.createSurface(for: view)
-            } else {
-                self.startRuntimeUsingHeadlessWindowIfNeeded(reason: allowOffWindow ? "background-input" : "cold-input")
-            }
-            #if DEBUG
-            let elapsedMs = (ProcessInfo.processInfo.systemUptime - startedAt) * 1000.0
-            let view = self.attachedView ?? self.surfaceView
-            cmuxDebugLog(
-                "surface.background_start surface=\(self.id.uuidString.prefix(8)) inWindow=\(view.window != nil ? 1 : 0) ready=\(self.surface != nil ? 1 : 0) ms=\(String(format: "%.2f", elapsedMs))"
-            )
-            #endif
-=======
             MainActor.assumeIsolated {
                 self.backgroundSurfaceStartQueued = false
                 guard self.allowsRuntimeSurfaceCreation() else { return }
@@ -6165,7 +6054,6 @@ final class TerminalSurface: Identifiable, ObservableObject {
                 )
             #endif
             }
->>>>>>> upstream/main
         }
     }
 
@@ -6481,13 +6369,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
     deinit {
         TerminalSurfaceRegistry.shared.unregister(self)
         markPortalLifecycleClosed(reason: "deinit")
-<<<<<<< HEAD
-        headlessStartupWindow?.contentView = nil
-        headlessStartupWindow?.close()
-        headlessStartupWindow = nil
-=======
         closeHeadlessStartupWindowIfNeeded()
->>>>>>> upstream/main
 
         let callbackContext = surfaceCallbackContext
         surfaceCallbackContext = nil
@@ -12579,19 +12461,10 @@ final class GhosttySurfaceScrollView: NSView {
         flushPortalLayout: Bool
     ) -> Bool {
         guard let terminalSurface = surfaceView.terminalSurface,
-<<<<<<< HEAD
-              surfaceView.isVisibleInUI,
-              let window,
-              !isHidden else { return false }
-        if requiresActiveKeyWindow {
-            guard isActive, window.isKeyWindow else { return false }
-        }
-=======
               isActive,
               let window = uiWindow,
               window.isKeyWindow,
               surfaceView.isVisibleInUI else { return }
->>>>>>> upstream/main
 
         let now = CACurrentMediaTime()
         if now - lastVisibleSurfaceRefreshAt < 0.05 {
