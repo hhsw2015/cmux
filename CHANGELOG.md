@@ -2,6 +2,11 @@
 
 All notable changes to cmux are documented here.
 
+## Unreleased
+
+### Added
+- zmx integration: track every panel running `zmx attach <name>` so cmux remembers persistent terminal sessions across restarts. Adds the `CMUXZmx` package, an `applicationDidFinishLaunching` reconcile pass, periodic 30s sweeps, command palette entries (`List orphan zmx sessions`, `Reconcile zmx bindings`), and a settings card. Auto-reattach into the same panel on next launch is staged behind a stable-panelId design note in `docs/zmx-integration.md`.
+
 ## [0.64.6] - 2026-05-14
 
 ### Added

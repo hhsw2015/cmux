@@ -1,6 +1,14 @@
 # zmx integration
 
-Status: **MVP backbone landed; UI surfacing pending upstream review.**
+Status: **MVP backbone landed; auto-reattach + SSH/Remote pending upstream review.**
+
+## TL;DR
+
+* User runs `zmx attach foo` in any cmux panel.
+* Within 30s, cmux's binder reads `ghostty_surface_foreground_pid`, sees a tracked zmx attach, writes a `RestorableZmxBinding` and publishes `panel.zmxSessionName = "foo"`.
+* On cmux relaunch, a reconcile sweep marks bindings whose session disappeared as `.lost` and the `RestorePlanner` decides per-panel: `attach`, `offerReattach`, `clearBinding`, or `noop`.
+* Command palette: `List orphan zmx sessions`, `Reconcile zmx bindings`. Settings: enable toggle + binary detection + reconcile button.
+* Panel-restore wiring is staged: cmux currently regenerates `surface.id` per launch, so the stable-panelId step (option A or B below) ships in a follow-up PR.
 
 [zmx](https://github.com/neurosnap/zmx) is a terminal session-persistence
 daemon: shell processes survive a disconnect, scrollback included. cmux on its
@@ -138,8 +146,12 @@ the cmd palette, but doesn't auto-attach on the next launch.
 
 ## Tests
 
-`swift test --package-path Packages/CMUXZmx` runs 32 unit tests covering
-parser variants, locator paths, binding index round-trip + purge,
-restore-planner decision branches, and process-table smoke checks. The
-bridge file is exercised end-to-end the moment Phase 2 wires it into the
-palette.
+`swift test --package-path Packages/CMUXZmx` runs 36 unit tests:
+
+* `ZmxArgvParserTests` — alias coverage for every zmx subcommand
+* `ZmxLocatorTests` — PATH lookup, candidate paths, executable check
+* `ZmxBindingIndexTests` — upsert/lookup/remove, persist across instances, reconcile, purge by session, corrupt-file recovery
+* `ZmxKnownSessionsTrackerTests` — record / update / reconcile / persist
+* `ZmxRestorePlannerTests` — every decision-table branch
+* `ProcessArgvReaderTests` / `ZmxSystemScannerTests` — sysctl smoke
+
