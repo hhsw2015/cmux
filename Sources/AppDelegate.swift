@@ -1050,6 +1050,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 Task.detached(priority: .utility) {
                     await ZmxCommandHooks.sweepLiveSessions()
                 }
+                NotificationCenter.default.post(name: .zmxPanelBinderSweepRequested, object: nil)
+            }
+            NotificationCenter.default.addObserver(
+                forName: .zmxPanelBinderSweepRequested,
+                object: nil,
+                queue: .main
+            ) { _ in
+                // Defer one runloop tick so each TerminalPanel's notification
+                // observer has a chance to refresh its registry box first.
+                DispatchQueue.main.async {
+                    Task { @MainActor in
+                        let snapshots = ZmxPanelRegistry.shared.snapshot()
+                        await ZmxPanelBinder.sweep(panels: snapshots)
+                    }
+                }
             }
         }
 

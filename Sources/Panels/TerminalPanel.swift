@@ -71,10 +71,36 @@ final class TerminalPanel: Panel, ObservableObject {
         surface.requestedWorkingDirectory
     }
 
+    private let zmxPanelBox: ZmxPanelRegistry.PanelBox
+
     init(workspaceId: UUID, surface: TerminalSurface) {
         self.id = surface.id
         self.workspaceId = workspaceId
         self.surface = surface
+        self.zmxPanelBox = ZmxPanelRegistry.PanelBox(
+            workspaceId: workspaceId,
+            surface: surface.runtimeSurface,
+            surfaceLive: surface.hasLiveSurface,
+            workingDirectory: surface.requestedWorkingDirectory
+        )
+        ZmxPanelRegistry.shared.register(
+            workspaceId: workspaceId,
+            panelId: surface.id,
+            box: zmxPanelBox
+        )
+
+        // Refresh the registry box whenever the binder sweeps so it sees the
+        // latest live surface handle, liveness flag, and cwd for this panel.
+        NotificationCenter.default.addObserver(
+            forName: .zmxPanelBinderSweepRequested,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            self.zmxPanelBox.surface = self.surface.runtimeSurface
+            self.zmxPanelBox.surfaceLive = self.surface.hasLiveSurface
+            self.zmxPanelBox.workingDirectory = self.surface.requestedWorkingDirectory
+        }
 
         // Subscribe to surface's search state changes
         surface.$searchState
@@ -165,6 +191,10 @@ final class TerminalPanel: Panel, ObservableObject {
         // by a runloop tick, and `requestFocus` retries that are already executing can otherwise
         // schedule new work items that fire after we navigate away.
         hostedView.setActive(false)
+    }
+
+    deinit {
+        ZmxPanelRegistry.shared.scheduleUnregister(panelId: id)
     }
 
     func close() {
