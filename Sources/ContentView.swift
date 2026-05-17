@@ -7335,6 +7335,20 @@ struct ContentView: View {
                     keywords: ["zmx", "kill", "terminate", "stop", "session"]
                 )
             )
+            contributions.append(
+                CommandPaletteCommandContribution(
+                    commandId: "palette.zmxToggleKeepAlive",
+                    title: constant(String(
+                        localized: "commandPalette.zmx.keepAlive.title",
+                        defaultValue: "Toggle Keep Alive on Focused Panel"
+                    )),
+                    subtitle: constant(String(
+                        localized: "commandPalette.zmx.keepAlive.subtitle",
+                        defaultValue: "Keep this terminal's session alive after closing the panel"
+                    )),
+                    keywords: ["zmx", "tsm", "keep", "alive", "persistent", "session"]
+                )
+            )
         }
 
         return contributions
@@ -7963,6 +7977,32 @@ struct ContentView: View {
             }
         }
 
+        registry.register(commandId: "palette.zmxToggleKeepAlive") {
+            Task { @MainActor in
+                guard let panel = focusedTerminalPanelForKeepAliveToggle() else {
+                    NSSound.beep()
+                    return
+                }
+                panel.keepAlive.toggle()
+                #if DEBUG
+                cmuxDebugLog("session-persistence.panel.keepAlive.toggle " +
+                             "panel=\(panel.id.uuidString.prefix(8)) value=\(panel.keepAlive)")
+                #endif
+            }
+        }
+    }
+
+    @MainActor
+    private func focusedTerminalPanelForKeepAliveToggle() -> TerminalPanel? {
+        guard let selectedId = tabManager.selectedTabId,
+              let workspace = tabManager.tabs.first(where: { $0.id == selectedId }) else {
+            return nil
+        }
+        guard let pane = workspace.bonsplitController.focusedPaneId,
+              let selectedTab = workspace.bonsplitController.selectedTab(inPane: pane) else {
+            return nil
+        }
+        return workspace.panels[selectedTab.id] as? TerminalPanel
     }
 
     private func openCmuxConfigIssue(_ issue: CmuxConfigIssue) {
