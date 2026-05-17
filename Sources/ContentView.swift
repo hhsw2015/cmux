@@ -7289,6 +7289,40 @@ struct ContentView: View {
             )
         }
 
+        // zmx integration: surfaced only when a zmx binary is found on disk.
+        // The handlers themselves do their own short-circuiting if the
+        // binary disappears between contribution time and run time.
+        if ZmxCommandHooks.isAvailable() {
+            contributions.append(
+                CommandPaletteCommandContribution(
+                    commandId: "palette.zmxListOrphanSessions",
+                    title: constant(String(
+                        localized: "commandPalette.zmx.listOrphan.title",
+                        defaultValue: "List orphan zmx sessions"
+                    )),
+                    subtitle: constant(String(
+                        localized: "commandPalette.zmx.listOrphan.subtitle",
+                        defaultValue: "Show zmx sessions cmux has no panel binding for"
+                    )),
+                    keywords: ["zmx", "orphan", "session", "persistence"]
+                )
+            )
+            contributions.append(
+                CommandPaletteCommandContribution(
+                    commandId: "palette.zmxReconcile",
+                    title: constant(String(
+                        localized: "commandPalette.zmx.reconcile.title",
+                        defaultValue: "Reconcile zmx bindings"
+                    )),
+                    subtitle: constant(String(
+                        localized: "commandPalette.zmx.reconcile.subtitle",
+                        defaultValue: "Refresh state of every zmx-backed panel"
+                    )),
+                    keywords: ["zmx", "reconcile", "refresh", "session"]
+                )
+            )
+        }
+
         return contributions
     }
 
@@ -7836,6 +7870,56 @@ struct ContentView: View {
             let captured = action
             registry.register(commandId: action.id) {
                 executeConfiguredAction(captured)
+            }
+        }
+
+        registry.register(commandId: "palette.zmxListOrphanSessions") {
+            Task { @MainActor in
+                let orphans = await ZmxCommandHooks.listOrphanSessions()
+                if orphans.isEmpty {
+                    let alert = NSAlert()
+                    alert.messageText = String(
+                        localized: "zmx.alert.noOrphans.title",
+                        defaultValue: "No orphan zmx sessions"
+                    )
+                    alert.informativeText = String(
+                        localized: "zmx.alert.noOrphans.detail",
+                        defaultValue: "Every running zmx session is already tracked by cmux."
+                    )
+                    alert.runModal()
+                    return
+                }
+                let alert = NSAlert()
+                alert.messageText = String(
+                    localized: "zmx.alert.orphans.title",
+                    defaultValue: "Orphan zmx sessions"
+                )
+                alert.informativeText = orphans.map(\.name).joined(separator: "\n")
+                alert.runModal()
+            }
+        }
+
+        registry.register(commandId: "palette.zmxReconcile") {
+            Task { @MainActor in
+                let lost = await ZmxCommandHooks.reconcile()
+                let alert = NSAlert()
+                alert.messageText = String(
+                    localized: "zmx.alert.reconcile.title",
+                    defaultValue: "zmx reconcile complete"
+                )
+                if lost.isEmpty {
+                    alert.informativeText = String(
+                        localized: "zmx.alert.reconcile.clean",
+                        defaultValue: "All bindings still match a live zmx session."
+                    )
+                } else {
+                    let names = lost.map(\.zmxSessionName).joined(separator: ", ")
+                    alert.informativeText = String(
+                        localized: "zmx.alert.reconcile.flipped",
+                        defaultValue: "\(lost.count) binding(s) flipped to lost: \(names)"
+                    )
+                }
+                alert.runModal()
             }
         }
     }
