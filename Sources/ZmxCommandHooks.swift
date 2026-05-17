@@ -86,7 +86,8 @@ enum ZmxCommandHooks {
     static var integrationEnabled: Bool {
         // UserDefaults read is cheap; checking each tick avoids the need to
         // wire a notification when the user toggles the setting.
-        UserDefaults.standard.object(forKey: "zmx.integration.enabled") as? Bool ?? true
+        UserDefaults.standard.object(forKey: ZmxSettings.enabledKey) as? Bool
+            ?? ZmxSettings.defaultEnabled
     }
 
     /// Look up the shell input that reattaches a panel to its previous zmx
