@@ -215,6 +215,10 @@ final class TerminalPanel: Panel, ObservableObject {
             NotificationCenter.default.removeObserver(observer)
         }
         ZmxPanelRegistry.shared.scheduleUnregister(panelId: id)
+        let panelId = id
+        Task { @MainActor in
+            ZmxPanelBindingCache.clear(panelId: panelId)
+        }
     }
 
     func close() {
