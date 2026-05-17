@@ -6,6 +6,7 @@ enum SettingsNavigationTarget: String, CaseIterable, Identifiable {
     case terminal
     case sidebarAppearance
     case betaFeatures
+    case zmx
     case automation
     case browser
     case browserImport
@@ -31,6 +32,8 @@ enum SettingsNavigationTarget: String, CaseIterable, Identifiable {
             return String(localized: "settings.section.sidebarAppearance", defaultValue: "Sidebar")
         case .betaFeatures:
             return String(localized: "settings.section.betaFeatures", defaultValue: "Beta Features")
+        case .zmx:
+            return String(localized: "settings.section.zmx", defaultValue: "zmx Persistence")
         case .automation:
             return String(localized: "settings.section.automation", defaultValue: "Automation")
         case .browser:
@@ -62,6 +65,8 @@ enum SettingsNavigationTarget: String, CaseIterable, Identifiable {
             return "sidebar.left"
         case .betaFeatures:
             return "exclamationmark.triangle"
+        case .zmx:
+            return "bolt.horizontal.circle"
         case .automation:
             return "wand.and.sparkles"
         case .browser:
@@ -93,6 +98,8 @@ enum SettingsNavigationTarget: String, CaseIterable, Identifiable {
             return "\(title) sidebar details branches badges material terminal background"
         case .betaFeatures:
             return "\(title) beta experimental unstable feed dock right sidebar"
+        case .zmx:
+            return "\(title) zmx persistence terminal session attach restore daemon"
         case .automation:
             return "\(title) socket integrations hooks ports claude cursor gemini"
         case .browser:

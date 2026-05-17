@@ -6493,6 +6493,9 @@ struct SettingsView: View {
                         dockEnabled: $rightSidebarDockEnabled
                     )
 
+                    ZmxSettingsView()
+                        .settingsSearchAnchor(SettingsSearchIndex.sectionID(for: .zmx))
+
                     SettingsSectionHeader(title: String(localized: "settings.section.automation", defaultValue: "Automation"))
                         .settingsSearchAnchor(SettingsSearchIndex.sectionID(for: .automation))
                     SettingsCard {

@@ -15,6 +15,7 @@ struct ZmxSettingsView: View {
         SettingsSectionHeader(
             title: String(localized: "settings.section.zmx", defaultValue: "zmx Persistence")
         )
+        .settingsSearchAnchor(SettingsSearchIndex.sectionID(for: .zmx))
 
         SettingsCard {
             SettingsCardRow(

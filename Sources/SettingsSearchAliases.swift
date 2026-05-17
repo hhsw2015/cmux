@@ -11,6 +11,8 @@ enum SettingsSearchAliasIndex {
             return localized("settings.search.alias.section.sidebarAppearance", defaultValue: "sidebar left rail navigation details branches badges material terminal background")
         case .betaFeatures:
             return localized("settings.search.alias.section.betaFeatures", defaultValue: "beta experimental unstable preview dock right sidebar")
+        case .zmx:
+            return localized("settings.search.alias.section.zmx", defaultValue: "zmx persistence session attach reattach daemon terminal restore")
         case .automation:
             return localized("settings.search.alias.section.automation", defaultValue: "api cli control socket mcp agents hooks ports")
         case .browser:
