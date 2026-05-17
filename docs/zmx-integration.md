@@ -88,6 +88,29 @@ Existing bindings on disk are kept untouched so reinstalling zmx restores
 the previous panel-to-session map. The launch reconcile becomes a no-op,
 not a destructive sweep.
 
+## Auto-restore on launch (work in progress)
+
+`ZmxCommandHooks.resumeCommand(forPanelId:)` returns a cd-guarded
+`zmx attach <name>` shell command when the planner says the panel
+should auto-attach. cmux's panel-restore path can feed this into a
+terminal's `initialCommand` to reattach without user input.
+
+The hook is currently **not wired** into Workspace's session-restore
+flow because cmux's saved-state schema regenerates `surface.id` (the
+panelId we key bindings on) on every launch. To enable real
+auto-restore the binding lookup needs a stable per-panel identity that
+survives the workspace UUID regeneration:
+
+* Option A — store the binding by `(workspaceRef, panelOrdinalInPane)`
+  rather than by surface UUID.
+* Option B — extend the saved panel state to carry a stable ID
+  (already partially done by `RestorableAgentSessionIndex` for agent
+  sessions; the same ID could key zmx bindings).
+
+Until that lands, the integration writes bindings (so cmux remembers
+which session each panel was hosting) and supports manual reattach via
+the cmd palette, but doesn't auto-attach on the next launch.
+
 ## Race protection
 
 * `ZmxCommandHooks.runListAlive` returns nil on subprocess failure (timeout,

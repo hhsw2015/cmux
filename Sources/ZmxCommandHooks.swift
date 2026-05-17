@@ -80,6 +80,44 @@ enum ZmxCommandHooks {
         return ZmxLocator.isExecutable(binary)
     }
 
+    /// Look up the resume command for a panel that was previously bound to a
+    /// zmx attach. Returns the shell command (cd-guarded) when the planner
+    /// says the session is alive and was last in `.attached` state. Returns
+    /// nil when no auto-attach is appropriate; callers should fall through to
+    /// the panel's normal restore path (or surface a "reattach" affordance).
+    static func resumeCommand(forPanelId panelId: UUID) async -> String? {
+        guard let binding = await ZmxBindingIndex.shared.lookup(panelId: panelId) else {
+            return nil
+        }
+        guard let binary = ZmxLocator.resolveBinary() else { return nil }
+        let alive = await Self.runListAlive(binary: binary)
+        let env = ZmxRestorePlanner.Environment(
+            zmxBinaryAvailable: true,
+            zmxBinaryExecutable: ZmxLocator.isExecutable(binary),
+            aliveSessions: alive ?? []
+        )
+        let action = ZmxRestorePlanner.plan(binding: binding, environment: env)
+        switch action {
+        case .attach(let argv, let cwd):
+            // cmux PTYs receive a string command; quote argv pieces and add
+            // an explicit cd so the session reattaches in the panel's
+            // recorded directory.
+            let quoted = argv.map(Self.shellQuote).joined(separator: " ")
+            let cdGuard = "cd \(Self.shellQuote(cwd)) 2>/dev/null; "
+            return cdGuard + quoted
+        case .offerReattach, .clearBinding, .noop:
+            return nil
+        }
+    }
+
+    private static func shellQuote(_ s: String) -> String {
+        if s.isEmpty { return "''" }
+        if s.allSatisfy({ $0.isLetter || $0.isNumber || "_-./:@".contains($0) }) {
+            return s
+        }
+        return "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+
     // MARK: - Off-main subprocess wrappers
 
     /// Returns nil when zmx ls failed for a reason other than "0 sessions"
