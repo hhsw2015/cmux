@@ -80,6 +80,15 @@ enum ZmxCommandHooks {
         return ZmxLocator.isExecutable(binary)
     }
 
+    /// User toggle from settings. Defaults to enabled. When disabled, the
+    /// AppDelegate timer skips its sweep entirely so cmux performs zero
+    /// zmx subprocess work and writes nothing to disk.
+    static var integrationEnabled: Bool {
+        // UserDefaults read is cheap; checking each tick avoids the need to
+        // wire a notification when the user toggles the setting.
+        UserDefaults.standard.object(forKey: "zmx.integration.enabled") as? Bool ?? true
+    }
+
     /// Look up the shell input that reattaches a panel to its previous zmx
     /// session. Result is meant to be fed to the panel's `initialInput`
     /// (typed into the freshly-spawned shell), not its `initialCommand`

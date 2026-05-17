@@ -1039,6 +1039,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 // surface init. Race protection inside reconcile means a
                 // transient zmx ls failure here is harmless either way.
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
+                guard ZmxCommandHooks.integrationEnabled else { return }
                 _ = await ZmxCommandHooks.reconcile()
                 await ZmxCommandHooks.sweepLiveSessions()
             }
@@ -1047,6 +1048,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             // sessions tracker stays current. 30s cadence is cheap (one
             // sysctl + per-zmx-pid argv read) and matches PortScanner.
             Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
+                guard ZmxCommandHooks.integrationEnabled else { return }
                 Task.detached(priority: .utility) {
                     await ZmxCommandHooks.sweepLiveSessions()
                 }
