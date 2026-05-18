@@ -354,6 +354,13 @@ struct cmuxApp: App {
                     Button("Install herdr-cmux on first remote host") {
                         HerdrRemoteInstaller.installOnFirstRemoteHost()
                     }
+                    Menu("Open Herdr Workspace on…") {
+                        ForEach(HostRegistry.shared.hosts) { host in
+                            Button(host.displayName) {
+                                HerdrPanelOpener.openWorkspace(host: host)
+                            }
+                        }
+                    }
                     Button(
                         String(
                             localized: "debug.menu.bonsplitTabBarDebug",

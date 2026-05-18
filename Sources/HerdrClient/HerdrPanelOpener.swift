@@ -245,6 +245,13 @@ enum HerdrPanelOpener {
     /// slot 0 — its existing tabs are left in place, with herdr-backed
     /// tabs added alongside them.
     static func openLocalhostWorkspace() {
+        openWorkspace(host: HerdrHost.localhost())
+    }
+
+    /// Open the focused cmux pane as a herdr workspace mirror. Works
+    /// for any `HerdrHost` — local UDS or SSH stdio — because the
+    /// transport factory + opener impl are transport-agnostic.
+    static func openWorkspace(host: HerdrHost) {
         guard let appDelegate = AppDelegate.shared else {
             herdrPanelOpenerTrace("workspace: no AppDelegate.shared")
             return
@@ -269,7 +276,6 @@ enum HerdrPanelOpener {
             herdrPanelOpenerTrace("workspace: no focused pane in workspace \(workspace.id)")
             return
         }
-        let host = HerdrHost.localhost()
         let exec = (("~/.local/bin/herdr-cmux") as NSString).expandingTildeInPath
         guard FileManager.default.isExecutableFile(atPath: exec) else {
             herdrPanelOpenerTrace("workspace: missing binary at \(exec)")
@@ -284,7 +290,7 @@ enum HerdrPanelOpener {
                     workspace: workspace
                 )
             } catch {
-                herdrPanelOpenerTrace("openLocalhostWorkspace failed: \(error)")
+                herdrPanelOpenerTrace("openWorkspace failed for host \(host.displayName): \(error)")
             }
         }
     }
