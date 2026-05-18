@@ -117,28 +117,29 @@ Plan B's only advantage was upstream-friendliness, which we don't care about (we
 
 The big chunk is **C5.5–C5.9: layout authority + tmux close semantics**. SSH and polish come after.
 
-### Phase D — herdr fork: expose layout as authority
+### Phase D — herdr fork: expose layout as authority ✅
 
-| # | Step | Effort |
+| # | Step | Status |
 |---|---|---|
-| **D1** | Add `Node` wire DTO (`Pane(pane_id) \| Split { direction, ratio, first, second }`); use root-relative L/R **paths** to address splits (no stable split IDs needed). | 0.5 d |
-| **D2** | Add `layout.snapshot(workspace_id, tab_id) -> Tree` RPC. | 0.5 d |
-| **D3** | Add missing mutation RPCs: `pane.set_split_ratio { path, ratio }`, `pane.move { pane_id, target_pane_id, direction }`, `pane.swap { a, b }`, `pane.focus { pane_id }`, `tab.reorder { workspace_id, tab_ids }`. | 1.5 d |
-| **D4** | Add events: `LayoutChanged { workspace_id, tab_id, tree }` (rebroadcasts the whole tree on any structural change — simpler than fine-grained deltas), `PaneMoved`, `TabReordered`. Reuse existing `PaneFocused` for D3's `pane.focus`. | 0.5 d |
+| **D1** | Add `Node` wire DTO (`Pane(pane_id) \| Split { direction, ratio, first, second }`); root-relative L/R paths address splits (no stable split IDs). | done — hhsw2015/herdr `feat(api): D1+D2 ...` |
+| **D2** | Add `layout.snapshot(workspace_id, tab_id) -> Tree` RPC. | done — same commit |
+| **D3** | Add mutation RPCs: `pane.set_split_ratio`, `pane.swap`, `pane.focus`, `tab.reorder`. (`pane.move` deferred — composition with swap covers most drag scenarios.) | done — `feat(api): D3+D4 ...` |
+| **D4** | `LayoutChanged { tree }` + `TabReordered { workspace_id, tab_ids }` events; reuse `PaneFocused` for `pane.focus`. | done — same commit |
 
-Total fork: ~2-3 days, ~600-1000 LOC across `schema.rs`, `app/api.rs`, `layout.rs`, `events.rs`, `persist/`.
+Actual fork delta: ~600 LOC across `schema.rs`, `api/mod.rs`, `app/api.rs`, `app/creation.rs`, `layout.rs`. 969 tests pass single-threaded. Eq derives dropped on `Method/Request/Response*/EventEnvelope/EventData` because `LayoutTree.ratio: f32` cannot be `Eq`; `PartialEq` retained.
 
 ### Phase E — cmux: bonsplit ↔ TileLayout mirror
 
-| # | Step | Effort |
+| # | Step | Status |
 |---|---|---|
-| **E1** | Translator: herdr `Tree` → cmux `BonsplitNode`, and bonsplit operations → herdr RPCs. | 1 d |
-| **E2** | Replace local-only bonsplit mutations on herdr-backed panels with optimistic-RPC pattern (apply locally, send RPC, reconcile from `LayoutChanged` event, rollback on failure). | 1 d |
-| **E3** | Subscribe to `events.subscribe` per workspace: handle `PaneCreated/Closed/Renamed/Focused`, `TabCreated/Closed/Renamed/Focused/Reordered`, `WorkspaceRenamed/Focused`, `PaneAgentStatusChanged`, `LayoutChanged`. Plumb into existing tab title / breadcrumb / status sinks. | 1 d |
-| **E4** | Persistence: cmux workspace JSON stores `{ host, workspace_id }` per cmux window, not the layout itself (layout comes from `layout.snapshot`). On launch, reattach to daemon, snapshot, render. | 0.5 d |
-| **E5** | Close semantics implementation per the table above: Cmd+Q / Cmd+Shift+W / Cmd+W default to detach (UI-only); add explicit "Kill" entries; pane close maps to `pane.close` (kill). | 0.5 d |
+| **E0** | Swift wire types (`HerdrLayoutNode`/`Tree`/payloads) + `HerdrApiClient` extension for `layoutSnapshot`/`paneSetSplitRatio`/`paneSwap`/`paneFocus`/`tabReorder`. Codable round-trip tests. | done — cmux `feat(herdr): E0 ...` |
+| **E1** | Translator: `HerdrLayoutTree` → cmux `BonsplitNode`, and bonsplit operations → herdr RPCs. | next |
+| **E2** | Replace local-only bonsplit mutations on herdr-backed panels with optimistic-RPC pattern (apply locally, send RPC, reconcile from `LayoutChanged` event, rollback on failure). | pending |
+| **E3** | Subscribe to `events.subscribe` per workspace: handle `PaneCreated/Closed/Renamed/Focused`, `TabCreated/Closed/Renamed/Focused/Reordered`, `WorkspaceRenamed/Focused`, `PaneAgentStatusChanged`, `LayoutChanged`. Plumb into existing tab title / breadcrumb / status sinks. | pending |
+| **E4** | Persistence: cmux workspace JSON stores `{ host, workspace_id }` per cmux window, not the layout itself (layout comes from `layout.snapshot`). On launch, reattach to daemon, snapshot, render. | pending |
+| **E5** | Close semantics implementation per the table above: Cmd+Q / Cmd+Shift+W / Cmd+W default to detach (UI-only); add explicit "Kill" entries; pane close maps to `pane.close` (kill). | pending |
 
-Total cmux: ~4 days, ~400-600 LOC across `Sources/HerdrClient/`, `Sources/Workspace.swift`, bonsplit translator, persistence, close handlers.
+Total cmux est: ~4 days, ~400-600 LOC across `Sources/HerdrClient/`, `Sources/Workspace.swift`, bonsplit translator, persistence, close handlers.
 
 ### Phase F — remaining (was C6-C12, deprioritized below D/E)
 
