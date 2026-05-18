@@ -27,6 +27,11 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
     private var ioCallbackContext: UnsafeMutableRawPointer?
     private var pumpTask: Task<Void, Never>?
     private var bytesReceived: Int = 0
+    private var paneId: String?
+    private var apiClient: HerdrApiClient?
+    private var lastReportedSize: (cols: UInt16, rows: UInt16)?
+    private var resizeObserver: NSObjectProtocol?
+    private var resizeDebounceTask: Task<Void, Never>?
 
     private init(unused: Void = ()) {
         // Build UI.
@@ -186,7 +191,10 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
                     .expandingTildeInPath
             ))
             try await api.start()
-            defer { Task { await api.close() } }
+            // Keep this client alive for the duration of the connection
+            // so we can call pane.resize on window resize. teardown()
+            // will close it.
+            self.apiClient = api
             let panesResp = try await api.request(
                 method: "pane.list",
                 params: ["workspace_id": workspaceId]
@@ -194,11 +202,13 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
             guard
                 let panes = panesResp["panes"] as? [[String: Any]],
                 let pane = panes.first,
-                let terminalId = pane["terminal_id"] as? String
+                let terminalId = pane["terminal_id"] as? String,
+                let paneIdValue = pane["pane_id"] as? String
             else {
                 statusLabel.stringValue = "no panes in workspace \(workspaceId)"
                 return
             }
+            self.paneId = paneIdValue
 
             // 3. Spawn HerdrDisplayClient against that terminal id.
             let client = HerdrDisplayClient(
@@ -241,6 +251,7 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
             ))
             terminalSurface = surface
             mountTerminalSurface(surface)
+            installResizeObserver()
 
             startPump()
         } catch {
@@ -302,6 +313,68 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
         ])
     }
 
+    /// Watch the ghosttyContainer's frame so we can forward grid-size
+    /// changes to the herdr daemon's PTY via `pane.resize`. Without
+    /// this the shell renders for the original 80x24 grid and prompts
+    /// wrap or position incorrectly when the window is smaller.
+    private func installResizeObserver() {
+        ghosttyContainer.postsFrameChangedNotifications = true
+        if let resizeObserver {
+            NotificationCenter.default.removeObserver(resizeObserver)
+        }
+        resizeObserver = NotificationCenter.default.addObserver(
+            forName: NSView.frameDidChangeNotification,
+            object: ghosttyContainer,
+            queue: .main
+        ) { [weak self] _ in
+            self?.scheduleResize()
+        }
+        // Fire once now so the daemon is sized for the initial window
+        // bounds rather than the 80x24 default we passed at attach.
+        scheduleResize()
+    }
+
+    private func scheduleResize() {
+        // Debounce: wait a short tick after the last frame change so we
+        // don't spam pane.resize during an ongoing drag.
+        resizeDebounceTask?.cancel()
+        resizeDebounceTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 80_000_000) // 80 ms
+            await MainActor.run { self?.forwardCurrentSize() }
+        }
+    }
+
+    private func forwardCurrentSize() {
+        guard let surface = terminalSurface?.surface,
+              let paneId,
+              let api = apiClient
+        else { return }
+        let size = ghostty_surface_size(surface)
+        let cols = size.columns
+        let rows = size.rows
+        guard cols > 0, rows > 0 else { return }
+        if let last = lastReportedSize, last.cols == cols, last.rows == rows {
+            return
+        }
+        lastReportedSize = (cols, rows)
+        Task {
+            do {
+                _ = try await api.request(
+                    method: "pane.resize",
+                    params: [
+                        "pane_id": paneId,
+                        "cols": Int(cols),
+                        "rows": Int(rows),
+                        "cell_width_px": Int(size.cell_width_px),
+                        "cell_height_px": Int(size.cell_height_px),
+                    ]
+                )
+            } catch {
+                NSLog("[HerdrPaneDebugWindow] pane.resize failed: %@", String(describing: error))
+            }
+        }
+    }
+
     private static func hexDump(_ data: Data) -> String {
         var out = ""
         let bytes = [UInt8](data)
@@ -327,6 +400,13 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
     private func teardown() {
         pumpTask?.cancel()
         pumpTask = nil
+        resizeDebounceTask?.cancel()
+        resizeDebounceTask = nil
+        if let resizeObserver {
+            NotificationCenter.default.removeObserver(resizeObserver)
+        }
+        resizeObserver = nil
+        ghosttyContainer.postsFrameChangedNotifications = false
         displayClient?.stop()
         displayClient = nil
         surfaceController = nil
@@ -336,6 +416,12 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
             Unmanaged<HerdrIoCallbackContextBox>.fromOpaque(raw).release()
         }
         ioCallbackContext = nil
+        if let api = apiClient {
+            Task { await api.close() }
+        }
+        apiClient = nil
+        paneId = nil
+        lastReportedSize = nil
         bytesReceived = 0
     }
 }
