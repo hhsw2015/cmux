@@ -338,7 +338,6 @@
 		C420Z000C420Z000C42DC102 /* HerdrDisplayClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42DC101 /* HerdrDisplayClient.swift */; };
 		C420Z000C420Z000C42BB102 /* HerdrBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42BB101 /* HerdrBackend.swift */; };
 		C420Z000C420Z000C42SC102 /* HerdrSurfaceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42SC101 /* HerdrSurfaceController.swift */; };
-		C420Z000C420Z000C42PD102 /* HerdrPaneDebugWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42PD101 /* HerdrPaneDebugWindow.swift */; };
 		C420Z000C420Z000C42PR102 /* HerdrPanelRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42PR101 /* HerdrPanelRegistry.swift */; };
 		C420Z000C420Z000C42PO102 /* HerdrPanelOpener.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42PO101 /* HerdrPanelOpener.swift */; };
 		C420Z000C420Z000C42GV102 /* HerdrGhosttyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42GV101 /* HerdrGhosttyView.swift */; };
@@ -919,7 +918,6 @@
 		C420Z000C420Z000C42DC101 /* HerdrDisplayClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrDisplayClient.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42BB101 /* HerdrBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrBackend.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42SC101 /* HerdrSurfaceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrSurfaceController.swift; sourceTree = "<group>"; };
-		C420Z000C420Z000C42PD101 /* HerdrPaneDebugWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrPaneDebugWindow.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42PR101 /* HerdrPanelRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrPanelRegistry.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42PO101 /* HerdrPanelOpener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrPanelOpener.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42GV101 /* HerdrGhosttyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrGhosttyView.swift; sourceTree = "<group>"; };
@@ -1437,7 +1435,6 @@
 				C420Z000C420Z000C42DC101 /* HerdrDisplayClient.swift */,
 				C420Z000C420Z000C42BB101 /* HerdrBackend.swift */,
 				C420Z000C420Z000C42SC101 /* HerdrSurfaceController.swift */,
-				C420Z000C420Z000C42PD101 /* HerdrPaneDebugWindow.swift */,
 				C420Z000C420Z000C42PR101 /* HerdrPanelRegistry.swift */,
 				C420Z000C420Z000C42PO101 /* HerdrPanelOpener.swift */,
 				C420Z000C420Z000C42GV101 /* HerdrGhosttyView.swift */,
@@ -2216,7 +2213,6 @@
 				C420Z000C420Z000C42DC102 /* HerdrDisplayClient.swift in Sources */,
 				C420Z000C420Z000C42BB102 /* HerdrBackend.swift in Sources */,
 				C420Z000C420Z000C42SC102 /* HerdrSurfaceController.swift in Sources */,
-				C420Z000C420Z000C42PD102 /* HerdrPaneDebugWindow.swift in Sources */,
 				C420Z000C420Z000C42PR102 /* HerdrPanelRegistry.swift in Sources */,
 				C420Z000C420Z000C42PO102 /* HerdrPanelOpener.swift in Sources */,
 				C420Z000C420Z000C42GV102 /* HerdrGhosttyView.swift in Sources */,
