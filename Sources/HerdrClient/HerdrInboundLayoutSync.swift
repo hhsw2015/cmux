@@ -36,18 +36,23 @@ enum HerdrInboundLayoutSync {
         let added = newPaneIds.subtracting(oldPaneIds)
         let removed = oldPaneIds.subtracting(newPaneIds)
 
-        if added.count + removed.count > 1 {
-            cmuxDebugLog(
-                "herdr.inbound: multi-change ignored (added=\(added.count) removed=\(removed.count))"
-            )
+        // Multi-removal is order-independent (each cmux pane closes
+        // standalone), so we process the whole set in one pass. Multi-
+        // addition would need DFS-ordered traversal so each new pane's
+        // sibling is bound before we splitPane on it; defer until
+        // dogfood shows the case actually occurs.
+        if added.isEmpty && !removed.isEmpty {
+            for herdrId in removed {
+                applyRemoval(herdrPaneId: herdrId, binding: binding, workspace: workspace)
+            }
+            applyDividers(spec: spec, binding: binding, workspace: workspace)
             return
         }
 
-        if let removedHerdrId = removed.first {
-            applyRemoval(herdrPaneId: removedHerdrId, binding: binding, workspace: workspace)
-            // Ratios may shift after the close (sibling absorbs the
-            // freed space). Re-apply once the structural change settles.
-            applyDividers(spec: spec, binding: binding, workspace: workspace)
+        if added.count > 1 || (added.count == 1 && !removed.isEmpty) {
+            cmuxDebugLog(
+                "herdr.inbound: mixed/multi-add change ignored (added=\(added.count) removed=\(removed.count))"
+            )
             return
         }
 
