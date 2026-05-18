@@ -119,13 +119,39 @@ enum HerdrPanelOpener {
             return
         }
 
-        // 2. Build display client + surface controller + io callback
-        //    box BEFORE creating the cmux panel so the binding exists
-        //    at the moment Ghostty constructs the C surface.
+        _ = try await wireHerdrBackedPanel(
+            workspace: workspace,
+            cmuxPaneId: paneId,
+            host: host,
+            terminalId: terminalId,
+            herdrPaneId: herdrPaneId,
+            executablePath: exec,
+            socketPath: socketPath,
+            focus: true
+        )
+    }
+
+    /// Per-pane wiring shared by the single-panel opener and the
+    /// workspace materializer. Builds the display client + surface
+    /// controller + io callback, calls
+    /// `workspace.newTerminalSurface(externalIo:)`, waits for Ghostty
+    /// to construct the C surface, binds the controller, and starts
+    /// the output pump + resize observer.
+    @discardableResult
+    private static func wireHerdrBackedPanel(
+        workspace: Workspace,
+        cmuxPaneId: PaneID,
+        host: HerdrHost,
+        terminalId: String,
+        herdrPaneId: String,
+        executablePath: String,
+        socketPath: String,
+        focus: Bool
+    ) async throws -> TerminalPanel? {
         let displayClient = HerdrDisplayClient(
             host: host,
             terminalId: terminalId,
-            executablePath: exec,
+            executablePath: executablePath,
             cols: 80,
             rows: 24
         )
@@ -144,21 +170,17 @@ enum HerdrPanelOpener {
             userdata: ctxRaw
         )
 
-        // 3. Ask the workspace to create a normal terminal panel that
-        //    routes IO through our binding. The panel will go through
-        //    cmux's full TerminalPanel/bonsplit lifecycle, so it picks
-        //    up the same theme/font/transparency/blur as every other
-        //    panel in the workspace.
         guard let panel = workspace.newTerminalSurface(
-            inPane: paneId,
-            focus: true,
+            inPane: cmuxPaneId,
+            focus: focus,
             externalIo: binding
         ) else {
-            herdrPanelOpenerTrace("workspace.newTerminalSurface returned nil")
+            herdrPanelOpenerTrace("workspace.newTerminalSurface returned nil for pane \(herdrPaneId)")
             displayClient.stop()
             Unmanaged<HerdrIoCallbackBox>.fromOpaque(ctxRaw).release()
-            return
+            return nil
         }
+
         // Wait for the Ghostty surface to be created. cmux defers
         // surface construction to viewDidMoveToWindow on the
         // GhosttyNSView, which lands on the next runloop tick.
@@ -171,15 +193,13 @@ enum HerdrPanelOpener {
             try? await Task.sleep(nanoseconds: 20_000_000)
         }
         guard let ghosttySurface = ghosttySurfaceRef else {
-            herdrPanelOpenerTrace("ghostty surface still nil after 500ms")
+            herdrPanelOpenerTrace("ghostty surface still nil after 500ms for pane \(herdrPaneId)")
             displayClient.stop()
             Unmanaged<HerdrIoCallbackBox>.fromOpaque(ctxRaw).release()
-            return
+            return nil
         }
         controller.bindSurfaceWithoutPump(ghosttySurface)
 
-        // 4. Register so the controller + display client + box outlive
-        //    this scope. Cleanup hook runs in workspace teardown.
         HerdrPanelRegistry.shared.register(
             panelId: panel.id,
             entry: HerdrPanelRegistry.Entry(
@@ -193,10 +213,6 @@ enum HerdrPanelOpener {
             )
         )
 
-        // 5. Single AsyncStream consumer: pump display client output
-        //    into ghostty_surface_process_output on the panel's
-        //    surface. Bound to the panel id so registry cleanup
-        //    cancels it.
         let pump = Task { [displayClient, weak panel] in
             for await chunk in displayClient.output {
                 guard let surface = panel?.surface.surface else { break }
@@ -209,21 +225,187 @@ enum HerdrPanelOpener {
         }
         HerdrPanelRegistry.shared.attachPump(panelId: panel.id, task: pump)
 
-        // Install a resize observer on the surface's hosted view so
-        // the herdr daemon's PTY size tracks the visible grid as the
-        // panel resizes (window resize, bonsplit divider drag, tab
-        // switch). Without this the shell renders at the spawn-time
-        // 80x24 and prompts wrap weirdly.
         installPanelResizeObserver(
             panelId: panel.id,
             hostedView: panel.surface.hostedView,
             surface: ghosttySurface,
             paneId: herdrPaneId,
-            socketPath: (("~/.config/herdr/sessions/" + host.sessionName + "/herdr.sock") as NSString)
-                .expandingTildeInPath
+            socketPath: socketPath
         )
 
-        herdrPanelOpenerTrace("herdr panel opened panelId=\(panel.id) terminalId=\(terminalId)")
+        herdrPanelOpenerTrace("herdr panel wired panelId=\(panel.id) terminalId=\(terminalId)")
+        return panel
+    }
+
+    /// Multi-pane variant of `openLocalhostPanel`: pulls the herdr
+    /// daemon's authoritative BSP layout for a workspace tab, builds
+    /// a `HerdrLayoutApplyPlan`, and materializes it onto cmux's
+    /// bonsplit by recursively splitting the focused pane and wiring
+    /// each leaf to a herdr-backed terminal. The focused pane becomes
+    /// slot 0 — its existing tabs are left in place, with herdr-backed
+    /// tabs added alongside them.
+    static func openLocalhostWorkspace() {
+        guard let appDelegate = AppDelegate.shared else {
+            herdrPanelOpenerTrace("workspace: no AppDelegate.shared")
+            return
+        }
+        let tabManager: TabManager? = {
+            if let raw = NSApp.keyWindow?.identifier?.rawValue,
+               raw.hasPrefix("cmux.main."),
+               let id = UUID(uuidString: String(raw.dropFirst("cmux.main.".count))),
+               let manager = appDelegate.tabManagerFor(windowId: id) {
+                return manager
+            }
+            return appDelegate.tabManager
+        }()
+        guard let tabManager,
+              let workspace = tabManager.tabs.first(where: { $0.id == tabManager.selectedTabId })
+                ?? tabManager.tabs.first
+        else {
+            herdrPanelOpenerTrace("workspace: no focused workspace")
+            return
+        }
+        guard let focusedPane = workspace.bonsplitController.focusedPaneId else {
+            herdrPanelOpenerTrace("workspace: no focused pane in workspace \(workspace.id)")
+            return
+        }
+        let host = HerdrHost.localhost()
+        let exec = (("~/.local/bin/herdr-cmux") as NSString).expandingTildeInPath
+        guard FileManager.default.isExecutableFile(atPath: exec) else {
+            herdrPanelOpenerTrace("workspace: missing binary at \(exec)")
+            return
+        }
+        Task { @MainActor in
+            do {
+                try await openLocalhostWorkspaceImpl(
+                    host: host,
+                    exec: exec,
+                    rootPaneId: focusedPane,
+                    workspace: workspace
+                )
+            } catch {
+                herdrPanelOpenerTrace("openLocalhostWorkspace failed: \(error)")
+            }
+        }
+    }
+
+    private static func openLocalhostWorkspaceImpl(
+        host: HerdrHost,
+        exec: String,
+        rootPaneId: PaneID,
+        workspace: Workspace
+    ) async throws {
+        let socketPath = (("~/.config/herdr/sessions/" + host.sessionName + "/herdr.sock") as NSString)
+            .expandingTildeInPath
+
+        let backend = try HerdrBackend(host: host, executablePath: exec)
+        try await backend.start()
+        let sessions = try await backend.listSessions()
+        await backend.close()
+
+        let workspaceId: String
+        if let first = sessions.first {
+            workspaceId = first.name
+        } else {
+            let api = HerdrApiClient(transport: LocalUDSTransport(socketPath: socketPath))
+            try await api.start()
+            defer { Task { await api.close() } }
+            let r = try await api.request(
+                method: "workspace.create",
+                params: ["focus": false, "label": "cmux-workspace"]
+            )
+            guard let ws = r["workspace"] as? [String: Any],
+                  let id = ws["workspace_id"] as? String
+            else {
+                herdrPanelOpenerTrace("workspace: workspace.create returned no id")
+                return
+            }
+            workspaceId = id
+        }
+
+        let api = HerdrApiClient(transport: LocalUDSTransport(socketPath: socketPath))
+        try await api.start()
+        defer { Task { await api.close() } }
+
+        // Pick the active tab of the chosen workspace.
+        let wsResp = try await api.request(
+            method: "workspace.get",
+            params: ["workspace_id": workspaceId]
+        )
+        guard let wsInfo = wsResp["workspace"] as? [String: Any],
+              let activeTabId = wsInfo["active_tab_id"] as? String
+        else {
+            herdrPanelOpenerTrace("workspace: workspace.get returned no active_tab_id")
+            return
+        }
+
+        // Map herdr pane id -> terminal id from pane.list, so the
+        // executor's paneFactory can spin up display clients pointed
+        // at the right terminal.
+        let panesResp = try await api.request(
+            method: "pane.list",
+            params: ["workspace_id": workspaceId]
+        )
+        guard let panes = panesResp["panes"] as? [[String: Any]] else {
+            herdrPanelOpenerTrace("workspace: pane.list returned no panes")
+            return
+        }
+        var terminalIdByPane: [String: String] = [:]
+        for pane in panes {
+            if let pid = pane["pane_id"] as? String,
+               let tid = pane["terminal_id"] as? String {
+                terminalIdByPane[pid] = tid
+            }
+        }
+
+        let tree = try await api.layoutSnapshot(
+            workspaceId: workspaceId,
+            tabId: activeTabId
+        )
+        let spec = HerdrLayoutSpec(from: tree)
+        let plan = HerdrLayoutApplyPlan(spec: spec)
+        herdrPanelOpenerTrace(
+            "workspace: workspaceId=\(workspaceId) tabId=\(activeTabId) panes=\(spec.root.paneCount) plan_steps=\(plan.steps.count)"
+        )
+
+        // Materialize the bonsplit tree first (synchronous splits).
+        // paneFactory is a no-op here — populating each pane with a
+        // herdr-backed terminal is async, so we collect the leaves
+        // and wire them in a second pass.
+        var leaves: [(cmuxPaneId: UUID, herdrPaneId: String)] = []
+        let result = HerdrLayoutExecutor.execute(
+            plan: plan,
+            rootCmuxPaneId: rootPaneId.id,
+            controller: workspace.bonsplitController
+        ) { cmuxPaneId, herdrPaneId in
+            leaves.append((cmuxPaneId: cmuxPaneId, herdrPaneId: herdrPaneId))
+        }
+
+        for (idx, leaf) in leaves.enumerated() {
+            guard let terminalId = terminalIdByPane[leaf.herdrPaneId] else {
+                herdrPanelOpenerTrace("workspace: no terminal_id for pane \(leaf.herdrPaneId)")
+                continue
+            }
+            let shouldFocus = (result.focusedCmuxPaneId == leaf.cmuxPaneId) || (result.focusedCmuxPaneId == nil && idx == 0)
+            do {
+                _ = try await wireHerdrBackedPanel(
+                    workspace: workspace,
+                    cmuxPaneId: PaneID(id: leaf.cmuxPaneId),
+                    host: host,
+                    terminalId: terminalId,
+                    herdrPaneId: leaf.herdrPaneId,
+                    executablePath: exec,
+                    socketPath: socketPath,
+                    focus: shouldFocus
+                )
+            } catch {
+                herdrPanelOpenerTrace("workspace: wire failed for pane \(leaf.herdrPaneId): \(error)")
+            }
+        }
+
+        if let focusedCmux = result.focusedCmuxPaneId {
+            workspace.bonsplitController.focusPane(PaneID(id: focusedCmux))
+        }
     }
 
     private static func installPanelResizeObserver(

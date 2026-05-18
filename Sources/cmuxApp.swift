@@ -347,6 +347,9 @@ struct cmuxApp: App {
                     Button("Open Herdr Panel (localhost)") {
                         HerdrPanelOpener.openLocalhostPanel()
                     }
+                    Button("Open Herdr Workspace (localhost)") {
+                        HerdrPanelOpener.openLocalhostWorkspace()
+                    }
                     Button(
                         String(
                             localized: "debug.menu.bonsplitTabBarDebug",
