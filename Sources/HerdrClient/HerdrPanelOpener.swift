@@ -88,7 +88,7 @@ enum HerdrPanelOpener {
         if let first = sessions.first {
             workspaceId = first.name
         } else {
-            let api = HerdrApiClient(transport: LocalUDSTransport(socketPath: socketPath))
+            let api = HerdrApiClient(transport: HerdrTransportFactory.make(host: host))
             try await api.start()
             defer { Task { await api.close() } }
             let r = try await api.request(
@@ -104,7 +104,7 @@ enum HerdrPanelOpener {
             workspaceId = id
         }
 
-        let api = HerdrApiClient(transport: LocalUDSTransport(socketPath: socketPath))
+        let api = HerdrApiClient(transport: HerdrTransportFactory.make(host: host))
         try await api.start()
         defer { Task { await api.close() } }
         let panesResp = try await api.request(
@@ -304,7 +304,7 @@ enum HerdrPanelOpener {
         let sessions = try await backend.listSessions()
         await backend.close()
 
-        let api = HerdrApiClient(transport: LocalUDSTransport(socketPath: socketPath))
+        let api = HerdrApiClient(transport: HerdrTransportFactory.make(host: host))
         try await api.start()
         defer { Task { await api.close() } }
 

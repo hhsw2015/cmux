@@ -17,6 +17,9 @@ final class HerdrEventPump {
     private var clients: [String: HerdrApiClient] = [:]
     private var consumers: [String: Task<Void, Never>] = [:]
     private var refCounts: [String: Int] = [:]
+    /// Per-socket host snapshot so the consumer loop can rebuild a
+    /// transport on reconnect without holding the original `HerdrHost`.
+    private var hosts: [String: HerdrHost] = [:]
 
     private static let backoffSequence: [UInt64] = [
         1_000_000_000,   // 1s
@@ -27,6 +30,7 @@ final class HerdrEventPump {
 
     func acquire(host: HerdrHost) async {
         let socketPath = Self.socketPath(for: host)
+        hosts[socketPath] = host
         let count = refCounts[socketPath] ?? 0
         refCounts[socketPath] = count + 1
         if count == 0 {
@@ -39,6 +43,7 @@ final class HerdrEventPump {
         guard let count = refCounts[socketPath] else { return }
         if count <= 1 {
             refCounts.removeValue(forKey: socketPath)
+            hosts.removeValue(forKey: socketPath)
             consumers[socketPath]?.cancel()
             consumers.removeValue(forKey: socketPath)
             if let client = clients.removeValue(forKey: socketPath) {
@@ -60,7 +65,8 @@ final class HerdrEventPump {
         var attempt = 0
         while !Task.isCancelled, refCounts[socketPath] != nil {
             do {
-                let client = HerdrApiClient(transport: LocalUDSTransport(socketPath: socketPath))
+                guard let host = hosts[socketPath] else { return }
+                let client = HerdrApiClient(transport: HerdrTransportFactory.make(host: host))
                 try await client.start()
                 try await client.subscribe(["layout.changed", "workspace.closed"])
                 clients[socketPath] = client

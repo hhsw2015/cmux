@@ -320,6 +320,7 @@
 		C420Z000C420Z000C42TR102 /* HerdrTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42TR101 /* HerdrTransport.swift */; };
 		C420Z000C420Z000C42TL102 /* LocalUDSTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42TL101 /* LocalUDSTransport.swift */; };
 		C420Z000C420Z000C42SS102 /* SSHStdioTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42SS101 /* SSHStdioTransport.swift */; };
+		C420Z000C420Z000C42TF102 /* HerdrTransportFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42TF101 /* HerdrTransportFactory.swift */; };
 		C420Z000C420Z000C42AC102 /* HerdrApiClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42AC101 /* HerdrApiClient.swift */; };
 		C420Z000C420Z000C42LT102 /* HerdrLayoutTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42LT101 /* HerdrLayoutTypes.swift */; };
 		C420Z000C420Z000C42LS102 /* HerdrLayoutSpec.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42LS101 /* HerdrLayoutSpec.swift */; };
@@ -909,6 +910,7 @@
 		C420Z000C420Z000C42TR101 /* HerdrTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrTransport/HerdrTransport.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42TL101 /* LocalUDSTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrTransport/LocalUDSTransport.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42SS101 /* SSHStdioTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrTransport/SSHStdioTransport.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42TF101 /* HerdrTransportFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrTransport/HerdrTransportFactory.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42AC101 /* HerdrApiClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrApiClient.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42DC101 /* HerdrDisplayClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrDisplayClient.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42BB101 /* HerdrBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrBackend.swift; sourceTree = "<group>"; };
@@ -1411,6 +1413,7 @@
 				C420Z000C420Z000C42TR101 /* HerdrTransport.swift */,
 				C420Z000C420Z000C42TL101 /* LocalUDSTransport.swift */,
 				C420Z000C420Z000C42SS101 /* SSHStdioTransport.swift */,
+				C420Z000C420Z000C42TF101 /* HerdrTransportFactory.swift */,
 				C420Z000C420Z000C42AC101 /* HerdrApiClient.swift */,
 				C420Z000C420Z000C42LT101 /* HerdrLayoutTypes.swift */,
 				C420Z000C420Z000C42LS101 /* HerdrLayoutSpec.swift */,
@@ -2185,6 +2188,7 @@
 				C420Z000C420Z000C42TR102 /* HerdrTransport.swift in Sources */,
 				C420Z000C420Z000C42TL102 /* LocalUDSTransport.swift in Sources */,
 				C420Z000C420Z000C42SS102 /* SSHStdioTransport.swift in Sources */,
+				C420Z000C420Z000C42TF102 /* HerdrTransportFactory.swift in Sources */,
 				C420Z000C420Z000C42AC102 /* HerdrApiClient.swift in Sources */,
 				C420Z000C420Z000C42LT102 /* HerdrLayoutTypes.swift in Sources */,
 				C420Z000C420Z000C42LS102 /* HerdrLayoutSpec.swift in Sources */,

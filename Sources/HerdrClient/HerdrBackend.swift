@@ -3,8 +3,10 @@ import Foundation
 
 /// Errors raised by HerdrBackend.
 enum HerdrBackendError: Error, Equatable {
-    /// `host.transport` is not `.localUDS`. SSH stdio transport for the
-    /// API socket lands in B7.
+    /// Reserved for unsupported transport variants. SSH stdio is now
+    /// supported via `SSHStdioTransport`; this case only fires if a new
+    /// `HerdrHost.Transport` enum variant is added without backend
+    /// support.
     case remoteNotSupportedYet
 }
 
@@ -39,18 +41,7 @@ final class HerdrBackend: SessionDaemonBackend, @unchecked Sendable {
     init(host: HerdrHost, executablePath: String) throws {
         self.host = host
         self.executablePath = executablePath
-        switch host.transport {
-        case .localUDS:
-            let socketPath = (("~/.config/herdr/sessions/" + host.sessionName + "/herdr.sock") as NSString)
-                .expandingTildeInPath
-            self.transport = LocalUDSTransport(socketPath: socketPath)
-        case .sshStdio:
-            // SSH stdio transport for the API socket lands in B7. Fail
-            // early instead of constructing a bogus local transport so
-            // callers see a clear error rather than confusing
-            // pane-not-found responses later.
-            throw HerdrBackendError.remoteNotSupportedYet
-        }
+        self.transport = HerdrTransportFactory.make(host: host)
         self.api = HerdrApiClient(transport: self.transport)
     }
 
