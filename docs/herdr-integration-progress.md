@@ -76,21 +76,88 @@ cmux fork (hhsw2015/herdr, Rust)
 2. **Visual parity**: panel inherits Ghostty config (font, transparency, blur, theme) by virtue of using cmux's normal `TerminalSurface`/`TerminalPanel`/`bonsplit` chain. Confirmed working at user request.
 3. **Resize lag**: small debounce (80 ms) means a rapid drag emits a few stale frames. Acceptable.
 
-### Next steps (priority order)
+## Architecture principles (decided 2026-05-18)
 
-| # | Step | Estimated effort |
+After the recon of herdr's existing API surface, we settled on the following model. cmux is a **renderer** for state that lives authoritatively on the herdr daemon. cmux owns visuals; herdr owns truth.
+
+### Three-layer state model
+
+| Layer | Examples | Authority | Synced across cmux clients? |
+|---|---|---|---|
+| **Process state** | PTY, cwd, title, exit code, agent state, pane size | herdr | yes (only one process exists) |
+| **Shared semantic state** | workspace/tab/pane existence, BSP layout per tab, labels, tab order, last-focused pane | herdr | yes |
+| **Per-client UI state** | which workspace is currently visible in this cmux window, window geometry, sidebar visibility, font/theme/transparency | cmux local | no |
+
+**Implication:** cmux's `bonsplit` tree is a **mirror** of herdr's `TileLayout`, not an independent source of truth. All layout mutations (split, drag divider, close, swap, reorder tab) round-trip through herdr RPC and the bonsplit tree updates from broadcast events. Optimistic local rendering + reconcile keeps the UI snappy on a local UDS daemon (round-trip < 1 ms).
+
+### Close semantics — tmux as guiding principle
+
+The whole point of tmux is **closing the UI does not kill the work**. cmux follows that: detach is the default, kill is explicit.
+
+| User action | Default behavior | Explicit kill entry |
 |---|---|---|
-| **C6** | SSH transport for remote hosts (was B7) — wraps `LocalUDSTransport` style flow over `ssh -T host`/ControlMaster. Unlocks "cross-machine agent workstation" goal. | 2-3 days |
-| **C7** | Sidebar integration: surface remote host's sessions in the cmux sidebar so users can see/jump to remote panes from the workspace tree. | 1-2 days |
-| **C8** | Auto-install herdr binary on remote when user adds a new host (one-click `curl install.sh`). | 0.5 day |
-| **C9** | Replace Debug menu entry with a proper command-palette command + keyboard shortcut. | 0.5 day |
-| **C10** | Drop the standalone debug window (`HerdrPaneDebugWindowController`) once C9 is in. | 0.25 day |
-| **C11** | Capabilities probe: when a host is registered, query its herdr version + `pane.read --ansi` / `wait agent-status` / `pane.resize` support so the cmux UI can degrade gracefully. | 0.5 day |
-| **C12** | Tests: add E2E test (CI) that spins up a fork daemon, opens a herdr panel via cmux, types into it, asserts bytes round-trip. | 1 day |
+| Quit cmux app (Cmd+Q) | **detach all** — daemon keeps running, every workspace/tab/pane survives, next launch reattaches | none — quit must be side-effect-free |
+| Close window (Cmd+Shift+W) | **detach this view of the workspace** | right-click / command palette: "Kill workspace" → `workspace.close` |
+| Close tab (Cmd+W) | **detach the tab view** | "Kill tab" → `tab.close` (kills every pane in that tab) |
+| Close panel (split) | **kill** — same as tmux, no concept of "hide one split" inside a BSP tree | n/a |
+
+The split between "detach" and "kill" maps cleanly to the state-layer model: detach only mutates per-client UI state (this cmux stops rendering); kill issues an RPC that mutates herdr's authoritative state and broadcasts to every other client.
+
+### Why Plan C (not Plan B)
+
+We considered storing cmux's bonsplit tree as an opaque metadata blob in herdr (Plan B). Rejected because:
+
+1. cmux is Mac-only — there is no second client kind whose layout would need to differ. Two clients = two Macs = same screen size = same layout is the right answer.
+2. herdr **already has** an internal authoritative BSP tree (`src/layout.rs`: `Node::Split { direction, ratio, first, second }`). The work to build a parallel blob mechanism would duplicate state that already lives correctly server-side.
+3. Single-source-of-truth gives "open second Mac → same workstation" for free, which is the headline goal of the integration.
+
+Plan B's only advantage was upstream-friendliness, which we don't care about (we own the fork).
+
+## Next steps (priority order)
+
+The big chunk is **C5.5–C5.9: layout authority + tmux close semantics**. SSH and polish come after.
+
+### Phase D — herdr fork: expose layout as authority
+
+| # | Step | Effort |
+|---|---|---|
+| **D1** | Add `Node` wire DTO (`Pane(pane_id) \| Split { direction, ratio, first, second }`); use root-relative L/R **paths** to address splits (no stable split IDs needed). | 0.5 d |
+| **D2** | Add `layout.snapshot(workspace_id, tab_id) -> Tree` RPC. | 0.5 d |
+| **D3** | Add missing mutation RPCs: `pane.set_split_ratio { path, ratio }`, `pane.move { pane_id, target_pane_id, direction }`, `pane.swap { a, b }`, `pane.focus { pane_id }`, `tab.reorder { workspace_id, tab_ids }`. | 1.5 d |
+| **D4** | Add events: `LayoutChanged { workspace_id, tab_id, tree }` (rebroadcasts the whole tree on any structural change — simpler than fine-grained deltas), `PaneMoved`, `TabReordered`. Reuse existing `PaneFocused` for D3's `pane.focus`. | 0.5 d |
+
+Total fork: ~2-3 days, ~600-1000 LOC across `schema.rs`, `app/api.rs`, `layout.rs`, `events.rs`, `persist/`.
+
+### Phase E — cmux: bonsplit ↔ TileLayout mirror
+
+| # | Step | Effort |
+|---|---|---|
+| **E1** | Translator: herdr `Tree` → cmux `BonsplitNode`, and bonsplit operations → herdr RPCs. | 1 d |
+| **E2** | Replace local-only bonsplit mutations on herdr-backed panels with optimistic-RPC pattern (apply locally, send RPC, reconcile from `LayoutChanged` event, rollback on failure). | 1 d |
+| **E3** | Subscribe to `events.subscribe` per workspace: handle `PaneCreated/Closed/Renamed/Focused`, `TabCreated/Closed/Renamed/Focused/Reordered`, `WorkspaceRenamed/Focused`, `PaneAgentStatusChanged`, `LayoutChanged`. Plumb into existing tab title / breadcrumb / status sinks. | 1 d |
+| **E4** | Persistence: cmux workspace JSON stores `{ host, workspace_id }` per cmux window, not the layout itself (layout comes from `layout.snapshot`). On launch, reattach to daemon, snapshot, render. | 0.5 d |
+| **E5** | Close semantics implementation per the table above: Cmd+Q / Cmd+Shift+W / Cmd+W default to detach (UI-only); add explicit "Kill" entries; pane close maps to `pane.close` (kill). | 0.5 d |
+
+Total cmux: ~4 days, ~400-600 LOC across `Sources/HerdrClient/`, `Sources/Workspace.swift`, bonsplit translator, persistence, close handlers.
+
+### Phase F — remaining (was C6-C12, deprioritized below D/E)
+
+| # | Step | Effort |
+|---|---|---|
+| **F1** (was C6) | SSH transport for remote hosts. | 2-3 d |
+| **F2** (was C7) | Sidebar shows remote host's workspaces. | 1-2 d |
+| **F3** (was C8) | Auto-install herdr binary on remote on host registration. | 0.5 d |
+| **F4** (was C9) | Replace Debug menu entry with command-palette command + keyboard shortcut. | 0.5 d |
+| **F5** (was C10) | Drop standalone debug window (`HerdrPaneDebugWindowController`). | 0.25 d |
+| **F6** (was C11) | Capabilities probe per host (herdr version, optional method support). | 0.5 d |
+| **F7** (was C12) | E2E CI test: fork daemon → open panel via cmux → type → assert round-trip. | 1 d |
 
 ### Decision log
 
 - **Fork over upstream PR** — user opted to maintain `hhsw2015/herdr` rather than upstream patches. AGPL terms acknowledged.
+- **Plan C over Plan B (2026-05-18)** — herdr is the layout authority; cmux's bonsplit mirrors `TileLayout`. cmux is Mac-only so device-divergence-of-layout was never a real argument.
+- **tmux semantics for close (2026-05-18)** — detach default, kill explicit. Quit / close window / close tab default to detach; only `pane.close` and explicit "Kill" actions destroy state. See close-semantics table.
+- **L/R path addressing for splits (2026-05-18)** — avoids inventing stable `SplitId`s in the fork; layout snapshot rebroadcast on every structural change covers the staleness window.
 - **One-shot UDS per JSON-RPC call** — herdr's API socket reads one line, dispatches, closes. Long-lived connection only for `events.subscribe`. Resize requests open a fresh socket each time.
 - **Subprocess bridge instead of in-Swift bincode** — the display socket uses bincode (Rust-specific). Adding a `cmh raw-pty-attach` CLI in the fork is far cheaper than a bincode reimpl in Swift.
 - **`takeover=true` always** — orphan subprocesses from prior cmux DEV launches hold the attach owner. Forcing takeover means we always win.
@@ -99,6 +166,7 @@ cmux fork (hhsw2015/herdr, Rust)
 ## Resuming
 
 The next session should:
-1. Read this doc.
-2. Read `docs/herdr-spike-findings.md` for the original protocol survey.
-3. Pick C6 (SSH transport) for the biggest user-facing win, or C9-C10 for cleanup.
+1. Read this doc — especially the Architecture principles and Close semantics tables.
+2. Start phase D (herdr fork): D1 (Node wire DTO) → D2 (layout.snapshot) → D3 (mutation RPCs) → D4 (events).
+3. Then phase E (cmux bonsplit mirror).
+4. Phase F (SSH, polish) only after D/E land — without single-source-of-truth, remote hosts inherit a broken architecture.
