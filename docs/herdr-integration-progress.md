@@ -194,7 +194,7 @@ Actual fork delta: ~600 LOC across `schema.rs`, `api/mod.rs`, `app/api.rs`, `app
 | **E3 (workspace.closed)** | Tear down local materialized panes when remote workspace.close fires. Reuses suppressNextCloseFor for echo prevention. | done — cmux `feat(herdr): E3 (workspace.closed) ...` |
 | **E3 (pane.renamed / pane.exited / agent_status / tab events)** | Plumb remaining herdr events into cmux's title / status / breadcrumb sinks. Each needs its own UI hookup. | pending |
 | **E4 (menu reattach)** | Persist last `{ workspace_id, tab_id }` per host to `~/Library/Application Support/cmux/herdr-bindings-<bundleId>.json`. "Open Herdr Workspace" reuses the persisted pair if it still exists; falls back gracefully. Detach keeps the entry; explicit close drops it. | done — cmux `feat(herdr): E4 ...` |
-| **E4 (auto-reattach on launch)** | Auto-restore herdr panes during cmux's workspace restoration path so the user doesn't need to click anything after relaunch. Bigger refactor; deferred. | pending |
+| **E4 (auto-reattach on launch)** | `HerdrAutoReattach.runOnLaunch()` fires from `AppDelegate.applicationDidFinishLaunching` (3s after the launch burst settles). Walks `HostRegistry.hosts`; for each host that has a `HerdrPersistence` entry, calls `HerdrPanelOpener.openWorkspace(host:)` (which reuses the persisted entry). Skipped if the user already attached during the launch window so menu clicks aren't doubled. | done |
 | **E5 (detach)** | tmux detach semantics: HerdrCloseHandler gains `isDetach` flag; Workspace passes `isDetaching`/`isDetachingCloseTransaction` from existing flags; Cmd+Q / close window detaches without `pane.close` RPC. | done — cmux `feat(herdr): E5 ...` |
 | **E5 (explicit Kill)** | Right-click / palette "Kill workspace" / "Kill tab" entries that explicitly issue `workspace.close` / `tab.close` RPCs. Currently no UI for this; users would have to use herdr CLI directly. | pending |
 
@@ -233,9 +233,9 @@ Total cmux est: ~4 days, ~400-600 LOC across `Sources/HerdrClient/`, `Sources/Wo
 
 ## Resuming
 
-F4 production graduation and F2 sidebar integration are both **done**. Localhost + registered remote hosts now appear under a "Herdr" section in cmux's sidebar; expand a host -> see its herdr workspaces, click one to open. Live event subscription keeps the list current.
+F4 production graduation, F2 sidebar integration, and E4 auto-reattach on launch are all **done**. cmux relaunches into the herdr workspace the user had attached at last quit; localhost + registered remote hosts appear under a "Herdr" sidebar section with live updates.
 
-Next: **E4 auto-reattach on launch** (cmux opens -> previously-open herdr workspaces materialize without clicking anything). Then F4 command-palette entries, F3 host-add auto-install, F7 E2E CI test.
+Next: F4 command-palette entries, F3 host-add auto-install, F7 E2E CI test.
 
 Smaller follow-ups:
 - F4 command-palette entries (currently menu-only; palette would let users invoke "Open Herdr Workspace" via fuzzy search).
