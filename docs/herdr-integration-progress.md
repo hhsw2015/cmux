@@ -210,7 +210,7 @@ Total cmux est: ~4 days, ~400-600 LOC across `Sources/HerdrClient/`, `Sources/Wo
 | **F1d** | `HerdrOneShotRPC` shared helper; close/divider dispatchers use factory transport instead of direct AF_UNIX. | done — cmux `feat(herdr): F1d ...` |
 | **F1e** | `HerdrDisplayClient` spawns `ssh host -- herdr-cmux raw-pty-attach <id>` for .sshStdio. Same stdio bridge pattern as the API socket; full bidirectional terminal flow over SSH. | done — cmux `feat(herdr): F1e ...` |
 | **F2-light (host menu)** | Debug → "Open Herdr Workspace on…" lists every registered host. `HerdrPanelOpener.openWorkspace(host:)` generic entry; `openLocalhostWorkspace` is a wrapper. | done — cmux `feat(herdr): F2-light ...` |
-| **F2 (sidebar)** | Show remote host's workspaces in cmux sidebar workspace tree. Deeper UI plumbing; deferred. | pending |
+| **F2 (sidebar)** | New `HerdrHostsSidebarSection` below the workspace list in cmux's sidebar. Each registered host (from `HostRegistry`) is a collapsible row; expand triggers `workspace.list` via `HerdrWorkspaceListStore` (per-host cache). Click a workspace row -> `HerdrPanelOpener.openWorkspace(host:workspaceId:)` (skips auto-pick, opens that exact id). Live: while the section is mounted, refcount the per-host event pump so `workspace.created/closed/focused` events invalidate + refresh the cache. | done |
 | **F3 (manual install)** | Debug menu "Install herdr-cmux on first remote host": scp local binary → remote `~/.local/bin/`, chmod, verify with --version. Single host, no UI dialog. | done — cmux `feat(herdr): F3 ...` |
 | **F3 (auto on registration)** | One-click "Install" button in Settings → Hosts that runs at host-add time with progress UI. | pending |
 | **F4 (shortcut)** | Cmd+Opt+H bound to "Open Herdr Workspace (localhost)". | done — cmux `feat(herdr): bind Cmd+Opt+H ...` |
@@ -233,9 +233,9 @@ Total cmux est: ~4 days, ~400-600 LOC across `Sources/HerdrClient/`, `Sources/Wo
 
 ## Resuming
 
-F4 production graduation is **done** (top-level `Herdr` menu, no DEBUG gate, Cmd+Opt+H still works, Release build verified).
+F4 production graduation and F2 sidebar integration are both **done**. Localhost + registered remote hosts now appear under a "Herdr" section in cmux's sidebar; expand a host -> see its herdr workspaces, click one to open. Live event subscription keeps the list current.
 
-Next: **F2 full sidebar integration** — show registered hosts' workspaces in cmux's sidebar tree so users can browse herdr-managed workspaces without going through the menu. Then **E4 auto-reattach on launch** (cmux opens → previously-open herdr workspaces materialize without clicking the menu).
+Next: **E4 auto-reattach on launch** (cmux opens -> previously-open herdr workspaces materialize without clicking anything). Then F4 command-palette entries, F3 host-add auto-install, F7 E2E CI test.
 
 Smaller follow-ups:
 - F4 command-palette entries (currently menu-only; palette would let users invoke "Open Herdr Workspace" via fuzzy search).

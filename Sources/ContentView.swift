@@ -10279,6 +10279,14 @@ struct VerticalTabsSidebar: View {
                 )
             }
 
+            HerdrHostsSidebarSection(
+                hostRegistry: HostRegistry.shared,
+                workspaceListStore: HerdrWorkspaceListStore.shared,
+                onOpenWorkspace: { host, workspaceId in
+                    HerdrPanelOpener.openWorkspace(host: host, workspaceId: workspaceId)
+                }
+            )
+
             SidebarEmptyArea(
                 rowSpacing: tabRowSpacing,
                 selection: $selection,

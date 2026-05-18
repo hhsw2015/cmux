@@ -334,6 +334,7 @@
 		C420Z000C420Z000C42IL102 /* HerdrInboundLayoutSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42IL101 /* HerdrInboundLayoutSync.swift */; };
 		C420Z000C420Z000C42EP102 /* HerdrEventPump.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42EP101 /* HerdrEventPump.swift */; };
 		C420Z000C420Z000C42PE102 /* HerdrPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42PE101 /* HerdrPersistence.swift */; };
+		C420Z000C420Z000C42WL102 /* HerdrWorkspaceListStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42WL101 /* HerdrWorkspaceListStore.swift */; };
 		C420Z000C420Z000C42OR102 /* HerdrOneShotRPC.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42OR101 /* HerdrOneShotRPC.swift */; };
 		C420Z000C420Z000C42RI102 /* HerdrRemoteInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42RI101 /* HerdrRemoteInstaller.swift */; };
 		C420Z000C420Z000C42DC102 /* HerdrDisplayClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42DC101 /* HerdrDisplayClient.swift */; };
@@ -348,6 +349,7 @@
 		C420Z000C420Z000C42KD102 /* PanelKeepAliveDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42KD101 /* PanelKeepAliveDispatcher.swift */; };
 		C420Z000C420Z000C42BS102 /* BackgroundSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42BS101 /* BackgroundSessionStore.swift */; };
 		C420Z000C420Z000C42SB102 /* BackgroundSessionsSidebarSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42SB101 /* BackgroundSessionsSidebarSection.swift */; };
+		C420Z000C420Z000C42HX102 /* HerdrHostsSidebarSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42HX101 /* HerdrHostsSidebarSection.swift */; };
 		C420Z000C420Z000C42EB102 /* SessionExitBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42EB101 /* SessionExitBannerView.swift */; };
 		C420Z000C420Z000C42ET102 /* SessionExitTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42ET101 /* SessionExitTracker.swift */; };
 		C420Z000C420Z000C42WB102 /* WorkspaceProjectBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42WB101 /* WorkspaceProjectBridge.swift */; };
@@ -931,6 +933,7 @@
 		C420Z000C420Z000C42IL101 /* HerdrInboundLayoutSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrInboundLayoutSync.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42EP101 /* HerdrEventPump.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrEventPump.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42PE101 /* HerdrPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrPersistence.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42WL101 /* HerdrWorkspaceListStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrWorkspaceListStore.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42OR101 /* HerdrOneShotRPC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrOneShotRPC.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42RI101 /* HerdrRemoteInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrRemoteInstaller.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42LU101 /* HerdrLayoutTypesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrLayoutTypesTests.swift; sourceTree = "<group>"; };
@@ -946,6 +949,7 @@
 		C420Z000C420Z000C42KD101 /* PanelKeepAliveDispatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelKeepAliveDispatcher.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42BS101 /* BackgroundSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundSessionStore.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42SB101 /* BackgroundSessionsSidebarSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sidebar/BackgroundSessionsSidebarSection.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42HX101 /* HerdrHostsSidebarSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sidebar/HerdrHostsSidebarSection.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42EB101 /* SessionExitBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/SessionExitBannerView.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42ET101 /* SessionExitTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionExitTracker.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42WB101 /* WorkspaceProjectBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceProjectBridge.swift; sourceTree = "<group>"; };
@@ -1432,6 +1436,7 @@
 				C420Z000C420Z000C42IL101 /* HerdrInboundLayoutSync.swift */,
 				C420Z000C420Z000C42EP101 /* HerdrEventPump.swift */,
 				C420Z000C420Z000C42PE101 /* HerdrPersistence.swift */,
+				C420Z000C420Z000C42WL101 /* HerdrWorkspaceListStore.swift */,
 				C420Z000C420Z000C42OR101 /* HerdrOneShotRPC.swift */,
 				C420Z000C420Z000C42RI101 /* HerdrRemoteInstaller.swift */,
 				C420Z000C420Z000C42DC101 /* HerdrDisplayClient.swift */,
@@ -1446,6 +1451,7 @@
 				C420Z000C420Z000C42KD101 /* PanelKeepAliveDispatcher.swift */,
 				C420Z000C420Z000C42BS101 /* BackgroundSessionStore.swift */,
 				C420Z000C420Z000C42SB101 /* BackgroundSessionsSidebarSection.swift */,
+				C420Z000C420Z000C42HX101 /* HerdrHostsSidebarSection.swift */,
 				C420Z000C420Z000C42EB101 /* SessionExitBannerView.swift */,
 				C420Z000C420Z000C42ET101 /* SessionExitTracker.swift */,
 				C420Z000C420Z000C42WB101 /* WorkspaceProjectBridge.swift */,
@@ -2211,6 +2217,7 @@
 				C420Z000C420Z000C42IL102 /* HerdrInboundLayoutSync.swift in Sources */,
 				C420Z000C420Z000C42EP102 /* HerdrEventPump.swift in Sources */,
 				C420Z000C420Z000C42PE102 /* HerdrPersistence.swift in Sources */,
+				C420Z000C420Z000C42WL102 /* HerdrWorkspaceListStore.swift in Sources */,
 				C420Z000C420Z000C42OR102 /* HerdrOneShotRPC.swift in Sources */,
 				C420Z000C420Z000C42RI102 /* HerdrRemoteInstaller.swift in Sources */,
 				C420Z000C420Z000C42DC102 /* HerdrDisplayClient.swift in Sources */,
@@ -2225,6 +2232,7 @@
 				C420Z000C420Z000C42KD102 /* PanelKeepAliveDispatcher.swift in Sources */,
 				C420Z000C420Z000C42BS102 /* BackgroundSessionStore.swift in Sources */,
 				C420Z000C420Z000C42SB102 /* BackgroundSessionsSidebarSection.swift in Sources */,
+				C420Z000C420Z000C42HX102 /* HerdrHostsSidebarSection.swift in Sources */,
 				C420Z000C420Z000C42EB102 /* SessionExitBannerView.swift in Sources */,
 				C420Z000C420Z000C42ET102 /* SessionExitTracker.swift in Sources */,
 				C420Z000C420Z000C42WB102 /* WorkspaceProjectBridge.swift in Sources */,

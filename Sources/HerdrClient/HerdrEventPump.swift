@@ -69,7 +69,9 @@ final class HerdrEventPump {
                 try await client.start()
                 try await client.subscribe([
                     "layout.changed",
+                    "workspace.created",
                     "workspace.closed",
+                    "workspace.focused",
                     "pane.exited",
                 ])
                 clients[socketPath] = client
@@ -84,7 +86,7 @@ final class HerdrEventPump {
                 attempt = 0  // reset backoff on a successful subscribe
                 let stream = await client.events
                 for await event in stream {
-                    handle(event: event)
+                    handle(event: event, socketPath: socketPath)
                 }
                 cmuxDebugLog("herdr.pump: stream closed on \(socketPath); will reconnect")
                 if let oldClient = clients.removeValue(forKey: socketPath) {
@@ -113,7 +115,7 @@ final class HerdrEventPump {
         }
     }
 
-    private func handle(event: HerdrEvent) {
+    private func handle(event: HerdrEvent, socketPath: String) {
         // Line-protocol uses snake_case event names; some clients use
         // dotted ("layout.changed"). Match both for safety.
         switch event.event {
@@ -123,7 +125,11 @@ final class HerdrEventPump {
                 return
             }
             HerdrInboundLayoutSync.apply(tree: payload.tree)
+        case "workspace_created", "workspace.created",
+             "workspace_focused", "workspace.focused":
+            invalidateWorkspaceList(socketPath: socketPath, reason: event.event)
         case "workspace_closed", "workspace.closed":
+            invalidateWorkspaceList(socketPath: socketPath, reason: event.event)
             guard let payload = event.decodeData(HerdrWorkspaceClosedPayload.self) else {
                 cmuxDebugLog("herdr.pump: workspace_closed payload decode failed")
                 return
@@ -144,6 +150,16 @@ final class HerdrEventPump {
         default:
             break
         }
+    }
+
+    /// Refresh the sidebar's cached workspace list for the host that
+    /// owns this socket. The list store keys on host id; we look it
+    /// up via the cached host snapshot.
+    private func invalidateWorkspaceList(socketPath: String, reason: String) {
+        guard let host = hosts[socketPath] else { return }
+        cmuxDebugLog("herdr.pump: refreshing workspace list for \(host.displayName) (\(reason))")
+        HerdrWorkspaceListStore.shared.invalidate(hostId: host.id)
+        HerdrWorkspaceListStore.shared.refresh(host: host)
     }
 
     /// Cache key per host. For .localUDS this is the actual UDS path;

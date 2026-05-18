@@ -251,6 +251,17 @@ enum HerdrPanelOpener {
     /// for any `HerdrHost` — local UDS or SSH stdio — because the
     /// transport factory + opener impl are transport-agnostic.
     static func openWorkspace(host: HerdrHost) {
+        openWorkspace(host: host, requestedWorkspaceId: nil)
+    }
+
+    /// Sidebar-driven entry point: open a specific workspace by id.
+    /// Skips the auto-select / persisted-fallback / create-if-empty
+    /// logic so the user gets exactly the workspace they clicked.
+    static func openWorkspace(host: HerdrHost, workspaceId: String) {
+        openWorkspace(host: host, requestedWorkspaceId: workspaceId)
+    }
+
+    private static func openWorkspace(host: HerdrHost, requestedWorkspaceId: String?) {
         guard let appDelegate = AppDelegate.shared else {
             herdrPanelOpenerTrace("workspace: no AppDelegate.shared")
             return
@@ -286,7 +297,8 @@ enum HerdrPanelOpener {
                     host: host,
                     exec: exec,
                     rootPaneId: focusedPane,
-                    workspace: workspace
+                    workspace: workspace,
+                    requestedWorkspaceId: requestedWorkspaceId
                 )
             } catch {
                 herdrPanelOpenerTrace("openWorkspace failed for host \(host.displayName): \(error)")
@@ -298,7 +310,8 @@ enum HerdrPanelOpener {
         host: HerdrHost,
         exec: String,
         rootPaneId: PaneID,
-        workspace: Workspace
+        workspace: Workspace,
+        requestedWorkspaceId: String? = nil
     ) async throws {
         let socketPath = host.localApiSocketPath
 
@@ -325,7 +338,23 @@ enum HerdrPanelOpener {
         // "Open Herdr Workspace" land back on the same panes.
         let workspaceId: String
         let activeTabId: String
-        if let persisted = HerdrPersistence.shared.entry(forHostSession: host.sessionName),
+        if let requested = requestedWorkspaceId {
+            // Sidebar / explicit-id path: skip auto-select. We still
+            // need active_tab_id, fetched via workspace.get.
+            let wsResp = try await api.request(
+                method: "workspace.get",
+                params: ["workspace_id": requested]
+            )
+            guard let wsInfo = wsResp["workspace"] as? [String: Any],
+                  let requestedActiveTabId = wsInfo["active_tab_id"] as? String
+            else {
+                herdrPanelOpenerTrace("workspace: workspace.get(\(requested)) returned no active_tab_id")
+                return
+            }
+            workspaceId = requested
+            activeTabId = requestedActiveTabId
+            herdrPanelOpenerTrace("workspace: opening explicit \(workspaceId) tab=\(activeTabId)")
+        } else if let persisted = HerdrPersistence.shared.entry(forHostSession: host.sessionName),
            let resolved = await Self.resolvePersistedWorkspace(
                api: api,
                sessions: sessions,
