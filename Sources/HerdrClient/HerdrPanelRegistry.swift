@@ -25,6 +25,10 @@ final class HerdrPanelRegistry {
         let paneId: String
         let terminalId: String
         var pumpTask: Task<Void, Never>?
+        var resizeObserver: NSObjectProtocol?
+        var resizeDebounceTask: Task<Void, Never>?
+        var lastReportedCols: UInt16?
+        var lastReportedRows: UInt16?
     }
 
     private(set) var entries: [UUID: Entry] = [:]
@@ -43,8 +47,29 @@ final class HerdrPanelRegistry {
     func remove(panelId: UUID) {
         guard let entry = entries.removeValue(forKey: panelId) else { return }
         entry.pumpTask?.cancel()
+        entry.resizeDebounceTask?.cancel()
+        if let observer = entry.resizeObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
         entry.displayClient.stop()
         Unmanaged<HerdrIoCallbackBox>.fromOpaque(entry.ioCallbackContext).release()
+    }
+
+    /// Update bookkeeping for an installed resize observer + the most
+    /// recently reported size, so we can dedupe identical pane.resize
+    /// requests.
+    func setResizeObserver(panelId: UUID, observer: NSObjectProtocol) {
+        entries[panelId]?.resizeObserver = observer
+    }
+
+    func setLastReportedSize(panelId: UUID, cols: UInt16, rows: UInt16) {
+        entries[panelId]?.lastReportedCols = cols
+        entries[panelId]?.lastReportedRows = rows
+    }
+
+    func setResizeDebounceTask(panelId: UUID, task: Task<Void, Never>) {
+        entries[panelId]?.resizeDebounceTask?.cancel()
+        entries[panelId]?.resizeDebounceTask = task
     }
 
     func entry(panelId: UUID) -> Entry? {

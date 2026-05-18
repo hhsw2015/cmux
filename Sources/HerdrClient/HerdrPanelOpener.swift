@@ -17,11 +17,34 @@ enum HerdrPanelOpener {
     /// workspace. Spawns / reuses the localhost herdr daemon, picks
     /// the first available pane, and binds a TerminalPanel to it.
     static func openLocalhostPanel() {
-        guard let appDelegate = NSApp.delegate as? AppDelegate,
-              let tabManager = appDelegate.tabManager,
+        // SwiftUI.NSApplicationDelegateAdaptor wraps our AppDelegate
+        // inside an opaque proxy, so `NSApp.delegate as? AppDelegate`
+        // fails. AppDelegate exposes a static `shared` for cases like
+        // this where we need to reach it from outside the SwiftUI
+        // environment.
+        guard let appDelegate = AppDelegate.shared else {
+            herdrPanelOpenerTrace("no AppDelegate.shared")
+            return
+        }
+        // Resolve the focused tabManager via the front window — relying
+        // on AppDelegate.tabManager (a global weak ref) was unreliable
+        // when the menu was clicked from a Debug-menu interaction
+        // because that ref isn't always pointing at the front window's
+        // manager.
+        let tabManager: TabManager? = {
+            if let raw = NSApp.keyWindow?.identifier?.rawValue,
+               raw.hasPrefix("cmux.main."),
+               let id = UUID(uuidString: String(raw.dropFirst("cmux.main.".count))),
+               let manager = appDelegate.tabManagerFor(windowId: id) {
+                return manager
+            }
+            return appDelegate.tabManager
+        }()
+        guard let tabManager,
               let workspace = tabManager.tabs.first(where: { $0.id == tabManager.selectedTabId })
+                ?? tabManager.tabs.first
         else {
-            herdrPanelOpenerTrace("no focused workspace")
+            herdrPanelOpenerTrace("no focused workspace (tabManager=\(appDelegate.tabManager != nil) tabs=\(appDelegate.tabManager?.tabs.count ?? -1))")
             return
         }
         guard let focusedPane = workspace.bonsplitController.focusedPaneId else {
@@ -106,7 +129,12 @@ enum HerdrPanelOpener {
             cols: 80,
             rows: 24
         )
-        try await displayClient.start()
+        // Use takeover so we win against any leftover subprocess from
+        // a prior cmux DEV launch — subprocesses spawned by Process
+        // aren't always reaped when the parent exits, so the herdr
+        // daemon may still hold a stale attach owner for our
+        // terminal_id.
+        try await displayClient.start(takeover: true)
         let controller = HerdrSurfaceController(displayClient: displayClient)
         let panelId = UUID()
         let box = HerdrIoCallbackBox(panelId: panelId, controller: controller)
@@ -131,7 +159,24 @@ enum HerdrPanelOpener {
             Unmanaged<HerdrIoCallbackBox>.fromOpaque(ctxRaw).release()
             return
         }
-        controller.bindSurfaceWithoutPump(panel.surface.surface!)
+        // Wait for the Ghostty surface to be created. cmux defers
+        // surface construction to viewDidMoveToWindow on the
+        // GhosttyNSView, which lands on the next runloop tick.
+        var ghosttySurfaceRef: ghostty_surface_t?
+        for _ in 0..<25 {
+            if let s = panel.surface.surface {
+                ghosttySurfaceRef = s
+                break
+            }
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        guard let ghosttySurface = ghosttySurfaceRef else {
+            herdrPanelOpenerTrace("ghostty surface still nil after 500ms")
+            displayClient.stop()
+            Unmanaged<HerdrIoCallbackBox>.fromOpaque(ctxRaw).release()
+            return
+        }
+        controller.bindSurfaceWithoutPump(ghosttySurface)
 
         // 4. Register so the controller + display client + box outlive
         //    this scope. Cleanup hook runs in workspace teardown.
@@ -163,7 +208,185 @@ enum HerdrPanelOpener {
             }
         }
         HerdrPanelRegistry.shared.attachPump(panelId: panel.id, task: pump)
+
+        // Install a resize observer on the surface's hosted view so
+        // the herdr daemon's PTY size tracks the visible grid as the
+        // panel resizes (window resize, bonsplit divider drag, tab
+        // switch). Without this the shell renders at the spawn-time
+        // 80x24 and prompts wrap weirdly.
+        installPanelResizeObserver(
+            panelId: panel.id,
+            hostedView: panel.surface.hostedView,
+            surface: ghosttySurface,
+            paneId: herdrPaneId,
+            socketPath: (("~/.config/herdr/sessions/" + host.sessionName + "/herdr.sock") as NSString)
+                .expandingTildeInPath
+        )
+
         herdrPanelOpenerTrace("herdr panel opened panelId=\(panel.id) terminalId=\(terminalId)")
+    }
+
+    private static func installPanelResizeObserver(
+        panelId: UUID,
+        hostedView: NSView,
+        surface: ghostty_surface_t,
+        paneId: String,
+        socketPath: String
+    ) {
+        hostedView.postsFrameChangedNotifications = true
+        let observer = NotificationCenter.default.addObserver(
+            forName: NSView.frameDidChangeNotification,
+            object: hostedView,
+            queue: .main
+        ) { _ in
+            herdrPanelOpenerTrace("panel hostedView frameDidChange")
+            schedulePanelResize(
+                panelId: panelId,
+                surface: surface,
+                paneId: paneId,
+                socketPath: socketPath
+            )
+        }
+        HerdrPanelRegistry.shared.setResizeObserver(panelId: panelId, observer: observer)
+        herdrPanelOpenerTrace("resize observer installed for panel \(panelId)")
+        // Fire once so the daemon picks up the actual visible grid
+        // immediately rather than 80x24 (the spawn default).
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            schedulePanelResize(
+                panelId: panelId,
+                surface: surface,
+                paneId: paneId,
+                socketPath: socketPath
+            )
+        }
+    }
+
+    private static func schedulePanelResize(
+        panelId: UUID,
+        surface: ghostty_surface_t,
+        paneId: String,
+        socketPath: String
+    ) {
+        let debounce = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 80_000_000)
+            forwardPanelSize(
+                panelId: panelId,
+                surface: surface,
+                paneId: paneId,
+                socketPath: socketPath
+            )
+        }
+        HerdrPanelRegistry.shared.setResizeDebounceTask(panelId: panelId, task: debounce)
+    }
+
+    private static func forwardPanelSize(
+        panelId: UUID,
+        surface: ghostty_surface_t,
+        paneId: String,
+        socketPath: String
+    ) {
+        let size = ghostty_surface_size(surface)
+        herdrPanelOpenerTrace("forwardPanelSize panelId=\(panelId) cols=\(size.columns) rows=\(size.rows)")
+        guard size.columns > 0, size.rows > 0 else { return }
+        if let entry = HerdrPanelRegistry.shared.entry(panelId: panelId),
+           entry.lastReportedCols == size.columns,
+           entry.lastReportedRows == size.rows {
+            herdrPanelOpenerTrace("forwardPanelSize unchanged \(size.columns)x\(size.rows), skip")
+            return
+        }
+        HerdrPanelRegistry.shared.setLastReportedSize(
+            panelId: panelId,
+            cols: size.columns,
+            rows: size.rows
+        )
+        Task.detached(priority: .userInitiated) {
+            await HerdrPanelDebugWindowResizeBridge.sendOneShotPaneResize(
+                socketPath: socketPath,
+                paneId: paneId,
+                cols: size.columns,
+                rows: size.rows,
+                cellWidthPx: size.cell_width_px,
+                cellHeightPx: size.cell_height_px
+            )
+        }
+    }
+}
+
+/// Reuses the one-shot UDS pane.resize sender originally written for
+/// HerdrPaneDebugWindow so panel and debug-window paths share the same
+/// fix for herdr's one-line-then-close API socket protocol.
+@MainActor
+private enum HerdrPanelDebugWindowResizeBridge {
+    static func sendOneShotPaneResize(
+        socketPath: String,
+        paneId: String,
+        cols: UInt16,
+        rows: UInt16,
+        cellWidthPx: UInt32,
+        cellHeightPx: UInt32
+    ) async {
+        let envelope: [String: Any] = [
+            "id": "cmux_panelresize_\(Int(Date().timeIntervalSince1970 * 1000))",
+            "method": "pane.resize",
+            "params": [
+                "pane_id": paneId,
+                "cols": Int(cols),
+                "rows": Int(rows),
+                "cell_width_px": Int(cellWidthPx),
+                "cell_height_px": Int(cellHeightPx),
+            ],
+        ]
+        guard var line = try? JSONSerialization.data(withJSONObject: envelope) else {
+            await MainActor.run { herdrPanelOpenerTrace("send: JSON encode failed") }
+            return
+        }
+        line.append(0x0A)
+        let fd = Darwin.socket(AF_UNIX, SOCK_STREAM, 0)
+        guard fd >= 0 else {
+            await MainActor.run { herdrPanelOpenerTrace("send: socket() failed errno=\(errno)") }
+            return
+        }
+        defer { _ = Darwin.close(fd) }
+        var addr = sockaddr_un()
+        addr.sun_family = sa_family_t(AF_UNIX)
+        let pathBytes = Array(socketPath.utf8)
+        let maxLen = MemoryLayout.size(ofValue: addr.sun_path)
+        guard pathBytes.count < maxLen else {
+            await MainActor.run { herdrPanelOpenerTrace("send: path too long") }
+            return
+        }
+        withUnsafeMutablePointer(to: &addr.sun_path) { pathPtr in
+            pathPtr.withMemoryRebound(to: CChar.self, capacity: maxLen) { rebound in
+                for i in 0..<pathBytes.count {
+                    rebound[i] = CChar(bitPattern: pathBytes[i])
+                }
+                rebound[pathBytes.count] = 0
+            }
+        }
+        let connectResult = withUnsafePointer(to: &addr) { addrPtr -> Int32 in
+            addrPtr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPtr in
+                Darwin.connect(fd, sockaddrPtr, socklen_t(MemoryLayout<sockaddr_un>.size))
+            }
+        }
+        guard connectResult == 0 else {
+            let err = errno
+            await MainActor.run { herdrPanelOpenerTrace("send: connect failed path=\(socketPath) errno=\(err)") }
+            return
+        }
+        var ok = true
+        line.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
+            guard let base = raw.baseAddress else { ok = false; return }
+            var written = 0
+            while written < raw.count {
+                let n = Darwin.write(fd, base.advanced(by: written), raw.count - written)
+                if n <= 0 { ok = false; return }
+                written += n
+            }
+        }
+        await MainActor.run {
+            herdrPanelOpenerTrace("send: pane.resize \(cols)x\(rows) ok=\(ok)")
+        }
     }
 }
 
