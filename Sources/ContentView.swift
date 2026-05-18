@@ -8296,6 +8296,32 @@ struct ContentView: View {
     }
 
     @MainActor
+    private func handleBackgroundReattach(_ entry: BackgroundSessionStore.Entry) {
+        guard let workspace = focusedWorkspaceForProjectBridge() else { return }
+        let descriptor = PanelDescriptor(
+            sessionName: entry.sessionName,
+            cmd: "",
+            dir: entry.dir,
+            keepAlive: true
+        )
+        WorkspaceProjectBridge.materialize(
+            layout: .panel(descriptor),
+            into: workspace
+        )
+        BackgroundSessionStore.shared.remove(panelId: entry.id)
+    }
+
+    @MainActor
+    private func handleBackgroundKill(_ entry: BackgroundSessionStore.Entry) {
+        let name = entry.sessionName
+        BackgroundSessionStore.shared.remove(sessionName: name)
+        Task.detached(priority: .utility) {
+            guard let backend = SessionDaemonResolver.shared.activeBackend() else { return }
+            try? await backend.kill(name, force: true)
+        }
+    }
+
+    @MainActor
     private func focusedWorkspaceForProjectBridge() -> Workspace? {
         guard let selectedId = tabManager.selectedTabId else { return nil }
         return tabManager.tabs.first(where: { $0.id == selectedId })
@@ -10236,6 +10262,14 @@ struct VerticalTabsSidebar: View {
     ) -> some View {
         VStack(spacing: 0) {
             workspaceRows(renderContext: renderContext)
+
+            if SessionPersistenceFeatureFlags.effective(.background) {
+                BackgroundSessionsSidebarSection(
+                    store: BackgroundSessionStore.shared,
+                    onReattach: { entry in handleBackgroundReattach(entry) },
+                    onKill: { entry in handleBackgroundKill(entry) }
+                )
+            }
 
             SidebarEmptyArea(
                 rowSpacing: tabRowSpacing,
