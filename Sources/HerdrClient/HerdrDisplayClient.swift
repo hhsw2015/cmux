@@ -1,5 +1,12 @@
 import Foundation
 
+/// Errors raised by HerdrDisplayClient.
+enum HerdrDisplayClientError: Error, Equatable {
+    /// `host.transport` is not `.localUDS`. SSH stdio transport for the
+    /// display path is implemented in B7.
+    case remoteNotSupportedYet
+}
+
 /// Drives a herdr pane in RawPty mode by spawning the fork's
 /// `raw-pty-attach` CLI subcommand and piping bytes both ways.
 ///
@@ -46,23 +53,21 @@ final class HerdrDisplayClient {
         self.outputContinuation = continuation
     }
 
-    /// Spawn the subprocess. Throws if the binary isn't executable or
-    /// the spawn itself fails. Bytes start flowing once herdr finishes
-    /// the handshake server-side (typically within 100 ms locally).
+    /// Spawn the subprocess. Throws if the binary isn't executable, the
+    /// spawn itself fails, or the host is not a local-UDS host (remote
+    /// .sshStdio support is wired up in B7). Bytes start flowing once
+    /// herdr finishes the handshake server-side (typically within
+    /// ~100 ms locally).
     func start(takeover: Bool = false) async throws {
+        guard case .localUDS = host.transport else {
+            throw HerdrDisplayClientError.remoteNotSupportedYet
+        }
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: executablePath)
-        var args: [String] = []
-        if case .localUDS = host.transport {
-            args += ["--session", host.sessionName]
-        } else {
-            // Remote transport — handled by HerdrBackend wrapping ssh.
-            // For now this branch is unreachable since B4 handles localhost only.
-            args += ["--session", host.sessionName]
-        }
-        args += ["raw-pty-attach", terminalId,
-                 "--cols", String(initialCols),
-                 "--rows", String(initialRows)]
+        var args: [String] = ["--session", host.sessionName,
+                              "raw-pty-attach", terminalId,
+                              "--cols", String(initialCols),
+                              "--rows", String(initialRows)]
         if takeover { args.append("--takeover") }
         proc.arguments = args
 
@@ -83,14 +88,17 @@ final class HerdrDisplayClient {
     }
 
     /// Send keystroke bytes upstream to the pane. Returns once the
-    /// bytes are queued on the subprocess stdin pipe.
+    /// bytes are queued on the subprocess stdin pipe. Pipe-broken
+    /// errors are logged at NSLog level so a wedged pane is visible
+    /// in Console.app; the output AsyncStream will finish on EOF, so
+    /// callers don't need to poll for failure.
     func send(_ bytes: Data) {
         guard let handle = stdinHandle else { return }
         do {
             try handle.write(contentsOf: bytes)
         } catch {
-            // Pipe broken — process likely exited. Caller observes via
-            // the output stream finishing.
+            NSLog("[HerdrDisplayClient] stdin write failed: %@",
+                  String(describing: error))
         }
     }
 
