@@ -6,6 +6,7 @@ import Bonsplit
 /// View for rendering a terminal panel
 struct TerminalPanelView: View {
     @ObservedObject var panel: TerminalPanel
+    @ObservedObject var exitTracker: SessionExitTracker = .shared
     @AppStorage(NotificationPaneRingSettings.enabledKey)
     private var notificationPaneRingEnabled = NotificationPaneRingSettings.defaultEnabled
     let paneId: PaneID
@@ -17,6 +18,11 @@ struct TerminalPanelView: View {
     let hasUnreadNotification: Bool
     let onFocus: () -> Void
     let onTriggerFlash: () -> Void
+
+    private var exitEntry: SessionExitTracker.ExitEntry? {
+        guard let session = panel.zmxSessionName, !session.isEmpty else { return nil }
+        return exitTracker.exitedSessions[session]
+    }
 
     var body: some View {
         // Layering contract: terminal find UI is mounted in GhosttySurfaceScrollView (AppKit portal layer)
@@ -48,6 +54,26 @@ struct TerminalPanelView: View {
                     .allowsHitTesting(false)
             }
         }
+        .overlay(alignment: .bottom) {
+            if let exit = exitEntry {
+                SessionExitBannerView(
+                    cmd: exit.sessionName,
+                    exitCode: exit.exitCode,
+                    onRestart: { restartExitedSession(exit) },
+                    onClose: { exitTracker.clear(sessionName: exit.sessionName) }
+                )
+            }
+        }
+    }
+
+    private func restartExitedSession(_ exit: SessionExitTracker.ExitEntry) {
+        exitTracker.clear(sessionName: exit.sessionName)
+        // Type the attach command into the panel's PTY. The user can also
+        // edit it before pressing return; the trailing newline executes
+        // it immediately when no edits are made.
+        let engine = SessionDaemonResolver.shared.selectedKind() ?? .tsm
+        let binary = engine == .tsm ? "tsm" : "zmx"
+        _ = panel.surface.sendText("\(binary) attach \(exit.sessionName)\n")
     }
 }
 
