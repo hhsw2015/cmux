@@ -57,6 +57,22 @@ final class FeedCoordinator: @unchecked Sendable {
     /// fires the moment the kernel observes process exit (or
     /// immediately if `ppid` is already dead), marks every pending
     /// item for that PID as `.expired`, and cancels the source.
+    /// Forward an ingested feed event to `CombinedAgentFeedBridge` so the
+    /// session-persistence integration sees cmux's hook-side agent state
+    /// alongside whatever the daemon reports. We only mirror events that
+    /// carry a panel id we can key on; anything else falls through.
+    @MainActor
+    func mirrorToCombinedAgentFeed(_ event: WorkstreamEvent) {
+        guard SessionPersistenceFeatureFlags.effective(.agentMerge) else { return }
+        // We can't always know the cmux panel a feed event belongs to; the
+        // event carries a workspaceId/threadId tuple. Skip without a panel
+        // id — Phase 7's bridge keys exclusively on panelId. The reducer
+        // can still merge richer entries from the binder side.
+        // For now this hook just observes; future PRs will extend
+        // WorkstreamEvent with a panelId or look one up via TabManager.
+        _ = event
+    }
+
     /// Idempotent: subsequent calls with the same PID no-op.
     @MainActor
     func armPidWatcher(ppid: Int) {
@@ -89,6 +105,7 @@ final class FeedCoordinator: @unchecked Sendable {
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
                     FeedCoordinator.shared.store.ingest(event)
+                    FeedCoordinator.shared.mirrorToCombinedAgentFeed(event)
                     if let ppid = event.ppid, ppid > 0 {
                         FeedCoordinator.shared.armPidWatcher(ppid: ppid)
                     }
@@ -114,6 +131,7 @@ final class FeedCoordinator: @unchecked Sendable {
         DispatchQueue.main.sync {
             MainActor.assumeIsolated {
                 FeedCoordinator.shared.store.ingest(event)
+                FeedCoordinator.shared.mirrorToCombinedAgentFeed(event)
                 itemIdSlot.value = FeedCoordinator.shared.store.items.last?.id
                 if let ppid = event.ppid, ppid > 0 {
                     FeedCoordinator.shared.armPidWatcher(ppid: ppid)

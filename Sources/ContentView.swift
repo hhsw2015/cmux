@@ -1,5 +1,6 @@
 import AppKit
 import Bonsplit
+import CMUXZmx
 import Combine
 import ImageIO
 import Observation
@@ -8337,7 +8338,7 @@ struct ContentView: View {
               let selectedTab = workspace.bonsplitController.selectedTab(inPane: pane) else {
             return nil
         }
-        return workspace.panels[selectedTab.id] as? TerminalPanel
+        return workspace.panels[selectedTab.id.id] as? TerminalPanel
     }
 
     private func openCmuxConfigIssue(_ issue: CmuxConfigIssue) {
