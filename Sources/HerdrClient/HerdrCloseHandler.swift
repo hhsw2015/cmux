@@ -45,6 +45,12 @@ enum HerdrCloseHandler {
                     HerdrDividerSync.reset(bindingKey: binding.rootCmuxPaneId)
                     let bindingHost = binding.host
                     Task { await HerdrEventPump.shared.release(host: bindingHost) }
+                    // Detach preserves the binding for next-launch reattach;
+                    // explicit close drops it so we don't try to reattach
+                    // a workspace the user just killed.
+                    if !isDetach {
+                        HerdrPersistence.shared.clear(host: bindingHost)
+                    }
                 }
             }
         }

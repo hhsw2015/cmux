@@ -1,6 +1,7 @@
 #if DEBUG
 import AppKit
 import Bonsplit
+import CMUXSessionDaemon
 import Foundation
 import GhosttyKit
 
@@ -303,40 +304,53 @@ enum HerdrPanelOpener {
         let sessions = try await backend.listSessions()
         await backend.close()
 
+        let api = HerdrApiClient(transport: LocalUDSTransport(socketPath: socketPath))
+        try await api.start()
+        defer { Task { await api.close() } }
+
+        // E4: prefer the previously-attached workspace+tab if it still
+        // exists on the daemon. This makes Cmd+Q + relaunch + click
+        // "Open Herdr Workspace" land back on the same panes.
         let workspaceId: String
-        if let first = sessions.first {
+        let activeTabId: String
+        if let persisted = HerdrPersistence.shared.entry(forHostSession: host.sessionName),
+           let resolved = await Self.resolvePersistedWorkspace(
+               api: api,
+               sessions: sessions,
+               persisted: persisted
+           ) {
+            workspaceId = resolved.workspaceId
+            activeTabId = resolved.tabId
+            herdrPanelOpenerTrace("workspace: reusing persisted \(workspaceId) tab=\(activeTabId)")
+        } else if let first = sessions.first {
+            // Fall back: first existing workspace, its active tab.
+            let wsResp = try await api.request(
+                method: "workspace.get",
+                params: ["workspace_id": first.name]
+            )
+            guard let wsInfo = wsResp["workspace"] as? [String: Any],
+                  let firstActiveTabId = wsInfo["active_tab_id"] as? String
+            else {
+                herdrPanelOpenerTrace("workspace: workspace.get returned no active_tab_id")
+                return
+            }
             workspaceId = first.name
+            activeTabId = firstActiveTabId
         } else {
-            let api = HerdrApiClient(transport: LocalUDSTransport(socketPath: socketPath))
-            try await api.start()
-            defer { Task { await api.close() } }
+            // No existing workspace — create one.
             let r = try await api.request(
                 method: "workspace.create",
                 params: ["focus": false, "label": "cmux-workspace"]
             )
             guard let ws = r["workspace"] as? [String: Any],
-                  let id = ws["workspace_id"] as? String
+                  let id = ws["workspace_id"] as? String,
+                  let firstActiveTabId = ws["active_tab_id"] as? String
             else {
-                herdrPanelOpenerTrace("workspace: workspace.create returned no id")
+                herdrPanelOpenerTrace("workspace: workspace.create returned no id/tab")
                 return
             }
             workspaceId = id
-        }
-
-        let api = HerdrApiClient(transport: LocalUDSTransport(socketPath: socketPath))
-        try await api.start()
-        defer { Task { await api.close() } }
-
-        // Pick the active tab of the chosen workspace.
-        let wsResp = try await api.request(
-            method: "workspace.get",
-            params: ["workspace_id": workspaceId]
-        )
-        guard let wsInfo = wsResp["workspace"] as? [String: Any],
-              let activeTabId = wsInfo["active_tab_id"] as? String
-        else {
-            herdrPanelOpenerTrace("workspace: workspace.get returned no active_tab_id")
-            return
+            activeTabId = firstActiveTabId
         }
 
         // Map herdr pane id -> terminal id from pane.list, so the
@@ -421,6 +435,49 @@ enum HerdrPanelOpener {
             treeSnapshot: workspace.bonsplitController.treeSnapshot()
         )
         await HerdrEventPump.shared.acquire(host: host)
+        HerdrPersistence.shared.record(host: host, workspaceId: workspaceId, tabId: activeTabId)
+    }
+
+    /// Verify the persisted workspace+tab still exists on the daemon
+    /// before reusing it. If listSessions doesn't have the workspace,
+    /// or workspace.get returns a different active tab, we fall back
+    /// to the first available.
+    private static func resolvePersistedWorkspace(
+        api: HerdrApiClient,
+        sessions: [DaemonSession],
+        persisted: HerdrPersistence.Entry
+    ) async -> (workspaceId: String, tabId: String)? {
+        guard sessions.contains(where: { $0.name == persisted.workspaceId }) else {
+            return nil
+        }
+        guard let resp = try? await api.request(
+            method: "workspace.get",
+            params: ["workspace_id": persisted.workspaceId]
+        ) else {
+            return nil
+        }
+        guard let wsInfo = resp["workspace"] as? [String: Any] else {
+            return nil
+        }
+        // If the tab still exists in the workspace, reuse it; else use
+        // the workspace's current active tab.
+        guard let tabsResp = try? await api.request(
+            method: "tab.list",
+            params: ["workspace_id": persisted.workspaceId]
+        ) else {
+            return nil
+        }
+        guard let tabs = tabsResp["tabs"] as? [[String: Any]] else {
+            return nil
+        }
+        let tabExists = tabs.contains { ($0["tab_id"] as? String) == persisted.tabId }
+        if tabExists {
+            return (persisted.workspaceId, persisted.tabId)
+        }
+        guard let activeTabId = wsInfo["active_tab_id"] as? String else {
+            return nil
+        }
+        return (persisted.workspaceId, activeTabId)
     }
 
     private static func installPanelResizeObserver(
