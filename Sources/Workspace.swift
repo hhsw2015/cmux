@@ -14522,6 +14522,11 @@ extension Workspace: BonsplitDelegate {
         _ = consumeCloseHistoryEligibility(tabId: tabId, panelId: panelId)
         let transferredRemoteCleanupConfiguration = transferredRemoteCleanupConfigurationsByPanelId[panelId]
         let preservesSurfaceForDetach = isDetaching && panel != nil
+#if DEBUG
+        if !isDetaching {
+            HerdrCloseHandler.handlePanelClosed(panelId: panelId)
+        }
+#endif
 
         if isDetaching, let panel {
             let browserPanel = panel as? BrowserPanel
@@ -14717,6 +14722,11 @@ extension Workspace: BonsplitDelegate {
         let shouldScheduleFocusReconcile = !isDetachingCloseTransaction
 
         publishCmuxPaneClosed(paneId, closedPanelIds: closedPanelIds, origin: "pane_close")
+#if DEBUG
+        for panelId in closedPanelIds {
+            HerdrCloseHandler.handlePanelClosed(panelId: panelId)
+        }
+#endif
         if !closedPanelIds.isEmpty {
             for panelId in closedPanelIds {
                 let panel = panels[panelId]
