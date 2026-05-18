@@ -6,11 +6,11 @@ import Foundation
 /// they let two cmux clients (or cmux + herdr's TUI) stay in sync on
 /// divider positions and structural mutations.
 ///
-/// Scope today: divider ratios + single-pane structural changes
-/// (one add or one remove per event). Larger structural changes
-/// (multi-pane adds/removes in a single event, swaps that don't
-/// preserve the leaf set) bail with a debug log; the user can re-open
-/// the workspace to resync.
+/// Scope today: divider ratios, removals, and additions (single or
+/// multi). Adds run in a fixed-point loop so a new pane whose sibling
+/// is itself a new pane gets processed once that sibling is bound.
+/// Swaps that don't preserve the leaf set still bail with a debug log;
+/// the user can re-open the workspace to resync.
 @MainActor
 enum HerdrInboundLayoutSync {
     static func apply(tree: HerdrLayoutTree) {
@@ -35,35 +35,66 @@ enum HerdrInboundLayoutSync {
         let added = newPaneIds.subtracting(oldPaneIds)
         let removed = oldPaneIds.subtracting(newPaneIds)
 
-        // Multi-removal is order-independent (each cmux pane closes
-        // standalone), so we process the whole set in one pass. Multi-
-        // addition would need DFS-ordered traversal so each new pane's
-        // sibling is bound before we splitPane on it; defer until
-        // dogfood shows the case actually occurs.
-        if added.isEmpty && !removed.isEmpty {
-            for herdrId in removed {
-                applyRemoval(herdrPaneId: herdrId, binding: binding, workspace: workspace)
-            }
+        // Removals are order-independent — each cmux pane closes
+        // standalone — so process the whole set up front so subsequent
+        // additions see the post-remove tree.
+        for herdrId in removed {
+            applyRemoval(herdrPaneId: herdrId, binding: binding, workspace: workspace)
+        }
+
+        if added.isEmpty {
             applyDividers(spec: spec, binding: binding, workspace: workspace)
             return
         }
 
-        if added.count > 1 || (added.count == 1 && !removed.isEmpty) {
-            cmuxDebugLog(
-                "herdr.inbound: mixed/multi-add change ignored (added=\(added.count) removed=\(removed.count))"
+        Task { @MainActor in
+            await applyAdditions(
+                added: added,
+                spec: spec,
+                binding: binding,
+                workspace: workspace
             )
-            return
+            applyDividers(spec: spec, binding: binding, workspace: workspace)
         }
+    }
 
-        if let addedHerdrId = added.first {
-            Task { @MainActor in
-                await applyAddition(
-                    addedHerdrId: addedHerdrId,
-                    spec: spec,
-                    binding: binding,
-                    workspace: workspace
-                )
+    /// Process every added pane. Adds run iteratively: in each pass
+    /// we pick a pane whose sibling is already bound (existing or
+    /// just-added), apply it, and restart. This handles the case
+    /// where two adds in the same event are siblings of each other
+    /// (one split, then a split of the new pane) by fixing their
+    /// processing order via the sibling-binding precondition.
+    private static func applyAdditions(
+        added: Set<String>,
+        spec: HerdrLayoutSpec,
+        binding: HerdrTabBinding,
+        workspace: Workspace
+    ) async {
+        var pending = added
+        while !pending.isEmpty {
+            var nextId: String?
+            for herdrId in pending {
+                guard let parent = findParentSplit(node: spec.root, target: herdrId) else {
+                    continue
+                }
+                if binding.paneBindings.cmuxPaneId(forHerdrId: parent.siblingHerdrId) != nil {
+                    nextId = herdrId
+                    break
+                }
             }
+            guard let resolved = nextId else {
+                cmuxDebugLog(
+                    "herdr.inbound: stalled multi-add (\(pending.count) unresolved); workspace may be out of sync"
+                )
+                return
+            }
+            await applyAddition(
+                addedHerdrId: resolved,
+                spec: spec,
+                binding: binding,
+                workspace: workspace
+            )
+            pending.remove(resolved)
         }
     }
 
