@@ -543,6 +543,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private func autoSaveOpenSessionPersistenceProject() {
         guard SessionPersistenceFeatureFlags.effective(.projects) else { return }
         guard let name = CurrentProjectTracker.name else { return }
+        guard let tabManager else { return }
         guard let workspace = tabManager.tabs.first(where: { $0.id == tabManager.selectedTabId }) else {
             return
         }

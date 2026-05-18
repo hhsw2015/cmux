@@ -1,4 +1,5 @@
 import AppKit
+import CMUXSessionDaemon
 import CMUXWorkstream
 import Foundation
 @preconcurrency import UserNotifications
