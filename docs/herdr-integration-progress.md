@@ -147,7 +147,8 @@ Actual fork delta: ~600 LOC across `schema.rs`, `api/mod.rs`, `app/api.rs`, `app
 | **E2e-3 (multi-change / swap)** | Multi-pane diffs and swap events. Defer until dogfood reveals which scenarios are common. | pending |
 | **E3 (workspace.closed)** | Tear down local materialized panes when remote workspace.close fires. Reuses suppressNextCloseFor for echo prevention. | done — cmux `feat(herdr): E3 (workspace.closed) ...` |
 | **E3 (pane.renamed / pane.exited / agent_status / tab events)** | Plumb remaining herdr events into cmux's title / status / breadcrumb sinks. Each needs its own UI hookup. | pending |
-| **E4** | Persistence: cmux workspace JSON stores `{ host, workspace_id }` per cmux window, not the layout itself (layout comes from `layout.snapshot`). On launch, reattach to daemon, snapshot, render. | pending |
+| **E4 (menu reattach)** | Persist last `{ workspace_id, tab_id }` per host to `~/Library/Application Support/cmux/herdr-bindings-<bundleId>.json`. "Open Herdr Workspace" reuses the persisted pair if it still exists; falls back gracefully. Detach keeps the entry; explicit close drops it. | done — cmux `feat(herdr): E4 ...` |
+| **E4 (auto-reattach on launch)** | Auto-restore herdr panes during cmux's workspace restoration path so the user doesn't need to click anything after relaunch. Bigger refactor; deferred. | pending |
 | **E5 (detach)** | tmux detach semantics: HerdrCloseHandler gains `isDetach` flag; Workspace passes `isDetaching`/`isDetachingCloseTransaction` from existing flags; Cmd+Q / close window detaches without `pane.close` RPC. | done — cmux `feat(herdr): E5 ...` |
 | **E5 (explicit Kill)** | Right-click / palette "Kill workspace" / "Kill tab" entries that explicitly issue `workspace.close` / `tab.close` RPCs. Currently no UI for this; users would have to use herdr CLI directly. | pending |
 
