@@ -72,17 +72,11 @@ enum HerdrInboundLayoutSync {
     ) async {
         var pending = added
         while !pending.isEmpty {
-            var nextId: String?
-            for herdrId in pending {
-                guard let parent = findParentSplit(node: spec.root, target: herdrId) else {
-                    continue
-                }
-                if binding.paneBindings.cmuxPaneId(forHerdrId: parent.siblingHerdrId) != nil {
-                    nextId = herdrId
-                    break
-                }
-            }
-            guard let resolved = nextId else {
+            guard let resolved = nextResolvableAddition(
+                pending: pending,
+                spec: spec,
+                isBound: { binding.paneBindings.cmuxPaneId(forHerdrId: $0) != nil }
+            ) else {
                 cmuxDebugLog(
                     "herdr.inbound: stalled multi-add (\(pending.count) unresolved); workspace may be out of sync"
                 )
@@ -96,6 +90,26 @@ enum HerdrInboundLayoutSync {
             )
             pending.remove(resolved)
         }
+    }
+
+    /// Pure order-resolution helper for `applyAdditions`. Picks any
+    /// pending added pane whose sibling in the spec tree is already
+    /// bound (existing or just-added). Returns nil if no pane in
+    /// `pending` qualifies — caller treats that as a stall.
+    static func nextResolvableAddition(
+        pending: Set<String>,
+        spec: HerdrLayoutSpec,
+        isBound: (String) -> Bool
+    ) -> String? {
+        for herdrId in pending {
+            guard let parent = findParentSplit(node: spec.root, target: herdrId) else {
+                continue
+            }
+            if isBound(parent.siblingHerdrId) {
+                return herdrId
+            }
+        }
+        return nil
     }
 
     /// Remote `workspace.closed` event: kill every cmux pane the

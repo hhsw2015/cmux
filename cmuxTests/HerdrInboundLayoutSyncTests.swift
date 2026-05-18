@@ -139,4 +139,120 @@ final class HerdrInboundLayoutSyncTests: XCTestCase {
         XCTAssertNil(HerdrInboundLayoutSync.findSplitId(in: leaf, atPath: []))
         XCTAssertNil(HerdrInboundLayoutSync.findSplitId(in: leaf, atPath: [true]))
     }
+
+    // MARK: - nextResolvableAddition (multi-change ordering)
+
+    private func makeSpec(_ root: HerdrLayoutSpecNode) -> HerdrLayoutSpec {
+        HerdrLayoutSpec(workspaceId: "ws", tabId: "t", root: root, focusedHerdrPaneId: nil)
+    }
+
+    func testNextResolvableAdditionPicksPaneWithBoundSibling() {
+        // h-split(0.5, A, NEW) — A is bound, NEW is added.
+        let spec = makeSpec(.split(
+            orientation: .horizontal,
+            ratio: 0.5,
+            first: .pane(herdrPaneId: "A"),
+            second: .pane(herdrPaneId: "NEW")
+        ))
+        let resolved = HerdrInboundLayoutSync.nextResolvableAddition(
+            pending: ["NEW"],
+            spec: spec,
+            isBound: { $0 == "A" }
+        )
+        XCTAssertEqual(resolved, "NEW")
+    }
+
+    func testNextResolvableAdditionReturnsNilWhenSiblingNotBound() {
+        // Both N1 and N2 are pending and siblings of each other —
+        // neither has a bound sibling, caller should treat as stalled.
+        let spec = makeSpec(.split(
+            orientation: .horizontal,
+            ratio: 0.5,
+            first: .pane(herdrPaneId: "N1"),
+            second: .pane(herdrPaneId: "N2")
+        ))
+        let resolved = HerdrInboundLayoutSync.nextResolvableAddition(
+            pending: ["N1", "N2"],
+            spec: spec,
+            isBound: { _ in false }
+        )
+        XCTAssertNil(resolved)
+    }
+
+    func testNextResolvableAdditionDisjointMultiAdd() {
+        // h-split(0.5, v-split(0.5, A, X), v-split(0.5, B, Y))
+        // X and Y are added; their siblings A and B are bound.
+        let spec = makeSpec(.split(
+            orientation: .horizontal,
+            ratio: 0.5,
+            first: .split(
+                orientation: .vertical,
+                ratio: 0.5,
+                first: .pane(herdrPaneId: "A"),
+                second: .pane(herdrPaneId: "X")
+            ),
+            second: .split(
+                orientation: .vertical,
+                ratio: 0.5,
+                first: .pane(herdrPaneId: "B"),
+                second: .pane(herdrPaneId: "Y")
+            )
+        ))
+        let bound: Set<String> = ["A", "B"]
+        // First call resolves either X or Y.
+        guard let first = HerdrInboundLayoutSync.nextResolvableAddition(
+            pending: ["X", "Y"],
+            spec: spec,
+            isBound: { bound.contains($0) }
+        ) else {
+            XCTFail("expected at least one of X/Y to resolve")
+            return
+        }
+        XCTAssertTrue(["X", "Y"].contains(first))
+
+        // After processing `first`, the remaining pending also resolves.
+        let other = HerdrInboundLayoutSync.nextResolvableAddition(
+            pending: Set(["X", "Y"]).subtracting([first]),
+            spec: spec,
+            isBound: { bound.contains($0) }
+        )
+        XCTAssertNotNil(other)
+    }
+
+    func testNextResolvableAdditionChainedWhereNewIsSiblingOfNew() {
+        // h-split(0.5, A, h-split(0.5, N1, N2)).
+        // A bound; N1 and N2 both pending. Pass 1 should resolve
+        // neither (each other's sibling is unbound and they're not
+        // siblings of A in the parent split). After binding N1
+        // externally, pass 2 resolves N2.
+        let spec = makeSpec(.split(
+            orientation: .horizontal,
+            ratio: 0.5,
+            first: .pane(herdrPaneId: "A"),
+            second: .split(
+                orientation: .horizontal,
+                ratio: 0.5,
+                first: .pane(herdrPaneId: "N1"),
+                second: .pane(herdrPaneId: "N2")
+            )
+        ))
+        // findParentSplit only returns when sibling is a leaf, so
+        // N1's sibling is N2 and vice-versa. With only A bound, no
+        // pending pane has a bound sibling.
+        let resolved1 = HerdrInboundLayoutSync.nextResolvableAddition(
+            pending: ["N1", "N2"],
+            spec: spec,
+            isBound: { $0 == "A" }
+        )
+        XCTAssertNil(resolved1, "neither N1 nor N2 has a bound sibling")
+        // The fixed-point loop in production starts unbinding/binding
+        // separately. Here, simulate that N1 was somehow bound first
+        // (e.g. via a different code path or future relaxation):
+        let resolved2 = HerdrInboundLayoutSync.nextResolvableAddition(
+            pending: ["N2"],
+            spec: spec,
+            isBound: { $0 == "A" || $0 == "N1" }
+        )
+        XCTAssertEqual(resolved2, "N2")
+    }
 }
