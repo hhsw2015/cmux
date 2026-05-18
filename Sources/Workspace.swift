@@ -14785,6 +14785,28 @@ extension Workspace: BonsplitDelegate {
         return true
     }
 
+#if DEBUG
+    /// Split a pane in response to an inbound herdr `LayoutChanged`
+    /// event. Sets `isProgrammaticSplit` for the duration so cmux's
+    /// didSplitPane delegate skips its auto-create-local-terminal
+    /// path; the inbound sync owns wiring the new pane's terminal.
+    @MainActor
+    func herdrInboundSplit(
+        paneId: PaneID,
+        orientation: SplitOrientation,
+        initialDividerPosition: CGFloat
+    ) -> PaneID? {
+        isProgrammaticSplit = true
+        defer { isProgrammaticSplit = false }
+        return bonsplitController.splitPane(
+            paneId,
+            orientation: orientation,
+            withTab: nil,
+            initialDividerPosition: initialDividerPosition
+        )
+    }
+#endif
+
     func splitTabBar(_ controller: BonsplitController, shouldSplitPane pane: PaneID, orientation: SplitOrientation) -> Bool {
 #if DEBUG
         if HerdrTabRegistry.shared.binding(forCmuxPaneId: pane.id) != nil {

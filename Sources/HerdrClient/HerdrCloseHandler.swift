@@ -8,6 +8,14 @@ import Foundation
 /// io-callback box stop holding memory.
 @MainActor
 enum HerdrCloseHandler {
+    /// Herdr pane ids whose corresponding cmux pane will be closed
+    /// imminently as part of an inbound `LayoutChanged` reconcile.
+    /// `handlePanelClosed` consumes these ids and skips the
+    /// `pane.close` RPC for them — the remote already closed the pane,
+    /// so echoing back would be wasted work and could race against
+    /// other clients.
+    static var suppressNextCloseFor: Set<String> = []
+
     /// Best-effort cleanup for a single closed panel. Safe to call for
     /// any panel — if the panel wasn't herdr-backed, this is a no-op.
     static func handlePanelClosed(panelId: UUID) {
@@ -37,6 +45,12 @@ enum HerdrCloseHandler {
         // Tear down local resources first so we don't leak even if the
         // RPC dispatch hangs.
         HerdrPanelRegistry.shared.remove(panelId: panelId)
+
+        // If the close came from an inbound LayoutChanged event, the
+        // remote already destroyed the pane. Skip the echo.
+        if suppressNextCloseFor.remove(herdrPaneId) != nil {
+            return
+        }
 
         // Best-effort kill on the herdr side. tmux semantics: close
         // pane = kill the process.
