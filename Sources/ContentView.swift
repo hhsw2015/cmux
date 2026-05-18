@@ -8338,7 +8338,7 @@ struct ContentView: View {
               let selectedTab = workspace.bonsplitController.selectedTab(inPane: pane) else {
             return nil
         }
-        return workspace.panels[selectedTab.id.id] as? TerminalPanel
+        return workspace.panels[selectedTab.id.uuid] as? TerminalPanel
     }
 
     private func openCmuxConfigIssue(_ issue: CmuxConfigIssue) {

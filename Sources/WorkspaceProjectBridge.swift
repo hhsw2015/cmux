@@ -2,12 +2,10 @@ import Bonsplit
 import CMUXZmx
 import Foundation
 
-/// Bridges cmux's `Workspace` data model to `ProjectManifest`. Phase 5
-/// wiring keeps the conversion intentionally simple: panels are flattened
-/// (no split tree captured) so save/open works for the common 1-pane case.
-/// Full bonsplit-aware serialization is a follow-up that needs to walk
-/// pane geometry — leaving as a TODO so this wiring ships without
-/// touching bonsplit internals.
+/// Bridges cmux's `Workspace` data model to `ProjectManifest`. Walks
+/// bonsplit's external tree so saves capture both panel sessions and
+/// split geometry; restores spawn fresh panels via `splitPane` and
+/// attach each to its recorded session.
 @MainActor
 enum WorkspaceProjectBridge {
     static let store = ProjectManifestStore()
@@ -109,8 +107,10 @@ enum WorkspaceProjectBridge {
             return materializePanel(descriptor, into: workspace, anchor: anchor, orientation: orientation)
         case .split(let direction, _, let children):
             guard !children.isEmpty else { return 0 }
-            // First child reuses anchor pane; subsequent children split off
-            // from the previously-created pane in the requested orientation.
+            // First child reuses the parent's split decision (it will be
+            // placed via the existing anchor + orientation pair). Children
+            // 2..N each split from the most-recently-created pane in the
+            // direction this split node declares.
             var count = materializeNode(children[0], into: workspace, anchor: anchor, orientation: orientation)
             let bonsplitOrientation: SplitOrientation = direction == .horizontal ? .horizontal : .vertical
             for child in children.dropFirst() {
@@ -132,16 +132,17 @@ enum WorkspaceProjectBridge {
 
         let targetPane: PaneID
         if let orientation, let anchor {
-            // Split off a fresh pane from the anchor in the requested
-            // orientation. The new pane gets a placeholder tab we'll
-            // close once we drop our terminal in.
             guard let newPaneId = workspace.bonsplitController.splitPane(
                 anchor,
                 orientation: orientation
             ) else { return 0 }
             targetPane = newPaneId
+        } else if let pane = anchor ?? workspace.bonsplitController.focusedPaneId {
+            targetPane = pane
         } else {
-            targetPane = anchor ?? workspace.bonsplitController.focusedPaneId ?? PaneID(uuid: UUID())
+            // No focused pane and no anchor — bonsplit isn't ready to host
+            // a panel. Bail out cleanly rather than fabricating a PaneID.
+            return 0
         }
 
         guard let newPanel = workspace.newTerminalSurface(
