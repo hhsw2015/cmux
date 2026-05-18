@@ -350,6 +350,7 @@ struct cmuxApp: App {
                     Button("Open Herdr Workspace (localhost)") {
                         HerdrPanelOpener.openLocalhostWorkspace()
                     }
+                    .keyboardShortcut("h", modifiers: [.command, .option])
                     Button(
                         String(
                             localized: "debug.menu.bonsplitTabBarDebug",
