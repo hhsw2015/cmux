@@ -344,6 +344,9 @@ struct cmuxApp: App {
                     Button("Herdr Pane (debug)…") {
                         HerdrPaneDebugWindowController.shared.showAndFocus()
                     }
+                    Button("Open Herdr Panel (localhost)") {
+                        HerdrPanelOpener.openLocalhostPanel()
+                    }
                     Button(
                         String(
                             localized: "debug.menu.bonsplitTabBarDebug",

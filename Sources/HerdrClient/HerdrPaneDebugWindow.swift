@@ -86,12 +86,16 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
         let container = NSView(frame: .zero)
         container.translatesAutoresizingMaskIntoConstraints = false
         container.wantsLayer = true
-        // Keep the container transparent so the cmux Ghostty surface
-        // (which renders with whatever background-opacity config.toml
-        // sets) shows through, and so window-level blur reaches the
-        // visible area. Matches the look of a normal cmux terminal
-        // panel.
-        container.layer?.backgroundColor = NSColor.clear.cgColor
+        // Paint the container with the same composited terminal
+        // background color cmux uses for its panel root view. This
+        // restores the colored translucent fill that's normally
+        // produced by the WindowBackdropPolicy modifier inside the
+        // SwiftUI workspace root — we don't have that hierarchy here
+        // so we paint the same color directly on the AppKit view.
+        let snapshot = WindowAppearanceSnapshot.currentFromUserDefaults(
+            app: GhosttyApp.shared
+        )
+        container.layer?.backgroundColor = snapshot.compositedTerminalBackgroundColor.cgColor
         self.ghosttyContainer = container
 
         let bar = NSStackView(views: [button, picker, status])
@@ -160,15 +164,17 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
-        // Apply the same window-level blur Ghostty applies to cmux's
-        // main windows. ghostty_set_window_background_blur reads
-        // background-blur and background-opacity from the global
-        // config; it's a no-op when the window isn't transparent.
-        if let win = window, let app = GhosttyApp.shared.app {
-            ghostty_set_window_background_blur(
-                app,
-                Unmanaged.passUnretained(win).toOpaque()
+        // Apply the SAME backdrop plan cmux uses for its main windows
+        // so the debug pane visually matches a regular cmux terminal:
+        // background-opacity, background-blur, transparent titlebar,
+        // window glass / vibrancy — all driven by the user's existing
+        // WindowAppearanceSnapshot config (which itself sources from
+        // Ghostty's config.toml).
+        if let win = window {
+            let snapshot = WindowAppearanceSnapshot.currentFromUserDefaults(
+                app: GhosttyApp.shared
             )
+            _ = WindowBackdropController.apply(snapshot: snapshot, to: win)
         }
     }
 
@@ -280,6 +286,14 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
             // client is set on it via init below, sendInput is a no-op.
             terminalSurface = surfaceOnly
             mountTerminalSurface(surfaceOnly)
+            // Paint surface + window backgrounds the same way cmux's
+            // own panels do — driven by the ghostty config's
+            // background-opacity / background-color / blur. The
+            // TerminalSurface-level applyWindowBackgroundIfActive
+            // delegates internally to the surfaceView's
+            // applySurfaceBackground; we just kick it off so the host
+            // layer fill installs correctly.
+            surfaceOnly.applyWindowBackgroundIfActive()
 
             // 4. Wait until Ghostty has actually built the surface and
             //    sized it from the visible NSView. Up to ~500 ms.

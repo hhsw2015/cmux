@@ -4682,7 +4682,8 @@ final class TerminalSurface: Identifiable, ObservableObject {
         initialInput: String? = nil,
         initialEnvironmentOverrides: [String: String] = [:],
         additionalEnvironment: [String: String] = [:],
-        focusPlacement: TerminalSurfaceFocusPlacement = .workspace
+        focusPlacement: TerminalSurfaceFocusPlacement = .workspace,
+        externalIo: ExternalIoBinding? = nil
     ) {
         #if DEBUG
         dispatchPrecondition(condition: .onQueue(.main))
@@ -4691,6 +4692,12 @@ final class TerminalSurface: Identifiable, ObservableObject {
         self.id = UUID()
         self.tabId = tabId
         self.surfaceContext = context
+        // Embedder-owned-IO mode bypasses Ghostty's local shell spawn
+        // and instead routes PTY bytes via configureExternalIo. See
+        // createSurface(for:) for where the C surface is told.
+        if let externalIo {
+            self.externalIoBinding = externalIo
+        }
         self.configTemplate = configTemplate
         self.workingDirectory = workingDirectory?.trimmingCharacters(in: .whitespacesAndNewlines)
         self.portOrdinal = portOrdinal
