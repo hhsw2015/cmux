@@ -1,4 +1,4 @@
-import CMUXZmx
+import CMUXSessionDaemon
 import Foundation
 import GhosttyKit
 
@@ -107,7 +107,7 @@ enum ZmxPanelBindingCache {
 }
 
 /// Bridges Ghostty's foreground-pid API (`ghostty_surface_foreground_pid`)
-/// into the CMUXZmx binding model so panels can be matched to the live
+/// into the CMUXSessionDaemon binding model so panels can be matched to the live
 /// `zmx attach <name>` invocations they host.
 ///
 /// Lives outside the package because it depends on GhosttyKit, which the

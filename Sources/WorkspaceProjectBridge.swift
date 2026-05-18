@@ -1,5 +1,5 @@
 import Bonsplit
-import CMUXZmx
+import CMUXSessionDaemon
 import Foundation
 
 /// Bridges cmux's `Workspace` data model to `ProjectManifest`. Walks

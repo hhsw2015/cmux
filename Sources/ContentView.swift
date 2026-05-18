@@ -1,6 +1,6 @@
 import AppKit
 import Bonsplit
-import CMUXZmx
+import CMUXSessionDaemon
 import Combine
 import ImageIO
 import Observation

@@ -1,8 +1,8 @@
 import AppKit
-import CMUXZmx
+import CMUXSessionDaemon
 import Foundation
 
-/// Bridge between cmux's command palette and the CMUXZmx package.
+/// Bridge between cmux's command palette and the CMUXSessionDaemon package.
 ///
 /// All blocking work (zmx subprocess calls) runs on detached tasks so the
 /// main thread never waits on `Process.waitUntilExit`. Mutating ops funnel

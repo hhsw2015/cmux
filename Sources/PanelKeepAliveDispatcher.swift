@@ -1,4 +1,4 @@
-import CMUXZmx
+import CMUXSessionDaemon
 import Foundation
 
 /// Bridges the panel-close chokepoint to the session-persistence

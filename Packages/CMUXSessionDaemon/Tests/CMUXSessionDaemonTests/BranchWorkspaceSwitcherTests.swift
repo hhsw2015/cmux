@@ -1,5 +1,5 @@
 import XCTest
-@testable import CMUXZmx
+@testable import CMUXSessionDaemon
 
 private final class StubDeepBackend: DeepSessionDaemonBackend, @unchecked Sendable {
     let kind = SessionDaemonKind.tsm

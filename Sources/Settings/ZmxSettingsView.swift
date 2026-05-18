@@ -1,4 +1,4 @@
-import CMUXZmx
+import CMUXSessionDaemon
 import SwiftUI
 
 /// User-facing surface for the session-persistence integration. Picks an

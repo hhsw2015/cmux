@@ -1,5 +1,5 @@
 import XCTest
-@testable import CMUXZmx
+@testable import CMUXSessionDaemon
 
 /// E2E-ish tests that exercise a real daemon binary when available on the
 /// host. Marked as no-op when the binary isn't installed so CI without zmx

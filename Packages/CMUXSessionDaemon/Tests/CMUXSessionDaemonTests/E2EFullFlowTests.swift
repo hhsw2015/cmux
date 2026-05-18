@@ -1,5 +1,5 @@
 import XCTest
-@testable import CMUXZmx
+@testable import CMUXSessionDaemon
 
 /// End-to-end test that drives a real backend through the integration's
 /// public surface (locator → resolver → backend → events). Skips when no

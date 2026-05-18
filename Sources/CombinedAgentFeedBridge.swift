@@ -1,4 +1,4 @@
-import CMUXZmx
+import CMUXSessionDaemon
 import Foundation
 
 /// Phase 7 wiring stub. Receives `CombinedAgentEntry` updates from the

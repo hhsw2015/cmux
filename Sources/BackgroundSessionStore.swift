@@ -1,5 +1,5 @@
 import Combine
-import CMUXZmx
+import CMUXSessionDaemon
 import Foundation
 
 /// Tracks zmx/tsm sessions whose cmux panel was closed but whose daemon

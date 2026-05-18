@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 import AppKit
 import Bonsplit
-import CMUXZmx
+import CMUXSessionDaemon
 import Combine
 import CryptoKit
 import Darwin

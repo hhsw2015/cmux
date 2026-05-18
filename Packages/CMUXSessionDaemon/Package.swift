@@ -2,23 +2,23 @@
 import PackageDescription
 
 let package = Package(
-    name: "CMUXZmx",
+    name: "CMUXSessionDaemon",
     platforms: [
         .macOS(.v14),
     ],
     products: [
         .library(
-            name: "CMUXZmx",
-            targets: ["CMUXZmx"]
+            name: "CMUXSessionDaemon",
+            targets: ["CMUXSessionDaemon"]
         ),
     ],
     targets: [
         .target(
-            name: "CMUXZmx"
+            name: "CMUXSessionDaemon"
         ),
         .testTarget(
-            name: "CMUXZmxTests",
-            dependencies: ["CMUXZmx"]
+            name: "CMUXSessionDaemonTests",
+            dependencies: ["CMUXSessionDaemon"]
         ),
     ]
 )

@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 import Bonsplit
-import CMUXZmx
+import CMUXSessionDaemon
 
 enum SessionSnapshotSchema {
     static let currentVersion = 1

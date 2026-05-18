@@ -1,5 +1,5 @@
 import XCTest
-@testable import CMUXZmx
+@testable import CMUXSessionDaemon
 
 /// Test backend that returns a scripted sequence of session lists.
 actor ScriptedBackendStorage {

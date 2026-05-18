@@ -1,4 +1,4 @@
-import CMUXZmx
+import CMUXSessionDaemon
 import SwiftUI
 
 /// Static action helpers for the background sidebar section. Lifted out

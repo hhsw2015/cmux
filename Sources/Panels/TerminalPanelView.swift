@@ -2,7 +2,7 @@ import SwiftUI
 import Foundation
 import AppKit
 import Bonsplit
-import CMUXZmx
+import CMUXSessionDaemon
 
 /// View for rendering a terminal panel
 struct TerminalPanelView: View {

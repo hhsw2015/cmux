@@ -1,5 +1,5 @@
 import XCTest
-@testable import CMUXZmx
+@testable import CMUXSessionDaemon
 
 final class ZmxLocatorTests: XCTestCase {
     private var tempDir: URL!
