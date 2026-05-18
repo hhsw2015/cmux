@@ -14529,9 +14529,11 @@ extension Workspace: BonsplitDelegate {
         let transferredRemoteCleanupConfiguration = transferredRemoteCleanupConfigurationsByPanelId[panelId]
         let preservesSurfaceForDetach = isDetaching && panel != nil
 #if DEBUG
-        if !isDetaching {
-            HerdrCloseHandler.handlePanelClosed(panelId: panelId)
-        }
+        // tmux detach semantics: when isDetaching is true (Cmd+Q,
+        // close window, tab → workspace handoff), tear down local
+        // herdr resources but skip the pane.close RPC so the daemon
+        // keeps the process alive for the next reattach.
+        HerdrCloseHandler.handlePanelClosed(panelId: panelId, isDetach: isDetaching)
 #endif
 
         if isDetaching, let panel {
@@ -14729,8 +14731,15 @@ extension Workspace: BonsplitDelegate {
 
         publishCmuxPaneClosed(paneId, closedPanelIds: closedPanelIds, origin: "pane_close")
 #if DEBUG
+        // tmux detach semantics: pass isDetachingCloseTransaction so
+        // app-quit / window-close / detach paths skip the pane.close
+        // RPC. User-initiated pane close maps to isDetach=false →
+        // pane.close fires → daemon kills the process.
         for panelId in closedPanelIds {
-            HerdrCloseHandler.handlePanelClosed(panelId: panelId)
+            HerdrCloseHandler.handlePanelClosed(
+                panelId: panelId,
+                isDetach: isDetachingCloseTransaction
+            )
         }
 #endif
         if !closedPanelIds.isEmpty {

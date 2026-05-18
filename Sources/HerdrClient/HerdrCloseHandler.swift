@@ -18,7 +18,14 @@ enum HerdrCloseHandler {
 
     /// Best-effort cleanup for a single closed panel. Safe to call for
     /// any panel — if the panel wasn't herdr-backed, this is a no-op.
-    static func handlePanelClosed(panelId: UUID) {
+    ///
+    /// `isDetach: true` follows tmux semantics — local resources are
+    /// torn down (display client stop, pump cancel, ctx release,
+    /// binding unbind, registry remove) but the `pane.close` RPC is
+    /// suppressed so the herdr daemon keeps the process alive for the
+    /// next reattach. Cmd+Q and window close pass true; user-initiated
+    /// per-pane / per-tab close passes false (default).
+    static func handlePanelClosed(panelId: UUID, isDetach: Bool = false) {
         guard let entry = HerdrPanelRegistry.shared.entry(panelId: panelId) else {
             return
         }
@@ -49,6 +56,12 @@ enum HerdrCloseHandler {
         // If the close came from an inbound LayoutChanged event, the
         // remote already destroyed the pane. Skip the echo.
         if suppressNextCloseFor.remove(herdrPaneId) != nil {
+            return
+        }
+
+        // tmux detach semantics: local resources released, daemon
+        // process preserved for the next reattach.
+        if isDetach {
             return
         }
 
