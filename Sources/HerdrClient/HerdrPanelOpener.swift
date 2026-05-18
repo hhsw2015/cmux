@@ -302,7 +302,16 @@ enum HerdrPanelOpener {
         let backend = try HerdrBackend(host: host, executablePath: exec)
         try await backend.start()
         let sessions = try await backend.listSessions()
+        let probe = await backend.probeCapabilities()
         await backend.close()
+
+        switch probe {
+        case .ok(let version):
+            herdrPanelOpenerTrace("workspace: capabilities ok (daemon version \(version))")
+        case .incompatible(let reason):
+            herdrPanelOpenerTrace("workspace: incompatible daemon — \(reason)")
+            return
+        }
 
         let api = HerdrApiClient(transport: HerdrTransportFactory.make(host: host))
         try await api.start()

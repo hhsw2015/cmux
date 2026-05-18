@@ -133,6 +133,53 @@ final class HerdrBackend: SessionDaemonBackend, @unchecked Sendable {
         }
     }
 
+    enum CapabilitiesProbe {
+        /// Daemon supports the methods cmux needs for the
+        /// HerdrPanelOpener workspace path. `version` is the daemon's
+        /// reported version string, useful in logs.
+        case ok(version: String)
+        /// Daemon is reachable but lacks one or more required
+        /// methods. `reason` describes which probe failed.
+        case incompatible(reason: String)
+    }
+
+    /// Verify the daemon supports the methods cmux's workspace
+    /// materializer relies on (D1-D4: layout.snapshot, pane.set_split_ratio,
+    /// pane.swap, pane.focus, tab.reorder + their Subscription /
+    /// EventKind variants). We check by issuing a layout.snapshot call
+    /// against a non-existent workspace; the daemon will return either
+    /// `tab_not_found` (compatible) or `invalid_request` /
+    /// `unknown variant` (incompatible).
+    func probeCapabilities() async -> CapabilitiesProbe {
+        let version: String
+        do {
+            let pong = try await api.ping()
+            version = pong.version
+        } catch {
+            return .incompatible(reason: "ping failed: \(error)")
+        }
+        do {
+            _ = try await api.request(
+                method: "layout.snapshot",
+                params: ["workspace_id": "_cmux_probe_", "tab_id": "_cmux_probe_:1"]
+            )
+            return .ok(version: version)
+        } catch let err as HerdrApiError {
+            if err.code == "tab_not_found" || err.code == "workspace_not_found" {
+                return .ok(version: version)
+            }
+            if err.code == "invalid_request" || err.message.contains("unknown variant") {
+                return .incompatible(
+                    reason:
+                        "daemon \(version) lacks layout.snapshot — rebuild herdr-cmux from the cmux fork (master) and restart the daemon"
+                )
+            }
+            return .incompatible(reason: "layout.snapshot probe failed: \(err.code) \(err.message)")
+        } catch {
+            return .incompatible(reason: "layout.snapshot probe failed: \(error)")
+        }
+    }
+
     func parseAttachInvocation(_ argv: [String]) -> ParsedDaemonAttach? {
         // herdr doesn't run the user's process under a shell-attach
         // wrapper the way zmx/tsm do, so there's no argv pattern to
