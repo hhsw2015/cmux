@@ -5,8 +5,11 @@ import Foundation
 /// counted so the pump auto-starts when the first herdr-backed
 /// workspace registers and tears down after the last one closes.
 ///
-/// Currently pumps `layout.changed` only. Future events (PaneCreated,
-/// PaneRenamed, agent_status_changed) plug in via `handle(event:)`.
+/// If the connection drops (daemon restart, blip), the consumer task
+/// loops with capped exponential backoff and re-establishes the
+/// subscription. After a successful reconnect we re-prime each
+/// binding's `HerdrDividerSync.lastSeen` so the next outbound diff
+/// uses the fresh server state instead of stale pre-disconnect ratios.
 @MainActor
 final class HerdrEventPump {
     static let shared = HerdrEventPump()
@@ -15,12 +18,19 @@ final class HerdrEventPump {
     private var consumers: [String: Task<Void, Never>] = [:]
     private var refCounts: [String: Int] = [:]
 
+    private static let backoffSequence: [UInt64] = [
+        1_000_000_000,   // 1s
+        2_000_000_000,   // 2s
+        5_000_000_000,   // 5s
+        10_000_000_000,  // 10s
+    ]
+
     func acquire(host: HerdrHost) async {
         let socketPath = Self.socketPath(for: host)
         let count = refCounts[socketPath] ?? 0
         refCounts[socketPath] = count + 1
         if count == 0 {
-            await start(socketPath: socketPath)
+            startConsumerLoop(socketPath: socketPath)
         }
     }
 
@@ -39,22 +49,58 @@ final class HerdrEventPump {
         }
     }
 
-    private func start(socketPath: String) async {
-        let client = HerdrApiClient(transport: LocalUDSTransport(socketPath: socketPath))
-        do {
-            try await client.start()
-            try await client.subscribe(["layout.changed", "workspace.closed"])
-            clients[socketPath] = client
-            let stream = await client.events
-            consumers[socketPath] = Task { @MainActor [weak self] in
-                for await event in stream {
-                    self?.handle(event: event)
+    private func startConsumerLoop(socketPath: String) {
+        consumers[socketPath]?.cancel()
+        consumers[socketPath] = Task { @MainActor [weak self] in
+            await self?.consumerLoop(socketPath: socketPath)
+        }
+    }
+
+    private func consumerLoop(socketPath: String) async {
+        var attempt = 0
+        while !Task.isCancelled, refCounts[socketPath] != nil {
+            do {
+                let client = HerdrApiClient(transport: LocalUDSTransport(socketPath: socketPath))
+                try await client.start()
+                try await client.subscribe(["layout.changed", "workspace.closed"])
+                clients[socketPath] = client
+                cmuxDebugLog("herdr.pump: connected on \(socketPath) (attempt=\(attempt + 1))")
+
+                if attempt > 0 {
+                    // Reconnect: re-prime divider lastSeen so a stale
+                    // local view doesn't echo back as user drags.
+                    primeAllBindings(socketPath: socketPath)
                 }
+
+                attempt = 0  // reset backoff on a successful subscribe
+                let stream = await client.events
+                for await event in stream {
+                    handle(event: event)
+                }
+                cmuxDebugLog("herdr.pump: stream closed on \(socketPath); will reconnect")
+                if let oldClient = clients.removeValue(forKey: socketPath) {
+                    await oldClient.close()
+                }
+            } catch {
+                cmuxDebugLog("herdr.pump: connect failed for \(socketPath) (attempt=\(attempt + 1)): \(error)")
             }
-            cmuxDebugLog("herdr.pump: started on \(socketPath)")
-        } catch {
-            cmuxDebugLog("herdr.pump: start failed for \(socketPath): \(error)")
-            refCounts.removeValue(forKey: socketPath)
+            // Backoff before retry, but bail if released.
+            guard !Task.isCancelled, refCounts[socketPath] != nil else { return }
+            let delay = Self.backoffSequence[min(attempt, Self.backoffSequence.count - 1)]
+            attempt += 1
+            try? await Task.sleep(nanoseconds: delay)
+        }
+    }
+
+    private func primeAllBindings(socketPath: String) {
+        for binding in HerdrTabRegistry.shared.allBindings {
+            let bindingSocket = Self.socketPath(for: binding.host)
+            guard bindingSocket == socketPath else { continue }
+            guard let workspace = binding.workspace else { continue }
+            HerdrDividerSync.prime(
+                binding: binding,
+                treeSnapshot: workspace.bonsplitController.treeSnapshot()
+            )
         }
     }
 
