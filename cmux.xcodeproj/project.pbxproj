@@ -315,6 +315,7 @@
 		C420Z000C420Z000C42TR102 /* HerdrTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42TR101 /* HerdrTransport.swift */; };
 		C420Z000C420Z000C42TL102 /* LocalUDSTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42TL101 /* LocalUDSTransport.swift */; };
 		C420Z000C420Z000C42AC102 /* HerdrApiClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42AC101 /* HerdrApiClient.swift */; };
+		C420Z000C420Z000C42DC102 /* HerdrDisplayClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42DC101 /* HerdrDisplayClient.swift */; };
 		C420Z000C420Z000C42FF102 /* SessionPersistenceFeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42FF101 /* SessionPersistenceFeatureFlags.swift */; };
 		C420Z000C420Z000C42DL102 /* SessionPersistenceDebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42DL101 /* SessionPersistenceDebugLog.swift */; };
 		C420Z000C420Z000C42CR102 /* ClosePanelReason.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42CR101 /* ClosePanelReason.swift */; };
@@ -886,6 +887,7 @@
 		C420Z000C420Z000C42TR101 /* HerdrTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrTransport/HerdrTransport.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42TL101 /* LocalUDSTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrTransport/LocalUDSTransport.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42AC101 /* HerdrApiClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrApiClient.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42DC101 /* HerdrDisplayClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrDisplayClient.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42FF101 /* SessionPersistenceFeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPersistenceFeatureFlags.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42DL101 /* SessionPersistenceDebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPersistenceDebugLog.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42CR101 /* ClosePanelReason.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClosePanelReason.swift; sourceTree = "<group>"; };
@@ -1367,6 +1369,7 @@
 				C420Z000C420Z000C42TR101 /* HerdrTransport.swift */,
 				C420Z000C420Z000C42TL101 /* LocalUDSTransport.swift */,
 				C420Z000C420Z000C42AC101 /* HerdrApiClient.swift */,
+				C420Z000C420Z000C42DC101 /* HerdrDisplayClient.swift */,
 				C420Z000C420Z000C42FF101 /* SessionPersistenceFeatureFlags.swift */,
 				C420Z000C420Z000C42DL101 /* SessionPersistenceDebugLog.swift */,
 				C420Z000C420Z000C42CR101 /* ClosePanelReason.swift */,
@@ -2119,6 +2122,7 @@
 				C420Z000C420Z000C42TR102 /* HerdrTransport.swift in Sources */,
 				C420Z000C420Z000C42TL102 /* LocalUDSTransport.swift in Sources */,
 				C420Z000C420Z000C42AC102 /* HerdrApiClient.swift in Sources */,
+				C420Z000C420Z000C42DC102 /* HerdrDisplayClient.swift in Sources */,
 				C420Z000C420Z000C42FF102 /* SessionPersistenceFeatureFlags.swift in Sources */,
 				C420Z000C420Z000C42DL102 /* SessionPersistenceDebugLog.swift in Sources */,
 				C420Z000C420Z000C42CR102 /* ClosePanelReason.swift in Sources */,
