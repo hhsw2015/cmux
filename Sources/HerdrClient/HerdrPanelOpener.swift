@@ -415,6 +415,10 @@ enum HerdrPanelOpener {
             paneBindings: result.registry
         )
         HerdrTabRegistry.shared.register(key: rootPaneId.id, binding: binding)
+        HerdrDividerSync.prime(
+            binding: binding,
+            treeSnapshot: workspace.bonsplitController.treeSnapshot()
+        )
     }
 
     private static func installPanelResizeObserver(

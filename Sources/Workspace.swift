@@ -15164,7 +15164,7 @@ extension Workspace: BonsplitDelegate {
             scheduleFocusReconcile()
         }
 #if DEBUG
-        if HerdrTabRegistry.shared.count > 0 {
+        if HerdrTabRegistry.shared.count > 0 && !isDetachingCloseTransaction {
             HerdrDividerSync.sync(treeSnapshot: controller.treeSnapshot())
         }
 #endif

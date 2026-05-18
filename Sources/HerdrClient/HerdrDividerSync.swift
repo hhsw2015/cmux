@@ -16,6 +16,13 @@ enum HerdrDividerSync {
     /// Key: binding.rootCmuxPaneId. Value: path → ratio.
     private static var lastSeen: [UUID: [[Bool]: Float]] = [:]
 
+    /// Two ratios closer than this are treated as identical. Bonsplit
+    /// stores divider positions as `CGFloat` and herdr's ratatui
+    /// quantizes them to integer columns/rows; round-trip drift is
+    /// far below 1e-3 so this avoids spurious sync RPCs while still
+    /// catching real user drags.
+    private static let ratioEpsilon: Float = 1e-3
+
     /// Walk the workspace's bonsplit tree, find each herdr-backed
     /// subtree, and emit `pane.set_split_ratio` RPCs for every divider
     /// whose ratio changed since the previous call.
@@ -30,7 +37,7 @@ enum HerdrDividerSync {
             }
             let current = collectDividers(tree: subtree, prefix: [])
             let previous = lastSeen[binding.rootCmuxPaneId] ?? [:]
-            for (path, ratio) in current where previous[path] != ratio {
+            for (path, ratio) in current where !ratiosEqual(previous[path], ratio) {
                 let socketPath = (("~/.config/herdr/sessions/" + binding.host.sessionName + "/herdr.sock") as NSString)
                     .expandingTildeInPath
                 let workspaceId = binding.workspaceId
@@ -53,6 +60,22 @@ enum HerdrDividerSync {
     /// the last pane and removes the binding).
     static func reset(bindingKey: UUID) {
         lastSeen.removeValue(forKey: bindingKey)
+    }
+
+    /// Seed `lastSeen` for a freshly materialized binding so the first
+    /// `didChangeGeometry` after open doesn't fire pane.set_split_ratio
+    /// RPCs for ratios herdr already knows about. Uses the binding's
+    /// own pane set + the current bonsplit tree.
+    static func prime(binding: HerdrTabBinding, treeSnapshot: ExternalTreeNode) {
+        guard let subtree = findHerdrSubtreeRoot(tree: treeSnapshot, binding: binding) else {
+            return
+        }
+        lastSeen[binding.rootCmuxPaneId] = collectDividers(tree: subtree, prefix: [])
+    }
+
+    private static func ratiosEqual(_ lhs: Float?, _ rhs: Float) -> Bool {
+        guard let lhs else { return false }
+        return abs(lhs - rhs) < ratioEpsilon
     }
 
     // MARK: - Tree walk helpers
