@@ -19,19 +19,25 @@ final class HerdrTabBinding {
     /// registry rotates pane ids around (e.g. swaps).
     let rootCmuxPaneId: UUID
     let paneBindings: HerdrPaneBindingRegistry
+    /// Weak so a closed workspace doesn't keep the binding alive.
+    /// E2e inbound LayoutChanged uses this to find the BonsplitController
+    /// to mutate.
+    weak var workspace: Workspace?
 
     init(
         host: HerdrHost,
         workspaceId: String,
         tabId: String,
         rootCmuxPaneId: UUID,
-        paneBindings: HerdrPaneBindingRegistry
+        paneBindings: HerdrPaneBindingRegistry,
+        workspace: Workspace? = nil
     ) {
         self.host = host
         self.workspaceId = workspaceId
         self.tabId = tabId
         self.rootCmuxPaneId = rootCmuxPaneId
         self.paneBindings = paneBindings
+        self.workspace = workspace
     }
 
     var ownedCmuxPaneIds: Set<UUID> {

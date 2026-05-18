@@ -28,6 +28,8 @@ enum HerdrCloseHandler {
                 if binding.paneBindings.count == 0 {
                     HerdrTabRegistry.shared.remove(key: binding.rootCmuxPaneId)
                     HerdrDividerSync.reset(bindingKey: binding.rootCmuxPaneId)
+                    let bindingHost = binding.host
+                    Task { await HerdrEventPump.shared.release(host: bindingHost) }
                 }
             }
         }

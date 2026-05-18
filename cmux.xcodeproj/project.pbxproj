@@ -326,6 +326,8 @@
 		C420Z000C420Z000C42CH102 /* HerdrCloseHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42CH101 /* HerdrCloseHandler.swift */; };
 		C420Z000C420Z000C42DS102 /* HerdrDividerSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42DS101 /* HerdrDividerSync.swift */; };
 		C420Z000C420Z000C42SD102 /* HerdrSplitDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42SD101 /* HerdrSplitDispatcher.swift */; };
+		C420Z000C420Z000C42IL102 /* HerdrInboundLayoutSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42IL101 /* HerdrInboundLayoutSync.swift */; };
+		C420Z000C420Z000C42EP102 /* HerdrEventPump.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42EP101 /* HerdrEventPump.swift */; };
 		C420Z000C420Z000C42DC102 /* HerdrDisplayClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42DC101 /* HerdrDisplayClient.swift */; };
 		C420Z000C420Z000C42BB102 /* HerdrBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42BB101 /* HerdrBackend.swift */; };
 		C420Z000C420Z000C42SC102 /* HerdrSurfaceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42SC101 /* HerdrSurfaceController.swift */; };
@@ -918,6 +920,8 @@
 		C420Z000C420Z000C42CH101 /* HerdrCloseHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrCloseHandler.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42DS101 /* HerdrDividerSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrDividerSync.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42SD101 /* HerdrSplitDispatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrSplitDispatcher.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42IL101 /* HerdrInboundLayoutSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrInboundLayoutSync.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42EP101 /* HerdrEventPump.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrEventPump.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42LU101 /* HerdrLayoutTypesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrLayoutTypesTests.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42LV101 /* HerdrLayoutSpecTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrLayoutSpecTests.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42TY101 /* HerdrTabRegistryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrTabRegistryTests.swift; sourceTree = "<group>"; };
@@ -1409,6 +1413,8 @@
 				C420Z000C420Z000C42CH101 /* HerdrCloseHandler.swift */,
 				C420Z000C420Z000C42DS101 /* HerdrDividerSync.swift */,
 				C420Z000C420Z000C42SD101 /* HerdrSplitDispatcher.swift */,
+				C420Z000C420Z000C42IL101 /* HerdrInboundLayoutSync.swift */,
+				C420Z000C420Z000C42EP101 /* HerdrEventPump.swift */,
 				C420Z000C420Z000C42DC101 /* HerdrDisplayClient.swift */,
 				C420Z000C420Z000C42BB101 /* HerdrBackend.swift */,
 				C420Z000C420Z000C42SC101 /* HerdrSurfaceController.swift */,
@@ -2179,6 +2185,8 @@
 				C420Z000C420Z000C42CH102 /* HerdrCloseHandler.swift in Sources */,
 				C420Z000C420Z000C42DS102 /* HerdrDividerSync.swift in Sources */,
 				C420Z000C420Z000C42SD102 /* HerdrSplitDispatcher.swift in Sources */,
+				C420Z000C420Z000C42IL102 /* HerdrInboundLayoutSync.swift in Sources */,
+				C420Z000C420Z000C42EP102 /* HerdrEventPump.swift in Sources */,
 				C420Z000C420Z000C42DC102 /* HerdrDisplayClient.swift in Sources */,
 				C420Z000C420Z000C42BB102 /* HerdrBackend.swift in Sources */,
 				C420Z000C420Z000C42SC102 /* HerdrSurfaceController.swift in Sources */,

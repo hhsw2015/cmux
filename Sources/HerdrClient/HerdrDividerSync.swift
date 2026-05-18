@@ -73,6 +73,16 @@ enum HerdrDividerSync {
         lastSeen[binding.rootCmuxPaneId] = collectDividers(tree: subtree, prefix: [])
     }
 
+    /// Overwrite lastSeen with values inferred from a remote
+    /// LayoutChanged event. Called by `HerdrInboundLayoutSync` after
+    /// applying a remote tree to bonsplit so the local
+    /// `didChangeGeometry` echo doesn't fire pane.set_split_ratio
+    /// back at the daemon (combined with bonsplit's
+    /// `isExternalUpdateInProgress` 50ms guard).
+    static func setLastSeen(bindingKey: UUID, value: [[Bool]: Float]) {
+        lastSeen[bindingKey] = value
+    }
+
     private static func ratiosEqual(_ lhs: Float?, _ rhs: Float) -> Bool {
         guard let lhs else { return false }
         return abs(lhs - rhs) < ratioEpsilon

@@ -412,13 +412,15 @@ enum HerdrPanelOpener {
             workspaceId: workspaceId,
             tabId: activeTabId,
             rootCmuxPaneId: rootPaneId.id,
-            paneBindings: result.registry
+            paneBindings: result.registry,
+            workspace: workspace
         )
         HerdrTabRegistry.shared.register(key: rootPaneId.id, binding: binding)
         HerdrDividerSync.prime(
             binding: binding,
             treeSnapshot: workspace.bonsplitController.treeSnapshot()
         )
+        await HerdrEventPump.shared.acquire(host: host)
     }
 
     private static func installPanelResizeObserver(
