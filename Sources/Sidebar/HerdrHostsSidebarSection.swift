@@ -13,6 +13,13 @@ struct HerdrHostsSidebarSection: View {
     let onOpenWorkspace: (HerdrHost, String) -> Void
 
     @State private var expandedHosts: Set<UUID> = []
+    @State private var pendingKill: PendingKill?
+
+    private struct PendingKill: Identifiable {
+        let host: HerdrHost
+        let workspace: HerdrWorkspaceSummary
+        var id: String { "\(host.id.uuidString)/\(workspace.workspaceId)" }
+    }
 
     var body: some View {
         if hostRegistry.hosts.isEmpty {
@@ -21,6 +28,25 @@ struct HerdrHostsSidebarSection: View {
             sectionContent
                 .task(id: hostRegistry.hosts.map(\.id)) {
                     await keepEventsFlowing()
+                }
+                .alert(item: $pendingKill) { kill in
+                    Alert(
+                        title: Text(String(
+                            localized: "sidebar.herdr.kill.title",
+                            defaultValue: "Kill workspace?"
+                        )),
+                        message: Text(String(
+                            localized: "sidebar.herdr.kill.message",
+                            defaultValue: "All processes in “\(kill.workspace.label)” on \(kill.host.displayName) will be terminated."
+                        )),
+                        primaryButton: .destructive(Text(String(
+                            localized: "sidebar.herdr.kill.confirm",
+                            defaultValue: "Kill"
+                        ))) {
+                            killWorkspace(host: kill.host, workspaceId: kill.workspace.workspaceId)
+                        },
+                        secondaryButton: .cancel()
+                    )
                 }
         }
     }
@@ -61,6 +87,9 @@ struct HerdrHostsSidebarSection: View {
                     },
                     onOpenWorkspace: { workspaceId in
                         onOpenWorkspace(host, workspaceId)
+                    },
+                    onKillWorkspace: { ws in
+                        pendingKill = PendingKill(host: host, workspace: ws)
                     }
                 )
             }
@@ -87,6 +116,21 @@ struct HerdrHostsSidebarSection: View {
         }
     }
 
+    private func killWorkspace(host: HerdrHost, workspaceId: String) {
+        Task.detached {
+            await HerdrOneShotRPC.send(
+                host: host,
+                method: "workspace.close",
+                params: ["workspace_id": workspaceId]
+            )
+            // Refresh shortly after so the row drops out even if the
+            // workspace.closed event hasn't propagated yet (the pump
+            // also invalidates, but races are cheap to handle).
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            await HerdrWorkspaceListStore.shared.refresh(host: host)
+        }
+    }
+
     private func toggleExpansion(host: HerdrHost) {
         if expandedHosts.contains(host.id) {
             expandedHosts.remove(host.id)
@@ -110,6 +154,7 @@ private struct HerdrHostRow: View {
     let onToggle: () -> Void
     let onRefresh: () -> Void
     let onOpenWorkspace: (String) -> Void
+    let onKillWorkspace: (HerdrWorkspaceSummary) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -171,7 +216,8 @@ private struct HerdrHostRow: View {
                     ForEach(workspaces) { ws in
                         HerdrWorkspaceRow(
                             workspace: ws,
-                            onOpen: { onOpenWorkspace(ws.workspaceId) }
+                            onOpen: { onOpenWorkspace(ws.workspaceId) },
+                            onKill: { onKillWorkspace(ws) }
                         )
                     }
                 }
@@ -183,6 +229,7 @@ private struct HerdrHostRow: View {
 private struct HerdrWorkspaceRow: View {
     let workspace: HerdrWorkspaceSummary
     let onOpen: () -> Void
+    let onKill: () -> Void
 
     var body: some View {
         Button(action: onOpen) {
@@ -209,5 +256,18 @@ private struct HerdrWorkspaceRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("HerdrWorkspaceRow_\(workspace.workspaceId)")
+        .contextMenu {
+            Button(String(
+                localized: "sidebar.herdr.openWorkspace",
+                defaultValue: "Open"
+            )) { onOpen() }
+            Divider()
+            Button(role: .destructive) { onKill() } label: {
+                Text(String(
+                    localized: "sidebar.herdr.kill.menu",
+                    defaultValue: "Kill workspace…"
+                ))
+            }
+        }
     }
 }
