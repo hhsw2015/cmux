@@ -8225,6 +8225,7 @@ struct ContentView: View {
                 guard !name.isEmpty else { return }
                 do {
                     _ = try WorkspaceProjectBridge.save(workspace: workspace, name: name)
+                    CurrentProjectTracker.name = name
                 } catch {
                     let alert = NSAlert()
                     alert.messageText = String(
@@ -8279,6 +8280,7 @@ struct ContentView: View {
                     return
                 }
                 let count = WorkspaceProjectBridge.materialize(layout: layout, into: workspace)
+                CurrentProjectTracker.name = pick
                 #if DEBUG
                 cmuxDebugLog("session-persistence.project.open name=\(pick) panels=\(count)")
                 #endif
@@ -8289,7 +8291,7 @@ struct ContentView: View {
                 )
                 info.informativeText = String(
                     localized: "tsm.alert.openProject.loadedSummary",
-                    defaultValue: "Materialized \(count) panel(s)."
+                    defaultValue: "Materialized \(count) panel(s). Auto-saves on quit."
                 )
                 info.runModal()
             }

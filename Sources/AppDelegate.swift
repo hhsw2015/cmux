@@ -536,6 +536,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         Self.detectRunningUnderXCTest(env)
     }
 
+    /// On terminate: if the user opened a tsm/zmx project this session,
+    /// save the current bonsplit layout back into that project's manifest
+    /// so the next launch reopens with the same panels + sessions. Only
+    /// runs when the engine + projects feature flag are both on.
+    private func autoSaveOpenSessionPersistenceProject() {
+        guard SessionPersistenceFeatureFlags.effective(.projects) else { return }
+        guard let name = CurrentProjectTracker.name else { return }
+        guard let workspace = tabManager.tabs.first(where: { $0.id == tabManager.selectedTabId }) else {
+            return
+        }
+        do {
+            _ = try WorkspaceProjectBridge.save(workspace: workspace, name: name)
+#if DEBUG
+            cmuxDebugLog("session-persistence.project.autoSave name=\(name)")
+#endif
+        } catch {
+#if DEBUG
+            cmuxDebugLog("session-persistence.project.autoSave.failed name=\(name) error=\(error)")
+#endif
+        }
+    }
+
     @MainActor
     final class MainWindowContext {
         let windowId: UUID
@@ -1618,6 +1640,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     func applicationWillTerminate(_ notification: Notification) {
         isTerminatingApp = true
         closeAllWebInspectorsBeforeAppTeardown()
+        autoSaveOpenSessionPersistenceProject()
         _ = saveSessionSnapshot(includeScrollback: true, removeWhenEmpty: false)
         stopSessionAutosaveTimer()
         teardownAllWorkspacePanelsBeforeAppTeardown()
