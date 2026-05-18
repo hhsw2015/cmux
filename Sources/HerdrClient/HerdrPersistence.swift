@@ -27,7 +27,7 @@ final class HerdrPersistence {
     private let url: URL
     private var cache: [String: Entry]
 
-    init() {
+    convenience init() {
         let bundleId = Bundle.main.bundleIdentifier ?? "cmux"
         let appSupport = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)
@@ -35,8 +35,14 @@ final class HerdrPersistence {
             ?? URL(fileURLWithPath: NSTemporaryDirectory())
         let dir = appSupport.appendingPathComponent("cmux", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        url = dir.appendingPathComponent("herdr-bindings-\(bundleId).json")
-        cache = Self.loadFromDisk(url: url)
+        self.init(url: dir.appendingPathComponent("herdr-bindings-\(bundleId).json"))
+    }
+
+    /// Test-only init: bypass the Application Support resolution so
+    /// tests can use a temp file path and not pollute real cmux state.
+    init(url: URL) {
+        self.url = url
+        self.cache = Self.loadFromDisk(url: url)
     }
 
     func entry(forHostSession session: String) -> Entry? {
