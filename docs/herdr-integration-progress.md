@@ -158,7 +158,11 @@ Total cmux est: ~4 days, ~400-600 LOC across `Sources/HerdrClient/`, `Sources/Wo
 
 | # | Step | Effort |
 |---|---|---|
-| **F1** (was C6) | SSH transport for remote hosts. | 2-3 d |
+| **F1a** | herdr `api-bridge` subcommand: stdin↔UDS pipe so SSH can ferry JSON-RPC. | done — herdr `feat(cli): add api-bridge ...` |
+| **F1b** | `SSHStdioTransport` Swift impl: spawns `ssh host -- herdr-cmux api-bridge`, conforms to `HerdrTransport`. | done — cmux `feat(herdr): F1b ...` |
+| **F1c** | `HerdrTransportFactory.make(host:)` + drop `remoteNotSupportedYet` throw in HerdrBackend; thread host through pump. | done — cmux `feat(herdr): F1c ...` |
+| **F1d** | `HerdrOneShotRPC` shared helper; close/divider dispatchers use factory transport instead of direct AF_UNIX. | done — cmux `feat(herdr): F1d ...` |
+| **F1 (display socket)** | Raw-PTY display client (`herdr-cmux raw-pty-attach`) over SSH for actual terminal bytes. Currently subprocess-bridges only work for local executable; SSH version uses `ssh host -- herdr-cmux raw-pty-attach <id>`. | pending |
 | **F2** (was C7) | Sidebar shows remote host's workspaces. | 1-2 d |
 | **F3** (was C8) | Auto-install herdr binary on remote on host registration. | 0.5 d |
 | **F4** (was C9) | Replace Debug menu entry with command-palette command + keyboard shortcut. | 0.5 d |
