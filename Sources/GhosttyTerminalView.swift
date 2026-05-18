@@ -4578,6 +4578,28 @@ final class TerminalSurface: Identifiable, ObservableObject {
     private var backgroundSurfaceStartQueued = false
     private var headlessStartupWindow: NSWindow?
     private var surfaceCallbackContext: Unmanaged<GhosttySurfaceCallbackContext>?
+    /// When non-nil, the surface is created in `GHOSTTY_SURFACE_IO_MANUAL`
+    /// mode: Ghostty does not spawn a shell, instead the embedder (e.g.
+    /// HerdrSurfaceController) feeds PTY bytes via
+    /// `ghostty_surface_process_output(...)` and receives user input via
+    /// the callback bound here. Must be set BEFORE the surface view
+    /// enters its window — `createSurface(for:)` reads it.
+    fileprivate var externalIoBinding: ExternalIoBinding?
+
+    /// Public bridge for the external-io binding payload.
+    struct ExternalIoBinding: Sendable {
+        let writeCb: ghostty_io_write_cb
+        let userdata: UnsafeMutableRawPointer
+    }
+
+    /// Switch this surface to embedder-owned-IO mode. Caller is
+    /// responsible for the lifetime of the userdata pointer (typically
+    /// retained by the view that owns the controller). Must be called
+    /// before the view enters its window so the C surface picks up the
+    /// flag at creation time.
+    func configureExternalIo(_ binding: ExternalIoBinding) {
+        externalIoBinding = binding
+    }
     /// The desired focus state for the Ghostty C surface. May be set before the
     /// C surface exists (e.g. during layout restoration); `createSurface`
     /// reapplies this value once the runtime surface exists, then keeps using it
@@ -5352,6 +5374,16 @@ final class TerminalSurface: Identifiable, ObservableObject {
         surfaceCallbackContext = callbackContext
         surfaceConfig.scale_factor = scaleFactors.layer
         surfaceConfig.context = surfaceContext
+
+        // Embedder-owned-IO mode: the surface does NOT spawn a shell,
+        // bytes flow in via ghostty_surface_process_output() and out via
+        // the configured io_write_cb. Caller (e.g. HerdrSurfaceController)
+        // owns the userdata pointer's lifetime.
+        if let externalIo = externalIoBinding {
+            surfaceConfig.io_mode = GHOSTTY_SURFACE_IO_MANUAL
+            surfaceConfig.io_write_cb = externalIo.writeCb
+            surfaceConfig.io_write_userdata = externalIo.userdata
+        }
 #if DEBUG
         let templateFontText = String(format: "%.2f", surfaceConfig.font_size)
         cmuxDebugLog(

@@ -18,11 +18,13 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
     private let statusLabel: NSTextField
     private let connectButton: NSButton
     private let modePicker: NSSegmentedControl
-    private let ghosttyView: HerdrGhosttyView
     private let scrollView: NSScrollView
+    private let ghosttyContainer: NSView
 
     private var displayClient: HerdrDisplayClient?
     private var surfaceController: HerdrSurfaceController?
+    private var terminalSurface: TerminalSurface?
+    private var ioCallbackContext: UnsafeMutableRawPointer?
     private var pumpTask: Task<Void, Never>?
     private var bytesReceived: Int = 0
 
@@ -57,9 +59,11 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
         picker.selectedSegment = 1   // default to Ghostty surface
         self.modePicker = picker
 
-        let gv = HerdrGhosttyView()
-        gv.translatesAutoresizingMaskIntoConstraints = false
-        self.ghosttyView = gv
+        let container = NSView(frame: .zero)
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.wantsLayer = true
+        container.layer?.backgroundColor = NSColor.black.cgColor
+        self.ghosttyContainer = container
 
         let bar = NSStackView(views: [button, picker, status])
         bar.orientation = .horizontal
@@ -70,7 +74,7 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
         scroll.translatesAutoresizingMaskIntoConstraints = false
         root.addSubview(bar)
         root.addSubview(scroll)
-        root.addSubview(gv)
+        root.addSubview(container)
         NSLayoutConstraint.activate([
             bar.topAnchor.constraint(equalTo: root.topAnchor, constant: 8),
             bar.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 12),
@@ -79,14 +83,14 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
             scroll.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 12),
             scroll.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -12),
             scroll.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -12),
-            gv.topAnchor.constraint(equalTo: bar.bottomAnchor, constant: 8),
-            gv.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 12),
-            gv.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -12),
-            gv.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -12),
+            container.topAnchor.constraint(equalTo: bar.bottomAnchor, constant: 8),
+            container.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 12),
+            container.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -12),
+            container.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -12),
         ])
         // Default visibility tracks the picker's initial selection.
         scroll.isHidden = true   // Ghostty selected
-        gv.isHidden = false
+        container.isHidden = false
 
         let win = NSWindow(
             contentRect: root.frame,
@@ -108,7 +112,7 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
 
     @objc private func modeChanged(_ sender: NSSegmentedControl) {
         let useGhostty = sender.selectedSegment == 1
-        ghosttyView.isHidden = !useGhostty
+        ghosttyContainer.isHidden = !useGhostty
         scrollView.isHidden = useGhostty
     }
 
@@ -209,18 +213,34 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
             statusLabel.stringValue = "connected: \(terminalId) (0 bytes)"
             connectButton.title = "Disconnect"
 
-            // 4. Bind a HerdrSurfaceController so the Ghostty view (when
-            //    the picker is on "Ghostty") renders the same byte
-            //    stream we hex-dump in the other tab. We deliberately
-            //    do NOT call controller.attach(surface:) here — that
-            //    would start a second pump competing for the
-            //    single-consumer AsyncStream<Data> on
-            //    HerdrDisplayClient.output. Instead, our local
-            //    startPump() owns the only consumer and tees each
-            //    chunk into hex dump + ghostty_surface_process_output.
+            // 4. Build a HerdrSurfaceController that the cmux IME / mouse
+            //    / keyboard plumbing can call back into for input. We
+            //    deliberately do NOT start the controller's pump — our
+            //    local startPump() is the single AsyncStream consumer
+            //    and tees each chunk into both the hex dump and
+            //    ghostty_surface_process_output(currentSurface, ...).
             let controller = HerdrSurfaceController(displayClient: client)
             self.surfaceController = controller
-            ghosttyView.attachControllerWithoutPump(controller)
+
+            // 5. Spin up a real cmux TerminalSurface so the Ghostty
+            //    rendering, IME, mouse, paste, etc. all work for free.
+            //    Configure it with embedder-owned IO BEFORE its NSView
+            //    enters the window — the surface is created lazily on
+            //    viewDidMoveToWindow and reads the binding at that time.
+            let ctxBox = HerdrIoCallbackContextBox(controller: controller)
+            let ctxRaw = Unmanaged.passRetained(ctxBox).toOpaque()
+            ioCallbackContext = ctxRaw
+            let surface = TerminalSurface(
+                tabId: UUID(),
+                context: GHOSTTY_SURFACE_CONTEXT_WINDOW,
+                configTemplate: nil
+            )
+            surface.configureExternalIo(.init(
+                writeCb: herdrPaneDebugWindowWriteCallback,
+                userdata: ctxRaw
+            ))
+            terminalSurface = surface
+            mountTerminalSurface(surface)
 
             startPump()
         } catch {
@@ -255,14 +275,31 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
         ))
         textView.scrollToEndOfDocument(nil)
 
-        // Tee 2: feed Ghostty surface (visible when picker is on "Ghostty").
-        if let surface = ghosttyView.surface {
+        // Tee 2: feed cmux TerminalSurface's underlying ghostty surface
+        // so the visible Ghostty rendering picks up the same bytes.
+        if let surface = terminalSurface?.surface {
             bytes.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
                 guard let base = raw.baseAddress else { return }
                 let cChars = base.assumingMemoryBound(to: CChar.self)
                 ghostty_surface_process_output(surface, cChars, UInt(raw.count))
             }
         }
+    }
+
+    /// Embed the cmux GhosttySurfaceScrollView (which wraps the
+    /// GhosttyNSView) into our debug window. This is what gives us
+    /// the full cmux IME / mouse / paste / focus stack for free.
+    private func mountTerminalSurface(_ surface: TerminalSurface) {
+        let hosted = surface.hostedView
+        hosted.translatesAutoresizingMaskIntoConstraints = false
+        ghosttyContainer.subviews.forEach { $0.removeFromSuperview() }
+        ghosttyContainer.addSubview(hosted)
+        NSLayoutConstraint.activate([
+            hosted.topAnchor.constraint(equalTo: ghosttyContainer.topAnchor),
+            hosted.leadingAnchor.constraint(equalTo: ghosttyContainer.leadingAnchor),
+            hosted.trailingAnchor.constraint(equalTo: ghosttyContainer.trailingAnchor),
+            hosted.bottomAnchor.constraint(equalTo: ghosttyContainer.bottomAnchor),
+        ])
     }
 
     private static func hexDump(_ data: Data) -> String {
@@ -292,7 +329,41 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
         pumpTask = nil
         displayClient?.stop()
         displayClient = nil
+        surfaceController = nil
+        terminalSurface = nil
+        ghosttyContainer.subviews.forEach { $0.removeFromSuperview() }
+        if let raw = ioCallbackContext {
+            Unmanaged<HerdrIoCallbackContextBox>.fromOpaque(raw).release()
+        }
+        ioCallbackContext = nil
         bytesReceived = 0
+    }
+}
+
+/// Holds a weak reference to the controller so io_write_cb can forward
+/// keystrokes back through the herdr stack. Retained by the debug
+/// window through ioCallbackContext (Unmanaged); released on teardown.
+private final class HerdrIoCallbackContextBox {
+    weak var controller: HerdrSurfaceController?
+    init(controller: HerdrSurfaceController) {
+        self.controller = controller
+    }
+}
+
+/// C-callable trampoline passed to TerminalSurface.configureExternalIo.
+/// Ghostty calls this on the main thread when the surface needs to
+/// emit bytes "into the PTY"; we instead push them through the herdr
+/// display client.
+private let herdrPaneDebugWindowWriteCallback: ghostty_io_write_cb = { (ud, ptr, len) in
+    guard let ud, let ptr, len > 0 else { return }
+    let ctx = Unmanaged<HerdrIoCallbackContextBox>.fromOpaque(ud).takeUnretainedValue()
+    let buffer = UnsafeBufferPointer(
+        start: UnsafeRawPointer(ptr).assumingMemoryBound(to: UInt8.self),
+        count: Int(len)
+    )
+    let data = Data(buffer)
+    Task { @MainActor in
+        ctx.controller?.sendInput(data)
     }
 }
 #endif
