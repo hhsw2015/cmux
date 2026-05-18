@@ -148,7 +148,8 @@ Actual fork delta: ~600 LOC across `schema.rs`, `api/mod.rs`, `app/api.rs`, `app
 | **E3 (workspace.closed)** | Tear down local materialized panes when remote workspace.close fires. Reuses suppressNextCloseFor for echo prevention. | done — cmux `feat(herdr): E3 (workspace.closed) ...` |
 | **E3 (pane.renamed / pane.exited / agent_status / tab events)** | Plumb remaining herdr events into cmux's title / status / breadcrumb sinks. Each needs its own UI hookup. | pending |
 | **E4** | Persistence: cmux workspace JSON stores `{ host, workspace_id }` per cmux window, not the layout itself (layout comes from `layout.snapshot`). On launch, reattach to daemon, snapshot, render. | pending |
-| **E5** | Close semantics implementation per the table above: Cmd+Q / Cmd+Shift+W / Cmd+W default to detach (UI-only); add explicit "Kill" entries; pane close maps to `pane.close` (kill). | pending |
+| **E5 (detach)** | tmux detach semantics: HerdrCloseHandler gains `isDetach` flag; Workspace passes `isDetaching`/`isDetachingCloseTransaction` from existing flags; Cmd+Q / close window detaches without `pane.close` RPC. | done — cmux `feat(herdr): E5 ...` |
+| **E5 (explicit Kill)** | Right-click / palette "Kill workspace" / "Kill tab" entries that explicitly issue `workspace.close` / `tab.close` RPCs. Currently no UI for this; users would have to use herdr CLI directly. | pending |
 
 Total cmux est: ~4 days, ~400-600 LOC across `Sources/HerdrClient/`, `Sources/Workspace.swift`, bonsplit translator, persistence, close handlers.
 
