@@ -38,17 +38,19 @@ enum HerdrDividerSync {
             let current = collectDividers(tree: subtree, prefix: [])
             let previous = lastSeen[binding.rootCmuxPaneId] ?? [:]
             for (path, ratio) in current where !ratiosEqual(previous[path], ratio) {
-                let socketPath = (("~/.config/herdr/sessions/" + binding.host.sessionName + "/herdr.sock") as NSString)
-                    .expandingTildeInPath
+                let host = binding.host
                 let workspaceId = binding.workspaceId
                 let tabId = binding.tabId
                 Task.detached {
-                    await sendPaneSetSplitRatio(
-                        socketPath: socketPath,
-                        workspaceId: workspaceId,
-                        tabId: tabId,
-                        path: path,
-                        ratio: ratio
+                    await HerdrOneShotRPC.send(
+                        host: host,
+                        method: "pane.set_split_ratio",
+                        params: [
+                            "workspace_id": workspaceId,
+                            "tab_id": tabId,
+                            "path": path,
+                            "ratio": Double(ratio),
+                        ]
                     )
                 }
             }
@@ -139,60 +141,5 @@ enum HerdrDividerSync {
         }
     }
 
-    // MARK: - One-shot RPC
-
-    private static func sendPaneSetSplitRatio(
-        socketPath: String,
-        workspaceId: String,
-        tabId: String,
-        path: [Bool],
-        ratio: Float
-    ) async {
-        let envelope: [String: Any] = [
-            "id": "cmux_setratio_\(Int(Date().timeIntervalSince1970 * 1000))",
-            "method": "pane.set_split_ratio",
-            "params": [
-                "workspace_id": workspaceId,
-                "tab_id": tabId,
-                "path": path,
-                "ratio": Double(ratio),
-            ],
-        ]
-        guard var line = try? JSONSerialization.data(withJSONObject: envelope) else {
-            return
-        }
-        line.append(0x0A)
-        let fd = Darwin.socket(AF_UNIX, SOCK_STREAM, 0)
-        guard fd >= 0 else { return }
-        defer { _ = Darwin.close(fd) }
-        var addr = sockaddr_un()
-        addr.sun_family = sa_family_t(AF_UNIX)
-        let pathBytes = Array(socketPath.utf8)
-        let maxLen = MemoryLayout.size(ofValue: addr.sun_path)
-        guard pathBytes.count < maxLen else { return }
-        withUnsafeMutablePointer(to: &addr.sun_path) { pathPtr in
-            pathPtr.withMemoryRebound(to: CChar.self, capacity: maxLen) { rebound in
-                for i in 0..<pathBytes.count {
-                    rebound[i] = CChar(bitPattern: pathBytes[i])
-                }
-                rebound[pathBytes.count] = 0
-            }
-        }
-        let connectResult = withUnsafePointer(to: &addr) { addrPtr -> Int32 in
-            addrPtr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPtr in
-                Darwin.connect(fd, sockaddrPtr, socklen_t(MemoryLayout<sockaddr_un>.size))
-            }
-        }
-        guard connectResult == 0 else { return }
-        line.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
-            guard let base = raw.baseAddress else { return }
-            var written = 0
-            while written < raw.count {
-                let n = Darwin.write(fd, base.advanced(by: written), raw.count - written)
-                if n <= 0 { return }
-                written += n
-            }
-        }
-    }
 }
 #endif
