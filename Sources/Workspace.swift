@@ -7542,6 +7542,12 @@ final class Workspace: Identifiable, ObservableObject {
 
     /// When true, suppresses auto-creation in didSplitPane (programmatic splits handle their own panels)
     private var isProgrammaticSplit = false
+#if DEBUG
+    /// Set in `shouldSplitPane` when the user splits a herdr-backed
+    /// pane. Consumed in `didSplitPane` to take over the auto-create
+    /// path and dispatch a `pane.split` RPC instead.
+    private var pendingHerdrSplitOriginalPane: PaneID?
+#endif
     private var debugStressPreloadSelectionDepth = 0
 
     /// Last terminal panel used as an inheritance source (typically last focused terminal).
@@ -14779,7 +14785,32 @@ extension Workspace: BonsplitDelegate {
         return true
     }
 
+    func splitTabBar(_ controller: BonsplitController, shouldSplitPane pane: PaneID, orientation: SplitOrientation) -> Bool {
+#if DEBUG
+        if HerdrTabRegistry.shared.binding(forCmuxPaneId: pane.id) != nil {
+            pendingHerdrSplitOriginalPane = pane
+        }
+#endif
+        return true
+    }
+
     func splitTabBar(_ controller: BonsplitController, didSplitPane originalPane: PaneID, newPane: PaneID, orientation: SplitOrientation) {
+#if DEBUG
+        if let pending = pendingHerdrSplitOriginalPane, pending == originalPane {
+            pendingHerdrSplitOriginalPane = nil
+            cmuxDebugLog(
+                "split.didSplit.herdr original=\(originalPane.id.uuidString.prefix(5)) new=\(newPane.id.uuidString.prefix(5)) orientation=\(orientation)"
+            )
+            scheduleTerminalGeometryReconcile()
+            HerdrSplitDispatcher.dispatch(
+                workspace: self,
+                originalPane: originalPane,
+                newPane: newPane,
+                orientation: orientation
+            )
+            return
+        }
+#endif
 #if DEBUG
         let panelKindForTab: (TabID) -> String = { tabId in
             guard let panelId = self.panelIdFromSurfaceId(tabId),

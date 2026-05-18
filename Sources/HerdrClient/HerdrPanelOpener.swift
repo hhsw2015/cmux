@@ -138,7 +138,7 @@ enum HerdrPanelOpener {
     /// to construct the C surface, binds the controller, and starts
     /// the output pump + resize observer.
     @discardableResult
-    private static func wireHerdrBackedPanel(
+    static func wireHerdrBackedPanel(
         workspace: Workspace,
         cmuxPaneId: PaneID,
         host: HerdrHost,
