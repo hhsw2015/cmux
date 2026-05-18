@@ -217,8 +217,7 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
                 workspaceId = first.name
             } else {
                 let api = HerdrApiClient(transport: LocalUDSTransport(
-                    socketPath: (("~/.config/herdr/sessions/" + host.sessionName + "/herdr.sock") as NSString)
-                        .expandingTildeInPath
+                    socketPath: host.localApiSocketPath
                 ))
                 try await api.start()
                 let r = try await api.request(
@@ -236,8 +235,7 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
 
             // 2. pane.list under that workspace, take the first.
             let api = HerdrApiClient(transport: LocalUDSTransport(
-                socketPath: (("~/.config/herdr/sessions/" + host.sessionName + "/herdr.sock") as NSString)
-                    .expandingTildeInPath
+                socketPath: host.localApiSocketPath
             ))
             try await api.start()
             // Keep this client alive for the duration of the connection
@@ -472,8 +470,7 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
         // pane.resize gets a fresh UDS connection rather than reusing
         // a long-lived HerdrApiClient — the latter only works for the
         // events.subscribe stream.
-        let socketPath = (("~/.config/herdr/sessions/" + host.sessionName + "/herdr.sock") as NSString)
-            .expandingTildeInPath
+        let socketPath = host.localApiSocketPath
         Task.detached(priority: .userInitiated) {
             await Self.sendOneShotPaneResize(
                 socketPath: socketPath,

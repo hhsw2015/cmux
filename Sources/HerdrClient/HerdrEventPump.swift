@@ -131,9 +131,14 @@ final class HerdrEventPump {
         }
     }
 
+    /// Cache key per host. For .localUDS this is the actual UDS path;
+    /// for .sshStdio it's a synthetic key (the would-be local path)
+    /// so two SSH hosts pointing at the same `sessionName` but
+    /// different `target`s would collide — but registry validation
+    /// already rejects that case at host-add time, so a sessionName-
+    /// based key is fine.
     private static func socketPath(for host: HerdrHost) -> String {
-        (("~/.config/herdr/sessions/" + host.sessionName + "/herdr.sock") as NSString)
-            .expandingTildeInPath
+        host.localApiSocketPath
     }
 }
 #endif

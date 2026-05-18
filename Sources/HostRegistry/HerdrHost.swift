@@ -48,4 +48,14 @@ struct HerdrHost: Identifiable, Codable, Equatable, Hashable, Sendable {
         if lower.contains("debug") || lower.contains("dev") { return "cmux-dev" }
         return "cmux"
     }
+
+    /// Path to the local herdr API socket for this host's session. Only
+    /// meaningful for `.localUDS` hosts — `.sshStdio` hosts' sockets
+    /// live on the remote filesystem, not here. Use the transport
+    /// factory or per-host pump cache for SSH hosts instead of trying
+    /// to construct a path locally.
+    var localApiSocketPath: String {
+        (("~/.config/herdr/sessions/" + sessionName + "/herdr.sock") as NSString)
+            .expandingTildeInPath
+    }
 }

@@ -8,9 +8,7 @@ enum HerdrTransportFactory {
     static func make(host: HerdrHost) -> any HerdrTransport {
         switch host.transport {
         case .localUDS:
-            let socketPath = (("~/.config/herdr/sessions/" + host.sessionName + "/herdr.sock") as NSString)
-                .expandingTildeInPath
-            return LocalUDSTransport(socketPath: socketPath)
+            return LocalUDSTransport(socketPath: host.localApiSocketPath)
         case .sshStdio(let target):
             return SSHStdioTransport(
                 target: target,

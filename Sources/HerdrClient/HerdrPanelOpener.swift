@@ -83,8 +83,7 @@ enum HerdrPanelOpener {
         await backend.close()
 
         let workspaceId: String
-        let socketPath = (("~/.config/herdr/sessions/" + host.sessionName + "/herdr.sock") as NSString)
-            .expandingTildeInPath
+        let socketPath = host.localApiSocketPath
         if let first = sessions.first {
             workspaceId = first.name
         } else {
@@ -296,8 +295,7 @@ enum HerdrPanelOpener {
         rootPaneId: PaneID,
         workspace: Workspace
     ) async throws {
-        let socketPath = (("~/.config/herdr/sessions/" + host.sessionName + "/herdr.sock") as NSString)
-            .expandingTildeInPath
+        let socketPath = host.localApiSocketPath
 
         let backend = try HerdrBackend(host: host, executablePath: exec)
         try await backend.start()

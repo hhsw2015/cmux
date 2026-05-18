@@ -150,8 +150,7 @@ enum HerdrInboundLayoutSync {
 
         let host = binding.host
         let exec = (("~/.local/bin/herdr-cmux") as NSString).expandingTildeInPath
-        let socketPath = (("~/.config/herdr/sessions/" + host.sessionName + "/herdr.sock") as NSString)
-            .expandingTildeInPath
+        let socketPath = host.localApiSocketPath
 
         let api = HerdrApiClient(transport: LocalUDSTransport(socketPath: socketPath))
         do {
