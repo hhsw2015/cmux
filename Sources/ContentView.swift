@@ -8077,21 +8077,71 @@ struct ContentView: View {
                     NSSound.beep()
                     return
                 }
+                guard let workspace = focusedWorkspaceForProjectBridge() else {
+                    NSSound.beep()
+                    return
+                }
+                // Ask which project + which branch
+                let projects = WorkspaceProjectBridge.availableProjectNames()
+                guard !projects.isEmpty else {
+                    let alert = NSAlert()
+                    alert.messageText = String(
+                        localized: "tsm.alert.switchBranch.noProjects",
+                        defaultValue: "Save a project first"
+                    )
+                    alert.informativeText = String(
+                        localized: "tsm.alert.switchBranch.noProjectsHint",
+                        defaultValue: "Use 'Save Project Layout' before switching branches."
+                    )
+                    alert.runModal()
+                    return
+                }
                 let prompt = NSAlert()
                 prompt.messageText = String(
                     localized: "tsm.alert.switchBranch.title",
                     defaultValue: "Switch branch workspace"
                 )
-                let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 22))
-                textField.placeholderString = "branch name (e.g. feature-x)"
-                prompt.accessoryView = textField
+                let stack = NSStackView(frame: NSRect(x: 0, y: 0, width: 280, height: 60))
+                stack.orientation = .vertical
+                stack.spacing = 6
+                let projectPicker = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 280, height: 22), pullsDown: false)
+                projectPicker.addItems(withTitles: projects)
+                let branchField = NSTextField(frame: NSRect(x: 0, y: 0, width: 280, height: 22))
+                branchField.placeholderString = "branch (feature-x)"
+                stack.addArrangedSubview(projectPicker)
+                stack.addArrangedSubview(branchField)
+                prompt.accessoryView = stack
                 prompt.addButton(withTitle: String(localized: "tsm.alert.switchBranch.go", defaultValue: "Switch"))
                 prompt.addButton(withTitle: String(localized: "tsm.alert.cancel", defaultValue: "Cancel"))
-                guard prompt.runModal() == .alertFirstButtonReturn else { return }
-                let branch = textField.stringValue.trimmingCharacters(in: .whitespaces)
+                guard prompt.runModal() == .alertFirstButtonReturn,
+                      let project = projectPicker.titleOfSelectedItem else { return }
+                let branch = branchField.stringValue.trimmingCharacters(in: .whitespaces)
                 guard !branch.isEmpty else { return }
+
+                let switcher = BranchWorkspaceSwitcher(
+                    backend: backend,
+                    manifestStore: WorkspaceProjectBridge.store
+                )
+                let currentLayout = WorkspaceProjectBridge.currentLayout(workspace: workspace)
                 do {
-                    try await backend.switchWorktree(branch: branch)
+                    let plan = try switcher.plan(
+                        project: project,
+                        from: ProjectManifest.defaultBranchKey,
+                        to: branch,
+                        currentLayout: currentLayout,
+                        liveSessionNames: Set((try? await backend.listSessions().map(\.name)) ?? [])
+                    )
+                    try await switcher.apply(plan)
+                    let info = NSAlert()
+                    info.messageText = String(
+                        localized: "tsm.alert.switchBranch.done",
+                        defaultValue: "Switched to '\(branch)'"
+                    )
+                    info.informativeText = String(
+                        localized: "tsm.alert.switchBranch.summary",
+                        defaultValue: "\(plan.detachSessions.count) detached, \(plan.sessionsToCreate.count) created."
+                    )
+                    info.runModal()
                 } catch {
                     let err = NSAlert()
                     err.messageText = String(

@@ -25,7 +25,7 @@ final class CombinedAgentFeedBridge: ObservableObject {
             "agent.merge",
             "panel=\(update.panelId.uuidString.prefix(8)) " +
             "kind=\(merged.kind.rawValue) status=\(merged.status.rawValue) " +
-            "sources=\(merged.sources.map(\.rawValue).sorted().joined(separator: \",\"))"
+            "sources=\(merged.sources.map(\.rawValue).sorted().joined(separator: ","))"
         )
 #endif
     }

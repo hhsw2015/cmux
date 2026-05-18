@@ -80,6 +80,13 @@ enum WorkspaceProjectBridge {
         (try? store.list()) ?? []
     }
 
+    /// Snapshot of the current workspace layout for callers that need it
+    /// outside the save path (e.g., BranchWorkspaceSwitcher).
+    static func currentLayout(workspace: Workspace) -> PanelLayoutTree? {
+        let tree = workspace.bonsplitController.treeSnapshot()
+        return layoutTree(from: tree, workspace: workspace)
+    }
+
     /// Returns the manifest's layout for use by Wiring 6 (branch switch)
     /// and by future open-project handlers. Layout materialization itself
     /// happens in cmux's panel-creation path; this bridge only fetches.
