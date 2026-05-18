@@ -133,8 +133,8 @@ Actual fork delta: ~600 LOC across `schema.rs`, `api/mod.rs`, `app/api.rs`, `app
 | # | Step | Status |
 |---|---|---|
 | **E0** | Swift wire types (`HerdrLayoutNode`/`Tree`/payloads) + `HerdrApiClient` extension for `layoutSnapshot`/`paneSetSplitRatio`/`paneSwap`/`paneFocus`/`tabReorder`. Codable round-trip tests. | done — cmux `feat(herdr): E0 ...` |
-| **E1** | Translator: `HerdrLayoutTree` → cmux `BonsplitNode`, and bonsplit operations → herdr RPCs. | next |
-| **E2** | Replace local-only bonsplit mutations on herdr-backed panels with optimistic-RPC pattern (apply locally, send RPC, reconcile from `LayoutChanged` event, rollback on failure). | pending |
+| **E1** | `HerdrLayoutSpec` (cmux-typed bridge) + walk helpers (DFS, pane count, path-to-pane, path-to-parent-split) + `HerdrPaneBindingRegistry` (cmux PaneID ↔ herdr pane_id). Pure data; no controller wiring. | done — cmux `feat(herdr): E1 ...` |
+| **E2** | Apply `HerdrLayoutSpec` to a real cmux workspace by driving `BonsplitController.splitPane` with the spec; replace local-only bonsplit mutations on herdr-backed tabs with optimistic-RPC pattern (apply locally, send RPC, reconcile from `LayoutChanged` event, rollback on failure). | next |
 | **E3** | Subscribe to `events.subscribe` per workspace: handle `PaneCreated/Closed/Renamed/Focused`, `TabCreated/Closed/Renamed/Focused/Reordered`, `WorkspaceRenamed/Focused`, `PaneAgentStatusChanged`, `LayoutChanged`. Plumb into existing tab title / breadcrumb / status sinks. | pending |
 | **E4** | Persistence: cmux workspace JSON stores `{ host, workspace_id }` per cmux window, not the layout itself (layout comes from `layout.snapshot`). On launch, reattach to daemon, snapshot, render. | pending |
 | **E5** | Close semantics implementation per the table above: Cmd+Q / Cmd+Shift+W / Cmd+W default to detach (UI-only); add explicit "Kill" entries; pane close maps to `pane.close` (kill). | pending |
