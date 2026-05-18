@@ -45272,6 +45272,74 @@
         }
       }
     },
+    "menu.herdr.installRemote": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Install herdr-cmux on First Remote Host"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最初のリモートホストに herdr-cmux をインストール"
+          }
+        }
+      }
+    },
+    "menu.herdr.openLocalhostWorkspace": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Workspace (localhost)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースを開く (localhost)"
+          }
+        }
+      }
+    },
+    "menu.herdr.openOnHost": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Workspace on…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ホストでワークスペースを開く…"
+          }
+        }
+      }
+    },
+    "menu.herdr.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Herdr"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Herdr"
+          }
+        }
+      }
+    },
     "menu.openInAndroidStudio": {
       "extractionState": "manual",
       "localizations": {

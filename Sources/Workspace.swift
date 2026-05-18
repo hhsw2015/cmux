@@ -7542,12 +7542,10 @@ final class Workspace: Identifiable, ObservableObject {
 
     /// When true, suppresses auto-creation in didSplitPane (programmatic splits handle their own panels)
     private var isProgrammaticSplit = false
-#if DEBUG
     /// Set in `shouldSplitPane` when the user splits a herdr-backed
     /// pane. Consumed in `didSplitPane` to take over the auto-create
     /// path and dispatch a `pane.split` RPC instead.
     private var pendingHerdrSplitOriginalPane: PaneID?
-#endif
     private var debugStressPreloadSelectionDepth = 0
 
     /// Last terminal panel used as an inheritance source (typically last focused terminal).
@@ -14528,13 +14526,7 @@ extension Workspace: BonsplitDelegate {
         _ = consumeCloseHistoryEligibility(tabId: tabId, panelId: panelId)
         let transferredRemoteCleanupConfiguration = transferredRemoteCleanupConfigurationsByPanelId[panelId]
         let preservesSurfaceForDetach = isDetaching && panel != nil
-#if DEBUG
-        // tmux detach semantics: when isDetaching is true (Cmd+Q,
-        // close window, tab → workspace handoff), tear down local
-        // herdr resources but skip the pane.close RPC so the daemon
-        // keeps the process alive for the next reattach.
         HerdrCloseHandler.handlePanelClosed(panelId: panelId, isDetach: isDetaching)
-#endif
 
         if isDetaching, let panel {
             let browserPanel = panel as? BrowserPanel
@@ -14730,18 +14722,12 @@ extension Workspace: BonsplitDelegate {
         let shouldScheduleFocusReconcile = !isDetachingCloseTransaction
 
         publishCmuxPaneClosed(paneId, closedPanelIds: closedPanelIds, origin: "pane_close")
-#if DEBUG
-        // tmux detach semantics: pass isDetachingCloseTransaction so
-        // app-quit / window-close / detach paths skip the pane.close
-        // RPC. User-initiated pane close maps to isDetach=false →
-        // pane.close fires → daemon kills the process.
         for panelId in closedPanelIds {
             HerdrCloseHandler.handlePanelClosed(
                 panelId: panelId,
                 isDetach: isDetachingCloseTransaction
             )
         }
-#endif
         if !closedPanelIds.isEmpty {
             for panelId in closedPanelIds {
                 let panel = panels[panelId]
@@ -14794,7 +14780,6 @@ extension Workspace: BonsplitDelegate {
         return true
     }
 
-#if DEBUG
     /// Split a pane in response to an inbound herdr `LayoutChanged`
     /// event. Sets `isProgrammaticSplit` for the duration so cmux's
     /// didSplitPane delegate skips its auto-create-local-terminal
@@ -14814,19 +14799,15 @@ extension Workspace: BonsplitDelegate {
             initialDividerPosition: initialDividerPosition
         )
     }
-#endif
 
     func splitTabBar(_ controller: BonsplitController, shouldSplitPane pane: PaneID, orientation: SplitOrientation) -> Bool {
-#if DEBUG
         if HerdrTabRegistry.shared.binding(forCmuxPaneId: pane.id) != nil {
             pendingHerdrSplitOriginalPane = pane
         }
-#endif
         return true
     }
 
     func splitTabBar(_ controller: BonsplitController, didSplitPane originalPane: PaneID, newPane: PaneID, orientation: SplitOrientation) {
-#if DEBUG
         if let pending = pendingHerdrSplitOriginalPane, pending == originalPane {
             pendingHerdrSplitOriginalPane = nil
             cmuxDebugLog(
@@ -14841,7 +14822,6 @@ extension Workspace: BonsplitDelegate {
             )
             return
         }
-#endif
 #if DEBUG
         let panelKindForTab: (TabID) -> String = { tabId in
             guard let panelId = self.panelIdFromSurfaceId(tabId),
@@ -15225,11 +15205,9 @@ extension Workspace: BonsplitDelegate {
         if !isDetachingCloseTransaction {
             scheduleFocusReconcile()
         }
-#if DEBUG
         if HerdrTabRegistry.shared.count > 0 && !isDetachingCloseTransaction {
             HerdrDividerSync.sync(treeSnapshot: controller.treeSnapshot())
         }
-#endif
     }
 
     // No post-close polling refresh loop: we rely on view invariants and Ghostty's wakeups.

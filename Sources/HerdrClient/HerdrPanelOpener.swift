@@ -1,4 +1,3 @@
-#if DEBUG
 import AppKit
 import Bonsplit
 import CMUXSessionDaemon
@@ -673,4 +672,3 @@ private func herdrPanelOpenerTrace(_ message: String) {
         }
     }
 }
-#endif

@@ -1,4 +1,3 @@
-#if DEBUG
 import Foundation
 
 /// One long-lived `events.subscribe` connection per host. Reference-
@@ -157,4 +156,3 @@ final class HerdrEventPump {
         host.localApiSocketPath
     }
 }
-#endif

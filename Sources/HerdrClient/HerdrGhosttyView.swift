@@ -1,4 +1,3 @@
-#if DEBUG
 import AppKit
 import GhosttyKit
 import QuartzCore
@@ -168,4 +167,3 @@ private let herdrIoWriteCallback: ghostty_io_write_cb = { (ud, ptr, len) in
         ctx.controller?.sendInput(data)
     }
 }
-#endif

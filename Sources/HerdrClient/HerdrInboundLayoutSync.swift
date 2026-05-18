@@ -1,4 +1,3 @@
-#if DEBUG
 import Bonsplit
 import Foundation
 
@@ -306,4 +305,3 @@ enum HerdrInboundLayoutSync {
         }
     }
 }
-#endif

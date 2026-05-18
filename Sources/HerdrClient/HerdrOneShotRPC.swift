@@ -1,4 +1,3 @@
-#if DEBUG
 import Foundation
 
 /// Fire-and-forget single-RPC helper. Opens a fresh transport for the
@@ -27,4 +26,3 @@ enum HerdrOneShotRPC {
         await api.close()
     }
 }
-#endif

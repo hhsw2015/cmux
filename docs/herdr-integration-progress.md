@@ -19,7 +19,7 @@ The core "cross-machine workstation" loop is functional and validated against `s
 - **Robustness.** Pump auto-reconnects with capped backoff after stream EOF; capability probe at workspace-open catches incompatible daemons (predates D1-D4) with a clear error message; binding teardown is plumbed through every close path.
 - **Remote install helper.** Debug → "Install herdr-cmux on first remote host" scp's the local binary to the registered SSH host's `~/.local/bin/`.
 
-Everything lives behind `#if DEBUG` and uses the existing Debug menu as the discovery surface. Production builds don't see the integration yet (F4 deferred — needs an explicit decision on graduating from prototype to feature).
+Production builds now expose the integration through a top-level `Herdr` menu (Open Workspace (localhost) — Cmd+Opt+H, Open Workspace on… → host list, Install herdr-cmux on First Remote Host). The 10 herdr inner files no longer require `#if DEBUG`; `cmuxDebugLog` is a noop in Release.
 
 ## Status
 
@@ -214,7 +214,8 @@ Total cmux est: ~4 days, ~400-600 LOC across `Sources/HerdrClient/`, `Sources/Wo
 | **F3 (manual install)** | Debug menu "Install herdr-cmux on first remote host": scp local binary → remote `~/.local/bin/`, chmod, verify with --version. Single host, no UI dialog. | done — cmux `feat(herdr): F3 ...` |
 | **F3 (auto on registration)** | One-click "Install" button in Settings → Hosts that runs at host-add time with progress UI. | pending |
 | **F4 (shortcut)** | Cmd+Opt+H bound to "Open Herdr Workspace (localhost)". | done — cmux `feat(herdr): bind Cmd+Opt+H ...` |
-| **F4 (command palette + non-DEBUG)** | Move the herdr entries out of `#if DEBUG`, route through cmux's command palette. Requires also providing release-time stubs for `cmuxDebugLog` (currently in `Sources/App/DebugLogging.swift` gated by `#if DEBUG`) and `Workspace.herdrInboundSplit` (gated method on `Workspace`). Attempted as F4-light by ungating inner herdr files but the cascade hit those two gates; reverted. | pending |
+| **F4 (production graduation)** | Top-level `Herdr` menu (Open Workspace (localhost) — Cmd+Opt+H, Open Workspace on…, Install herdr-cmux on First Remote Host) ungated for Release. `cmuxDebugLog` is a noop in Release; the 10 herdr inner files (HerdrCloseHandler, HerdrDividerSync, HerdrEventPump, HerdrGhosttyView, HerdrInboundLayoutSync, HerdrOneShotRPC, HerdrPanelOpener, HerdrPersistence, HerdrRemoteInstaller, HerdrSplitDispatcher) and the `Workspace` herdr seam (pendingHerdrSplitOriginalPane, herdrInboundSplit, herdr branches in shouldSplitPane/didSplitPane/didCloseTab/didClosePane/didChangeGeometry) compile in Release. SwiftUI Commands builder cap (10 children) handled by wrapping Notifications + Herdr in a `Group`. | done |
+| **F4 (command palette)** | Surface herdr entries in cmux's command palette in addition to the menu. | pending |
 | **F5** | Dropped HerdrPaneDebugWindow (~700 LOC). Open Herdr Panel + Open Herdr Workspace cover every scenario the debug window did. | done — cmux `chore(herdr): F5 ...` |
 | **F6** | `HerdrBackend.probeCapabilities()` runs ping + a layout.snapshot probe (against a bogus workspace id) at workspace-open time. Distinguishes "method not found" (incompatible) from "tab not found" (compatible). Bails with a clear trace-log hint when the daemon predates D1-D4. | done — cmux `feat(herdr): F6 ...` |
 | **F7** (was C12) | E2E CI test: fork daemon → open panel via cmux → type → assert round-trip. | 1 d |
@@ -232,14 +233,11 @@ Total cmux est: ~4 days, ~400-600 LOC across `Sources/HerdrClient/`, `Sources/Wo
 
 ## Resuming
 
-The next session should pick up at **F4 production graduation** (user explicitly requested this as the next step before pausing). Concrete:
+F4 production graduation is **done** (top-level `Herdr` menu, no DEBUG gate, Cmd+Opt+H still works, Release build verified).
 
-1. Read this doc top-to-bottom — the status snapshot at the top is current.
-2. Drop `#if DEBUG` from all 9 herdr inner files (HerdrCloseHandler, HerdrDividerSync, HerdrEventPump, HerdrInboundLayoutSync, HerdrOneShotRPC, HerdrPanelOpener, HerdrPersistence, HerdrRemoteInstaller, HerdrSplitDispatcher).
-3. Add release-time stubs:
-   - `cmuxDebugLog(_:)` no-op in `Sources/App/DebugLogging.swift` for non-DEBUG builds.
-   - `Workspace.herdrInboundSplit` ungated (or release stub) in `Sources/Workspace.swift`.
-4. Move the entry points out of `Debug → Debug Windows` and into `Window` menu (preferred per user). Keep Cmd+Opt+H. Strip the `#if DEBUG` around the menu Buttons in `Sources/cmuxApp.swift`.
-5. Verify Release builds with `xcodebuild -configuration Release -derivedDataPath /tmp/cmux-herdr-release build`. Last F4-light attempt failed here at step 2 because cmuxDebugLog and herdrInboundSplit weren't stubbed — that's why step 3 must happen first.
+Next: **F2 full sidebar integration** — show registered hosts' workspaces in cmux's sidebar tree so users can browse herdr-managed workspaces without going through the menu. Then **E4 auto-reattach on launch** (cmux opens → previously-open herdr workspaces materialize without clicking the menu).
 
-After F4: F2 full sidebar integration (workspaces from registered hosts in cmux's sidebar tree), then E4 auto-reattach on launch (cmux opens → previously-open herdr workspaces materialize without clicking the menu).
+Smaller follow-ups:
+- F4 command-palette entries (currently menu-only; palette would let users invoke "Open Herdr Workspace" via fuzzy search).
+- F3 auto-install on host-add (today it's a manual menu action).
+- F7 E2E CI test (fork daemon → open panel via cmux → type → assert round-trip).

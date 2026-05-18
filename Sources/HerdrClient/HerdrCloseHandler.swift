@@ -1,4 +1,3 @@
-#if DEBUG
 import Foundation
 
 /// Handles cleanup when a herdr-backed terminal panel closes inside
@@ -81,4 +80,3 @@ enum HerdrCloseHandler {
         }
     }
 }
-#endif

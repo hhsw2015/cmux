@@ -270,47 +270,70 @@ struct cmuxApp: App {
             }
 #endif
 
-            CommandMenu(String(localized: "menu.notifications.title", defaultValue: "Notifications")) {
-                let snapshot = notificationMenuSnapshot
+            Group {
+                CommandMenu(String(localized: "menu.notifications.title", defaultValue: "Notifications")) {
+                    let snapshot = notificationMenuSnapshot
 
-                Button(snapshot.stateHintTitle) {}
-                    .disabled(true)
+                    Button(snapshot.stateHintTitle) {}
+                        .disabled(true)
 
-                if !snapshot.recentNotifications.isEmpty {
-                    Divider()
+                    if !snapshot.recentNotifications.isEmpty {
+                        Divider()
 
-                    ForEach(snapshot.recentNotifications) { notification in
-                        Button(notificationMenuItemTitle(for: notification)) {
-                            openNotificationFromMainMenu(notification)
+                        ForEach(snapshot.recentNotifications) { notification in
+                            Button(notificationMenuItemTitle(for: notification)) {
+                                openNotificationFromMainMenu(notification)
+                            }
+                        }
+
+                        Divider()
+                    }
+
+                    splitCommandButton(title: String(localized: "menu.notifications.show", defaultValue: "Show Notifications"), shortcut: menuShortcut(for: .showNotifications)) {
+                        showNotificationsPopover()
+                    }
+
+                    splitCommandButton(title: String(localized: "menu.notifications.jumpToUnread", defaultValue: "Jump to Latest Unread"), shortcut: menuShortcut(for: .jumpToUnread)) {
+                        appDelegate.jumpToLatestUnread()
+                    }
+                    .disabled(!snapshot.hasUnreadNotifications)
+
+                    splitCommandButton(title: String(localized: "menu.notifications.toggleUnread", defaultValue: "Toggle Unread"), shortcut: menuShortcut(for: .toggleUnread)) {
+                        appDelegate.toggleFocusedNotificationUnread()
+                    }
+                    .disabled(activeTabManager.selectedWorkspace == nil)
+
+                    Button(String(localized: "menu.notifications.markAllRead", defaultValue: "Mark All Read")) {
+                        notificationStore.markAllRead()
+                    }
+                    .disabled(!snapshot.hasUnreadNotifications)
+
+                    Button(String(localized: "menu.notifications.clearAll", defaultValue: "Clear All")) {
+                        notificationStore.clearAll()
+                    }
+                    .disabled(!snapshot.hasNotifications)
+                }
+
+                CommandMenu(String(localized: "menu.herdr.title", defaultValue: "Herdr")) {
+                    Button(String(localized: "menu.herdr.openLocalhostWorkspace", defaultValue: "Open Workspace (localhost)")) {
+                        HerdrPanelOpener.openLocalhostWorkspace()
+                    }
+                    .keyboardShortcut("h", modifiers: [.command, .option])
+
+                    Menu(String(localized: "menu.herdr.openOnHost", defaultValue: "Open Workspace on…")) {
+                        ForEach(HostRegistry.shared.hosts) { host in
+                            Button(host.displayName) {
+                                HerdrPanelOpener.openWorkspace(host: host)
+                            }
                         }
                     }
 
                     Divider()
-                }
 
-                splitCommandButton(title: String(localized: "menu.notifications.show", defaultValue: "Show Notifications"), shortcut: menuShortcut(for: .showNotifications)) {
-                    showNotificationsPopover()
+                    Button(String(localized: "menu.herdr.installRemote", defaultValue: "Install herdr-cmux on First Remote Host")) {
+                        HerdrRemoteInstaller.installOnFirstRemoteHost()
+                    }
                 }
-
-                splitCommandButton(title: String(localized: "menu.notifications.jumpToUnread", defaultValue: "Jump to Latest Unread"), shortcut: menuShortcut(for: .jumpToUnread)) {
-                    appDelegate.jumpToLatestUnread()
-                }
-                .disabled(!snapshot.hasUnreadNotifications)
-
-                splitCommandButton(title: String(localized: "menu.notifications.toggleUnread", defaultValue: "Toggle Unread"), shortcut: menuShortcut(for: .toggleUnread)) {
-                    appDelegate.toggleFocusedNotificationUnread()
-                }
-                .disabled(activeTabManager.selectedWorkspace == nil)
-
-                Button(String(localized: "menu.notifications.markAllRead", defaultValue: "Mark All Read")) {
-                    notificationStore.markAllRead()
-                }
-                .disabled(!snapshot.hasUnreadNotifications)
-
-                Button(String(localized: "menu.notifications.clearAll", defaultValue: "Clear All")) {
-                    notificationStore.clearAll()
-                }
-                .disabled(!snapshot.hasNotifications)
             }
 
 #if DEBUG
@@ -343,20 +366,6 @@ struct cmuxApp: App {
                     }
                     Button("Open Herdr Panel (localhost)") {
                         HerdrPanelOpener.openLocalhostPanel()
-                    }
-                    Button("Open Herdr Workspace (localhost)") {
-                        HerdrPanelOpener.openLocalhostWorkspace()
-                    }
-                    .keyboardShortcut("h", modifiers: [.command, .option])
-                    Button("Install herdr-cmux on first remote host") {
-                        HerdrRemoteInstaller.installOnFirstRemoteHost()
-                    }
-                    Menu("Open Herdr Workspace on…") {
-                        ForEach(HostRegistry.shared.hosts) { host in
-                            Button(host.displayName) {
-                                HerdrPanelOpener.openWorkspace(host: host)
-                            }
-                        }
                     }
                     Button(
                         String(

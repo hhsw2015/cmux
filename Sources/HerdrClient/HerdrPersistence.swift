@@ -1,4 +1,3 @@
-#if DEBUG
 import Foundation
 
 /// Last-opened herdr workspace per host. Persists to disk so that the
@@ -69,4 +68,3 @@ final class HerdrPersistence {
         try? data.write(to: url, options: [.atomic])
     }
 }
-#endif

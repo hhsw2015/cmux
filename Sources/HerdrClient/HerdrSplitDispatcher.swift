@@ -1,4 +1,3 @@
-#if DEBUG
 import Bonsplit
 import Foundation
 
@@ -75,4 +74,3 @@ enum HerdrSplitDispatcher {
         }
     }
 }
-#endif

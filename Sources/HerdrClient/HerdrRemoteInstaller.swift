@@ -1,4 +1,3 @@
-#if DEBUG
 import Foundation
 
 /// Pushes the local `herdr-cmux` binary to a remote SSH host's
@@ -117,4 +116,3 @@ private func herdrInstallerTrace(_ message: String) {
         }
     }
 }
-#endif
