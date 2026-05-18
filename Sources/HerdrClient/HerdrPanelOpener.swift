@@ -568,7 +568,7 @@ enum HerdrPanelOpener {
             rows: size.rows
         )
         Task.detached(priority: .userInitiated) {
-            await HerdrPanelDebugWindowResizeBridge.sendOneShotPaneResize(
+            await HerdrPaneResizeRPC.sendOneShotPaneResize(
                 socketPath: socketPath,
                 paneId: paneId,
                 cols: size.columns,
@@ -580,11 +580,14 @@ enum HerdrPanelOpener {
     }
 }
 
-/// Reuses the one-shot UDS pane.resize sender originally written for
-/// HerdrPaneDebugWindow so panel and debug-window paths share the same
-/// fix for herdr's one-line-then-close API socket protocol.
+/// One-shot UDS sender for `pane.resize`. herdr's API socket reads
+/// one line then closes, so each resize tick opens a fresh AF_UNIX
+/// socket. Predates HerdrOneShotRPC + the transport factory; could
+/// be migrated to those for SSH support, but the resize path only
+/// runs for localhost panels (the resize observer feeds it ghostty
+/// surface events) so the direct socket call is fine for now.
 @MainActor
-private enum HerdrPanelDebugWindowResizeBridge {
+private enum HerdrPaneResizeRPC {
     static func sendOneShotPaneResize(
         socketPath: String,
         paneId: String,
