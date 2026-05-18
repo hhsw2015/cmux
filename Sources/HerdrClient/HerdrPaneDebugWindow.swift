@@ -3,6 +3,24 @@ import AppKit
 import Foundation
 import GhosttyKit
 
+/// Append a line to /tmp/herdr-debug.log with a timestamp. Bypasses
+/// NSLog because the unified-log filter we tried wasn't surfacing
+/// messages from the cmux DEV bundle reliably during the resize
+/// debugging session.
+private func herdrDebugTrace(_ message: String) {
+    let timestamp = ISO8601DateFormatter().string(from: Date())
+    let line = "[\(timestamp)] [HerdrPaneDebugWindow] \(message)\n"
+    if let data = line.data(using: .utf8) {
+        if let handle = FileHandle(forWritingAtPath: "/tmp/herdr-debug.log") {
+            handle.seekToEndOfFile()
+            try? handle.write(contentsOf: data)
+            try? handle.close()
+        } else {
+            FileManager.default.createFile(atPath: "/tmp/herdr-debug.log", contents: data)
+        }
+    }
+}
+
 /// DEBUG-only window that exercises the full herdr cmux integration
 /// stack against a localhost daemon and dumps incoming PTY bytes as a
 /// hex+ASCII view. Validates B1–B6 wiring inside the actual cmux app
@@ -28,6 +46,7 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
     private var pumpTask: Task<Void, Never>?
     private var bytesReceived: Int = 0
     private var paneId: String?
+    private var currentHost: HerdrHost?
     private var apiClient: HerdrApiClient?
     private var lastReportedSize: (cols: UInt16, rows: UInt16)?
     private var resizeObserver: NSObjectProtocol?
@@ -67,7 +86,12 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
         let container = NSView(frame: .zero)
         container.translatesAutoresizingMaskIntoConstraints = false
         container.wantsLayer = true
-        container.layer?.backgroundColor = NSColor.black.cgColor
+        // Keep the container transparent so the cmux Ghostty surface
+        // (which renders with whatever background-opacity config.toml
+        // sets) shows through, and so window-level blur reaches the
+        // visible area. Matches the look of a normal cmux terminal
+        // panel.
+        container.layer?.backgroundColor = NSColor.clear.cgColor
         self.ghosttyContainer = container
 
         let bar = NSStackView(views: [button, picker, status])
@@ -99,13 +123,21 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
 
         let win = NSWindow(
             contentRect: root.frame,
-            styleMask: [.titled, .closable, .resizable],
+            styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
         win.title = "Herdr Pane (debug)"
         win.contentView = root
         win.isReleasedWhenClosed = false
+        // Match cmux main-window chrome so the Ghostty surface inside
+        // looks visually identical to a regular cmux terminal panel:
+        // transparent window background + blur (driven by the same
+        // ghostty config knobs as the main app).
+        win.isOpaque = false
+        win.backgroundColor = .clear
+        win.titlebarAppearsTransparent = true
+        win.titleVisibility = .visible
 
         super.init(window: win)
         win.delegate = self
@@ -128,6 +160,16 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        // Apply the same window-level blur Ghostty applies to cmux's
+        // main windows. ghostty_set_window_background_blur reads
+        // background-blur and background-opacity from the global
+        // config; it's a no-op when the window isn't transparent.
+        if let win = window, let app = GhosttyApp.shared.app {
+            ghostty_set_window_background_blur(
+                app,
+                Unmanaged.passUnretained(win).toOpaque()
+            )
+        }
     }
 
     func windowWillClose(_ notification: Notification) {
@@ -151,6 +193,7 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
 
     private func connect() async {
         let host = HerdrHost.localhost()
+        currentHost = host
         let exec = (("~/.local/bin/herdr-cmux") as NSString).expandingTildeInPath
         guard FileManager.default.isExecutableFile(atPath: exec) else {
             statusLabel.stringValue = "missing binary at \(exec) — build hhsw2015/herdr fork"
@@ -210,49 +253,81 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
             }
             self.paneId = paneIdValue
 
-            // 3. Spawn HerdrDisplayClient against that terminal id.
+            // 3. Build a HerdrSurfaceController that the cmux IME /
+            //    mouse / keyboard plumbing can call back into for input.
+            //    We deliberately do NOT start the controller's pump —
+            //    our local startPump() is the single AsyncStream
+            //    consumer and tees each chunk into both the hex dump
+            //    and ghostty_surface_process_output(currentSurface, ...).
+            //
+            //    Note: HerdrDisplayClient is constructed below AFTER
+            //    we know the actual cmux surface size. Spawning the
+            //    raw-pty-attach subprocess at the wrong cols/rows
+            //    (the historical 80x24 default) caused the first frame
+            //    to render at the daemon's pre-resize layout and look
+            //    visibly broken until the user dragged the window to
+            //    trigger a resize.
+            let surfaceOnly = TerminalSurface(
+                tabId: UUID(),
+                context: GHOSTTY_SURFACE_CONTEXT_WINDOW,
+                configTemplate: nil
+            )
+            // External IO bindings are wired up once we have the
+            // controller (which depends on the display client, which
+            // depends on the surface size — a chicken/egg we resolve
+            // by binding before the display client exists. The
+            // controller's controller field is weak; until the display
+            // client is set on it via init below, sendInput is a no-op.
+            terminalSurface = surfaceOnly
+            mountTerminalSurface(surfaceOnly)
+
+            // 4. Wait until Ghostty has actually built the surface and
+            //    sized it from the visible NSView. Up to ~500 ms.
+            var initialCols: UInt16 = 80
+            var initialRows: UInt16 = 24
+            for _ in 0..<25 {
+                if let ghosttySurface = surfaceOnly.surface {
+                    let size = ghostty_surface_size(ghosttySurface)
+                    if size.columns > 0 && size.rows > 0 {
+                        initialCols = size.columns
+                        initialRows = size.rows
+                        break
+                    }
+                }
+                try? await Task.sleep(nanoseconds: 20_000_000)
+            }
+            herdrDebugTrace("initial surface size cols=\(initialCols) rows=\(initialRows)")
+
+            // 5. Now spawn HerdrDisplayClient with the correct initial
+            //    cols/rows so the very first frame the shell paints
+            //    matches the visible grid.
             let client = HerdrDisplayClient(
                 host: host,
                 terminalId: terminalId,
                 executablePath: exec,
-                cols: 80,
-                rows: 24
+                cols: initialCols,
+                rows: initialRows
             )
             try await client.start()
             self.displayClient = client
             statusLabel.stringValue = "connected: \(terminalId) (0 bytes)"
             connectButton.title = "Disconnect"
 
-            // 4. Build a HerdrSurfaceController that the cmux IME / mouse
-            //    / keyboard plumbing can call back into for input. We
-            //    deliberately do NOT start the controller's pump — our
-            //    local startPump() is the single AsyncStream consumer
-            //    and tees each chunk into both the hex dump and
-            //    ghostty_surface_process_output(currentSurface, ...).
+            // 6. Wire the controller + io_write_cb now that the display
+            //    client exists. Before this point the surface was
+            //    mounted but had no input target; that's fine because
+            //    no shell output had arrived yet either.
             let controller = HerdrSurfaceController(displayClient: client)
             self.surfaceController = controller
-
-            // 5. Spin up a real cmux TerminalSurface so the Ghostty
-            //    rendering, IME, mouse, paste, etc. all work for free.
-            //    Configure it with embedder-owned IO BEFORE its NSView
-            //    enters the window — the surface is created lazily on
-            //    viewDidMoveToWindow and reads the binding at that time.
             let ctxBox = HerdrIoCallbackContextBox(controller: controller)
             let ctxRaw = Unmanaged.passRetained(ctxBox).toOpaque()
             ioCallbackContext = ctxRaw
-            let surface = TerminalSurface(
-                tabId: UUID(),
-                context: GHOSTTY_SURFACE_CONTEXT_WINDOW,
-                configTemplate: nil
-            )
-            surface.configureExternalIo(.init(
+            surfaceOnly.configureExternalIo(.init(
                 writeCb: herdrPaneDebugWindowWriteCallback,
                 userdata: ctxRaw
             ))
-            terminalSurface = surface
-            mountTerminalSurface(surface)
-            installResizeObserver()
 
+            installResizeObserver()
             startPump()
         } catch {
             statusLabel.stringValue = "error: \(error)"
@@ -313,25 +388,41 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
         ])
     }
 
-    /// Watch the ghosttyContainer's frame so we can forward grid-size
-    /// changes to the herdr daemon's PTY via `pane.resize`. Without
-    /// this the shell renders for the original 80x24 grid and prompts
-    /// wrap or position incorrectly when the window is smaller.
+    /// Watch the window so we can forward grid-size changes to the
+    /// herdr daemon's PTY via `pane.resize`. Without this the shell
+    /// renders for the original 80x24 grid and prompts wrap or
+    /// position incorrectly when the window is smaller.
+    ///
+    /// We listen on NSWindow.didResize and on a periodic poll during
+    /// live resize so the daemon's PTY follows the user's drag in real
+    /// time rather than only at the end. ghostty_surface_size() always
+    /// reports the current grid the renderer is using, so we use that
+    /// as the source of truth (no need to convert pixels → cells
+    /// ourselves).
     private func installResizeObserver() {
-        ghosttyContainer.postsFrameChangedNotifications = true
+        guard let window else {
+            herdrDebugTrace("installResizeObserver: no window yet")
+            return
+        }
         if let resizeObserver {
             NotificationCenter.default.removeObserver(resizeObserver)
         }
         resizeObserver = NotificationCenter.default.addObserver(
-            forName: NSView.frameDidChangeNotification,
-            object: ghosttyContainer,
+            forName: NSWindow.didResizeNotification,
+            object: window,
             queue: .main
         ) { [weak self] _ in
+            herdrDebugTrace("window didResize")
             self?.scheduleResize()
         }
-        // Fire once now so the daemon is sized for the initial window
-        // bounds rather than the 80x24 default we passed at attach.
-        scheduleResize()
+        // Fire a deferred initial resize so the daemon picks up the
+        // actual visible grid (not the 80x24 default we passed at
+        // attach). 200 ms gives Ghostty time to mount + size its
+        // surface in viewDidMoveToWindow.
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            await MainActor.run { self?.forwardCurrentSize() }
+        }
     }
 
     private func scheduleResize() {
@@ -347,31 +438,130 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
     private func forwardCurrentSize() {
         guard let surface = terminalSurface?.surface,
               let paneId,
-              let api = apiClient
-        else { return }
+              let host = currentHost
+        else {
+            herdrDebugTrace("forwardCurrentSize prereqs missing surface=\(terminalSurface?.surface != nil) paneId=\(self.paneId != nil) host=\(currentHost != nil)")
+            return
+        }
         let size = ghostty_surface_size(surface)
+        herdrDebugTrace("surface size cols=\(size.columns) rows=\(size.rows) w=\(size.width_px) h=\(size.height_px) cw=\(size.cell_width_px) ch=\(size.cell_height_px)")
         let cols = size.columns
         let rows = size.rows
         guard cols > 0, rows > 0 else { return }
         if let last = lastReportedSize, last.cols == cols, last.rows == rows {
+            herdrDebugTrace("size unchanged \(cols)x\(rows), skip")
             return
         }
         lastReportedSize = (cols, rows)
-        Task {
-            do {
-                _ = try await api.request(
-                    method: "pane.resize",
-                    params: [
-                        "pane_id": paneId,
-                        "cols": Int(cols),
-                        "rows": Int(rows),
-                        "cell_width_px": Int(size.cell_width_px),
-                        "cell_height_px": Int(size.cell_height_px),
-                    ]
-                )
-            } catch {
-                NSLog("[HerdrPaneDebugWindow] pane.resize failed: %@", String(describing: error))
+        // herdr's API socket is one-request-per-connection (the server
+        // reads a single line, dispatches, then closes). So each
+        // pane.resize gets a fresh UDS connection rather than reusing
+        // a long-lived HerdrApiClient — the latter only works for the
+        // events.subscribe stream.
+        let socketPath = (("~/.config/herdr/sessions/" + host.sessionName + "/herdr.sock") as NSString)
+            .expandingTildeInPath
+        Task.detached(priority: .userInitiated) {
+            await Self.sendOneShotPaneResize(
+                socketPath: socketPath,
+                paneId: paneId,
+                cols: cols,
+                rows: rows,
+                cellWidthPx: size.cell_width_px,
+                cellHeightPx: size.cell_height_px
+            )
+        }
+    }
+
+    /// One-shot JSON-RPC pane.resize over a fresh UDS connection. Logs
+    /// success/failure to the herdr debug trace. Off the main actor so
+    /// the blocking POSIX socket calls don't stall the UI.
+    private static func sendOneShotPaneResize(
+        socketPath: String,
+        paneId: String,
+        cols: UInt16,
+        rows: UInt16,
+        cellWidthPx: UInt32,
+        cellHeightPx: UInt32
+    ) async {
+        let envelope: [String: Any] = [
+            "id": "cmux_resize_\(Int(Date().timeIntervalSince1970 * 1000))",
+            "method": "pane.resize",
+            "params": [
+                "pane_id": paneId,
+                "cols": Int(cols),
+                "rows": Int(rows),
+                "cell_width_px": Int(cellWidthPx),
+                "cell_height_px": Int(cellHeightPx),
+            ],
+        ]
+        guard var line = try? JSONSerialization.data(withJSONObject: envelope) else {
+            await MainActor.run {
+                herdrDebugTrace("pane.resize JSON encode failed")
             }
+            return
+        }
+        line.append(0x0A)
+
+        let fd = Darwin.socket(AF_UNIX, SOCK_STREAM, 0)
+        guard fd >= 0 else {
+            await MainActor.run {
+                herdrDebugTrace("pane.resize socket() errno=\(errno)")
+            }
+            return
+        }
+        defer { _ = Darwin.close(fd) }
+
+        var addr = sockaddr_un()
+        addr.sun_family = sa_family_t(AF_UNIX)
+        let pathBytes = Array(socketPath.utf8)
+        let maxLen = MemoryLayout.size(ofValue: addr.sun_path)
+        guard pathBytes.count < maxLen else {
+            await MainActor.run {
+                herdrDebugTrace("pane.resize socket path too long")
+            }
+            return
+        }
+        withUnsafeMutablePointer(to: &addr.sun_path) { pathPtr in
+            pathPtr.withMemoryRebound(to: CChar.self, capacity: maxLen) { rebound in
+                for i in 0..<pathBytes.count {
+                    rebound[i] = CChar(bitPattern: pathBytes[i])
+                }
+                rebound[pathBytes.count] = 0
+            }
+        }
+        let connectResult = withUnsafePointer(to: &addr) { addrPtr -> Int32 in
+            addrPtr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPtr in
+                Darwin.connect(fd, sockaddrPtr, socklen_t(MemoryLayout<sockaddr_un>.size))
+            }
+        }
+        guard connectResult == 0 else {
+            let err = errno
+            await MainActor.run {
+                herdrDebugTrace("pane.resize connect failed errno=\(err)")
+            }
+            return
+        }
+
+        let writeResult = line.withUnsafeBytes { (raw: UnsafeRawBufferPointer) -> Int32 in
+            guard let base = raw.baseAddress else { return -1 }
+            var written = 0
+            while written < raw.count {
+                let n = Darwin.write(fd, base.advanced(by: written), raw.count - written)
+                if n < 0 { return errno }
+                if n == 0 { return -1 }
+                written += n
+            }
+            return 0
+        }
+        guard writeResult == 0 else {
+            await MainActor.run {
+                herdrDebugTrace("pane.resize write failed errno=\(writeResult)")
+            }
+            return
+        }
+
+        await MainActor.run {
+            herdrDebugTrace("pane.resize OK \(cols)x\(rows)")
         }
     }
 
@@ -421,6 +611,7 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
         }
         apiClient = nil
         paneId = nil
+        currentHost = nil
         lastReportedSize = nil
         bytesReceived = 0
     }
