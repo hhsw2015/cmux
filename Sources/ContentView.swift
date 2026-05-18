@@ -7366,6 +7366,20 @@ struct ContentView: View {
             if SessionDaemonResolver.shared.activeDeepBackend() != nil {
                 contributions.append(
                     CommandPaletteCommandContribution(
+                        commandId: "palette.tsmShowAgents",
+                        title: constant(String(
+                            localized: "commandPalette.tsm.agents.title",
+                            defaultValue: "Show tracked agents"
+                        )),
+                        subtitle: constant(String(
+                            localized: "commandPalette.tsm.agents.subtitle",
+                            defaultValue: "List Claude/Codex/Cursor agents tracked across panels (cmux + tsm sources)"
+                        )),
+                        keywords: ["tsm", "agent", "claude", "codex", "cursor", "merge"]
+                    )
+                )
+                contributions.append(
+                    CommandPaletteCommandContribution(
                         commandId: "palette.tsmSwitchBranch",
                         title: constant(String(
                             localized: "commandPalette.tsm.switchBranch.title",
@@ -8066,6 +8080,31 @@ struct ContentView: View {
                     alert.informativeText = entries
                         .map { "• \($0.sessionName)" }
                         .joined(separator: "\n")
+                }
+                alert.runModal()
+            }
+        }
+
+        registry.register(commandId: "palette.tsmShowAgents") {
+            Task { @MainActor in
+                let entries = CombinedAgentFeedBridge.shared.entries.values
+                    .sorted { $0.lastUpdate > $1.lastUpdate }
+                let alert = NSAlert()
+                if entries.isEmpty {
+                    alert.messageText = String(
+                        localized: "tsm.alert.agents.empty",
+                        defaultValue: "No tracked agents"
+                    )
+                } else {
+                    alert.messageText = String(
+                        localized: "tsm.alert.agents.title",
+                        defaultValue: "Tracked agents"
+                    )
+                    alert.informativeText = entries.map { entry in
+                        let sources = entry.sources.map(\.rawValue).sorted().joined(separator: "+")
+                        let session = entry.sessionName ?? "—"
+                        return "• \(entry.kind.rawValue) [\(entry.status.rawValue)] \(session) (\(sources))"
+                    }.joined(separator: "\n")
                 }
                 alert.runModal()
             }
