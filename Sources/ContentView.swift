@@ -10269,8 +10269,8 @@ struct VerticalTabsSidebar: View {
             if SessionPersistenceFeatureFlags.effective(.background) {
                 BackgroundSessionsSidebarSection(
                     store: BackgroundSessionStore.shared,
-                    onReattach: { entry in handleBackgroundReattach(entry) },
-                    onKill: { entry in handleBackgroundKill(entry) }
+                    onReattach: BackgroundSessionsSidebarActions.reattach,
+                    onKill: BackgroundSessionsSidebarActions.kill
                 )
             }
 

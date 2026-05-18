@@ -1,6 +1,40 @@
 import CMUXZmx
 import SwiftUI
 
+/// Static action helpers for the background sidebar section. Lifted out
+/// of any specific view's scope so SwiftUI sub-views (VerticalTabsSidebar
+/// etc.) can pass them as `onReattach` / `onKill` without owning the
+/// methods themselves.
+@MainActor
+enum BackgroundSessionsSidebarActions {
+    static func reattach(_ entry: BackgroundSessionStore.Entry) {
+        // Spawn a fresh terminal panel pointed at the detached session.
+        // We don't know which workspace is in front from here; punt to a
+        // notification the host responds to with the focused workspace.
+        NotificationCenter.default.post(
+            name: .sessionPersistenceReattachRequested,
+            object: nil,
+            userInfo: ["entry": entry]
+        )
+    }
+
+    static func kill(_ entry: BackgroundSessionStore.Entry) {
+        let name = entry.sessionName
+        BackgroundSessionStore.shared.remove(sessionName: name)
+        Task.detached(priority: .utility) {
+            guard let backend = SessionDaemonResolver.shared.activeBackend() else { return }
+            try? await backend.kill(name, force: true)
+        }
+    }
+}
+
+extension Notification.Name {
+    /// Posted from the sidebar background section so the host (ContentView)
+    /// can spawn a panel in the focused workspace.
+    static let sessionPersistenceReattachRequested =
+        Notification.Name("com.cmuxterm.sessionPersistence.reattachRequested")
+}
+
 /// Sidebar section that lists every detached zmx/tsm session whose cmux
 /// panel was closed but whose daemon process is still alive. Clicking a
 /// row asks the host to reopen it as a panel.
