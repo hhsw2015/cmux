@@ -1,3 +1,4 @@
+import Bonsplit
 import CMUXZmx
 import Foundation
 
@@ -13,25 +14,66 @@ enum WorkspaceProjectBridge {
 
     @discardableResult
     static func save(workspace: Workspace, name: String) throws -> ProjectManifest {
-        let descriptors = collectDescriptors(workspace: workspace)
-        let layout: PanelLayoutTree?
-        if descriptors.isEmpty {
-            layout = nil
-        } else if descriptors.count == 1 {
-            layout = .panel(descriptors[0])
-        } else {
-            // Flat horizontal split chain — preserves the panel set even
-            // if geometry is approximate. A future iteration will walk
-            // bonsplit's tree for an exact ratio reproduction.
-            layout = chainHorizontally(descriptors)
-        }
+        let tree = workspace.bonsplitController.treeSnapshot()
+        let layout = layoutTree(from: tree, workspace: workspace)
+        let firstDir = layout?.leaves.first?.dir
         let manifest = ProjectManifest(
             name: name,
-            rootDirectory: descriptors.first?.dir,
+            rootDirectory: firstDir,
             layouts: layout.map { [ProjectManifest.defaultBranchKey: $0] } ?? [:]
         )
         try store.save(manifest)
         return manifest
+    }
+
+    /// Translate bonsplit's external tree into our serialization format.
+    /// Each `ExternalPaneNode` becomes a single panel — only the selected
+    /// tab is captured; non-selected tabs in a pane are dropped because
+    /// our layout schema is one panel per slot.
+    private static func layoutTree(
+        from node: ExternalTreeNode,
+        workspace: Workspace
+    ) -> PanelLayoutTree? {
+        switch node {
+        case .pane(let pane):
+            guard let tabId = pane.selectedTabId,
+                  let panelId = UUID(uuidString: tabId),
+                  let descriptor = descriptor(forPanelId: panelId, workspace: workspace) else {
+                return nil
+            }
+            return .panel(descriptor)
+        case .split(let split):
+            let firstChild = layoutTree(from: split.first, workspace: workspace)
+            let secondChild = layoutTree(from: split.second, workspace: workspace)
+            switch (firstChild, secondChild) {
+            case (let a?, let b?):
+                let direction: PanelLayoutTree.SplitDirection =
+                    split.orientation == "vertical" ? .vertical : .horizontal
+                return .split(direction: direction, ratio: split.dividerPosition,
+                              children: [a, b])
+            case (let only?, nil), (nil, let only?):
+                return only
+            case (nil, nil):
+                return nil
+            }
+        }
+    }
+
+    private static func descriptor(
+        forPanelId panelId: UUID,
+        workspace: Workspace
+    ) -> PanelDescriptor? {
+        guard let panel = workspace.panels[panelId] as? TerminalPanel else { return nil }
+        let session = panel.zmxSessionName ?? ""
+        let dir = panel.surface.requestedWorkingDirectory ?? ""
+        return PanelDescriptor(
+            sessionName: session,
+            cmd: "",
+            dir: dir,
+            capturedCwd: panel.directory.isEmpty ? nil : panel.directory,
+            capturedEnv: nil,
+            keepAlive: panel.keepAlive
+        )
     }
 
     static func availableProjectNames() -> [String] {
@@ -47,31 +89,4 @@ enum WorkspaceProjectBridge {
         return manifest.layouts[branch]
     }
 
-    private static func collectDescriptors(workspace: Workspace) -> [PanelDescriptor] {
-        workspace.panels.values.compactMap { panel -> PanelDescriptor? in
-            guard let terminal = panel as? TerminalPanel else { return nil }
-            let session = terminal.zmxSessionName ?? ""
-            let dir = terminal.surface.requestedWorkingDirectory ?? ""
-            return PanelDescriptor(
-                sessionName: session,
-                cmd: "",
-                dir: dir,
-                capturedCwd: terminal.directory.isEmpty ? nil : terminal.directory,
-                capturedEnv: nil,
-                keepAlive: terminal.keepAlive
-            )
-        }
-    }
-
-    private static func chainHorizontally(_ descriptors: [PanelDescriptor])
-        -> PanelLayoutTree {
-        guard descriptors.count > 1 else {
-            return .panel(descriptors[0])
-        }
-        return .split(
-            direction: .horizontal,
-            ratio: 1.0 / Double(descriptors.count),
-            children: descriptors.map(PanelLayoutTree.panel)
-        )
-    }
 }
