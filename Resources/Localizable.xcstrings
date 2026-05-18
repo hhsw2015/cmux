@@ -45323,6 +45323,74 @@
         }
       }
     },
+    "command.herdr.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Herdr"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Herdr"
+          }
+        }
+      }
+    },
+    "command.openHerdrWorkspace.localhost.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Herdr Workspace (localhost)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Herdr ワークスペースを開く (localhost)"
+          }
+        }
+      }
+    },
+    "command.openHerdrWorkspace.host.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Herdr Workspace on Host"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ホストで Herdr ワークスペースを開く"
+          }
+        }
+      }
+    },
+    "command.installHerdrCmux.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Install herdr-cmux on First Remote Host"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最初のリモートホストに herdr-cmux をインストール"
+          }
+        }
+      }
+    },
     "sidebar.herdr.title": {
       "extractionState": "manual",
       "localizations": {

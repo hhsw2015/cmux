@@ -6824,6 +6824,7 @@ struct ContentView: View {
             workspaceSubtitle: workspaceSubtitle,
             panelSubtitle: panelSubtitle
         )
+        appendHerdrCommandContributions(to: &contributions)
 
         contributions.append(
             CommandPaletteCommandContribution(
@@ -7772,6 +7773,7 @@ struct ContentView: View {
             notificationStore.markUnread(forTabId: workspaceId)
         }
         registerIdentifierCopyCommandHandlers(&registry)
+        registerHerdrCommandHandlers(&registry)
 
         registry.register(commandId: "palette.renameTab") {
             beginRenameTabFlow()
