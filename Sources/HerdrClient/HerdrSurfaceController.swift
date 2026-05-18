@@ -33,9 +33,16 @@ final class HerdrSurfaceController {
     }
 
     /// Bind this controller to a Ghostty surface and start pumping.
+    /// Idempotent: if an earlier pump is still running, it is cancelled
+    /// and a new one is started against the new surface so the
+    /// AsyncStream is never consumed by two iterators concurrently.
     /// Caller is responsible for surface lifetime; this controller does
     /// not free the surface on stop.
     func attach(surface: ghostty_surface_t) {
+        if pumpTask != nil {
+            pumpTask?.cancel()
+            pumpTask = nil
+        }
         self.surface = surface
         startPump()
     }
