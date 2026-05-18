@@ -7,6 +7,7 @@ enum SettingsNavigationTarget: String, CaseIterable, Identifiable {
     case sidebarAppearance
     case betaFeatures
     case zmx
+    case hosts
     case automation
     case browser
     case browserImport
@@ -34,6 +35,8 @@ enum SettingsNavigationTarget: String, CaseIterable, Identifiable {
             return String(localized: "settings.section.betaFeatures", defaultValue: "Beta Features")
         case .zmx:
             return String(localized: "settings.section.zmx", defaultValue: "zmx Persistence")
+        case .hosts:
+            return String(localized: "settings.section.hosts", defaultValue: "Hosts")
         case .automation:
             return String(localized: "settings.section.automation", defaultValue: "Automation")
         case .browser:
@@ -67,6 +70,8 @@ enum SettingsNavigationTarget: String, CaseIterable, Identifiable {
             return "exclamationmark.triangle"
         case .zmx:
             return "bolt.horizontal.circle"
+        case .hosts:
+            return "server.rack"
         case .automation:
             return "wand.and.sparkles"
         case .browser:
@@ -100,6 +105,8 @@ enum SettingsNavigationTarget: String, CaseIterable, Identifiable {
             return "\(title) beta experimental unstable feed dock right sidebar"
         case .zmx:
             return "\(title) zmx persistence terminal session attach restore daemon"
+        case .hosts:
+            return "\(title) host remote ssh herdr server connection workstation"
         case .automation:
             return "\(title) socket integrations hooks ports claude cursor gemini"
         case .browser:

@@ -6496,6 +6496,9 @@ struct SettingsView: View {
                     ZmxSettingsView()
                         .settingsSearchAnchor(SettingsSearchIndex.sectionID(for: .zmx))
 
+                    HostsSettingsView()
+                        .settingsSearchAnchor(SettingsSearchIndex.sectionID(for: .hosts))
+
                     SettingsSectionHeader(title: String(localized: "settings.section.automation", defaultValue: "Automation"))
                         .settingsSearchAnchor(SettingsSearchIndex.sectionID(for: .automation))
                     SettingsCard {

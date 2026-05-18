@@ -13,6 +13,8 @@ enum SettingsSearchAliasIndex {
             return localized("settings.search.alias.section.betaFeatures", defaultValue: "beta experimental unstable preview dock right sidebar")
         case .zmx:
             return localized("settings.search.alias.section.zmx", defaultValue: "zmx persistence session attach reattach daemon terminal restore")
+        case .hosts:
+            return localized("settings.search.alias.section.hosts", defaultValue: "hosts host remote ssh herdr server connection station machine")
         case .automation:
             return localized("settings.search.alias.section.automation", defaultValue: "api cli control socket mcp agents hooks ports")
         case .browser:

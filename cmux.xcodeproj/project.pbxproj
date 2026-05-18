@@ -307,6 +307,9 @@
 		C420Z000C420Z000C42HK102 /* ZmxCommandHooks.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42HK101 /* ZmxCommandHooks.swift */; };
 		C420Z000C420Z000C42PB102 /* ZmxPanelBinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42PB101 /* ZmxPanelBinder.swift */; };
 		C420Z000C420Z000C42SV102 /* ZmxSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42SV101 /* ZmxSettingsView.swift */; };
+		C420Z000C420Z000C42HH102 /* HerdrHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42HH101 /* HerdrHost.swift */; };
+		C420Z000C420Z000C42HR102 /* HostRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42HR101 /* HostRegistry.swift */; };
+		C420Z000C420Z000C42HS102 /* HostsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42HS101 /* HostsSettingsView.swift */; };
 		C420Z000C420Z000C42FF102 /* SessionPersistenceFeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42FF101 /* SessionPersistenceFeatureFlags.swift */; };
 		C420Z000C420Z000C42DL102 /* SessionPersistenceDebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42DL101 /* SessionPersistenceDebugLog.swift */; };
 		C420Z000C420Z000C42CR102 /* ClosePanelReason.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42CR101 /* ClosePanelReason.swift */; };
@@ -870,6 +873,9 @@
 		C420Z000C420Z000C42HK101 /* ZmxCommandHooks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZmxCommandHooks.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42PB101 /* ZmxPanelBinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZmxPanelBinder.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42SV101 /* ZmxSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings/ZmxSettingsView.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42HH101 /* HerdrHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostRegistry/HerdrHost.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42HR101 /* HostRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostRegistry/HostRegistry.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42HS101 /* HostsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings/HostsSettingsView.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42FF101 /* SessionPersistenceFeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPersistenceFeatureFlags.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42DL101 /* SessionPersistenceDebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPersistenceDebugLog.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42CR101 /* ClosePanelReason.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClosePanelReason.swift; sourceTree = "<group>"; };
@@ -1345,6 +1351,9 @@
 				C420Z000C420Z000C42HK101 /* ZmxCommandHooks.swift */,
 				C420Z000C420Z000C42PB101 /* ZmxPanelBinder.swift */,
 				C420Z000C420Z000C42SV101 /* ZmxSettingsView.swift */,
+				C420Z000C420Z000C42HH101 /* HerdrHost.swift */,
+				C420Z000C420Z000C42HR101 /* HostRegistry.swift */,
+				C420Z000C420Z000C42HS101 /* HostsSettingsView.swift */,
 				C420Z000C420Z000C42FF101 /* SessionPersistenceFeatureFlags.swift */,
 				C420Z000C420Z000C42DL101 /* SessionPersistenceDebugLog.swift */,
 				C420Z000C420Z000C42CR101 /* ClosePanelReason.swift */,
@@ -2089,6 +2098,9 @@
 				C420Z000C420Z000C42HK102 /* ZmxCommandHooks.swift in Sources */,
 				C420Z000C420Z000C42PB102 /* ZmxPanelBinder.swift in Sources */,
 				C420Z000C420Z000C42SV102 /* ZmxSettingsView.swift in Sources */,
+				C420Z000C420Z000C42HH102 /* HerdrHost.swift in Sources */,
+				C420Z000C420Z000C42HR102 /* HostRegistry.swift in Sources */,
+				C420Z000C420Z000C42HS102 /* HostsSettingsView.swift in Sources */,
 				C420Z000C420Z000C42FF102 /* SessionPersistenceFeatureFlags.swift in Sources */,
 				C420Z000C420Z000C42DL102 /* SessionPersistenceDebugLog.swift in Sources */,
 				C420Z000C420Z000C42CR102 /* ClosePanelReason.swift in Sources */,
