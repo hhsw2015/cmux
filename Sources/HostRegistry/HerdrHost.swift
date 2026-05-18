@@ -28,13 +28,24 @@ struct HerdrHost: Identifiable, Codable, Equatable, Hashable, Sendable {
 
     static let localhostID = UUID(uuidString: "00000000-0000-0000-0000-00000000C111")!
 
-    static func localhost(sessionName: String = "cmux-dev") -> HerdrHost {
+    static func localhost(sessionName: String? = nil) -> HerdrHost {
         HerdrHost(
             id: localhostID,
             displayName: "localhost",
             transport: .localUDS,
-            sessionName: sessionName,
+            sessionName: sessionName ?? Self.defaultLocalSessionName(),
             addedAt: Date(timeIntervalSince1970: 0)
         )
+    }
+
+    /// Per-bundle herdr session name so cmux / cmux DEV / cmux STAGING
+    /// don't collide on each other's panes. Mirrors the bundle suffix
+    /// rule used by the existing tagged debug socket scheme.
+    static func defaultLocalSessionName() -> String {
+        let bundleID = Bundle.main.bundleIdentifier ?? "cmux"
+        let lower = bundleID.lowercased()
+        if lower.contains("staging") { return "cmux-staging" }
+        if lower.contains("debug") || lower.contains("dev") { return "cmux-dev" }
+        return "cmux"
     }
 }

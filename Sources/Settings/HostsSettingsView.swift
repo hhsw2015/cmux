@@ -127,7 +127,7 @@ private struct AddHostSheet: View {
         self.onSave = onSave
         self.onCancel = onCancel
         _displayName = State(initialValue: initial?.displayName ?? "")
-        _sessionName = State(initialValue: initial?.sessionName ?? "cmux-dev")
+        _sessionName = State(initialValue: initial?.sessionName ?? HerdrHost.defaultLocalSessionName())
         if case .sshStdio(let t) = initial?.transport {
             _sshTarget = State(initialValue: t)
         } else {

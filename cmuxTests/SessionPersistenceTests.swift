@@ -705,7 +705,6 @@ final class SessionPersistenceTests: XCTestCase {
         XCTAssertNotEqual(firstFingerprint, secondFingerprint)
     }
 
-<<<<<<< HEAD
     func testRestorableAgentIndexFallsBackToPanelIdAfterWorkspaceUUIDRegenerates() throws {
         // Workspace UUIDs are regenerated on every cmux launch. The hook record
         // captures (workspaceId, surfaceId) from CMUX_WORKSPACE_ID/CMUX_SURFACE_ID
@@ -945,7 +944,8 @@ final class SessionPersistenceTests: XCTestCase {
         workspace.markRestorableAgentSessionEnded(panelId: UUID(), sessionId: "any-session")
         // No assertion needed beyond "did not crash"; the method is called
         // from a sidebar mutation closure and must tolerate missing entries.
-=======
+    }
+
     func testRestorableAgentIndexSkipsHookRecordWithDeadRecordedPID() throws {
         let workspaceId = UUID()
         let panelId = UUID()
@@ -962,7 +962,6 @@ final class SessionPersistenceTests: XCTestCase {
         )
 
         XCTAssertNil(index.snapshot(workspaceId: workspaceId, panelId: panelId))
->>>>>>> upstream/main
     }
 
     func testResolvedWindowFramePrefersSavedDisplayIdentity() {
