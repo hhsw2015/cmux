@@ -34,7 +34,9 @@ Make cmux a "cross-machine agent workstation" where the Mac running cmux is one 
 # 1. Build fork binary
 cd /Users/wowdd1/Dev/herdr
 PATH="$HOME/.local/bin:$PATH" cargo build --release --bin herdr
-cp target/release/herdr ~/.local/bin/herdr-cmux
+# IMPORTANT: rm before cp to avoid macOS code-sign cache binding the
+# old binary's behavior to ~/.local/bin/herdr-cmux's inode.
+rm -f ~/.local/bin/herdr-cmux && cp target/release/herdr ~/.local/bin/herdr-cmux
 
 # 2. Start daemon + create workspace on it
 ~/.local/bin/herdr-cmux --session cmux-dev server &
@@ -44,10 +46,39 @@ cp target/release/herdr ~/.local/bin/herdr-cmux
 cd /Users/wowdd1/Dev/cmux
 PATH="$HOME/.local/bin:$PATH" ./scripts/reload.sh --tag herdr --launch
 
-# 4. In cmux DEV: Debug → Debug Windows → Open Herdr Panel (localhost)
-#    A new tab opens, terminal renders herdr-managed PTY with full
-#    cmux fidelity (font/transparency/blur/IME/keyboard/resize).
+# 4. In cmux DEV: Cmd+Opt+H (or Debug → Debug Windows → Open Herdr Workspace)
+#    Materializes the herdr workspace's BSP layout into the focused cmux
+#    pane. Drag dividers / split / close panels — all mirror back to herdr.
 ```
+
+### F1 SSH transport dogfood (against ssh localhost)
+
+Validates that .sshStdio hosts work end to end. Requires Remote Login
+enabled on macOS (System Settings → General → Sharing) and the user's
+key in ~/.ssh/authorized_keys.
+
+```bash
+# api-bridge: every JSON-RPC method works through ssh stdio
+printf '{"id":"l","method":"workspace.list","params":{}}\n' \
+  | ssh -T -o BatchMode=yes localhost -- \
+      ~/.local/bin/herdr-cmux --session cmux-dev api-bridge
+
+# layout.snapshot, pane.split, pane.set_split_ratio, events.subscribe
+# (long-lived stream) all verified — see commit
+# `feat(herdr): F1e ...` for the exact transcript.
+
+# raw-pty-attach: real PTY bytes (CSI escape codes, SGR colors, OSC titles)
+# stream cleanly across ssh stdio. Same shape as the local subprocess
+# bridge; HerdrSurfaceController in cmux feeds them straight into
+# ghostty_surface_process_output.
+ssh -T -o BatchMode=yes localhost -- \
+  ~/.local/bin/herdr-cmux --session cmux-dev raw-pty-attach <terminal_id> \
+  --takeover --cols 80 --rows 24
+```
+
+The cmux side flips between LocalUDS and SSHStdio purely by the
+`HerdrHost.transport` enum tag — no code path differs except the
+single `HerdrTransportFactory.make(host:)` switch.
 
 ### Architecture (current)
 
