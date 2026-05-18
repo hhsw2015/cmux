@@ -68,7 +68,11 @@ final class HerdrEventPump {
                 guard let host = hosts[socketPath] else { return }
                 let client = HerdrApiClient(transport: HerdrTransportFactory.make(host: host))
                 try await client.start()
-                try await client.subscribe(["layout.changed", "workspace.closed"])
+                try await client.subscribe([
+                    "layout.changed",
+                    "workspace.closed",
+                    "pane.exited",
+                ])
                 clients[socketPath] = client
                 cmuxDebugLog("herdr.pump: connected on \(socketPath) (attempt=\(attempt + 1))")
 
@@ -126,6 +130,18 @@ final class HerdrEventPump {
                 return
             }
             HerdrInboundLayoutSync.applyWorkspaceClosed(workspaceId: payload.workspaceId)
+        case "pane_exited", "pane.exited":
+            guard let payload = event.decodeData(HerdrPaneExitedPayload.self) else {
+                cmuxDebugLog("herdr.pump: pane_exited payload decode failed")
+                return
+            }
+            // No UI surfacing yet — herdr keeps the pane alive after
+            // process exit (tmux semantics), so cmux's panel and PTY
+            // pipe stay valid. Once we have a "process exited"
+            // visual indicator on TerminalPanel we can flag it here.
+            cmuxDebugLog(
+                "herdr.pump: pane_exited \(payload.paneId) in workspace \(payload.workspaceId)"
+            )
         default:
             break
         }

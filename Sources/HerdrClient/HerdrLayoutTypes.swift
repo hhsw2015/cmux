@@ -107,6 +107,20 @@ struct HerdrWorkspaceClosedPayload: Codable, Equatable, Sendable {
     }
 }
 
+/// Payload of the `pane.exited` event broadcast when a herdr pane's
+/// child process exits. The pane itself stays alive on the daemon
+/// until the user (or another client) closes it — same idea as
+/// tmux's "[Process exited]" pane state.
+struct HerdrPaneExitedPayload: Codable, Equatable, Sendable {
+    let paneId: String
+    let workspaceId: String
+
+    private enum CodingKeys: String, CodingKey {
+        case paneId = "pane_id"
+        case workspaceId = "workspace_id"
+    }
+}
+
 extension HerdrApiClient {
     /// Fetch the current BSP tree for one tab. Used on attach to
     /// initialize cmux's bonsplit mirror; subsequent updates come from
