@@ -1,6 +1,13 @@
 import CMUXSessionDaemon
 import Foundation
 
+/// Errors raised by HerdrBackend.
+enum HerdrBackendError: Error, Equatable {
+    /// `host.transport` is not `.localUDS`. SSH stdio transport for the
+    /// API socket lands in B7.
+    case remoteNotSupportedYet
+}
+
 /// `SessionDaemonBackend` implementation talking to a herdr daemon
 /// through the cmux fork's API socket.
 ///
@@ -29,7 +36,7 @@ final class HerdrBackend: SessionDaemonBackend, @unchecked Sendable {
     private let api: HerdrApiClient
     private let transport: any HerdrTransport
 
-    init(host: HerdrHost, executablePath: String) {
+    init(host: HerdrHost, executablePath: String) throws {
         self.host = host
         self.executablePath = executablePath
         switch host.transport {
@@ -38,10 +45,11 @@ final class HerdrBackend: SessionDaemonBackend, @unchecked Sendable {
                 .expandingTildeInPath
             self.transport = LocalUDSTransport(socketPath: socketPath)
         case .sshStdio:
-            // SSH stdio transport for the API socket lands in B7. Until
-            // then a placeholder LocalUDSTransport is created that will
-            // simply fail to connect when start() is called.
-            self.transport = LocalUDSTransport(socketPath: "/dev/null/cmux-herdr-ssh-not-yet")
+            // SSH stdio transport for the API socket lands in B7. Fail
+            // early instead of constructing a bogus local transport so
+            // callers see a clear error rather than confusing
+            // pane-not-found responses later.
+            throw HerdrBackendError.remoteNotSupportedYet
         }
         self.api = HerdrApiClient(transport: self.transport)
     }

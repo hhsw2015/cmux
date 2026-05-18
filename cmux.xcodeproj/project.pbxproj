@@ -24,6 +24,7 @@
 		2BB56A710BB1FC50367E5BCF /* TabManagerSessionSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10D684CFFB8CDEF89CE2D9E1 /* TabManagerSessionSnapshotTests.swift */; };
 		C420Z000C420Z000C42HT102 /* HostRegistryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42HT101 /* HostRegistryTests.swift */; };
 		C420Z000C420Z000C42AT102 /* HerdrApiClientLiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42AT101 /* HerdrApiClientLiveTests.swift */; };
+		C420Z000C420Z000C42BT102 /* HerdrBackendLiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42BT101 /* HerdrBackendLiveTests.swift */; };
 		3865A0013865A0013865A001 /* SearchIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3865B0013865B0013865B001 /* SearchIndex.swift */; };
 		3865A0023865A0023865A002 /* GlobalSearchCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3865B0023865B0023865B002 /* GlobalSearchCoordinator.swift */; };
 		3865A0033865A0033865A003 /* MenubarSearchPopover.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3865B0033865B0033865B003 /* MenubarSearchPopover.swift */; };
@@ -585,6 +586,7 @@
 		10D684CFFB8CDEF89CE2D9E1 /* TabManagerSessionSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabManagerSessionSnapshotTests.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42HT101 /* HostRegistryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostRegistryTests.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42AT101 /* HerdrApiClientLiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrApiClientLiveTests.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42BT101 /* HerdrBackendLiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrBackendLiveTests.swift; sourceTree = "<group>"; };
 		14A7DC53B9CA33BE2A421711 /* WorkspacePullRequestSidebarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePullRequestSidebarTests.swift; sourceTree = "<group>"; };
 		1A1B2C3D4E5F607180000002 /* WorkspacePromptSubmit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePromptSubmit.swift; sourceTree = "<group>"; };
 		1A1B2C3D4E5F607180000004 /* WorkspacePromptSubmitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePromptSubmitTests.swift; sourceTree = "<group>"; };
@@ -1673,6 +1675,7 @@
 				10D684CFFB8CDEF89CE2D9E1 /* TabManagerSessionSnapshotTests.swift */,
 				C420Z000C420Z000C42HT101 /* HostRegistryTests.swift */,
 				C420Z000C420Z000C42AT101 /* HerdrApiClientLiveTests.swift */,
+				C420Z000C420Z000C42BT101 /* HerdrBackendLiveTests.swift */,
 				C1A2B3C4D5E6F70800000002 /* CmuxConfigTests.swift */,
 				C0DEF0A40000000000000002 /* CmuxConfigContextMenuTests.swift */,
 				E30750000000000000000005 /* CmuxConfigNamedColorTests.swift */,
@@ -2468,6 +2471,7 @@
 				2BB56A710BB1FC50367E5BCF /* TabManagerSessionSnapshotTests.swift in Sources */,
 				C420Z000C420Z000C42HT102 /* HostRegistryTests.swift in Sources */,
 				C420Z000C420Z000C42AT102 /* HerdrApiClientLiveTests.swift in Sources */,
+				C420Z000C420Z000C42BT102 /* HerdrBackendLiveTests.swift in Sources */,
 				C1A2B3C4D5E6F70800000001 /* CmuxConfigTests.swift in Sources */,
 				C0DEF0A40000000000000001 /* CmuxConfigContextMenuTests.swift in Sources */,
 				E30750000000000000000006 /* CmuxConfigNamedColorTests.swift in Sources */,
