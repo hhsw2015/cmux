@@ -215,7 +215,7 @@ Total cmux est: ~4 days, ~400-600 LOC across `Sources/HerdrClient/`, `Sources/Wo
 | **F3 (auto on registration)** | One-click "Install" button in Settings → Hosts that runs at host-add time with progress UI. | pending |
 | **F4 (shortcut)** | Cmd+Opt+H bound to "Open Herdr Workspace (localhost)". | done — cmux `feat(herdr): bind Cmd+Opt+H ...` |
 | **F4 (command palette + non-DEBUG)** | Move the herdr entries out of `#if DEBUG`, route through cmux's command palette, drop standalone debug window. | pending |
-| **F5** (was C10) | Drop standalone debug window (`HerdrPaneDebugWindowController`). | 0.25 d |
+| **F5** | Dropped HerdrPaneDebugWindow (~700 LOC). Open Herdr Panel + Open Herdr Workspace cover every scenario the debug window did. | done — cmux `chore(herdr): F5 ...` |
 | **F6** | `HerdrBackend.probeCapabilities()` runs ping + a layout.snapshot probe (against a bogus workspace id) at workspace-open time. Distinguishes "method not found" (incompatible) from "tab not found" (compatible). Bails with a clear trace-log hint when the daemon predates D1-D4. | done — cmux `feat(herdr): F6 ...` |
 | **F7** (was C12) | E2E CI test: fork daemon → open panel via cmux → type → assert round-trip. | 1 d |
 
