@@ -45391,6 +45391,23 @@
         }
       }
     },
+    "settings.hosts.autoInstall": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Install herdr-cmux on save"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存時に herdr-cmux をインストール"
+          }
+        }
+      }
+    },
     "sidebar.herdr.openWorkspace": {
       "extractionState": "manual",
       "localizations": {

@@ -8,7 +8,7 @@ import Foundation
 @MainActor
 enum HerdrRemoteInstaller {
     /// Install on the first non-localhost host registered in the host
-    /// registry. Useful as a debug-menu one-liner during F1 dogfood.
+    /// registry. Useful as a menu one-liner.
     static func installOnFirstRemoteHost() {
         let remoteHost = HostRegistry.shared.hosts.first { host in
             if case .sshStdio = host.transport { return true }
@@ -18,14 +18,23 @@ enum HerdrRemoteInstaller {
             herdrInstallerTrace("no remote host registered (Settings → Hosts)")
             return
         }
-        guard case .sshStdio(let target) = host.transport else { return }
+        installOnHost(host)
+    }
 
+    /// Install on the given host. No-op for `.localUDS`. For
+    /// `.sshStdio`, kicks off a background scp+verify via the same
+    /// path the menu uses. Used by the Settings → Hosts add flow to
+    /// auto-deploy at host-registration time.
+    static func installOnHost(_ host: HerdrHost) {
+        guard case .sshStdio(let target) = host.transport else {
+            herdrInstallerTrace("\(host.displayName): nothing to install for local transport")
+            return
+        }
         let localBinary = (("~/.local/bin/herdr-cmux") as NSString).expandingTildeInPath
         guard FileManager.default.isExecutableFile(atPath: localBinary) else {
             herdrInstallerTrace("local binary missing at \(localBinary) — build the fork first")
             return
         }
-
         Task.detached {
             await install(target: target, localBinaryPath: localBinary)
         }

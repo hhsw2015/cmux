@@ -40,16 +40,22 @@ struct HostsSettingsView: View {
         }
         .padding(.top, 8)
         .sheet(isPresented: $showingAdd) {
-            AddHostSheet(onSave: { newHost in
+            AddHostSheet(onSave: { newHost, installRequested in
                 registry.add(newHost)
+                if installRequested {
+                    HerdrRemoteInstaller.installOnHost(newHost)
+                }
                 showingAdd = false
             }, onCancel: { showingAdd = false })
         }
         .sheet(item: $editing) { host in
             AddHostSheet(
                 initial: host,
-                onSave: { updated in
+                onSave: { updated, installRequested in
                     registry.update(updated)
+                    if installRequested {
+                        HerdrRemoteInstaller.installOnHost(updated)
+                    }
                     editing = nil
                 },
                 onCancel: { editing = nil }
@@ -111,16 +117,17 @@ private struct HostRow: View {
 
 private struct AddHostSheet: View {
     let initial: HerdrHost?
-    let onSave: (HerdrHost) -> Void
+    let onSave: (HerdrHost, Bool) -> Void
     let onCancel: () -> Void
 
     @State private var displayName: String
     @State private var sshTarget: String
     @State private var sessionName: String
+    @State private var autoInstall: Bool
 
     init(
         initial: HerdrHost? = nil,
-        onSave: @escaping (HerdrHost) -> Void,
+        onSave: @escaping (HerdrHost, Bool) -> Void,
         onCancel: @escaping () -> Void
     ) {
         self.initial = initial
@@ -133,6 +140,9 @@ private struct AddHostSheet: View {
         } else {
             _sshTarget = State(initialValue: "")
         }
+        // Default the install checkbox on for fresh remote hosts; off
+        // when editing (the binary is presumably already deployed).
+        _autoInstall = State(initialValue: initial == nil)
     }
 
     private var isLocalhostEdit: Bool { initial?.isLocalhost ?? false }
@@ -159,6 +169,12 @@ private struct AddHostSheet: View {
                     String(localized: "settings.hosts.session", defaultValue: "Herdr session name"),
                     text: $sessionName
                 )
+                if !isLocalhostEdit {
+                    Toggle(String(
+                        localized: "settings.hosts.autoInstall",
+                        defaultValue: "Install herdr-cmux on save"
+                    ), isOn: $autoInstall)
+                }
             }
 
             HStack {
@@ -199,6 +215,7 @@ private struct AddHostSheet: View {
             sessionName: sessionName.trimmingCharacters(in: .whitespaces),
             addedAt: initial?.addedAt ?? Date()
         )
-        onSave(host)
+        let install = autoInstall && !isLocalhostEdit
+        onSave(host, install)
     }
 }
