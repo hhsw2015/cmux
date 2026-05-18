@@ -145,7 +145,8 @@ Actual fork delta: ~600 LOC across `schema.rs`, `api/mod.rs`, `app/api.rs`, `app
 | **E2e (drag)** | Inbound: events.subscribe pump per host + `layout.changed` → `setDividerPosition(fromExternal: true)`. Bonsplit's 50ms external-update window suppresses outbound echo. | done — cmux `feat(herdr): E2e (inbound) ...` |
 | **E2e-2 (structural)** | Single-pane add/remove diffs from `layout.changed`: applyAddition splits cmux locally + fetches terminal_id + wires; applyRemoval closes cmux pane with `suppressNextCloseFor` echo guard. Multi-change events bail. | done — cmux `feat(herdr): E2e-2 ...` |
 | **E2e-3 (multi-change / swap)** | Multi-pane diffs and swap events. Defer until dogfood reveals which scenarios are common. | pending |
-| **E3** | Subscribe to `events.subscribe` per workspace: handle `PaneCreated/Closed/Renamed/Focused`, `TabCreated/Closed/Renamed/Focused/Reordered`, `WorkspaceRenamed/Focused`, `PaneAgentStatusChanged`, `LayoutChanged`. Plumb into existing tab title / breadcrumb / status sinks. | pending |
+| **E3 (workspace.closed)** | Tear down local materialized panes when remote workspace.close fires. Reuses suppressNextCloseFor for echo prevention. | done — cmux `feat(herdr): E3 (workspace.closed) ...` |
+| **E3 (pane.renamed / pane.exited / agent_status / tab events)** | Plumb remaining herdr events into cmux's title / status / breadcrumb sinks. Each needs its own UI hookup. | pending |
 | **E4** | Persistence: cmux workspace JSON stores `{ host, workspace_id }` per cmux window, not the layout itself (layout comes from `layout.snapshot`). On launch, reattach to daemon, snapshot, render. | pending |
 | **E5** | Close semantics implementation per the table above: Cmd+Q / Cmd+Shift+W / Cmd+W default to detach (UI-only); add explicit "Kill" entries; pane close maps to `pane.close` (kill). | pending |
 
