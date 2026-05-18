@@ -48,7 +48,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ steps.ghosttykit.outputs.tag }}"
-          if gh release view "$TAG" --repo manaflow-ai/ghostty >/dev/null 2>&1; then
+          if gh release view "$TAG" --repo hhsw2015/ghostty >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
             echo "Release $TAG already exists, skipping build"
           else
@@ -112,8 +112,9 @@ jobs:
           fi
           TAG="${{ steps.ghosttykit.outputs.tag }}"
           gh release create "$TAG" \
-            --repo manaflow-ai/ghostty \
-            --title "GhosttyKit xcframework (${{ steps.ghostty-sha.outputs.sha }})" \
-            --notes "${{ steps.ghosttykit.outputs.notes }}" \
+            --repo hhsw2015/ghostty \
+            --target "${{ steps.ghostty-sha.outputs.sha }}" \
+            --title "GhosttyKit xcframework (${{ steps.ghostty-sha.outputs.sha }}, ${GHOSTTYKIT_BUILD_FLAVOR})" \
+            --notes "Pre-built GhosttyKit.xcframework for commit ${{ steps.ghostty-sha.outputs.sha }} with crash-report-subdir=${GHOSTTYKIT_CRASH_REPORT_SUBDIR}" \
             GhosttyKit.xcframework.tar.gz
           echo "Published release $TAG"

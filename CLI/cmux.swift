@@ -55,6 +55,7 @@ private final class CLISocketSentryTelemetry {
     private let subcommand: String
     private let socketPath: String
     private let envSocketPath: String?
+    private let processEnv: [String: String]
     private let workspaceId: String?
     private let surfaceId: String?
     private let disabledByEnv: Bool
@@ -108,58 +109,13 @@ private final class CLISocketSentryTelemetry {
             return Bundle.main
         }
 
-        guard let executableURL = currentExecutableURL() else {
-            return Bundle.main
-        }
-
-        var current = executableURL.deletingLastPathComponent().standardizedFileURL
-        while true {
-            if current.pathExtension == "app", let bundle = Bundle(url: current) {
-                return bundle
-            }
-
-            if current.lastPathComponent == "Contents" {
-                let appURL = current.deletingLastPathComponent().standardizedFileURL
-                if appURL.pathExtension == "app", let bundle = Bundle(url: appURL) {
-                    return bundle
-                }
-            }
-
-            guard let parent = parentSearchURL(for: current) else {
-                break
-            }
-            current = parent
+        if let bundle = CLIExecutableLocator.enclosingAppBundle() {
+            return bundle
         }
 
         return Bundle.main
     }
 
-    private static func currentExecutableURL() -> URL? {
-        var size: UInt32 = 0
-        _ = _NSGetExecutablePath(nil, &size)
-        if size > 0 {
-            var buffer = Array<CChar>(repeating: 0, count: Int(size))
-            if _NSGetExecutablePath(&buffer, &size) == 0 {
-                return URL(fileURLWithPath: String(cString: buffer)).standardizedFileURL
-            }
-        }
-
-        return Bundle.main.executableURL?.standardizedFileURL
-    }
-
-    private static func parentSearchURL(for url: URL) -> URL? {
-        let standardized = url.standardizedFileURL
-        let path = standardized.path
-        guard !path.isEmpty, path != "/" else {
-            return nil
-        }
-
-        let parent = standardized.deletingLastPathComponent().standardizedFileURL
-        guard parent.path != path else {
-            return nil
-        }
-        return parent
-    }
 #endif
 
     init(command: String, commandArgs: [String], socketPath: String, processEnv: [String: String]) {
@@ -167,6 +123,7 @@ private final class CLISocketSentryTelemetry {
         self.subcommand = commandArgs.first?.lowercased() ?? "help"
         self.socketPath = socketPath
         self.envSocketPath = CLISocketEnvironment.socketPathForTelemetry(in: processEnv)
+        self.processEnv = processEnv
         self.workspaceId = processEnv["CMUX_WORKSPACE_ID"]
         self.surfaceId = processEnv["CMUX_SURFACE_ID"]
         self.disabledByEnv =
@@ -274,7 +231,11 @@ private final class CLISocketSentryTelemetry {
             context["tmp_cmux_sockets"] = tmpSockets
         }
         let taggedSockets = tmpSockets.filter { $0 != CLISocketPathResolver.legacyDefaultSocketPath }
-        if CLISocketPathResolver.isImplicitDefaultPath(socketPath),
+        if CLISocketPathResolver.isImplicitDefaultPath(
+            socketPath,
+            bundleIdentifier: CLISocketPathResolver.currentAppBundleIdentifier(),
+            environment: processEnv
+        ),
            (envSocketPath?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true),
            !taggedSockets.isEmpty {
             context["possible_root_cause"] = "CMUX_SOCKET_PATH missing while tagged sockets exist"
@@ -741,55 +702,6 @@ private final class ClaudeHookSessionStore {
         }
         return value
     }
-
-    /// Remove any Claude hook records bound to the same panel (workspaceId +
-    /// surfaceId) other than `keepSessionId`. Used after a `/clear` rotation
-    /// so the pre-clear session does not shadow the rotated one when session
-    /// autosave loads the index.
-    ///
-    /// Returns the session IDs that were removed (for telemetry / tests).
-    @discardableResult
-    func removePanelSiblings(
-        keepSessionId: String,
-        workspaceId: String,
-        surfaceId: String
-    ) throws -> [String] {
-        let keep = normalizeSessionId(keepSessionId)
-        // Require both workspace and surface: pruning is a panel-scoped
-        // operation, and proceeding with only one would silently widen the
-        // sweep (e.g. an empty surfaceId would prune every session in the
-        // workspace).
-        guard !keep.isEmpty,
-              let workspace = normalizeOptional(workspaceId),
-              let surface = normalizeOptional(surfaceId) else {
-            return []
-        }
-        return try withLockedState { state in
-            // Collect victims first; mutating `state.sessions` while iterating
-            // it is undefined behavior in Swift and can trap under runtime
-            // checks. Compute the set, then remove in a separate pass.
-            var removed: [String] = []
-            for (sid, record) in state.sessions {
-                guard sid != keep,
-                      normalizeOptional(record.workspaceId) == workspace,
-                      normalizeOptional(record.surfaceId) == surface else {
-                    continue
-                }
-                removed.append(sid)
-            }
-            for sid in removed {
-                state.sessions.removeValue(forKey: sid)
-            }
-            // If the active-session pointer still targets a removed record,
-            // clear it so later Stop/SessionEnd events cannot revive state
-            // that no longer has a matching session record.
-            if let active = state.activeSessionsByWorkspace[workspace],
-               removed.contains(active.sessionId) {
-                state.activeSessionsByWorkspace.removeValue(forKey: workspace)
-            }
-            return removed
-        }
-    }
 }
 
 private let codexHookWrapperProcessNames: Set<String> = [
@@ -946,460 +858,6 @@ enum SocketPasswordResolver {
             return password
         }
         return nil
-    }
-}
-
-private enum CLISocketPathSource {
-    case explicitFlag
-    case environment
-    case implicitDefault
-}
-
-private enum CLISocketPathResolver {
-    private static let appSupportDirectoryName = "cmux"
-    private static let stableSocketFileName = "com.cmuxterm.app.sock"
-    private static let legacyStableSocketFileName = "cmux.sock"
-    private static let lastSocketPathFileName = "last-socket-path"
-    private static let unixSocketPathMaxLength: Int = {
-        var addr = sockaddr_un()
-        return MemoryLayout.size(ofValue: addr.sun_path) - 1
-    }()
-    static let legacyDefaultSocketPath = "/tmp/cmux.sock"
-    private static let fallbackSocketPath = "/tmp/cmux-debug.sock"
-    private static let legacyLastSocketPathFile = "/tmp/cmux-last-socket-path"
-    private enum SocketProbeResult {
-        case cmux
-        case notCmux
-        case indeterminate
-        case unavailable
-    }
-
-    static var defaultSocketPath: String {
-        let stablePath: String? = stableSocketDirectoryURL()?
-            .appendingPathComponent(stableSocketFileName, isDirectory: false)
-            .path
-        return stablePath ?? legacyDefaultSocketPath
-    }
-
-    static func isImplicitDefaultPath(_ path: String) -> Bool {
-        path == defaultSocketPath ||
-            path == legacyDefaultSocketPath ||
-            path == legacyStableSocketPath
-    }
-
-    static func resolve(
-        requestedPath: String,
-        source: CLISocketPathSource,
-        environment: [String: String] = ProcessInfo.processInfo.environment
-    ) -> String {
-        guard source == .implicitDefault else {
-            return requestedPath
-        }
-
-        let candidates = dedupe(candidatePaths(requestedPath: requestedPath, environment: environment))
-        var rejectedPaths: Set<String> = []
-
-        // Prefer sockets that prove they speak the cmux protocol. A different
-        // daemon can squat on a Unix socket path and accept connections.
-        for path in candidates {
-            switch probeCmuxSocket(at: path) {
-            case .cmux:
-                return path
-            case .notCmux:
-                rejectedPaths.insert(path)
-            case .indeterminate, .unavailable:
-                break
-            }
-        }
-
-        // If the listener is still starting, prefer existing socket files that
-        // were not proven to belong to another process/protocol.
-        for path in candidates where !rejectedPaths.contains(path) && isSocketFile(path) {
-            return path
-        }
-
-        return requestedPath
-    }
-
-    private static func candidatePaths(requestedPath: String, environment: [String: String]) -> [String] {
-        var candidates: [String] = []
-
-        if let tag = normalized(environment["CMUX_TAG"]) {
-            let slug = sanitizeTagSlug(tag)
-            candidates.append(taggedAppSupportSocketPath(slug: slug))
-            candidates.append("/tmp/cmux-debug-\(slug).sock")
-            candidates.append("/tmp/cmux-\(slug).sock")
-        }
-        if let bundledTaggedPath = bundledTaggedDebugSocketPath() {
-            candidates.append(bundledTaggedPath)
-        }
-
-        candidates.append(requestedPath)
-        candidates.append(defaultSocketPath)
-        candidates.append(userScopedStableSocketPath())
-        candidates.append(legacyStableSocketPath)
-        candidates.append(legacyDefaultSocketPath)
-        candidates.append(fallbackSocketPath)
-        candidates.append(contentsOf: discoverLegacyFallbackSockets(limit: 12))
-        if let last = readLastSocketPath(),
-           shouldUseLastSocketPath(last) {
-            candidates.append(last)
-        }
-        return candidates
-    }
-
-    private static func bundledTaggedDebugSocketPath() -> String? {
-        guard let executableURL = currentExecutableURL(),
-              let appBundleURL = containingAppBundleURL(for: executableURL),
-              let bundleIdentifier = bundleIdentifier(from: appBundleURL) else {
-            return nil
-        }
-        return taggedDebugSocketPath(bundleIdentifier: bundleIdentifier)
-    }
-
-    private static func currentExecutableURL() -> URL? {
-        var size: UInt32 = 0
-        _ = _NSGetExecutablePath(nil, &size)
-        if size > 0 {
-            var buffer = Array<CChar>(repeating: 0, count: Int(size))
-            if _NSGetExecutablePath(&buffer, &size) == 0 {
-                return URL(fileURLWithPath: String(cString: buffer)).standardizedFileURL
-            }
-        }
-        return Bundle.main.executableURL?.standardizedFileURL
-    }
-
-    private static func containingAppBundleURL(for executableURL: URL) -> URL? {
-        var current = executableURL.standardizedFileURL
-        while true {
-            if current.pathExtension == "app" {
-                return current
-            }
-            let parent = current.deletingLastPathComponent().standardizedFileURL
-            guard parent.path != current.path else {
-                return nil
-            }
-            current = parent
-        }
-    }
-
-    private static func bundleIdentifier(from appBundleURL: URL) -> String? {
-        let infoURL = appBundleURL
-            .appendingPathComponent("Contents", isDirectory: true)
-            .appendingPathComponent("Info.plist", isDirectory: false)
-        guard let data = try? Data(contentsOf: infoURL),
-              let plist = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil),
-              let info = plist as? [String: Any],
-              let rawIdentifier = info["CFBundleIdentifier"] as? String else {
-            return nil
-        }
-        let identifier = rawIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
-        return identifier.isEmpty ? nil : identifier
-    }
-
-    private static func taggedDebugSocketPath(bundleIdentifier: String) -> String? {
-        let prefix = "com.cmuxterm.app.debug."
-        guard bundleIdentifier.hasPrefix(prefix) else {
-            return nil
-        }
-        let suffix = String(bundleIdentifier.dropFirst(prefix.count))
-        let slug = suffix
-            .replacingOccurrences(of: ".", with: "-")
-            .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
-        guard !slug.isEmpty else {
-            return nil
-        }
-        return "/tmp/cmux-debug-\(slug).sock"
-    }
-
-    private static func readLastSocketPath() -> String? {
-        let primaryCandidate: String? = stableSocketDirectoryURL()?
-            .appendingPathComponent(lastSocketPathFileName, isDirectory: false)
-            .path
-        let candidates = [primaryCandidate, legacyLastSocketPathFile].compactMap { $0 }
-
-        for candidate in candidates {
-            guard let data = try? String(contentsOfFile: candidate, encoding: .utf8) else {
-                continue
-            }
-            if let value = normalized(data) {
-                return value
-            }
-        }
-        return nil
-    }
-
-    private static func discoverLegacyFallbackSockets(limit: Int) -> [String] {
-        var discovered: [(path: String, mtime: TimeInterval)] = []
-        let excludedPaths = discoveryExcludedSocketPaths()
-        for directory in socketDiscoveryDirectories() {
-            guard let entries = try? FileManager.default.contentsOfDirectory(atPath: directory) else {
-                continue
-            }
-            discovered.reserveCapacity(min(limit, discovered.count + entries.count))
-            for name in entries where isDiscoverableLegacyFallbackSocketName(name) {
-                let path = URL(fileURLWithPath: directory)
-                    .appendingPathComponent(name, isDirectory: false)
-                    .path
-                var st = stat()
-                guard lstat(path, &st) == 0 else { continue }
-                guard (st.st_mode & mode_t(S_IFMT)) == mode_t(S_IFSOCK) else { continue }
-                if excludedPaths.contains(path) {
-                    continue
-                }
-                let modified = TimeInterval(st.st_mtimespec.tv_sec) + TimeInterval(st.st_mtimespec.tv_nsec) / 1_000_000_000
-                discovered.append((path: path, mtime: modified))
-            }
-        }
-
-        discovered.sort { $0.mtime > $1.mtime }
-        return dedupe(discovered.prefix(limit).map(\.path))
-    }
-
-    private static func isDiscoverableLegacyFallbackSocketName(_ name: String) -> Bool {
-        guard name.hasSuffix(".sock") else { return false }
-        if name == "cmux.sock" { return true }
-        guard name.hasPrefix("cmux-") else { return false }
-        let suffix = ".sock"
-        let portStart = name.index(name.startIndex, offsetBy: "cmux-".count)
-        let portEnd = name.index(name.endIndex, offsetBy: -suffix.count)
-        let port = name[portStart..<portEnd]
-        return !port.isEmpty && port.allSatisfy(\.isNumber)
-    }
-
-    private static func discoveryExcludedSocketPaths() -> Set<String> {
-        Set([
-            defaultSocketPath,
-            userScopedStableSocketPath(),
-            legacyStableSocketPath,
-            legacyDefaultSocketPath,
-            fallbackSocketPath,
-        ])
-    }
-
-    private static func shouldUseLastSocketPath(_ path: String) -> Bool {
-        !isNonReleaseVariantSocketName(URL(fileURLWithPath: path).lastPathComponent)
-    }
-
-    private static func isNonReleaseVariantSocketName(_ name: String) -> Bool {
-        guard name.hasSuffix(".sock") else { return false }
-        if name == "cmux-staging.sock" || name.hasPrefix("cmux-staging-") {
-            return true
-        }
-        if name == "cmux-debug.sock" || name.hasPrefix("cmux-debug-") {
-            return true
-        }
-        if name == "com.cmuxterm.app.dev.sock" || name.hasPrefix("com.cmuxterm.app.dev.") {
-            return true
-        }
-        if name == "com.cmuxterm.app.nightly.sock" || name.hasPrefix("com.cmuxterm.app.nightly.") {
-            return true
-        }
-        if name == "com.cmuxterm.app.staging.sock" || name.hasPrefix("com.cmuxterm.app.staging.") {
-            return true
-        }
-        return false
-    }
-
-    private static func isSocketFile(_ path: String) -> Bool {
-        var st = stat()
-        return lstat(path, &st) == 0 && (st.st_mode & mode_t(S_IFMT)) == mode_t(S_IFSOCK)
-    }
-
-    private static func probeCmuxSocket(at path: String) -> SocketProbeResult {
-        guard isSocketFile(path) else { return .unavailable }
-        let fd = socket(AF_UNIX, SOCK_STREAM, 0)
-        guard fd >= 0 else { return .unavailable }
-        defer { Darwin.close(fd) }
-        configureSocketTimeouts(fd, timeout: 0.35)
-        configureNoSigPipe(fd)
-
-        var addr = sockaddr_un()
-        addr.sun_family = sa_family_t(AF_UNIX)
-        let maxLength = MemoryLayout.size(ofValue: addr.sun_path)
-        guard path.utf8CString.count <= maxLength else { return .unavailable }
-        path.withCString { ptr in
-            withUnsafeMutablePointer(to: &addr.sun_path) { pathPtr in
-                let buf = UnsafeMutableRawPointer(pathPtr).assumingMemoryBound(to: CChar.self)
-                strncpy(buf, ptr, maxLength - 1)
-            }
-        }
-
-        let result = withUnsafePointer(to: &addr) { ptr in
-            ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPtr in
-                Darwin.connect(fd, sockaddrPtr, socklen_t(MemoryLayout<sockaddr_un>.size))
-            }
-        }
-        guard result == 0 else { return .unavailable }
-        guard writeAll(Data("ping\n".utf8), to: fd) else { return .notCmux }
-        guard let response = readFirstLine(from: fd) else {
-            // A timeout or early EOF does not prove another protocol owns the
-            // socket; leave it eligible for the startup fallback below.
-            return .indeterminate
-        }
-        return response == "PONG" ? .cmux : .notCmux
-    }
-
-    private static func configureSocketTimeouts(_ fd: Int32, timeout: TimeInterval) {
-        let clamped = max(timeout, 0.01)
-        var socketTimeout = timeval(
-            tv_sec: Int(clamped),
-            tv_usec: Int32((clamped - floor(clamped)) * 1_000_000)
-        )
-        _ = withUnsafePointer(to: &socketTimeout) { ptr in
-            setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, ptr, socklen_t(MemoryLayout<timeval>.size))
-        }
-        _ = withUnsafePointer(to: &socketTimeout) { ptr in
-            setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, ptr, socklen_t(MemoryLayout<timeval>.size))
-        }
-    }
-
-    private static func configureNoSigPipe(_ fd: Int32) {
-#if os(macOS)
-        var noSigPipe: Int32 = 1
-        _ = withUnsafePointer(to: &noSigPipe) { ptr in
-            setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, ptr, socklen_t(MemoryLayout<Int32>.size))
-        }
-#else
-        _ = fd
-#endif
-    }
-
-    private static func writeAll(_ data: Data, to fd: Int32) -> Bool {
-        data.withUnsafeBytes { rawBuffer in
-            guard var cursor = rawBuffer.baseAddress else { return true }
-            var remaining = rawBuffer.count
-            while remaining > 0 {
-                let written = Darwin.write(fd, cursor, remaining)
-                if written < 0 {
-                    if errno == EINTR { continue }
-                    return false
-                }
-                guard written > 0 else { return false }
-                remaining -= written
-                cursor = cursor.advanced(by: written)
-            }
-            return true
-        }
-    }
-
-    private static func readFirstLine(from fd: Int32) -> String? {
-        var bytes: [UInt8] = []
-        var buffer = [UInt8](repeating: 0, count: 128)
-        while bytes.count < 512 {
-            let count = Darwin.read(fd, &buffer, buffer.count)
-            if count < 0 {
-                if errno == EINTR { continue }
-                return nil
-            }
-            guard count > 0 else { break }
-            bytes.append(contentsOf: buffer.prefix(count))
-            if bytes.contains(0x0A) { break }
-        }
-        guard !bytes.isEmpty,
-              let response = String(bytes: bytes, encoding: .utf8) else {
-            return nil
-        }
-        return response
-            .components(separatedBy: .newlines)
-            .first
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-    }
-
-    private static func sanitizeTagSlug(_ raw: String) -> String {
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let slug = trimmed
-            .replacingOccurrences(of: "[^a-z0-9]+", with: "-", options: .regularExpression)
-            .replacingOccurrences(of: "-+", with: "-", options: .regularExpression)
-            .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
-        return slug.isEmpty ? "agent" : slug
-    }
-
-    private static func normalized(_ value: String?) -> String? {
-        guard let value else { return nil }
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
-    }
-
-    private static func stableSocketDirectoryURL() -> URL? {
-        guard let appSupportDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
-            return nil
-        }
-        return appSupportDirectory.appendingPathComponent(appSupportDirectoryName, isDirectory: true)
-    }
-
-    private static func taggedAppSupportSocketPath(slug: String) -> String {
-        socketPath(fileName: "com.cmuxterm.app.dev.\(slug).sock")
-    }
-
-    private static func userScopedStableSocketPath(currentUserID: uid_t = getuid()) -> String {
-        socketPath(fileName: "com.cmuxterm.app.\(currentUserID).sock")
-    }
-
-    private static func socketPath(fileName: String) -> String {
-        guard let directoryURL = stableSocketDirectoryURL() else {
-            return "/tmp/\(shortenedSocketFileName(fileName, directoryPath: "/tmp"))"
-        }
-        let candidate = directoryURL.appendingPathComponent(fileName, isDirectory: false).path
-        guard candidate.utf8.count > unixSocketPathMaxLength else {
-            return candidate
-        }
-        return directoryURL
-            .appendingPathComponent(shortenedSocketFileName(fileName, directoryPath: directoryURL.path), isDirectory: false)
-            .path
-    }
-
-    private static func shortenedSocketFileName(_ fileName: String, directoryPath: String) -> String {
-        let separatorLength = 1
-        let budget = unixSocketPathMaxLength - directoryPath.utf8.count - separatorLength
-        let suffix = ".sock"
-        let hashSuffixLength = 9
-        guard fileName.utf8.count > budget, budget >= suffix.utf8.count + hashSuffixLength + 1 else {
-            return fileName
-        }
-
-        let stem = fileName.hasSuffix(suffix) ? String(fileName.dropLast(suffix.count)) : fileName
-        let hashSuffix = "-\(fnv1a32Hex(fileName))"
-        let stemBudget = budget - hashSuffix.utf8.count - suffix.utf8.count
-        let shortenedStem = String(stem.prefix(stemBudget)).trimmingCharacters(in: CharacterSet(charactersIn: ".-"))
-        let safeStem = shortenedStem.isEmpty ? "cmux" : shortenedStem
-        return "\(safeStem)\(hashSuffix)\(suffix)"
-    }
-
-    private static func fnv1a32Hex(_ value: String) -> String {
-        var hash: UInt32 = 2_166_136_261
-        for byte in value.utf8 {
-            hash ^= UInt32(byte)
-            hash = hash &* 16_777_619
-        }
-        return String(format: "%08x", hash)
-    }
-
-    private static var legacyStableSocketPath: String {
-        let stablePath: String? = stableSocketDirectoryURL()?
-            .appendingPathComponent(legacyStableSocketFileName, isDirectory: false)
-            .path
-        return stablePath ?? legacyDefaultSocketPath
-    }
-
-    private static func socketDiscoveryDirectories() -> [String] {
-        let appSupportSocketDirectory: String = stableSocketDirectoryURL()?.path ?? ""
-        return dedupe([
-            "/tmp",
-            appSupportSocketDirectory,
-        ])
-    }
-
-    private static func dedupe(_ paths: [String]) -> [String] {
-        var seen: Set<String> = []
-        var ordered: [String] = []
-        ordered.reserveCapacity(paths.count)
-        for path in paths where !path.isEmpty {
-            if seen.insert(path).inserted {
-                ordered.append(path)
-            }
-        }
-        return ordered
     }
 }
 
@@ -2297,7 +1755,6 @@ final class SocketClient {
 struct CMUXCLI {
     let args: [String]
 
-    private static let debugLastSocketHintPath = "/tmp/cmux-last-socket-path"
     private static let vmCreateIdempotencyTTLSeconds: TimeInterval = 10 * 60
     private static let vmCreateResponseTimeoutSeconds: TimeInterval = 16 * 60
     private static let vmAttachResponseTimeoutSeconds: TimeInterval = 16 * 60
@@ -2443,84 +1900,11 @@ struct CMUXCLI {
         try? saveVMCreateIdempotencyStore(store, to: url)
     }
 
-    private static func pathIsSocket(_ path: String) -> Bool {
-        var st = stat()
-        guard lstat(path, &st) == 0 else { return false }
-        return (st.st_mode & S_IFMT) == S_IFSOCK
-    }
-
-    private static func debugSocketPathFromHintFile() -> String? {
-#if DEBUG
-        guard let raw = try? String(contentsOfFile: debugLastSocketHintPath, encoding: .utf8) else {
-            return nil
-        }
-        guard let hinted = normalizedEnvValue(raw),
-              hinted.hasPrefix("/tmp/cmux-debug"),
-              hinted.hasSuffix(".sock"),
-              pathIsSocket(hinted) else {
-            return nil
-        }
-        return hinted
-#else
-        return nil
-#endif
-    }
-
-    private static func defaultSocketPath(environment: [String: String]) -> String {
-        if let explicit = normalizedEnvValue(environment["CMUX_SOCKET_PATH"]) {
-            return explicit
-        }
-#if DEBUG
-        if let hinted = debugSocketPathFromHintFile() {
-            return hinted
-        }
-        return "/tmp/cmux-debug.sock"
-#else
-        return "/tmp/cmux.sock"
-#endif
-    }
-
     private static let browserDisabledDefaultsKey = "browserDisabledOverride"
     private static let defaultBrowserSettingsDomain = "com.cmuxterm.app"
 
-    private static func currentExecutableURL() -> URL? {
-        var size: UInt32 = 0
-        _ = _NSGetExecutablePath(nil, &size)
-        guard size > 0 else {
-            return Bundle.main.executableURL?.standardizedFileURL
-        }
-
-        var buffer = Array<CChar>(repeating: 0, count: Int(size))
-        guard _NSGetExecutablePath(&buffer, &size) == 0 else {
-            return Bundle.main.executableURL?.standardizedFileURL
-        }
-        return URL(fileURLWithPath: String(cString: buffer)).standardizedFileURL
-    }
-
     private static func containingAppBundleIdentifier() -> String? {
-        guard let executableURL = currentExecutableURL() else { return nil }
-        var current = executableURL.deletingLastPathComponent().standardizedFileURL
-        while current.path != "/" {
-            if current.pathExtension == "app",
-               let bundle = Bundle(url: current),
-               let bundleIdentifier = normalizedEnvValue(bundle.bundleIdentifier) {
-                return bundleIdentifier
-            }
-
-            if current.lastPathComponent == "Contents" {
-                let appURL = current.deletingLastPathComponent().standardizedFileURL
-                if appURL.pathExtension == "app",
-                   let bundle = Bundle(url: appURL),
-                   let bundleIdentifier = normalizedEnvValue(bundle.bundleIdentifier) {
-                    return bundleIdentifier
-                }
-            }
-
-            let parent = current.deletingLastPathComponent().standardizedFileURL
-            guard parent.path != current.path else { break }
-            current = parent
-        }
-        return nil
+        normalizedEnvValue(CLIExecutableLocator.enclosingAppBundle()?.bundleIdentifier)
     }
 
     private static func browserSettingsDomain(environment: [String: String]) -> String {
@@ -2654,6 +2038,7 @@ struct CMUXCLI {
 
     func run() throws {
         let processEnv = ProcessInfo.processInfo.environment
+        let cliBundleIdentifier = CLISocketPathResolver.currentAppBundleIdentifier()
         var explicitSocketPath: String? = nil
         var jsonOutput = false
         var idFormatArg: String? = nil
@@ -2757,7 +2142,10 @@ struct CMUXCLI {
            settingsCommandDoesNotNeedSocket(commandArgs) {
             try runSettings(
                 commandArgs: commandArgs,
-                socketPath: CLISocketPathResolver.defaultSocketPath,
+                socketPath: CLISocketPathResolver.defaultSocketPath(
+                    bundleIdentifier: cliBundleIdentifier,
+                    environment: processEnv
+                ),
                 explicitPassword: socketPasswordArg,
                 jsonOutput: jsonOutput
             )
@@ -2780,12 +2168,19 @@ struct CMUXCLI {
         let envSocketPath = explicitSocketPath == nil
             ? try CLISocketEnvironment.socketPath(in: processEnv)
             : CLISocketEnvironment.socketPathForTelemetry(in: processEnv)
-        let socketPath = explicitSocketPath ?? envSocketPath ?? CLISocketPathResolver.defaultSocketPath
+        let socketPath = explicitSocketPath ?? envSocketPath ?? CLISocketPathResolver.defaultSocketPath(
+            bundleIdentifier: cliBundleIdentifier,
+            environment: processEnv
+        )
         let socketPathSource: CLISocketPathSource
         if explicitSocketPath != nil {
             socketPathSource = .explicitFlag
         } else if let envSocketPath {
-            socketPathSource = CLISocketPathResolver.isImplicitDefaultPath(envSocketPath) ? .implicitDefault : .environment
+            socketPathSource = CLISocketPathResolver.isImplicitDefaultPath(
+                envSocketPath,
+                bundleIdentifier: cliBundleIdentifier,
+                environment: processEnv
+            ) ? .implicitDefault : .environment
         } else {
             socketPathSource = .implicitDefault
         }
@@ -2798,7 +2193,8 @@ struct CMUXCLI {
         let resolvedSocketPath = CLISocketPathResolver.resolve(
             requestedPath: socketPath,
             source: socketPathSource,
-            environment: processEnv
+            environment: processEnv,
+            bundleIdentifier: cliBundleIdentifier
         )
 
         // If the argument looks like a path (not a known command), open a workspace there.
@@ -2906,16 +2302,6 @@ struct CMUXCLI {
                 commandArgs: commandArgs,
                 socketPath: resolvedSocketPath,
                 explicitPassword: socketPasswordArg
-            )
-            return
-        }
-
-        if command == "tmux" {
-            try runTmuxNotifyCommand(
-                commandArgs: commandArgs,
-                socketPath: resolvedSocketPath,
-                explicitPassword: socketPasswordArg,
-                jsonOutput: jsonOutput
             )
             return
         }
@@ -3789,7 +3175,7 @@ struct CMUXCLI {
             let payload = try client.sendV2(method: "surface.trigger_flash", params: params)
             printV2Payload(payload, jsonOutput: jsonOutput, idFormat: idFormat, fallbackText: v2OKSummary(payload, idFormat: idFormat))
 
-        case "list-panels", "list-surfaces":
+        case "list-panels":
             let workspaceArg = workspaceFromArgsOrEnv(commandArgs, windowOverride: windowId)
             var params: [String: Any] = [:]
             let wsId = try normalizeWorkspaceHandle(workspaceArg, client: client)
@@ -6026,19 +5412,16 @@ struct CMUXCLI {
         var lines: [String] = [
             "cmux_workspace_id=\"${CMUX_WORKSPACE_ID:-}\"",
             "cmux_surface_id=\"${CMUX_SURFACE_ID:-}\"",
-            "cmux_remote_initial_cwd=\"${CMUX_REMOTE_INITIAL_CWD:-}\"",
-            "cmux_remote_initial_cwd_b64=\"\"",
-            "if [ -n \"$cmux_remote_initial_cwd\" ]; then cmux_remote_initial_cwd_b64=\"$(printf '%s' \"$cmux_remote_initial_cwd\" | base64 | tr -d '\\n')\"; fi",
             "cmux_remote_bootstrap_b64=\(shellQuote(encodedBootstrapScript))",
             "cmux_remote_bootstrap=\"$(printf %s \"$cmux_remote_bootstrap_b64\" | base64 -d 2>/dev/null || printf %s \"$cmux_remote_bootstrap_b64\" | base64 -D 2>/dev/null)\"",
-            "cmux_remote_bootstrap=\"$(printf '%s' \"$cmux_remote_bootstrap\" | sed \"s|__CMUX_WORKSPACE_ID__|$cmux_workspace_id|g; s|__CMUX_SURFACE_ID__|$cmux_surface_id|g; s|__CMUX_REMOTE_INITIAL_CWD_B64__|$cmux_remote_initial_cwd_b64|g\")\"",
+            "cmux_remote_bootstrap=\"$(printf '%s' \"$cmux_remote_bootstrap\" | sed \"s/__CMUX_WORKSPACE_ID__/$cmux_workspace_id/g; s/__CMUX_SURFACE_ID__/$cmux_surface_id/g\")\"",
             "printf '%s' \"$cmux_remote_bootstrap\" | command \(installSSHPrefix) -T \(shellQuote(options.destination)) \(shellQuote(remoteBootstrapInstallCommand))",
             "cmux_remote_install_status=$?",
             "if [ \"$cmux_remote_install_status\" -ne 0 ]; then",
             "  exit \"$cmux_remote_install_status\"",
             "fi",
             "cmux_remote_command_template=\(shellQuote(remoteCommandTemplate))",
-            "cmux_remote_command=\"$(printf '%s' \"$cmux_remote_command_template\" | sed \"s|__CMUX_WORKSPACE_ID__|$cmux_workspace_id|g; s|__CMUX_SURFACE_ID__|$cmux_surface_id|g; s|__CMUX_REMOTE_INITIAL_CWD_B64__|$cmux_remote_initial_cwd_b64|g\")\"",
+            "cmux_remote_command=\"$(printf '%s' \"$cmux_remote_command_template\" | sed \"s/__CMUX_WORKSPACE_ID__/$cmux_workspace_id/g; s/__CMUX_SURFACE_ID__/$cmux_surface_id/g\")\"",
         ]
 
         var sshInvocation = "command \(sessionSSHPrefix) -o \"RemoteCommand=$cmux_remote_command\""
@@ -6192,13 +5575,6 @@ struct CMUXCLI {
         commonShellExportLines.append(contentsOf: [
             "hash -r >/dev/null 2>&1 || true",
             "rehash >/dev/null 2>&1 || true",
-            "cmux_remote_initial_cwd_b64='__CMUX_REMOTE_INITIAL_CWD_B64__'",
-            "if [ \"$cmux_remote_initial_cwd_b64\" = '__CMUX_REMOTE_INITIAL_CWD_B64__' ]; then cmux_remote_initial_cwd_b64=''; fi",
-            "if [ -n \"$cmux_remote_initial_cwd_b64\" ]; then",
-            "  cmux_remote_initial_cwd=\"$(printf %s \"$cmux_remote_initial_cwd_b64\" | base64 -d 2>/dev/null || printf %s \"$cmux_remote_initial_cwd_b64\" | base64 -D 2>/dev/null || true)\"",
-            "  if [ -n \"$cmux_remote_initial_cwd\" ]; then cd \"$cmux_remote_initial_cwd\" 2>/dev/null || true; fi",
-            "fi",
-            "unset cmux_remote_initial_cwd_b64 cmux_remote_initial_cwd",
         ])
         var zshShellLines = commonShellExportLines
         zshShellLines.append(
@@ -9981,14 +9357,6 @@ struct CMUXCLI {
               cmux omc team 3:claude "implement feature"
               cmux omc --watch
             """)
-        case "tmux":
-            return """
-            Usage: cmux tmux init [--force] [--json]
-                   cmux tmux refresh [--event <name>] [--pane-tty <tty>] [--client-tty <tty>]
-
-            Install and run tmux hooks that keep cmux notification/focus metadata
-            current when tmux panes, windows, sessions, and clients change.
-            """
         case "identify":
             return """
             Usage: cmux identify [--workspace <id|ref|index>] [--surface <id|ref|index>] [--no-caller]
@@ -10529,10 +9897,9 @@ struct CMUXCLI {
               cmux trigger-flash
               cmux trigger-flash --workspace workspace:2 --surface surface:3
             """
-        case "list-panels", "list-surfaces":
-            let commandName = command == "list-surfaces" ? "list-surfaces" : "list-panels"
+        case "list-panels":
             return """
-            Usage: cmux \(commandName) [--workspace <id|ref>]
+            Usage: cmux list-panels [--workspace <id|ref>]
 
             List surfaces (panels) in a workspace.
 
@@ -10540,8 +9907,8 @@ struct CMUXCLI {
               --workspace <id|ref>   Workspace context (default: $CMUX_WORKSPACE_ID)
 
             Example:
-              cmux \(commandName)
-              cmux \(commandName) --workspace workspace:2
+              cmux list-panels
+              cmux list-panels --workspace workspace:2
             """
         case "focus-panel":
             return """
@@ -11524,7 +10891,7 @@ struct CMUXCLI {
             guard parsed.positional.count == 2 else {
                 throw CLIError(message: String(localized: "cli.rightSidebar.error.setRequiresMode", defaultValue: "right-sidebar set requires a mode: files, find, vault, sessions, feed, or dock"))
             }
-let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             guard isRightSidebarCLIMode(mode) else {
                 throw CLIError(message: String(localized: "cli.rightSidebar.error.unknownMode", defaultValue: "Unknown right-sidebar mode '\(parsed.positional[1])'"))
             }
@@ -13532,11 +12899,19 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
 
     private func tmuxCompatResolvedSocketPath(processEnvironment: [String: String]) throws -> String {
         let envSocketPath = try CLISocketEnvironment.socketPath(in: processEnvironment)
+        let bundleIdentifier = CLISocketPathResolver.currentAppBundleIdentifier()
 
-        let requestedSocketPath = envSocketPath ?? CLISocketPathResolver.defaultSocketPath
+        let requestedSocketPath = envSocketPath ?? CLISocketPathResolver.defaultSocketPath(
+            bundleIdentifier: bundleIdentifier,
+            environment: processEnvironment
+        )
         let source: CLISocketPathSource
         if let envSocketPath {
-            source = CLISocketPathResolver.isImplicitDefaultPath(envSocketPath) ? .implicitDefault : .environment
+            source = CLISocketPathResolver.isImplicitDefaultPath(
+                envSocketPath,
+                bundleIdentifier: bundleIdentifier,
+                environment: processEnvironment
+            ) ? .implicitDefault : .environment
         } else {
             source = .implicitDefault
         }
@@ -13544,7 +12919,8 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
         return CLISocketPathResolver.resolve(
             requestedPath: requestedSocketPath,
             source: source,
-            environment: processEnvironment
+            environment: processEnvironment,
+            bundleIdentifier: bundleIdentifier
         )
     }
 
@@ -13715,10 +13091,9 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
             unsetenv("CMUX_ORIGINAL_NODE_OPTIONS")
             return
         }
-        if let existing = processEnvironment["NODE_OPTIONS"],
-           let originalNodeOptions = normalizedNodeOptionsForRestore(existing) {
+        if let existing = processEnvironment["NODE_OPTIONS"] {
             setenv("CMUX_ORIGINAL_NODE_OPTIONS_PRESENT", "1", 1)
-            setenv("CMUX_ORIGINAL_NODE_OPTIONS", originalNodeOptions, 1)
+            setenv("CMUX_ORIGINAL_NODE_OPTIONS", normalizedNodeOptionsForRestore(existing), 1)
         } else {
             setenv("CMUX_ORIGINAL_NODE_OPTIONS_PRESENT", "0", 1)
             unsetenv("CMUX_ORIGINAL_NODE_OPTIONS")
@@ -13760,39 +13135,12 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
     }
 
     private func createClaudeNodeOptionsRestoreModule() throws -> URL {
-        var candidates: [URL] = []
-        let environment = ProcessInfo.processInfo.environment
-        let homePath: String = {
-            guard let rawHome = environment["HOME"] else {
-                return NSHomeDirectory()
-            }
-            let trimmedHome = rawHome.trimmingCharacters(in: .whitespacesAndNewlines)
-            return trimmedHome.isEmpty ? NSHomeDirectory() : trimmedHome
-        }()
-        if !homePath.isEmpty {
-            candidates.append(
-                URL(fileURLWithPath: homePath, isDirectory: true)
-                    .appendingPathComponent(".claude", isDirectory: true)
-                    .appendingPathComponent("cmux", isDirectory: true)
-            )
-        }
-        candidates.append(
-            URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-                .appendingPathComponent("cmux-claude-node-options", isDirectory: true)
-        )
-
-        var lastError: Error?
-        for root in candidates {
-            do {
-                try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true, attributes: nil)
-                let restoreModuleURL = root.appendingPathComponent("restore-node-options.cjs", isDirectory: false)
-                try writeShimIfChanged(Self.claudeNodeOptionsRestoreModule, to: restoreModuleURL)
-                return restoreModuleURL
-            } catch {
-                lastError = error
-            }
-        }
-        throw lastError ?? CocoaError(.fileWriteUnknown)
+        let root = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            .appendingPathComponent("cmux-claude-node-options", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true, attributes: nil)
+        let restoreModuleURL = root.appendingPathComponent("restore-node-options.cjs", isDirectory: false)
+        try writeShimIfChanged(Self.claudeNodeOptionsRestoreModule, to: restoreModuleURL)
+        return restoreModuleURL
     }
 
     private func runClaudeTeams(
@@ -15097,8 +14445,7 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
         }
     }
 
-    private static let omoPluginName = "oh-my-openagent"
-    private static let legacyOmoPluginName = "oh-my-opencode"
+    private static let omoPluginName = "oh-my-opencode"
     private static let openCodeSessionPluginConfigSpec = "./plugins/cmux-session.js"
 
     private func resolveExecutableInPath(_ name: String) -> String? {
@@ -15141,7 +14488,7 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
 
         // Keep the shadow package isolated from stale/yanked pins in the user's
         // opencode package.json. bun will update this manifest with the resolved
-        // oh-my-openagent version when installation succeeds.
+        // oh-my-opencode version when installation succeeds.
         let packageManifest: [String: Any] = [
             "dependencies": [
                 Self.omoPluginName: "latest"
@@ -15285,7 +14632,7 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
         return "4096"
     }
 
-    /// Creates a shadow config directory that layers oh-my-openagent on top of the user's
+    /// Creates a shadow config directory that layers oh-my-opencode on top of the user's
     /// existing opencode config without modifying the original. Sets OPENCODE_CONFIG_DIR
     /// to point at the shadow directory.
     private func omoEnsurePlugin() throws {
@@ -15309,9 +14656,7 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
             config = [:]
         }
 
-        var plugins = Self.openCodePluginListNormalizingOMOPlugin(
-            Self.openCodePluginListRemovingSessionPlugin((config["plugin"] as? [Any]) ?? [])
-        )
+        var plugins = Self.openCodePluginListRemovingSessionPlugin((config["plugin"] as? [Any]) ?? [])
         if !Self.openCodePluginListContains(plugins, spec: Self.omoPluginName, allowVersionSuffix: true) {
             plugins.append(Self.omoPluginName)
         }
@@ -15336,14 +14681,8 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
 
         try writeOpenCodeSessionPlugin(in: shadowDir)
 
-        // Copy oh-my-openagent plugin config (jsonc) if the user has one.
-        // Keep legacy filenames visible in the shadow dir so existing setups still load.
-        for filename in [
-            "oh-my-openagent.json",
-            "oh-my-openagent.jsonc",
-            "oh-my-opencode.json",
-            "oh-my-opencode.jsonc"
-        ] {
+        // Copy oh-my-opencode plugin config (jsonc) if the user has one
+        for filename in ["oh-my-opencode.json", "oh-my-opencode.jsonc"] {
             let userFile = userDir.appendingPathComponent(filename)
             let shadowFile = shadowDir.appendingPathComponent(filename)
             if fm.fileExists(atPath: userFile.path) && !fm.fileExists(atPath: shadowFile.path) {
@@ -15356,7 +14695,7 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
         if !fm.fileExists(atPath: pluginPackageDir.path) {
             let installDir = shadowDir
             if let bunPath = resolveExecutableInPath("bun") {
-                FileHandle.standardError.write("Installing \(Self.omoPluginName) plugin (this may take a minute on first run)...\n".data(using: .utf8)!)
+                FileHandle.standardError.write("Installing oh-my-opencode plugin (this may take a minute on first run)...\n".data(using: .utf8)!)
                 let installArguments = ["add", Self.omoPluginName]
                 let firstAttemptStatus = try omoRunPackageInstall(
                     executablePath: bunPath,
@@ -15364,7 +14703,7 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
                     currentDirectoryURL: installDir
                 )
                 if firstAttemptStatus != 0 {
-                    FileHandle.standardError.write("Retrying \(Self.omoPluginName) install with a clean shadow package state...\n".data(using: .utf8)!)
+                    FileHandle.standardError.write("Retrying oh-my-opencode install with a clean shadow package state...\n".data(using: .utf8)!)
                     try? fm.removeItem(at: shadowBunLockURL)
                     try? fm.removeItem(at: shadowNodeModules)
                     try omoEnsureShadowNodeModulesSymlink(shadowNodeModules: shadowNodeModules, userNodeModules: userNodeModules)
@@ -15374,46 +14713,38 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
                         currentDirectoryURL: installDir
                     )
                     if retryStatus != 0 {
-                        throw CLIError(message: "Failed to install \(Self.omoPluginName). Try manually: npm install -g \(Self.omoPluginName)")
+                        throw CLIError(message: "Failed to install oh-my-opencode. Try manually: npm install -g oh-my-opencode")
                     }
                 }
             } else if let npmPath = resolveExecutableInPath("npm") {
-                FileHandle.standardError.write("Installing \(Self.omoPluginName) plugin (this may take a minute on first run)...\n".data(using: .utf8)!)
+                FileHandle.standardError.write("Installing oh-my-opencode plugin (this may take a minute on first run)...\n".data(using: .utf8)!)
                 let status = try omoRunPackageInstall(
                     executablePath: npmPath,
                     arguments: ["install", Self.omoPluginName],
                     currentDirectoryURL: installDir
                 )
                 if status != 0 {
-                    throw CLIError(message: "Failed to install \(Self.omoPluginName). Try manually: npm install -g \(Self.omoPluginName)")
+                    throw CLIError(message: "Failed to install oh-my-opencode. Try manually: npm install -g oh-my-opencode")
                 }
             } else {
-                throw CLIError(message: "Neither bun nor npm found in PATH. Install \(Self.omoPluginName) manually: bunx \(Self.omoPluginName) install")
+                throw CLIError(message: "Neither bun nor npm found in PATH. Install oh-my-opencode manually: bunx oh-my-opencode install")
             }
-            FileHandle.standardError.write("\(Self.omoPluginName) plugin installed\n".data(using: .utf8)!)
+            FileHandle.standardError.write("oh-my-opencode plugin installed\n".data(using: .utf8)!)
         }
 
-        // Ensure tmux mode is enabled in oh-my-openagent config.
+        // Ensure tmux mode is enabled in oh-my-opencode config.
         // Without this, the TmuxSessionManager won't spawn visual panes even though
         // $TMUX is set (tmux.enabled defaults to false).
-        let omoConfigURL = shadowDir.appendingPathComponent("oh-my-openagent.json")
+        let omoConfigURL = shadowDir.appendingPathComponent("oh-my-opencode.json")
         var omoConfig: [String: Any]
         if let data = try? Data(contentsOf: omoConfigURL),
            let existing = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             omoConfig = existing
         } else {
-            // Check if user has a current or legacy config and write the normalized
-            // shadow copy under the current package name.
-            let userOmoConfigURLs = [
-                userDir.appendingPathComponent("oh-my-openagent.json"),
-                userDir.appendingPathComponent("oh-my-opencode.json"),
-                shadowDir.appendingPathComponent("oh-my-opencode.json")
-            ]
-            if let existing = userOmoConfigURLs.lazy.compactMap({ url -> [String: Any]? in
-                guard let data = try? Data(contentsOf: url) else { return nil }
-                guard let object = try? JSONSerialization.jsonObject(with: data) else { return nil }
-                return object as? [String: Any]
-            }).first {
+            // Check if user has a config we symlinked, read from source
+            let userOmoConfig = userDir.appendingPathComponent("oh-my-opencode.json")
+            if let data = try? Data(contentsOf: userOmoConfig),
+               let existing = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 omoConfig = existing
                 // Remove the symlink so we can write our own copy
                 try? fm.removeItem(at: omoConfigURL)
@@ -15511,7 +14842,7 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
             }
         }
 
-        // Ensure oh-my-openagent plugin is registered and installed
+        // Ensure oh-my-opencode plugin is registered and installed
         try omoEnsurePlugin()
 
         let shimDirectory = try createOMOShimDirectory()
@@ -15753,10 +15084,9 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
             unsetenv("CMUX_ORIGINAL_NODE_OPTIONS")
             return
         }
-        if let existing = processEnvironment["NODE_OPTIONS"],
-           let originalNodeOptions = normalizedNodeOptionsForRestore(existing) {
+        if let existing = processEnvironment["NODE_OPTIONS"] {
             setenv("CMUX_ORIGINAL_NODE_OPTIONS_PRESENT", "1", 1)
-            setenv("CMUX_ORIGINAL_NODE_OPTIONS", originalNodeOptions, 1)
+            setenv("CMUX_ORIGINAL_NODE_OPTIONS", normalizedNodeOptionsForRestore(existing), 1)
         } else {
             setenv("CMUX_ORIGINAL_NODE_OPTIONS_PRESENT", "0", 1)
             unsetenv("CMUX_ORIGINAL_NODE_OPTIONS")
@@ -17089,14 +16419,6 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
                 // Non-clear SessionStart can arrive late from startup/resume/compact
                 // after /clear, so only /clear or replacement of a stopped owner
                 // establishes a new active boundary.
-                //
-                // When it is a new active boundary (/clear or a stopped-session
-                // replacement), mark the record restorable immediately so
-                // session autosave can pick up the rotated sessionId before the
-                // first post-rotation turn writes a transcript. Otherwise the
-                // snapshot keeps pointing at the pre-clear session, which is
-                // exactly the one the user just abandoned, and
-                // `restore-session` resumes the wrong Claude transcript.
                 try? sessionStore.upsert(
                     sessionId: sessionId,
                     workspaceId: workspaceId,
@@ -17105,25 +16427,10 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
                     transcriptPath: parsedInput.transcriptPath,
                     pid: claudePid,
                     launchCommand: launchCommand,
-                    isRestorable: shouldPromoteActiveSession ? true : false,
+                    isRestorable: false,
                     markActive: shouldPromoteActiveSession,
                     turnId: parsedInput.turnId
                 )
-                if isClearSessionStart {
-                    // `/clear` abandons the previous session on the same panel.
-                    // Without pruning, both records linger with matching
-                    // (workspace, surface) and the older one can win on
-                    // autosave when updatedAt ordering flukes (e.g., a late
-                    // pre-clear Notification Stamp). Consume siblings on this
-                    // panel so only the rotated session remains restorable.
-                    pruneClaudeSessionSiblings(
-                        store: sessionStore,
-                        keepSessionId: sessionId,
-                        workspaceId: workspaceId,
-                        surfaceId: surfaceId,
-                        telemetry: telemetry
-                    )
-                }
             }
             // Register PID for stale-session detection and OSC suppression.
             // Startup/resume SessionStart remains non-visible; /clear is a
@@ -17384,7 +16691,6 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
             // as current only when the consumed session was the active one.
             if let consumedSession {
                 let workspaceId = consumedSession.workspaceId
-                let surfaceId = consumedSession.surfaceId
                 sendClaudeFeedTelemetry(workspaceId: workspaceId)
                 let shouldClearVisibleState = shouldApplyClaudeHookVisibleMutation(
                     sessionStore: sessionStore,
@@ -17621,41 +16927,6 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
             return false
         }
         return source.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "clear"
-    }
-
-    private func pruneClaudeSessionSiblings(
-        store: ClaudeHookSessionStore,
-        keepSessionId: String,
-        workspaceId: String,
-        surfaceId: String,
-        telemetry: CLISocketSentryTelemetry
-    ) {
-        do {
-            let removed = try store.removePanelSiblings(
-                keepSessionId: keepSessionId,
-                workspaceId: workspaceId,
-                surfaceId: surfaceId
-            )
-            if !removed.isEmpty {
-                telemetry.breadcrumb(
-                    "claude-hook.clear.pruned-siblings",
-                    data: [
-                        "removed_count": removed.count,
-                        "workspace_id": workspaceId,
-                        "surface_id": surfaceId,
-                    ]
-                )
-            }
-        } catch {
-            telemetry.breadcrumb(
-                "claude-hook.clear.prune-siblings.error",
-                data: [
-                    "error": String(describing: error),
-                    "workspace_id": workspaceId,
-                    "surface_id": surfaceId,
-                ]
-            )
-        }
     }
 
     private func socketPanelOption(_ surfaceId: String?) -> String {
@@ -18895,7 +18166,7 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
     private static let codexMonitorLeaseDirectoryName = "codex-monitor-leases"
     private static let codexMonitorLeaseMaxAgeSeconds: TimeInterval = 4 * 60 * 60
     private static let codexMonitorRetiredLeaseMaxAgeSeconds: TimeInterval = 2 * 60
-    private static let codexMonitorOwnerCheckIntervalSeconds: TimeInterval = 10
+    private static let codexMonitorOwnerCheckIntervalSeconds: TimeInterval = 60
     private static let codexMonitorOwnerCheckTimeoutSeconds: TimeInterval = 1
 
     private func codexMonitorLeaseDirectory(env: [String: String]) -> URL {
@@ -19057,109 +18328,6 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
         return ownerFound ? .alive : .gone
     }
 
-    private func codexMonitorOwnerPID(client: SocketClient) -> Int? {
-        guard let payload = try? client.sendV2(
-            method: "system.identify",
-            responseTimeout: Self.codexMonitorOwnerCheckTimeoutSeconds
-        ) else {
-            return nil
-        }
-        if let pid = payload["app_pid"] as? Int, pid > 0 {
-            return pid
-        }
-        if let pid = (payload["app_pid"] as? NSNumber)?.intValue, pid > 0 {
-            return pid
-        }
-        return nil
-    }
-
-    private final class CodexMonitorOwnerExitWatcher {
-        private let lock = NSLock()
-        private var processSource: DispatchSourceProcess?
-        private var didExit = false
-        private var waiters: [DispatchSemaphore] = []
-
-        init?(ownerPID: Int?) {
-            guard let ownerPID, ownerPID > 0 else { return nil }
-            guard Self.processExists(ownerPID) else {
-                didExit = true
-                return
-            }
-
-            let source = DispatchSource.makeProcessSource(
-                identifier: pid_t(ownerPID),
-                eventMask: .exit,
-                queue: DispatchQueue.global(qos: .utility)
-            )
-            source.setEventHandler { [weak self] in
-                self?.markExited()
-            }
-            processSource = source
-            source.resume()
-        }
-
-        deinit {
-            let sourceToCancel: DispatchSourceProcess?
-            lock.lock()
-            sourceToCancel = processSource
-            processSource = nil
-            waiters.removeAll()
-            lock.unlock()
-            sourceToCancel?.cancel()
-        }
-
-        var hasExited: Bool {
-            lock.lock()
-            let value = didExit
-            lock.unlock()
-            return value
-        }
-
-        func registerWaiter(_ semaphore: DispatchSemaphore) -> Bool {
-            lock.lock()
-            if didExit {
-                lock.unlock()
-                semaphore.signal()
-                return false
-            }
-            waiters.append(semaphore)
-            lock.unlock()
-            return true
-        }
-
-        func unregisterWaiter(_ semaphore: DispatchSemaphore) {
-            lock.lock()
-            waiters.removeAll { $0 === semaphore }
-            lock.unlock()
-        }
-
-        private func markExited() {
-            let waitersToSignal: [DispatchSemaphore]
-            let sourceToCancel: DispatchSourceProcess?
-            lock.lock()
-            guard !didExit else {
-                lock.unlock()
-                return
-            }
-            didExit = true
-            waitersToSignal = waiters
-            waiters.removeAll()
-            sourceToCancel = processSource
-            processSource = nil
-            lock.unlock()
-
-            waitersToSignal.forEach { $0.signal() }
-            sourceToCancel?.cancel()
-        }
-
-        private static func processExists(_ pid: Int) -> Bool {
-            if kill(pid_t(pid), 0) == 0 {
-                return true
-            }
-            return errno == EPERM
-        }
-    }
-
     private func startCodexTranscriptMonitor(
         sessionId: String,
         turnId: String?,
@@ -19167,7 +18335,6 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
         cwd: String?,
         workspaceId: String,
         surfaceId: String?,
-        ownerPID: Int?,
         leasePath: String?,
         env: [String: String],
         telemetry: CLISocketSentryTelemetry
@@ -19208,9 +18375,6 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
         if let cwd, !cwd.isEmpty {
             monitorArgs += ["--cwd", cwd]
         }
-        if let ownerPID, ownerPID > 0 {
-            monitorArgs += ["--owner-pid", String(ownerPID)]
-        }
         if let leasePath, !leasePath.isEmpty {
             monitorArgs += ["--lease", leasePath]
         }
@@ -19239,34 +18403,17 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
         let turnId = optionValue(commandArgs, name: "--turn")
         var transcriptPath = optionValue(commandArgs, name: "--transcript")
         let leasePath = optionValue(commandArgs, name: "--lease")
-        defer { removeCodexMonitorLease(path: leasePath) }
-        let ownerPIDRaw = optionValue(commandArgs, name: "--owner-pid")
-        let ownerPID: Int?
-        if let ownerPIDRaw {
-            guard let parsedOwnerPID = Int(ownerPIDRaw), parsedOwnerPID > 0 else {
-                throw CLIError(
-                    message: "cmux hooks codex monitor: Invalid --owner-pid; provide a positive integer PID and retry",
-                    exitCode: 2
-                )
-            }
-            ownerPID = parsedOwnerPID
-        } else {
-            ownerPID = nil
-        }
 
         guard !workspaceId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               !sessionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return
         }
 
+        defer { removeCodexMonitorLease(path: leasePath) }
         let deadline = Date().addingTimeInterval(4 * 60 * 60)
-        let ownerExitWatcher = CodexMonitorOwnerExitWatcher(ownerPID: ownerPID)
         var nextOwnerCheck = Date.distantPast
         var publishedUserInputCallIds = Set<String>()
         while Date() < deadline {
-            if ownerExitWatcher?.hasExited == true {
-                return
-            }
             if isCodexMonitorLeaseRetired(path: leasePath) {
                 return
             }
@@ -19328,12 +18475,7 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
 
             let remaining = deadline.timeIntervalSinceNow
             guard remaining > 0 else { return }
-            waitForCodexTranscriptChange(
-                path: transcriptPath,
-                leasePath: leasePath,
-                ownerExitWatcher: ownerExitWatcher,
-                timeout: min(30, remaining)
-            )
+            waitForCodexTranscriptChange(path: transcriptPath, leasePath: leasePath, timeout: min(30, remaining))
         }
     }
 
@@ -19376,23 +18518,11 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
         )
     }
 
-    private func waitForCodexTranscriptChange(
-        path: String?,
-        leasePath: String?,
-        ownerExitWatcher: CodexMonitorOwnerExitWatcher?,
-        timeout: TimeInterval
-    ) {
+    private func waitForCodexTranscriptChange(path: String?, leasePath: String?, timeout: TimeInterval) {
         guard timeout > 0 else { return }
 
         let semaphore = DispatchSemaphore(value: 0)
-        let registeredOwnerWaiter = ownerExitWatcher?.registerWaiter(semaphore) ?? false
         var sources: [DispatchSourceFileSystemObject] = []
-        defer {
-            if registeredOwnerWaiter {
-                ownerExitWatcher?.unregisterWaiter(semaphore)
-            }
-            sources.forEach { $0.cancel() }
-        }
 
         func addFileSource(path: String?, eventMask: DispatchSource.FileSystemEvent) {
             guard let path, !path.isEmpty else { return }
@@ -19417,12 +18547,13 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
         addFileSource(path: path, eventMask: [.write, .extend, .delete, .rename])
         addFileSource(path: leasePath, eventMask: [.write, .delete, .rename])
 
-        guard !sources.isEmpty || ownerExitWatcher != nil else {
-            _ = semaphore.wait(timeout: .now() + timeout)
+        guard !sources.isEmpty else {
+            _ = DispatchSemaphore(value: 0).wait(timeout: .now() + timeout)
             return
         }
 
         _ = semaphore.wait(timeout: .now() + timeout)
+        sources.forEach { $0.cancel() }
     }
 
     private func extractMessageText(from message: [String: Any]) -> String? {
@@ -19560,28 +18691,8 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
 
         var filtered: [String] = []
         var index = 0
-        var shouldDropInjectedHeapCap = false
         while index < tokens.count {
             let token = tokens[index]
-            if shouldDropInjectedHeapCap, isInjectedNodeHeapCap(tokens, index: index) {
-                index += nodeHeapCapWidth(tokens, index: index)
-                shouldDropInjectedHeapCap = false
-                continue
-            }
-            shouldDropInjectedHeapCap = false
-
-            if isRequireOption(token), index + 1 < tokens.count,
-               isCmuxNodeOptionsRestoreModulePath(tokens[index + 1]) {
-                index += 2
-                shouldDropInjectedHeapCap = true
-                continue
-            }
-            if let path = inlineRequireOptionPath(token),
-               isCmuxNodeOptionsRestoreModulePath(path) {
-                index += 1
-                shouldDropInjectedHeapCap = true
-                continue
-            }
             if token == "--max-old-space-size" {
                 index += min(2, tokens.count - index)
                 continue
@@ -19596,36 +18707,16 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
         return filtered.joined(separator: " ")
     }
 
-    private func normalizedNodeOptionsForRestore(_ existing: String) -> String? {
+    private func normalizedNodeOptionsForRestore(_ existing: String) -> String {
         let tokens = existing
             .split(whereSeparator: \.isWhitespace)
             .map(String.init)
-        guard !tokens.isEmpty else { return nil }
+        guard !tokens.isEmpty else { return "" }
 
         var normalized: [String] = []
         var index = 0
-        var shouldDropInjectedHeapCap = false
         while index < tokens.count {
             let token = tokens[index]
-            if shouldDropInjectedHeapCap, isInjectedNodeHeapCap(tokens, index: index) {
-                index += nodeHeapCapWidth(tokens, index: index)
-                shouldDropInjectedHeapCap = false
-                continue
-            }
-            shouldDropInjectedHeapCap = false
-
-            if isRequireOption(token), index + 1 < tokens.count,
-               isCmuxNodeOptionsRestoreModulePath(tokens[index + 1]) {
-                index += 2
-                shouldDropInjectedHeapCap = true
-                continue
-            }
-            if let path = inlineRequireOptionPath(token),
-               isCmuxNodeOptionsRestoreModulePath(path) {
-                index += 1
-                shouldDropInjectedHeapCap = true
-                continue
-            }
             if token == "--max-old-space-size", index + 1 < tokens.count {
                 normalized.append("--max-old-space-size=\(tokens[index + 1])")
                 index += 2
@@ -19634,42 +18725,7 @@ let mode = parsed.positional[1].trimmingCharacters(in: .whitespacesAndNewlines).
             normalized.append(token)
             index += 1
         }
-        let joined = normalized.joined(separator: " ")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        return joined.isEmpty ? nil : joined
-    }
-
-    private func isRequireOption(_ token: String) -> Bool {
-        token == "--require" || token == "-r"
-    }
-
-    private func inlineRequireOptionPath(_ token: String) -> String? {
-        for prefix in ["--require=", "-r="] where token.hasPrefix(prefix) {
-            return String(token.dropFirst(prefix.count))
-        }
-        return nil
-    }
-
-    private func isCmuxNodeOptionsRestoreModulePath(_ value: String) -> Bool {
-        let trimmed = value.trimmingCharacters(in: CharacterSet(charactersIn: "'\""))
-        guard URL(fileURLWithPath: trimmed).lastPathComponent == "restore-node-options.cjs" else {
-            return false
-        }
-        return trimmed.contains("/cmux-") || trimmed.contains("/.claude/cmux/")
-    }
-
-    private func isInjectedNodeHeapCap(_ tokens: [String], index: Int) -> Bool {
-        guard index < tokens.count else { return false }
-        let token = tokens[index]
-        if token == "--max-old-space-size" {
-            return index + 1 < tokens.count && tokens[index + 1] == "4096"
-        }
-        return token == "--max-old-space-size=4096"
-    }
-
-    private func nodeHeapCapWidth(_ tokens: [String], index: Int) -> Int {
-        guard index < tokens.count else { return 1 }
-        return tokens[index] == "--max-old-space-size" ? min(2, tokens.count - index) : 1
+        return normalized.joined(separator: " ")
     }
 
     // MARK: - Codex hooks
@@ -20169,86 +19225,6 @@ export default CMUXSessionRestore;
             }
             return false
         }
-    }
-
-    private static func openCodePluginEntryName(_ entry: Any) -> String? {
-        if let string = entry as? String {
-            return string
-        }
-        if let tuple = entry as? [Any], let string = tuple.first as? String {
-            return string
-        }
-        return nil
-    }
-
-    private static func openCodePluginSpecIsPackage(_ value: String, packageName: String) -> Bool {
-        value == packageName || value.hasPrefix("\(packageName)@")
-    }
-
-    private static func openCodePluginEntryReplacingPackage(
-        _ entry: Any,
-        packageName: String,
-        replacementPackageName: String
-    ) -> Any {
-        guard let name = openCodePluginEntryName(entry),
-              openCodePluginSpecIsPackage(name, packageName: packageName)
-        else {
-            return entry
-        }
-
-        let replacementName = "\(replacementPackageName)\(name.dropFirst(packageName.count))"
-        if entry is String {
-            return replacementName
-        }
-        if var tuple = entry as? [Any] {
-            tuple[0] = replacementName
-            return tuple
-        }
-        return entry
-    }
-
-    private static func openCodePluginListNormalizingOMOPlugin(_ plugins: [Any]) -> [Any] {
-        let hasCurrentOMOPlugin = plugins.contains { entry in
-            guard let name = openCodePluginEntryName(entry) else { return false }
-            return openCodePluginSpecIsPackage(name, packageName: omoPluginName)
-        }
-        var sawOMOPlugin = false
-        var normalized: [Any] = []
-        for entry in plugins {
-            guard let name = openCodePluginEntryName(entry) else {
-                normalized.append(entry)
-                continue
-            }
-
-            if openCodePluginSpecIsPackage(name, packageName: omoPluginName) {
-                if sawOMOPlugin {
-                    continue
-                }
-                sawOMOPlugin = true
-                normalized.append(entry)
-                continue
-            }
-
-            if hasCurrentOMOPlugin,
-               openCodePluginSpecIsPackage(name, packageName: legacyOmoPluginName) {
-                continue
-            }
-
-            let normalizedEntry = openCodePluginEntryReplacingPackage(
-                entry,
-                packageName: legacyOmoPluginName,
-                replacementPackageName: omoPluginName
-            )
-            if let normalizedName = openCodePluginEntryName(normalizedEntry),
-               openCodePluginSpecIsPackage(normalizedName, packageName: omoPluginName) {
-                if sawOMOPlugin {
-                    continue
-                }
-                sawOMOPlugin = true
-            }
-            normalized.append(normalizedEntry)
-        }
-        return normalized
     }
 
     private static func openCodePluginListRemovingSessionPlugin(_ plugins: [Any]) -> [Any] {
@@ -21845,66 +20821,37 @@ export default function cmuxPiSessionExtension(pi: ExtensionAPI) {
                 client: client
             )
             if def.name == "codex", !sessionId.isEmpty {
-                let shouldUseOwnerPID = !client.isRelayBacked
-                let ownerPID = shouldUseOwnerPID ? codexMonitorOwnerPID(client: client) : nil
-                if shouldUseOwnerPID && ownerPID == nil {
+                let leasePath = createCodexMonitorLease(
+                    sessionId: sessionId,
+                    turnId: input.turnId,
+                    workspaceId: workspaceId,
+                    surfaceId: surfaceId,
+                    env: env
+                )
+                if leasePath == nil {
                     telemetry.breadcrumb(
-                        "codex-hook.monitor.owner-unavailable",
-                        data: [
-                            "has_turn_id": normalizedHookValue(input.turnId) != nil,
-                            "has_transcript": normalizedHookValue(input.transcriptPath) != nil,
-                            "has_surface_id": normalizedHookValue(surfaceId) != nil,
-                        ]
+                        "codex-hook.monitor.lease-unavailable",
+                        data: ["has_turn_id": normalizedHookValue(input.turnId) != nil]
                     )
-                }
-                if !shouldUseOwnerPID {
-                    telemetry.breadcrumb(
-                        "codex-hook.monitor.owner-pid-skipped",
-                        data: [
-                            "reason": "relay_socket",
-                            "has_turn_id": normalizedHookValue(input.turnId) != nil,
-                            "has_transcript": normalizedHookValue(input.transcriptPath) != nil,
-                            "has_surface_id": normalizedHookValue(surfaceId) != nil,
-                        ]
-                    )
-                }
-                if !shouldUseOwnerPID || ownerPID != nil {
-                    if let leasePath = createCodexMonitorLease(
+                } else {
+                    retireCodexMonitorLeases(
                         sessionId: sessionId,
-                        turnId: input.turnId,
-                        workspaceId: workspaceId,
-                        surfaceId: surfaceId,
+                        turnId: nil,
+                        preservingLeasePath: leasePath,
                         env: env
-                    ) {
-                        retireCodexMonitorLeases(
-                            sessionId: sessionId,
-                            turnId: nil,
-                            preservingLeasePath: leasePath,
-                            env: env
-                        )
-                        startCodexTranscriptMonitor(
-                            sessionId: sessionId,
-                            turnId: input.turnId,
-                            transcriptPath: normalizedHookValue(input.transcriptPath),
-                            cwd: hookCwd ?? mapped?.cwd,
-                            workspaceId: workspaceId,
-                            surfaceId: surfaceId,
-                            ownerPID: shouldUseOwnerPID ? ownerPID : nil,
-                            leasePath: leasePath,
-                            env: env,
-                            telemetry: telemetry
-                        )
-                    } else {
-                        telemetry.breadcrumb(
-                            "codex-hook.monitor.lease-unavailable",
-                            data: [
-                                "has_turn_id": normalizedHookValue(input.turnId) != nil,
-                                "has_owner_pid": ownerPID != nil,
-                                "relay_socket": !shouldUseOwnerPID,
-                            ]
-                        )
-                    }
+                    )
                 }
+                startCodexTranscriptMonitor(
+                    sessionId: sessionId,
+                    turnId: input.turnId,
+                    transcriptPath: normalizedHookValue(input.transcriptPath),
+                    cwd: hookCwd ?? mapped?.cwd,
+                    workspaceId: workspaceId,
+                    surfaceId: surfaceId,
+                    leasePath: leasePath,
+                    env: env,
+                    telemetry: telemetry
+                )
             }
 
         case .stop:
@@ -22004,14 +20951,10 @@ export default function cmuxPiSessionExtension(pi: ExtensionAPI) {
             }
             if let mapped = try? store.consume(sessionId: sessionId, workspaceId: nil, surfaceId: nil) {
                 sendAgentFeedTelemetry(workspaceId: mapped.workspaceId)
-                _ = try? sendV1Command("clear_status \(def.statusKey) --tab=\(mapped.workspaceId)", client: client)
-                _ = try? sendV1Command("clear_agent_pid \(pidKey) --tab=\(mapped.workspaceId)", client: client)
-                if !mapped.surfaceId.isEmpty, !mapped.sessionId.isEmpty {
-                    _ = try? sendV1Command(
-                        "agent_session_ended --tab=\(mapped.workspaceId) --surface=\(mapped.surfaceId) --session=\(mapped.sessionId)",
-                        client: client
-                    )
-                }
+                _ = try? sendV1Command(
+                    "clear_agent_pid \(pidKey) --tab=\(mapped.workspaceId)\(socketPanelOption(mapped.surfaceId)) --clear-status",
+                    client: client
+                )
             }
 
         case .noop:
@@ -25078,18 +24021,12 @@ export default function cmuxPiSessionExtension(pi: ExtensionAPI) {
     }
 
     private func currentExecutablePath() -> String? {
-        var size: UInt32 = 0
-        _ = _NSGetExecutablePath(nil, &size)
-        if size > 0 {
-            var buffer = Array<CChar>(repeating: 0, count: Int(size))
-            if _NSGetExecutablePath(&buffer, &size) == 0 {
-                let path = String(cString: buffer).trimmingCharacters(in: .whitespacesAndNewlines)
-                if !path.isEmpty {
-                    return path
-                }
-            }
+        if let path = CLIExecutableLocator.currentExecutableURL()?.path
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !path.isEmpty {
+            return path
         }
-        return Bundle.main.executableURL?.path ?? args.first
+        return args.first
     }
 
     func resolvedExecutableURL() -> URL? {
@@ -25191,7 +24128,6 @@ export default function cmuxPiSessionExtension(pi: ExtensionAPI) {
           surface-health [--workspace <id|ref>]
           debug-terminals
           trigger-flash [--workspace <id|ref>] [--surface <id|ref>]
-          list-surfaces [--workspace <id|ref>]
           list-panels [--workspace <id|ref>]
           focus-panel --panel <id|ref> [--workspace <id|ref>]
           close-workspace --workspace <id|ref>
@@ -25211,8 +24147,6 @@ export default function cmuxPiSessionExtension(pi: ExtensionAPI) {
           open-notification --id <uuid>
           jump-to-unread
           clear-notifications
-          tmux init [--force] [--json]
-          tmux refresh [--event <name>] [--pane-tty <tty>] [--client-tty <tty>]
           right-sidebar <toggle|show|hide|focus|set|mode|files|find|vault|sessions|feed|dock> [--workspace <id|ref|index>] [--window <id|ref|index>] [--no-focus]
           set-status <key> <value> [--workspace <id|ref>] [--icon <name>] [--color <#hex>]
           clear-status <key> [--workspace <id|ref>]
@@ -25294,7 +24228,7 @@ export default function cmuxPiSessionExtension(pi: ExtensionAPI) {
           CMUX_TAB_ID         Optional alias used by `tab-action`/`rename-tab` as default --tab.
           CMUX_SURFACE_ID     Auto-set in cmux terminals. Used as default --surface.
           CMUX_SOCKET_PATH    Override the Unix socket path. Without this, the CLI defaults
-                              to ~/Library/Application Support/cmux/com.cmuxterm.app.sock and auto-discovers tagged/debug sockets.
+                              to ~/Library/Application Support/cmux/cmux.sock and auto-discovers tagged/debug sockets.
         """
     }
 

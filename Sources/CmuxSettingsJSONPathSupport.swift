@@ -110,6 +110,8 @@ extension CmuxSettingsFileStore {
         "browser.defaultSearchEngine",
         "browser.showSearchSuggestions",
         "browser.theme",
+        "browser.discardHiddenWebViews",
+        "browser.hiddenWebViewDiscardDelaySeconds",
         "browser.openTerminalLinksInCmuxBrowser",
         "browser.interceptTerminalOpenCommandInCmuxBrowser",
         "browser.hostsToOpenInEmbeddedBrowser",

@@ -2952,6 +2952,25 @@ final class BonsplitTabDragPayloadTests: XCTestCase {
         XCTAssertEqual(owner.requestedTypes, [])
     }
 
+    func testWorkspaceDropRoutingAcceptsTabTransferTypeOnly() {
+        XCTAssertTrue(
+            BonsplitTabDragPayload.canRouteWorkspaceDrop(
+                pasteboardTypes: [DragOverlayRoutingPolicy.bonsplitTabTransferType]
+            )
+        )
+    }
+
+    func testWorkspaceDropRoutingRejectsFilePreviewCompatibilityTransfer() {
+        XCTAssertFalse(
+            BonsplitTabDragPayload.canRouteWorkspaceDrop(
+                pasteboardTypes: [
+                    DragOverlayRoutingPolicy.filePreviewTransferType,
+                    DragOverlayRoutingPolicy.bonsplitTabTransferType,
+                ]
+            )
+        )
+    }
+
     private func makeBonsplitPayloadPasteboard(
         kind: String?,
         includesFilePreviewTransferType: Bool = false
