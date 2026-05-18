@@ -8264,7 +8264,7 @@ struct ContentView: View {
                 alert.addButton(withTitle: String(localized: "tsm.alert.cancel", defaultValue: "Cancel"))
                 guard alert.runModal() == .alertFirstButtonReturn,
                       let pick = popup.titleOfSelectedItem else { return }
-                guard WorkspaceProjectBridge.loadLayout(name: pick) != nil else {
+                guard let layout = WorkspaceProjectBridge.loadLayout(name: pick) else {
                     let err = NSAlert()
                     err.messageText = String(
                         localized: "tsm.alert.openProject.notFound",
@@ -8273,19 +8273,22 @@ struct ContentView: View {
                     err.runModal()
                     return
                 }
-                // Materializing the layout into bonsplit splits is a
-                // follow-up that needs deeper integration with the
-                // panel-creation path. For now, surface the layout to the
-                // user so the data round-trips even if the UI restore
-                // doesn't fire yet.
+                guard let workspace = focusedWorkspaceForProjectBridge() else {
+                    NSSound.beep()
+                    return
+                }
+                let count = WorkspaceProjectBridge.materialize(layout: layout, into: workspace)
+                #if DEBUG
+                cmuxDebugLog("session-persistence.project.open name=\(pick) panels=\(count)")
+                #endif
                 let info = NSAlert()
                 info.messageText = String(
                     localized: "tsm.alert.openProject.loaded",
-                    defaultValue: "Project '\(pick)' loaded"
+                    defaultValue: "Opened project '\(pick)'"
                 )
                 info.informativeText = String(
-                    localized: "tsm.alert.openProject.loadedHint",
-                    defaultValue: "Layout materialization will land in a follow-up; sessions remain in tsm."
+                    localized: "tsm.alert.openProject.loadedSummary",
+                    defaultValue: "Materialized \(count) panel(s)."
                 )
                 info.runModal()
             }
