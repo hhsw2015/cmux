@@ -194,7 +194,8 @@ Total cmux est: ~4 days, ~400-600 LOC across `Sources/HerdrClient/`, `Sources/Wo
 | **F1c** | `HerdrTransportFactory.make(host:)` + drop `remoteNotSupportedYet` throw in HerdrBackend; thread host through pump. | done — cmux `feat(herdr): F1c ...` |
 | **F1d** | `HerdrOneShotRPC` shared helper; close/divider dispatchers use factory transport instead of direct AF_UNIX. | done — cmux `feat(herdr): F1d ...` |
 | **F1e** | `HerdrDisplayClient` spawns `ssh host -- herdr-cmux raw-pty-attach <id>` for .sshStdio. Same stdio bridge pattern as the API socket; full bidirectional terminal flow over SSH. | done — cmux `feat(herdr): F1e ...` |
-| **F2** (was C7) | Sidebar shows remote host's workspaces. | 1-2 d |
+| **F2-light (host menu)** | Debug → "Open Herdr Workspace on…" lists every registered host. `HerdrPanelOpener.openWorkspace(host:)` generic entry; `openLocalhostWorkspace` is a wrapper. | done — cmux `feat(herdr): F2-light ...` |
+| **F2 (sidebar)** | Show remote host's workspaces in cmux sidebar workspace tree. Deeper UI plumbing; deferred. | pending |
 | **F3 (manual install)** | Debug menu "Install herdr-cmux on first remote host": scp local binary → remote `~/.local/bin/`, chmod, verify with --version. Single host, no UI dialog. | done — cmux `feat(herdr): F3 ...` |
 | **F3 (auto on registration)** | One-click "Install" button in Settings → Hosts that runs at host-add time with progress UI. | pending |
 | **F4 (shortcut)** | Cmd+Opt+H bound to "Open Herdr Workspace (localhost)". | done — cmux `feat(herdr): bind Cmd+Opt+H ...` |
