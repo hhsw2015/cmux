@@ -177,6 +177,68 @@ final class HerdrLayoutSpecTests: XCTestCase {
         XCTAssertNil(plan.focusedSlot)
     }
 
+    @MainActor
+    func testExecutorSinglePaneJustBinds() {
+        let controller = BonsplitController()
+        _ = controller.createTab(title: "root")
+        let rootPaneId = controller.focusedPaneId!.id
+
+        let spec = HerdrLayoutSpec(
+            workspaceId: "w1",
+            tabId: "w1:1",
+            root: .pane(herdrPaneId: "w1-1"),
+            focusedHerdrPaneId: "w1-1"
+        )
+        let plan = HerdrLayoutApplyPlan(spec: spec)
+        var factoryCalls: [(UUID, String)] = []
+        let result = HerdrLayoutExecutor.execute(
+            plan: plan,
+            rootCmuxPaneId: rootPaneId,
+            controller: controller
+        ) { paneId, herdrId in
+            factoryCalls.append((paneId, herdrId))
+        }
+        XCTAssertEqual(factoryCalls.count, 1)
+        XCTAssertEqual(factoryCalls.first?.0, rootPaneId)
+        XCTAssertEqual(factoryCalls.first?.1, "w1-1")
+        XCTAssertEqual(result.slotPaneIds, [rootPaneId])
+        XCTAssertEqual(result.registry.cmuxPaneId(forHerdrId: "w1-1"), rootPaneId)
+        XCTAssertEqual(result.focusedCmuxPaneId, rootPaneId)
+        XCTAssertEqual(controller.allPaneIds.count, 1)
+    }
+
+    @MainActor
+    func testExecutorMaterializesNestedSplitTree() {
+        let controller = BonsplitController()
+        _ = controller.createTab(title: "root")
+        let rootPaneId = controller.focusedPaneId!.id
+
+        let plan = HerdrLayoutApplyPlan(spec: sampleSpec())
+        var orderedHerdrIds: [String] = []
+        let result = HerdrLayoutExecutor.execute(
+            plan: plan,
+            rootCmuxPaneId: rootPaneId,
+            controller: controller
+        ) { _, herdrId in
+            orderedHerdrIds.append(herdrId)
+        }
+        XCTAssertEqual(result.slotPaneIds.count, 3)
+        XCTAssertEqual(controller.allPaneIds.count, 3)
+        XCTAssertEqual(Set(orderedHerdrIds), ["w1-1", "w1-2", "w1-3"])
+        XCTAssertEqual(result.registry.count, 3)
+        XCTAssertEqual(
+            result.registry.cmuxPaneId(forHerdrId: "w1-1"),
+            result.slotPaneIds[0]
+        )
+        XCTAssertEqual(result.focusedCmuxPaneId, result.slotPaneIds[1])
+        // Slot 0 corresponds to the original root pane.
+        XCTAssertEqual(result.slotPaneIds[0], rootPaneId)
+        // New slots got fresh PaneIDs.
+        XCTAssertNotEqual(result.slotPaneIds[1], rootPaneId)
+        XCTAssertNotEqual(result.slotPaneIds[2], rootPaneId)
+        XCTAssertNotEqual(result.slotPaneIds[1], result.slotPaneIds[2])
+    }
+
     func testPlanFocusedSlotIsNilWhenIdMissing() {
         let spec = HerdrLayoutSpec(
             workspaceId: "w1",

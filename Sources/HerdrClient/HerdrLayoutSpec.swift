@@ -253,6 +253,87 @@ extension HerdrLayoutApplyPlan {
     }
 }
 
+/// Outcome of executing a `HerdrLayoutApplyPlan` against a real
+/// `BonsplitController`. Lists the cmux `PaneID` allocated for each
+/// slot (slot 0 = the root pane the executor was given) and the
+/// populated binding registry.
+struct HerdrLayoutApplyResult {
+    let slotPaneIds: [UUID]
+    let registry: HerdrPaneBindingRegistry
+    /// Cmux pane id that should hold focus, or nil if the plan didn't
+    /// have a focused slot or the bonsplit slot lookup failed.
+    let focusedCmuxPaneId: UUID?
+}
+
+@MainActor
+enum HerdrLayoutExecutor {
+    /// Drive a `HerdrLayoutApplyPlan` against a real bonsplit
+    /// controller. The executor calls `splitPane` for each split step
+    /// (passing nil tab so the new pane starts empty) and invokes
+    /// `paneFactory` for each leaf so callers can populate the pane
+    /// with a herdr-backed terminal surface and any other content they
+    /// need.
+    ///
+    /// - Parameters:
+    ///   - plan: the materialization plan from `HerdrLayoutApplyPlan(spec:)`.
+    ///   - rootCmuxPaneId: cmux pane that becomes slot 0. Must already
+    ///     exist in `controller`'s tree.
+    ///   - controller: bonsplit controller for the workspace that
+    ///     hosts the materialized layout.
+    ///   - paneFactory: invoked for every `.bind` step in plan order
+    ///     with the cmux PaneID that resolves to that slot, plus the
+    ///     herdr pane id to populate it with.
+    /// - Returns: the slot→cmux pane id table plus a registry that
+    ///   maps every herdr pane id to the cmux pane that backs it.
+    static func execute(
+        plan: HerdrLayoutApplyPlan,
+        rootCmuxPaneId: UUID,
+        controller: BonsplitController,
+        paneFactory: (UUID, String) -> Void
+    ) -> HerdrLayoutApplyResult {
+        var slotPaneIds: [UUID] = Array(repeating: UUID(), count: plan.slotCount)
+        slotPaneIds[0] = rootCmuxPaneId
+        let registry = HerdrPaneBindingRegistry()
+
+        for step in plan.steps {
+            switch step {
+            case .split(let targetSlot, let orientation, let ratio, let newSlot):
+                let targetPaneId = PaneID(id: slotPaneIds[targetSlot])
+                guard let newPaneId = controller.splitPane(
+                    targetPaneId,
+                    orientation: orientation,
+                    withTab: nil,
+                    initialDividerPosition: ratio
+                ) else {
+                    // splitPane failed (vetoed by delegate or splits
+                    // disabled). Bail out — caller decides whether to
+                    // retry or fall back. We still return whatever was
+                    // bound up to this point so the caller can clean up.
+                    return HerdrLayoutApplyResult(
+                        slotPaneIds: slotPaneIds,
+                        registry: registry,
+                        focusedCmuxPaneId: nil
+                    )
+                }
+                slotPaneIds[newSlot] = newPaneId.id
+            case .bind(let slot, let herdrPaneId):
+                let cmuxPaneId = slotPaneIds[slot]
+                registry.bind(cmuxPaneId: cmuxPaneId, herdrPaneId: herdrPaneId)
+                paneFactory(cmuxPaneId, herdrPaneId)
+            }
+        }
+
+        let focusedCmuxPaneId = plan.focusedSlot.flatMap { slot -> UUID? in
+            (0..<slotPaneIds.count).contains(slot) ? slotPaneIds[slot] : nil
+        }
+        return HerdrLayoutApplyResult(
+            slotPaneIds: slotPaneIds,
+            registry: registry,
+            focusedCmuxPaneId: focusedCmuxPaneId
+        )
+    }
+}
+
 /// Bidirectional binding between cmux bonsplit `PaneID`s (UUID-based)
 /// and herdr public pane ids (string `w<n>-<m>` form). One registry per
 /// herdr-backed cmux tab. E2 consumes this when sending mutation RPCs
