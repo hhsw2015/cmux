@@ -29,7 +29,7 @@ Tracking only kicks in when the user invokes `zmx attach <name>` (or its alias
 ## Components
 
 ```
-Packages/CMUXZmx/
+Packages/CMUXSessionDaemon/
   ├─ ZmxLocator           // PATH + ~/.local/bin + homebrew discovery
   ├─ ZmxArgvParser        // recognise `zmx attach <name>` / `zmx a <name>`
   ├─ ZmxClient            // wrap `zmx ls --short` and `zmx kill`
@@ -148,7 +148,7 @@ to invoke "Reattach…" manually.
 
 ## Tests
 
-`swift test --package-path Packages/CMUXZmx` runs 39 unit tests:
+`swift test --package-path Packages/CMUXSessionDaemon` runs 39 unit tests:
 
 * `ZmxArgvParserTests` — alias coverage for every zmx subcommand
 * `ZmxLocatorTests` — PATH lookup, candidate paths, executable check

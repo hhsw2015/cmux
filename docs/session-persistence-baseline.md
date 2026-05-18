@@ -8,7 +8,7 @@ deviations within the bounds below or block release.
 | Package | Tests | Notes |
 |---------|-------|-------|
 | cmuxTests (app) | varies | Run via `xcodebuild -scheme cmux-unit` |
-| CMUXZmx pkg | 55 | After Phase 0.3 |
+| CMUXSessionDaemon pkg | 55 | After Phase 0.3 |
 
 ## Performance budgets
 
@@ -47,8 +47,8 @@ These cmux behaviors must remain identical when `engine = none`:
 gh workflow run "Build app" --repo manaflow-ai/cmux
 gh workflow run "CI" --repo manaflow-ai/cmux
 
-# Local CMUXZmx package
-cd Packages/CMUXZmx && swift test
+# Local CMUXSessionDaemon package
+cd Packages/CMUXSessionDaemon && swift test
 
 # E2E with real zmx (local)
 brew install zmx
