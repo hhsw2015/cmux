@@ -43,6 +43,13 @@ public final class SessionDaemonResolver: @unchecked Sendable {
         case .tsm:
             let backend = TsmBackend()
             return backend.locateBinary() != nil ? backend : nil
+        case .herdr:
+            // herdr backends are addressed per-host (one daemon per machine)
+            // and are wired up in the cmux app layer via HostRegistry,
+            // not through this global resolver. Returning nil here keeps
+            // the legacy detach/reattach code paths untouched while
+            // herdr-specific code goes through HerdrBackend directly.
+            return nil
         }
     }
 

@@ -4,6 +4,7 @@ import Foundation
 public enum SessionDaemonKind: String, Sendable, Codable {
     case zmx
     case tsm
+    case herdr
 }
 
 /// Minimum capabilities every daemon backend must provide. Both `zmx` and
