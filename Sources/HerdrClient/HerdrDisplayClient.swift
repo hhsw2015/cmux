@@ -2,8 +2,10 @@ import Foundation
 
 /// Errors raised by HerdrDisplayClient.
 enum HerdrDisplayClientError: Error, Equatable {
-    /// `host.transport` is not `.localUDS`. SSH stdio transport for the
-    /// display path is implemented in B7.
+    /// Reserved for unsupported transport variants. SSH stdio is now
+    /// supported via `ssh host -- herdr-cmux raw-pty-attach`; this
+    /// case fires only if a new `HerdrHost.Transport` variant is
+    /// added without display-client support.
     case remoteNotSupportedYet
 }
 
@@ -53,23 +55,34 @@ final class HerdrDisplayClient {
         self.outputContinuation = continuation
     }
 
-    /// Spawn the subprocess. Throws if the binary isn't executable, the
-    /// spawn itself fails, or the host is not a local-UDS host (remote
-    /// .sshStdio support is wired up in B7). Bytes start flowing once
-    /// herdr finishes the handshake server-side (typically within
-    /// ~100 ms locally).
+    /// Spawn the subprocess. Throws if the binary isn't executable or
+    /// the spawn itself fails. For .localUDS hosts this runs the local
+    /// `herdr-cmux raw-pty-attach` directly; for .sshStdio hosts it
+    /// runs `/usr/bin/ssh <target> -- herdr-cmux ...` so the same
+    /// stdio bridge pattern works over SSH. Bytes start flowing once
+    /// herdr finishes the handshake server-side (~100 ms locally,
+    /// 1-2 s over typical SSH).
     func start(takeover: Bool = false) async throws {
-        guard case .localUDS = host.transport else {
-            throw HerdrDisplayClientError.remoteNotSupportedYet
-        }
         let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: executablePath)
-        var args: [String] = ["--session", host.sessionName,
-                              "raw-pty-attach", terminalId,
-                              "--cols", String(initialCols),
-                              "--rows", String(initialRows)]
-        if takeover { args.append("--takeover") }
-        proc.arguments = args
+        var rawPtyArgs: [String] = ["--session", host.sessionName,
+                                     "raw-pty-attach", terminalId,
+                                     "--cols", String(initialCols),
+                                     "--rows", String(initialRows)]
+        if takeover { rawPtyArgs.append("--takeover") }
+        switch host.transport {
+        case .localUDS:
+            proc.executableURL = URL(fileURLWithPath: executablePath)
+            proc.arguments = rawPtyArgs
+        case .sshStdio(let target):
+            proc.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
+            // -T: no remote tty (we're piping bytes); BatchMode=yes:
+            // fail fast on missing key instead of prompting.
+            // remoteBinaryPath defaults to "herdr-cmux" in $PATH on
+            // the remote host.
+            var args = ["-T", "-o", "BatchMode=yes", target, "--", "herdr-cmux"]
+            args.append(contentsOf: rawPtyArgs)
+            proc.arguments = args
+        }
 
         let stdinPipe = Pipe()
         let stdoutPipe = Pipe()
