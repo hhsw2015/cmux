@@ -1,25 +1,29 @@
-# Ghostty Fork Changes (manaflow-ai/ghostty)
+# Ghostty Fork Changes (hhsw2015/ghostty)
 
 This repo uses a fork of Ghostty for local patches that aren't upstream yet.
 When we change the fork, update this document and the parent submodule SHA.
 
+The submodule URL was switched from `manaflow-ai/ghostty` to
+`hhsw2015/ghostty` on 2026-05-19 so the cmux fork's owner can push
+directly. The hhsw2015 fork was re-forked from manaflow-ai at that
+time, so all manaflow customisations are still on its `main`.
+
 ## Fork update checklist
 
 1) Make changes in `ghostty/`.
-2) Commit and push to `manaflow-ai/ghostty`.
+2) Commit and push to `hhsw2015/ghostty`.
 3) Update this file with the new change summary + conflict notes.
 4) In the parent repo: `git add ghostty` and commit the submodule SHA.
 
 ## Current fork changes
 
-The fork was refreshed from upstream `main` again on May 12, 2026.
-Current cmux pinned fork head: `7e4cf8a2f`, based on `41ab6c5ab`, with the
-manual embedded IO patch in https://github.com/manaflow-ai/ghostty/pull/53,
-the cursor-line selection API in https://github.com/manaflow-ai/ghostty/pull/56,
-and the Metal renderer row rebuild guard for cmux issue #3369. This head keeps
-the cmux theme picker hooks, exposes the manual surface IO needed by libghostty
-iOS clients, exposes semantic cursor-line selection for cmux terminal Select All,
-and bounds shaped glyph iteration during IME/preedit row rebuilds.
+Current cmux pinned fork head: `0f9451d2d`, a merge of manaflow's
+`main` (`7e4cf8a2f`, cursor-line selection API + manual embedded IO +
+cmux theme picker hooks + Metal renderer guard) with the
+`issue-cmd-hover-path-range` branch (`ff6e1260d`, path-range bounds +
+crash-report-subdir option + preedit catch-up fix). This head keeps
+every manaflow patch plus the upstream-cmux fixes that hadn't yet
+landed on manaflow `main`.
 
 ### 1) macOS display link restart on display changes
 
