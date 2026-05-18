@@ -43,6 +43,19 @@ extension ContentView {
 
         contributions.append(
             CommandPaletteCommandContribution(
+                commandId: "palette.killCurrentHerdrWorkspace",
+                title: constant(String(
+                    localized: "command.killCurrentHerdrWorkspace.title",
+                    defaultValue: "Kill Current Herdr Workspace"
+                )),
+                subtitle: herdrSubtitle,
+                shortcutHint: "⌥⇧⌘K",
+                keywords: ["herdr", "kill", "close", "current", "workspace", "destroy"]
+            )
+        )
+
+        contributions.append(
+            CommandPaletteCommandContribution(
                 commandId: "palette.installHerdrCmux",
                 title: constant(String(
                     localized: "command.installHerdrCmux.title",
@@ -65,6 +78,9 @@ extension ContentView {
             ) {
                 HerdrPanelOpener.openWorkspace(host: capturedHost)
             }
+        }
+        registry.register(commandId: "palette.killCurrentHerdrWorkspace") {
+            HerdrKillCommands.killCurrentWorkspace()
         }
         registry.register(commandId: "palette.installHerdrCmux") {
             HerdrRemoteInstaller.installOnFirstRemoteHost()

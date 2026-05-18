@@ -330,6 +330,13 @@ struct cmuxApp: App {
 
                     Divider()
 
+                    Button(String(localized: "menu.herdr.killCurrent", defaultValue: "Kill Current Workspace…")) {
+                        HerdrKillCommands.killCurrentWorkspace()
+                    }
+                    .keyboardShortcut("k", modifiers: [.command, .option, .shift])
+
+                    Divider()
+
                     Button(String(localized: "menu.herdr.installRemote", defaultValue: "Install herdr-cmux on First Remote Host")) {
                         HerdrRemoteInstaller.installOnFirstRemoteHost()
                     }
