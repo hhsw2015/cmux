@@ -20,6 +20,11 @@ public struct WorkstreamEvent: Codable, Sendable, Equatable {
     public let ppid: Int?
     public let receivedAt: Date
     public let extraFieldsJSON: String?
+    /// Optional cmux surface (panel) id, populated when the hook payload
+    /// carried `_cmux_surface_id` or its alias `cmux_surface_id`. Lets
+    /// downstream consumers (CombinedAgentFeedBridge) route events to a
+    /// specific panel.
+    public let surfaceId: String?
 
     public init(
         sessionId: String,
@@ -33,7 +38,8 @@ public struct WorkstreamEvent: Codable, Sendable, Equatable {
         requestId: String? = nil,
         ppid: Int? = nil,
         receivedAt: Date = Date(),
-        extraFieldsJSON: String? = nil
+        extraFieldsJSON: String? = nil,
+        surfaceId: String? = nil
     ) {
         self.sessionId = sessionId
         self.hookEventName = hookEventName
@@ -47,6 +53,7 @@ public struct WorkstreamEvent: Codable, Sendable, Equatable {
         self.ppid = ppid
         self.receivedAt = receivedAt
         self.extraFieldsJSON = extraFieldsJSON
+        self.surfaceId = surfaceId
     }
 
     /// Hook event discriminator. Values match the strings Vibe Island and
@@ -79,6 +86,7 @@ public struct WorkstreamEvent: Codable, Sendable, Equatable {
         case requestId = "_opencode_request_id"
         case ppid = "_ppid"
         case receivedAt = "_received_at"
+        case surfaceId = "_cmux_surface_id"
     }
 
     public init(from decoder: Decoder) throws {
@@ -93,6 +101,14 @@ public struct WorkstreamEvent: Codable, Sendable, Equatable {
         self.requestId = try c.decodeIfPresent(String.self, forKey: .requestId)
         self.ppid = try c.decodeIfPresent(Int.self, forKey: .ppid)
         self.receivedAt = try c.decodeIfPresent(Date.self, forKey: .receivedAt) ?? Date()
+        // Hooks may emit either `_cmux_surface_id` or its alias
+        // `cmux_surface_id`. Try the canonical key first; fall back to
+        // the alias via the dynamic decoder below.
+        if let value = try c.decodeIfPresent(String.self, forKey: .surfaceId), !value.isEmpty {
+            self.surfaceId = value
+        } else {
+            self.surfaceId = nil
+        }
         let knownKeys = Set(CodingKeys.allCases.map(\.stringValue))
         let dynamic = try decoder.container(keyedBy: JSONDynamicKey.self)
         var extra: [String: AnyJSON] = [:]
@@ -122,6 +138,7 @@ public struct WorkstreamEvent: Codable, Sendable, Equatable {
         try c.encodeIfPresent(context, forKey: .context)
         try c.encodeIfPresent(requestId, forKey: .requestId)
         try c.encodeIfPresent(ppid, forKey: .ppid)
+        try c.encodeIfPresent(surfaceId, forKey: .surfaceId)
         try c.encode(receivedAt, forKey: .receivedAt)
         if let extraFieldsJSON,
            case .object(let extra) = AnyJSON(jsonString: extraFieldsJSON) {

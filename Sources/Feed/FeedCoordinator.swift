@@ -64,13 +64,32 @@ final class FeedCoordinator: @unchecked Sendable {
     @MainActor
     func mirrorToCombinedAgentFeed(_ event: WorkstreamEvent) {
         guard SessionPersistenceFeatureFlags.effective(.agentMerge) else { return }
-        // We can't always know the cmux panel a feed event belongs to; the
-        // event carries a workspaceId/threadId tuple. Skip without a panel
-        // id — Phase 7's bridge keys exclusively on panelId. The reducer
-        // can still merge richer entries from the binder side.
-        // For now this hook just observes; future PRs will extend
-        // WorkstreamEvent with a panelId or look one up via TabManager.
-        _ = event
+        guard let surfaceId = event.surfaceId,
+              let panelId = UUID(uuidString: surfaceId) else { return }
+        let kind: CombinedAgentEntry.AgentKind
+        switch event.source.lowercased() {
+        case "claude": kind = .claude
+        case "codex": kind = .codex
+        case "cursor": kind = .cursor
+        default: kind = .unknown
+        }
+        let status: CombinedAgentEntry.AgentStatus
+        switch event.hookEventName {
+        case .stop, .subagentStop:
+            status = .completed
+        case .notification, .userPromptSubmit:
+            status = .waiting
+        default:
+            status = .running
+        }
+        CombinedAgentFeedBridge.shared.ingest(update: .init(
+            panelId: panelId,
+            sessionName: nil,
+            kind: kind,
+            status: status,
+            sources: [.cmuxHook],
+            lastUpdate: event.receivedAt
+        ))
     }
 
     /// Idempotent: subsequent calls with the same PID no-op.
