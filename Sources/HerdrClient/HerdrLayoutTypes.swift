@@ -98,6 +98,15 @@ struct HerdrTabReorderedPayload: Codable, Equatable, Sendable {
     }
 }
 
+/// Payload of the `workspace.closed` event broadcast after `workspace.close`.
+struct HerdrWorkspaceClosedPayload: Codable, Equatable, Sendable {
+    let workspaceId: String
+
+    private enum CodingKeys: String, CodingKey {
+        case workspaceId = "workspace_id"
+    }
+}
+
 extension HerdrApiClient {
     /// Fetch the current BSP tree for one tab. Used on attach to
     /// initialize cmux's bonsplit mirror; subsequent updates come from

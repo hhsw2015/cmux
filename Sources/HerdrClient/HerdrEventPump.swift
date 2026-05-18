@@ -43,7 +43,7 @@ final class HerdrEventPump {
         let client = HerdrApiClient(transport: LocalUDSTransport(socketPath: socketPath))
         do {
             try await client.start()
-            try await client.subscribe(["layout.changed"])
+            try await client.subscribe(["layout.changed", "workspace.closed"])
             clients[socketPath] = client
             let stream = await client.events
             consumers[socketPath] = Task { @MainActor [weak self] in
@@ -59,16 +59,24 @@ final class HerdrEventPump {
     }
 
     private func handle(event: HerdrEvent) {
-        // Both rename styles for safety: line-protocol uses snake_case
-        // ("layout_changed"), some clients use dotted ("layout.changed").
-        guard event.event == "layout_changed" || event.event == "layout.changed" else {
-            return
+        // Line-protocol uses snake_case event names; some clients use
+        // dotted ("layout.changed"). Match both for safety.
+        switch event.event {
+        case "layout_changed", "layout.changed":
+            guard let payload = event.decodeData(HerdrLayoutChangedPayload.self) else {
+                cmuxDebugLog("herdr.pump: layout_changed payload decode failed")
+                return
+            }
+            HerdrInboundLayoutSync.apply(tree: payload.tree)
+        case "workspace_closed", "workspace.closed":
+            guard let payload = event.decodeData(HerdrWorkspaceClosedPayload.self) else {
+                cmuxDebugLog("herdr.pump: workspace_closed payload decode failed")
+                return
+            }
+            HerdrInboundLayoutSync.applyWorkspaceClosed(workspaceId: payload.workspaceId)
+        default:
+            break
         }
-        guard let payload = event.decodeData(HerdrLayoutChangedPayload.self) else {
-            cmuxDebugLog("herdr.pump: layout_changed payload decode failed")
-            return
-        }
-        HerdrInboundLayoutSync.apply(tree: payload.tree)
     }
 
     private static func socketPath(for host: HerdrHost) -> String {
