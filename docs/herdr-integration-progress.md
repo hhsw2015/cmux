@@ -232,8 +232,14 @@ Total cmux est: ~4 days, ~400-600 LOC across `Sources/HerdrClient/`, `Sources/Wo
 
 ## Resuming
 
-The next session should:
-1. Read this doc — especially the Architecture principles and Close semantics tables.
-2. Start phase D (herdr fork): D1 (Node wire DTO) → D2 (layout.snapshot) → D3 (mutation RPCs) → D4 (events).
-3. Then phase E (cmux bonsplit mirror).
-4. Phase F (SSH, polish) only after D/E land — without single-source-of-truth, remote hosts inherit a broken architecture.
+The next session should pick up at **F4 production graduation** (user explicitly requested this as the next step before pausing). Concrete:
+
+1. Read this doc top-to-bottom — the status snapshot at the top is current.
+2. Drop `#if DEBUG` from all 9 herdr inner files (HerdrCloseHandler, HerdrDividerSync, HerdrEventPump, HerdrInboundLayoutSync, HerdrOneShotRPC, HerdrPanelOpener, HerdrPersistence, HerdrRemoteInstaller, HerdrSplitDispatcher).
+3. Add release-time stubs:
+   - `cmuxDebugLog(_:)` no-op in `Sources/App/DebugLogging.swift` for non-DEBUG builds.
+   - `Workspace.herdrInboundSplit` ungated (or release stub) in `Sources/Workspace.swift`.
+4. Move the entry points out of `Debug → Debug Windows` and into `Window` menu (preferred per user). Keep Cmd+Opt+H. Strip the `#if DEBUG` around the menu Buttons in `Sources/cmuxApp.swift`.
+5. Verify Release builds with `xcodebuild -configuration Release -derivedDataPath /tmp/cmux-herdr-release build`. Last F4-light attempt failed here at step 2 because cmuxDebugLog and herdrInboundSplit weren't stubbed — that's why step 3 must happen first.
+
+After F4: F2 full sidebar integration (workspaces from registered hosts in cmux's sidebar tree), then E4 auto-reattach on launch (cmux opens → previously-open herdr workspaces materialize without clicking the menu).
