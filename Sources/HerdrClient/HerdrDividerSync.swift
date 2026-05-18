@@ -1,0 +1,165 @@
+#if DEBUG
+import Bonsplit
+import Foundation
+
+/// Outbound divider-drag sync: when bonsplit reports a geometry
+/// change, find any herdr-backed subtrees, diff their split ratios
+/// against the last-seen state, and fire one-shot `pane.set_split_ratio`
+/// RPCs for every changed divider.
+///
+/// `shouldNotifyDuringDrag` defaults to false in cmux's bonsplit
+/// delegate, so this fires once per drag-end rather than per pixel —
+/// no debouncing needed.
+@MainActor
+enum HerdrDividerSync {
+    /// Last-seen divider state per binding key (rootCmuxPaneId).
+    /// Key: binding.rootCmuxPaneId. Value: path → ratio.
+    private static var lastSeen: [UUID: [[Bool]: Float]] = [:]
+
+    /// Walk the workspace's bonsplit tree, find each herdr-backed
+    /// subtree, and emit `pane.set_split_ratio` RPCs for every divider
+    /// whose ratio changed since the previous call.
+    static func sync(treeSnapshot: ExternalTreeNode) {
+        for binding in HerdrTabRegistry.shared.allBindings {
+            guard let subtree = findHerdrSubtreeRoot(tree: treeSnapshot, binding: binding) else {
+                // The bonsplit tree no longer contains exactly this
+                // binding's panes (panes were closed, swapped, or
+                // mixed with non-herdr siblings). Skip until the
+                // shape stabilizes; E2d-close handles pruning.
+                continue
+            }
+            let current = collectDividers(tree: subtree, prefix: [])
+            let previous = lastSeen[binding.rootCmuxPaneId] ?? [:]
+            for (path, ratio) in current where previous[path] != ratio {
+                let socketPath = (("~/.config/herdr/sessions/" + binding.host.sessionName + "/herdr.sock") as NSString)
+                    .expandingTildeInPath
+                let workspaceId = binding.workspaceId
+                let tabId = binding.tabId
+                Task.detached {
+                    await sendPaneSetSplitRatio(
+                        socketPath: socketPath,
+                        workspaceId: workspaceId,
+                        tabId: tabId,
+                        path: path,
+                        ratio: ratio
+                    )
+                }
+            }
+            lastSeen[binding.rootCmuxPaneId] = current
+        }
+    }
+
+    /// Reset bookkeeping for a binding (called when E2d-close drops
+    /// the last pane and removes the binding).
+    static func reset(bindingKey: UUID) {
+        lastSeen.removeValue(forKey: bindingKey)
+    }
+
+    // MARK: - Tree walk helpers
+
+    /// Find the smallest subtree of `tree` whose leaves exactly equal
+    /// the cmux pane ids in `binding`. Returns nil if no such subtree
+    /// exists (shape doesn't match — split, swap, or other mutation
+    /// in flight).
+    private static func findHerdrSubtreeRoot(
+        tree: ExternalTreeNode,
+        binding: HerdrTabBinding
+    ) -> ExternalTreeNode? {
+        let leafIds = collectLeafCmuxIds(tree: tree)
+        if leafIds == binding.ownedCmuxPaneIds && !leafIds.isEmpty {
+            return tree
+        }
+        guard case .split(let split) = tree else {
+            return nil
+        }
+        return findHerdrSubtreeRoot(tree: split.first, binding: binding)
+            ?? findHerdrSubtreeRoot(tree: split.second, binding: binding)
+    }
+
+    private static func collectLeafCmuxIds(tree: ExternalTreeNode) -> Set<UUID> {
+        switch tree {
+        case .pane(let pane):
+            guard let uuid = UUID(uuidString: pane.id) else { return [] }
+            return [uuid]
+        case .split(let split):
+            return collectLeafCmuxIds(tree: split.first)
+                .union(collectLeafCmuxIds(tree: split.second))
+        }
+    }
+
+    private static func collectDividers(
+        tree: ExternalTreeNode,
+        prefix: [Bool]
+    ) -> [[Bool]: Float] {
+        switch tree {
+        case .pane:
+            return [:]
+        case .split(let split):
+            var result: [[Bool]: Float] = [prefix: Float(split.dividerPosition)]
+            for (childPath, childRatio) in collectDividers(tree: split.first, prefix: prefix + [false]) {
+                result[childPath] = childRatio
+            }
+            for (childPath, childRatio) in collectDividers(tree: split.second, prefix: prefix + [true]) {
+                result[childPath] = childRatio
+            }
+            return result
+        }
+    }
+
+    // MARK: - One-shot RPC
+
+    private static func sendPaneSetSplitRatio(
+        socketPath: String,
+        workspaceId: String,
+        tabId: String,
+        path: [Bool],
+        ratio: Float
+    ) async {
+        let envelope: [String: Any] = [
+            "id": "cmux_setratio_\(Int(Date().timeIntervalSince1970 * 1000))",
+            "method": "pane.set_split_ratio",
+            "params": [
+                "workspace_id": workspaceId,
+                "tab_id": tabId,
+                "path": path,
+                "ratio": Double(ratio),
+            ],
+        ]
+        guard var line = try? JSONSerialization.data(withJSONObject: envelope) else {
+            return
+        }
+        line.append(0x0A)
+        let fd = Darwin.socket(AF_UNIX, SOCK_STREAM, 0)
+        guard fd >= 0 else { return }
+        defer { _ = Darwin.close(fd) }
+        var addr = sockaddr_un()
+        addr.sun_family = sa_family_t(AF_UNIX)
+        let pathBytes = Array(socketPath.utf8)
+        let maxLen = MemoryLayout.size(ofValue: addr.sun_path)
+        guard pathBytes.count < maxLen else { return }
+        withUnsafeMutablePointer(to: &addr.sun_path) { pathPtr in
+            pathPtr.withMemoryRebound(to: CChar.self, capacity: maxLen) { rebound in
+                for i in 0..<pathBytes.count {
+                    rebound[i] = CChar(bitPattern: pathBytes[i])
+                }
+                rebound[pathBytes.count] = 0
+            }
+        }
+        let connectResult = withUnsafePointer(to: &addr) { addrPtr -> Int32 in
+            addrPtr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPtr in
+                Darwin.connect(fd, sockaddrPtr, socklen_t(MemoryLayout<sockaddr_un>.size))
+            }
+        }
+        guard connectResult == 0 else { return }
+        line.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
+            guard let base = raw.baseAddress else { return }
+            var written = 0
+            while written < raw.count {
+                let n = Darwin.write(fd, base.advanced(by: written), raw.count - written)
+                if n <= 0 { return }
+                written += n
+            }
+        }
+    }
+}
+#endif

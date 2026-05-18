@@ -27,6 +27,7 @@ enum HerdrCloseHandler {
                 binding.paneBindings.unbind(herdrPaneId: herdrPaneId)
                 if binding.paneBindings.count == 0 {
                     HerdrTabRegistry.shared.remove(key: binding.rootCmuxPaneId)
+                    HerdrDividerSync.reset(bindingKey: binding.rootCmuxPaneId)
                 }
             }
         }

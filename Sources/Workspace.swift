@@ -15163,6 +15163,11 @@ extension Workspace: BonsplitDelegate {
         if !isDetachingCloseTransaction {
             scheduleFocusReconcile()
         }
+#if DEBUG
+        if HerdrTabRegistry.shared.count > 0 {
+            HerdrDividerSync.sync(treeSnapshot: controller.treeSnapshot())
+        }
+#endif
     }
 
     // No post-close polling refresh loop: we rely on view invariants and Ghostty's wakeups.
