@@ -406,6 +406,15 @@ enum HerdrPanelOpener {
         if let focusedCmux = result.focusedCmuxPaneId {
             workspace.bonsplitController.focusPane(PaneID(id: focusedCmux))
         }
+
+        let binding = HerdrTabBinding(
+            host: host,
+            workspaceId: workspaceId,
+            tabId: activeTabId,
+            rootCmuxPaneId: rootPaneId.id,
+            paneBindings: result.registry
+        )
+        HerdrTabRegistry.shared.register(key: rootPaneId.id, binding: binding)
     }
 
     private static func installPanelResizeObserver(
