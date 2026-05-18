@@ -116,4 +116,75 @@ final class HerdrLayoutTypesTests: XCTestCase {
             XCTAssertEqual(api.code, "malformed")
         }
     }
+
+    func testWorkspaceClosedPayloadDecodesSnakeCase() throws {
+        let wireJson = """
+        {"workspace_id": "w123abc"}
+        """
+        let payload = try JSONDecoder().decode(
+            HerdrWorkspaceClosedPayload.self,
+            from: wireJson.data(using: .utf8)!
+        )
+        XCTAssertEqual(payload.workspaceId, "w123abc")
+    }
+
+    func testWorkspaceClosedPayloadEncodesSnakeCase() throws {
+        let payload = HerdrWorkspaceClosedPayload(workspaceId: "w_x")
+        let data = try JSONEncoder().encode(payload)
+        let json = String(data: data, encoding: .utf8) ?? ""
+        XCTAssertTrue(json.contains("\"workspace_id\":\"w_x\""))
+    }
+
+    func testPaneExitedPayloadRoundTrips() throws {
+        let payload = HerdrPaneExitedPayload(paneId: "w1-3", workspaceId: "w1")
+        let data = try JSONEncoder().encode(payload)
+        let json = String(data: data, encoding: .utf8) ?? ""
+        XCTAssertTrue(json.contains("\"pane_id\":\"w1-3\""))
+        XCTAssertTrue(json.contains("\"workspace_id\":\"w1\""))
+        let restored = try JSONDecoder().decode(HerdrPaneExitedPayload.self, from: data)
+        XCTAssertEqual(restored, payload)
+    }
+
+    func testTabReorderedPayloadRoundTrips() throws {
+        let payload = HerdrTabReorderedPayload(
+            workspaceId: "w1",
+            tabIds: ["w1:2", "w1:1", "w1:3"]
+        )
+        let data = try JSONEncoder().encode(payload)
+        let json = String(data: data, encoding: .utf8) ?? ""
+        XCTAssertTrue(json.contains("\"tab_ids\""))
+        let restored = try JSONDecoder().decode(HerdrTabReorderedPayload.self, from: data)
+        XCTAssertEqual(restored, payload)
+    }
+
+    func testLayoutChangedPayloadDecodesNestedTree() throws {
+        let wireJson = """
+        {
+            "tree": {
+                "workspace_id": "w1",
+                "tab_id": "w1:1",
+                "root": {
+                    "kind": "split",
+                    "direction": "vertical",
+                    "ratio": 0.7,
+                    "first": {"kind": "pane", "pane_id": "w1-1"},
+                    "second": {"kind": "pane", "pane_id": "w1-2"}
+                },
+                "focused_pane_id": "w1-1"
+            }
+        }
+        """
+        let payload = try JSONDecoder().decode(
+            HerdrLayoutChangedPayload.self,
+            from: wireJson.data(using: .utf8)!
+        )
+        XCTAssertEqual(payload.tree.workspaceId, "w1")
+        XCTAssertEqual(payload.tree.focusedPaneId, "w1-1")
+        guard case .split(let dir, _, let first, _) = payload.tree.root else {
+            XCTFail("root should be split")
+            return
+        }
+        XCTAssertEqual(dir, .vertical)
+        XCTAssertEqual(first, .pane(paneId: "w1-1"))
+    }
 }
