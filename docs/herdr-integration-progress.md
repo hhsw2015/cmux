@@ -6,6 +6,21 @@ Saved: 2026-05-18
 
 Make cmux a "cross-machine agent workstation" where the Mac running cmux is one of N clients to herdr daemons (local + remote). cmux panels render herdr-managed PTYs directly through Ghostty so the experience is indistinguishable from a regular cmux terminal panel.
 
+## End-to-end status snapshot
+
+The core "cross-machine workstation" loop is functional and validated against `ssh localhost`. Concretely working today:
+
+- **Localhost workspace materialization.** Cmd+Opt+H (or Debug → "Open Herdr Workspace (localhost)") pulls the herdr daemon's authoritative BSP layout, materializes it onto cmux's bonsplit, and wires every leaf to a herdr-backed terminal surface.
+- **Per-host menu.** Debug → "Open Herdr Workspace on…" lists every registered HerdrHost (localhost + ssh entries from Settings → Hosts), one click to attach.
+- **Outbound mutations.** Splitting / closing / dragging dividers in cmux all dispatch the matching RPCs (`pane.split`, `pane.close`, `pane.set_split_ratio`) to the herdr daemon. tmux semantics: close pane = kill, Cmd+Q / close window = detach (process preserved).
+- **Inbound mutations.** Another client (a second cmux, herdr's TUI, or the herdr CLI) can split, close, or drag dividers; cmux mirrors the change via `events.subscribe` → bonsplit. Single-pane add/remove + multi-pane removal + ratio sync all handled. Echo prevention via three layers (`fromExternal: true` + `setLastSeen` + `suppressNextCloseFor`).
+- **SSH transport.** A `HerdrHost` with `.sshStdio(target:)` pipes both the API socket and the raw-PTY display socket through `ssh <target> -- herdr-cmux <subcommand>`. Bridge subcommand (`api-bridge`) added to the herdr fork. Validated end-to-end against `ssh localhost`: ping, workspace.list, layout.snapshot, pane.split, pane.set_split_ratio, events.subscribe with live event push, raw-pty-attach byte stream.
+- **Persistence + reattach.** Last-opened `{workspace_id, tab_id}` per host is persisted to `~/Library/Application Support/cmux/herdr-bindings-<bundleId>.json`. Cmd+Q + relaunch + click "Open Herdr Workspace" reattaches to the same panes.
+- **Robustness.** Pump auto-reconnects with capped backoff after stream EOF; capability probe at workspace-open catches incompatible daemons (predates D1-D4) with a clear error message; binding teardown is plumbed through every close path.
+- **Remote install helper.** Debug → "Install herdr-cmux on first remote host" scp's the local binary to the registered SSH host's `~/.local/bin/`.
+
+Everything lives behind `#if DEBUG` and uses the existing Debug menu as the discovery surface. Production builds don't see the integration yet (F4 deferred — needs an explicit decision on graduating from prototype to feature).
+
 ## Status
 
 ### Done
