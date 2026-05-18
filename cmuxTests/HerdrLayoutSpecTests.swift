@@ -118,6 +118,75 @@ final class HerdrLayoutSpecTests: XCTestCase {
         XCTAssertNil(registry.herdrPaneId(forCmuxId: cmuxA))
     }
 
+    func testPlanForSinglePaneIsJustABind() {
+        let spec = HerdrLayoutSpec(
+            workspaceId: "w1",
+            tabId: "w1:1",
+            root: .pane(herdrPaneId: "w1-1"),
+            focusedHerdrPaneId: "w1-1"
+        )
+        let plan = HerdrLayoutApplyPlan(spec: spec)
+        XCTAssertEqual(plan.steps, [.bind(slot: 0, herdrPaneId: "w1-1")])
+        XCTAssertEqual(plan.slotCount, 1)
+        XCTAssertEqual(plan.focusedSlot, 0)
+    }
+
+    func testPlanForSampleTreeMatchesExpectedSequence() {
+        let plan = HerdrLayoutApplyPlan(spec: sampleSpec())
+        XCTAssertEqual(plan.steps, [
+            .split(targetSlot: 0, orientation: .horizontal, ratio: 0.5, newSlot: 1),
+            .bind(slot: 0, herdrPaneId: "w1-1"),
+            .split(targetSlot: 1, orientation: .vertical, ratio: 0.6, newSlot: 2),
+            .bind(slot: 1, herdrPaneId: "w1-2"),
+            .bind(slot: 2, herdrPaneId: "w1-3"),
+        ])
+        XCTAssertEqual(plan.slotCount, 3)
+        XCTAssertEqual(plan.focusedSlot, 1)
+    }
+
+    func testPlanLeftSpineMaterializesRootPaneEachTime() {
+        // Tree: split / split / pane "A" / pane "B" / pane "C"
+        // The first child of the root is itself a split, so we keep
+        // splitting slot 0 down the left spine. Slot 0 stays the
+        // bottom-left leaf at the end.
+        let spec = HerdrLayoutSpec(
+            workspaceId: "w1",
+            tabId: "w1:1",
+            root: .split(
+                orientation: .horizontal,
+                ratio: 0.5,
+                first: .split(
+                    orientation: .horizontal,
+                    ratio: 0.5,
+                    first: .pane(herdrPaneId: "A"),
+                    second: .pane(herdrPaneId: "B")
+                ),
+                second: .pane(herdrPaneId: "C")
+            ),
+            focusedHerdrPaneId: nil
+        )
+        let plan = HerdrLayoutApplyPlan(spec: spec)
+        XCTAssertEqual(plan.steps, [
+            .split(targetSlot: 0, orientation: .horizontal, ratio: 0.5, newSlot: 1),
+            .split(targetSlot: 0, orientation: .horizontal, ratio: 0.5, newSlot: 2),
+            .bind(slot: 0, herdrPaneId: "A"),
+            .bind(slot: 2, herdrPaneId: "B"),
+            .bind(slot: 1, herdrPaneId: "C"),
+        ])
+        XCTAssertEqual(plan.slotCount, 3)
+        XCTAssertNil(plan.focusedSlot)
+    }
+
+    func testPlanFocusedSlotIsNilWhenIdMissing() {
+        let spec = HerdrLayoutSpec(
+            workspaceId: "w1",
+            tabId: "w1:1",
+            root: .pane(herdrPaneId: "w1-1"),
+            focusedHerdrPaneId: "w1-99"
+        )
+        XCTAssertNil(HerdrLayoutApplyPlan(spec: spec).focusedSlot)
+    }
+
     @MainActor
     func testRebindOverwritesPreviousMapping() {
         let registry = HerdrPaneBindingRegistry()

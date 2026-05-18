@@ -164,6 +164,95 @@ extension SplitOrientation {
     }
 }
 
+/// One step in materializing a `HerdrLayoutSpec` onto bonsplit. Steps
+/// reference panes by **slot index** rather than by `PaneID` because
+/// the cmux side allocates real `PaneID`s only at execution time. Slot
+/// 0 is the pre-existing root pane the executor was given; subsequent
+/// slots are filled in order as `splitPane` calls return new pane ids.
+enum HerdrLayoutApplyStep: Equatable {
+    /// The leaf at `slot` represents this herdr pane id. The executor
+    /// records the slot↔herdr mapping in `HerdrPaneBindingRegistry`
+    /// and triggers its `paneFactory` to populate the cmux pane with
+    /// a herdr-backed terminal surface.
+    case bind(slot: Int, herdrPaneId: String)
+    /// Split the pane currently at `targetSlot`. After execution, the
+    /// original slot stays on the **first** side of the new split and
+    /// the freshly created pane lands at `newSlot` on the **second**
+    /// side. `ratio` is the divider position (first child's fraction).
+    case split(targetSlot: Int, orientation: SplitOrientation, ratio: CGFloat, newSlot: Int)
+}
+
+/// Deterministic plan for materializing a `HerdrLayoutSpec` against
+/// a bonsplit tree. Built purely from the spec — no `BonsplitController`
+/// access required, so the algorithm is unit-testable. The executor
+/// (E2b) walks `steps` in order, allocating cmux `PaneID`s into
+/// `slotCount` slots starting with slot 0 = the given root pane.
+struct HerdrLayoutApplyPlan: Equatable {
+    let steps: [HerdrLayoutApplyStep]
+    let slotCount: Int
+    /// Slot index of the pane that should hold focus after the plan
+    /// completes, or nil if the spec didn't include a focused pane id
+    /// or it doesn't appear in the tree.
+    let focusedSlot: Int?
+}
+
+extension HerdrLayoutApplyPlan {
+    init(spec: HerdrLayoutSpec) {
+        var steps: [HerdrLayoutApplyStep] = []
+        var slotByHerdr: [String: Int] = [:]
+        var nextSlot = 1
+        Self.plan(
+            node: spec.root,
+            currentSlot: 0,
+            nextSlot: &nextSlot,
+            steps: &steps,
+            slotByHerdr: &slotByHerdr
+        )
+        self.steps = steps
+        self.slotCount = nextSlot
+        self.focusedSlot = spec.focusedHerdrPaneId.flatMap { slotByHerdr[$0] }
+    }
+
+    private static func plan(
+        node: HerdrLayoutSpecNode,
+        currentSlot: Int,
+        nextSlot: inout Int,
+        steps: inout [HerdrLayoutApplyStep],
+        slotByHerdr: inout [String: Int]
+    ) {
+        switch node {
+        case .pane(let herdrId):
+            slotByHerdr[herdrId] = currentSlot
+            steps.append(.bind(slot: currentSlot, herdrPaneId: herdrId))
+        case .split(let orientation, let ratio, let first, let second):
+            let newSlot = nextSlot
+            nextSlot += 1
+            steps.append(
+                .split(
+                    targetSlot: currentSlot,
+                    orientation: orientation,
+                    ratio: ratio,
+                    newSlot: newSlot
+                )
+            )
+            plan(
+                node: first,
+                currentSlot: currentSlot,
+                nextSlot: &nextSlot,
+                steps: &steps,
+                slotByHerdr: &slotByHerdr
+            )
+            plan(
+                node: second,
+                currentSlot: newSlot,
+                nextSlot: &nextSlot,
+                steps: &steps,
+                slotByHerdr: &slotByHerdr
+            )
+        }
+    }
+}
+
 /// Bidirectional binding between cmux bonsplit `PaneID`s (UUID-based)
 /// and herdr public pane ids (string `w<n>-<m>` form). One registry per
 /// herdr-backed cmux tab. E2 consumes this when sending mutation RPCs
