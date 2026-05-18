@@ -1,6 +1,7 @@
 #if DEBUG
 import AppKit
 import Foundation
+import GhosttyKit
 
 /// DEBUG-only window that exercises the full herdr cmux integration
 /// stack against a localhost daemon and dumps incoming PTY bytes as a
@@ -16,8 +17,12 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
     private let textView: NSTextView
     private let statusLabel: NSTextField
     private let connectButton: NSButton
+    private let modePicker: NSSegmentedControl
+    private let ghosttyView: HerdrGhosttyView
+    private let scrollView: NSScrollView
 
     private var displayClient: HerdrDisplayClient?
+    private var surfaceController: HerdrSurfaceController?
     private var pumpTask: Task<Void, Never>?
     private var bytesReceived: Int = 0
 
@@ -39,6 +44,7 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
         tv.textContainer?.widthTracksTextView = true
         scroll.documentView = tv
         self.textView = tv
+        self.scrollView = scroll
 
         let status = NSTextField(labelWithString: "idle")
         status.font = NSFont.systemFont(ofSize: 11)
@@ -47,15 +53,24 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
         let button = NSButton(title: "Connect to localhost", target: nil, action: nil)
         self.connectButton = button
 
-        let bar = NSStackView(views: [button, status])
+        let picker = NSSegmentedControl(labels: ["Hex dump", "Ghostty"], trackingMode: .selectOne, target: nil, action: nil)
+        picker.selectedSegment = 1   // default to Ghostty surface
+        self.modePicker = picker
+
+        let gv = HerdrGhosttyView()
+        gv.translatesAutoresizingMaskIntoConstraints = false
+        self.ghosttyView = gv
+
+        let bar = NSStackView(views: [button, picker, status])
         bar.orientation = .horizontal
         bar.spacing = 12
 
-        let root = NSView(frame: NSRect(x: 0, y: 0, width: 720, height: 480))
+        let root = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: 520))
         bar.translatesAutoresizingMaskIntoConstraints = false
         scroll.translatesAutoresizingMaskIntoConstraints = false
         root.addSubview(bar)
         root.addSubview(scroll)
+        root.addSubview(gv)
         NSLayoutConstraint.activate([
             bar.topAnchor.constraint(equalTo: root.topAnchor, constant: 8),
             bar.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 12),
@@ -64,7 +79,14 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
             scroll.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 12),
             scroll.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -12),
             scroll.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -12),
+            gv.topAnchor.constraint(equalTo: bar.bottomAnchor, constant: 8),
+            gv.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 12),
+            gv.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -12),
+            gv.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -12),
         ])
+        // Default visibility tracks the picker's initial selection.
+        scroll.isHidden = true   // Ghostty selected
+        gv.isHidden = false
 
         let win = NSWindow(
             contentRect: root.frame,
@@ -80,6 +102,14 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
         win.delegate = self
         button.target = self
         button.action = #selector(connectClicked(_:))
+        picker.target = self
+        picker.action = #selector(modeChanged(_:))
+    }
+
+    @objc private func modeChanged(_ sender: NSSegmentedControl) {
+        let useGhostty = sender.selectedSegment == 1
+        ghosttyView.isHidden = !useGhostty
+        scrollView.isHidden = useGhostty
     }
 
     @available(*, unavailable)
@@ -178,6 +208,20 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
             self.displayClient = client
             statusLabel.stringValue = "connected: \(terminalId) (0 bytes)"
             connectButton.title = "Disconnect"
+
+            // 4. Bind a HerdrSurfaceController so the Ghostty view (when
+            //    the picker is on "Ghostty") renders the same byte
+            //    stream we hex-dump in the other tab. We deliberately
+            //    do NOT call controller.attach(surface:) here — that
+            //    would start a second pump competing for the
+            //    single-consumer AsyncStream<Data> on
+            //    HerdrDisplayClient.output. Instead, our local
+            //    startPump() owns the only consumer and tees each
+            //    chunk into hex dump + ghostty_surface_process_output.
+            let controller = HerdrSurfaceController(displayClient: client)
+            self.surfaceController = controller
+            ghosttyView.attachControllerWithoutPump(controller)
+
             startPump()
         } catch {
             statusLabel.stringValue = "error: \(error)"
@@ -199,6 +243,8 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
     private func append(bytes: Data) {
         bytesReceived += bytes.count
         statusLabel.stringValue = "connected (\(bytesReceived) bytes)"
+
+        // Tee 1: hex dump (visible when picker is on "Hex dump").
         let line = Self.hexDump(bytes)
         textView.textStorage?.append(NSAttributedString(
             string: line,
@@ -207,8 +253,16 @@ final class HerdrPaneDebugWindowController: NSWindowController, NSWindowDelegate
                 .foregroundColor: NSColor.textColor,
             ]
         ))
-        // auto-scroll to bottom
         textView.scrollToEndOfDocument(nil)
+
+        // Tee 2: feed Ghostty surface (visible when picker is on "Ghostty").
+        if let surface = ghosttyView.surface {
+            bytes.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
+                guard let base = raw.baseAddress else { return }
+                let cChars = base.assumingMemoryBound(to: CChar.self)
+                ghostty_surface_process_output(surface, cChars, UInt(raw.count))
+            }
+        }
     }
 
     private static func hexDump(_ data: Data) -> String {

@@ -47,6 +47,18 @@ final class HerdrSurfaceController {
         startPump()
     }
 
+    /// Bind a surface without starting the AsyncStream pump. Used when
+    /// some other code (e.g. the debug window) owns the only stream
+    /// consumer and feeds bytes into the surface manually. Input
+    /// forwarding (sendInput) still works.
+    func bindSurfaceWithoutPump(_ surface: ghostty_surface_t) {
+        if pumpTask != nil {
+            pumpTask?.cancel()
+            pumpTask = nil
+        }
+        self.surface = surface
+    }
+
     /// Forward a keystroke / pasted text from the Ghostty side back to
     /// the herdr pane. cmux's existing key-event plumbing should call
     /// this when the surface is owned by a HerdrSurfaceController
