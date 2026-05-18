@@ -341,6 +341,9 @@ struct cmuxApp: App {
                     Button("Background Debug…") {
                         BackgroundDebugWindowController.shared.show()
                     }
+                    Button("Herdr Pane (debug)…") {
+                        HerdrPaneDebugWindowController.shared.showAndFocus()
+                    }
                     Button(
                         String(
                             localized: "debug.menu.bonsplitTabBarDebug",
