@@ -13,7 +13,11 @@ struct HerdrHostsSidebarSection: View {
     @ObservedObject private var eventPump = HerdrEventPump.shared
     let onOpenWorkspace: (HerdrHost, String) -> Void
 
-    @State private var expandedHosts: Set<UUID> = []
+    @AppStorage(Self.expandedHostsKey) private var expandedHostsRaw: String = ""
+    private var expandedHosts: Set<UUID> {
+        Set(expandedHostsRaw.split(separator: ",").compactMap { UUID(uuidString: String($0)) })
+    }
+    static let expandedHostsKey = "cmux.herdr.sidebar.expandedHosts"
     @State private var pendingKill: PendingKill?
     @State private var pendingRename: PendingRename?
     @State private var renameDraft: String = ""
@@ -286,16 +290,18 @@ struct HerdrHostsSidebarSection: View {
     }
 
     private func toggleExpansion(host: HerdrHost) {
-        if expandedHosts.contains(host.id) {
-            expandedHosts.remove(host.id)
-            return
+        var current = expandedHosts
+        if current.contains(host.id) {
+            current.remove(host.id)
+        } else {
+            current.insert(host.id)
+            // Lazy fetch on first expand. If cached, the user can
+            // hit refresh from the host row.
+            if workspaceListStore.workspaces(forHost: host).isEmpty {
+                workspaceListStore.refresh(host: host)
+            }
         }
-        expandedHosts.insert(host.id)
-        // Lazy fetch on first expand. If we already have a cached
-        // result, the user can hit refresh from the host row.
-        if workspaceListStore.workspaces(forHost: host).isEmpty {
-            workspaceListStore.refresh(host: host)
-        }
+        expandedHostsRaw = current.map { $0.uuidString }.sorted().joined(separator: ",")
     }
 }
 
