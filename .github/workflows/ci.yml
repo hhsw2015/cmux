@@ -85,6 +85,47 @@ jobs:
       - name: Validate remote daemon release assets
         run: ./tests/test_remote_daemon_release_assets.sh
 
+  herdr-wire-protocol-tests:
+    runs-on: ubuntu-latest
+    env:
+      # Bump when fork's wire shape changes intentionally; pinning by
+      # SHA so the wire tests catch unintended drift from upstream
+      # ogulcancelik/herdr merges.
+      HERDR_CMUX_REF: 123cf49fc3e0acb4bafa76929bd714e11c25aa35
+    steps:
+      - name: Checkout cmux
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Rust toolchain
+        run: |
+          set -euo pipefail
+          curl --proto '=https' --tlsv1.2 -sSfo rustup-init.sh https://sh.rustup.rs
+          sh rustup-init.sh -y --profile minimal --default-toolchain stable
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Cache Cargo registry
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-herdr-${{ env.HERDR_CMUX_REF }}-${{ runner.os }}
+
+      - name: Build herdr-cmux from hhsw2015/herdr fork
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/herdr-fork
+          git clone --depth 50 https://github.com/hhsw2015/herdr.git /tmp/herdr-fork
+          (cd /tmp/herdr-fork && git checkout "$HERDR_CMUX_REF")
+          (cd /tmp/herdr-fork && cargo build --release)
+          # The Cargo.toml package name is "herdr"; cmux conventionally
+          # invokes the binary as "herdr-cmux" so install under that name.
+          sudo install -m 0755 /tmp/herdr-fork/target/release/herdr /usr/local/bin/herdr-cmux
+          herdr-cmux --version
+
+      - name: Run wire protocol tests
+        run: python3 tests/test_herdr_wire_protocol.py
+
   web-typecheck:
     runs-on: ubuntu-latest
     defaults:
