@@ -108,7 +108,7 @@ enum HerdrRemoteInstaller {
     private static func runSSH(target: String, command: String) -> Bool {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-        proc.arguments = ["-T", "-o", "BatchMode=yes", target, command]
+        proc.arguments = SSHStdioTransport.defaultOptions + [target, command]
         do {
             try proc.run()
             proc.waitUntilExit()
@@ -121,7 +121,7 @@ enum HerdrRemoteInstaller {
     private static func captureSSH(target: String, command: String) -> String? {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-        proc.arguments = ["-T", "-o", "BatchMode=yes", target, command]
+        proc.arguments = SSHStdioTransport.defaultOptions + [target, command]
         let pipe = Pipe()
         proc.standardOutput = pipe
         proc.standardError = Pipe()

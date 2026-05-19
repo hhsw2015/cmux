@@ -79,7 +79,10 @@ final class HerdrDisplayClient {
             // fail fast on missing key instead of prompting.
             // remoteBinaryPath defaults to "herdr-cmux" in $PATH on
             // the remote host.
-            var args = ["-T", "-o", "BatchMode=yes", target, "--", "herdr-cmux"]
+            var args = SSHStdioTransport.defaultOptions
+            args.append(target)
+            args.append("--")
+            args.append("herdr-cmux")
             args.append(contentsOf: rawPtyArgs)
             proc.arguments = args
         }

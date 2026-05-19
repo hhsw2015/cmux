@@ -16,6 +16,25 @@ actor SSHStdioTransport: HerdrTransport {
     private let remoteBinaryPath: String
     private let extraSSHOptions: [String]
 
+    /// Default ssh options. ControlMaster lets the 30s polling
+    /// + raw-pty-attach + api-bridge invocations to the same host
+    /// reuse one TCP/auth handshake (60s persist) instead of paying
+    /// the full SSH negotiation per call. cmsocket dir is created
+    /// once on first use.
+    static let defaultOptions: [String] = {
+        let cmDir = (("~/.ssh") as NSString).expandingTildeInPath
+        try? FileManager.default.createDirectory(
+            atPath: cmDir, withIntermediateDirectories: true
+        )
+        return [
+            "-T",
+            "-o", "BatchMode=yes",
+            "-o", "ControlMaster=auto",
+            "-o", "ControlPath=\(cmDir)/cmux-cm-%C",
+            "-o", "ControlPersist=60",
+        ]
+    }()
+
     private(set) var status: HerdrTransportStatus = .disconnected
     let incoming: AsyncStream<Data>
     private let incomingContinuation: AsyncStream<Data>.Continuation
@@ -28,7 +47,7 @@ actor SSHStdioTransport: HerdrTransport {
         target: String,
         sessionName: String? = nil,
         remoteBinaryPath: String = "herdr-cmux",
-        extraSSHOptions: [String] = ["-T", "-o", "BatchMode=yes"]
+        extraSSHOptions: [String] = SSHStdioTransport.defaultOptions
     ) {
         self.target = target
         self.sessionName = sessionName
