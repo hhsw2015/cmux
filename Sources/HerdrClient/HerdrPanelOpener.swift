@@ -56,6 +56,7 @@ enum HerdrPanelOpener {
         let exec = (("~/.local/bin/herdr-cmux") as NSString).expandingTildeInPath
         guard FileManager.default.isExecutableFile(atPath: exec) else {
             herdrPanelOpenerTrace("missing binary at \(exec)")
+            presentMissingLocalBinaryAlert(path: exec)
             return
         }
 
@@ -64,6 +65,7 @@ enum HerdrPanelOpener {
                 try await openLocalhostPanelImpl(host: host, exec: exec, paneId: focusedPane, workspace: workspace)
             } catch {
                 herdrPanelOpenerTrace("openLocalhostPanel failed: \(error)")
+                presentOpenFailureAlert(host: host, error: error)
             }
         }
     }
