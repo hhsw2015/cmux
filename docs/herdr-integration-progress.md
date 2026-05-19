@@ -234,11 +234,12 @@ Total cmux est: ~4 days, ~400-600 LOC across `Sources/HerdrClient/`, `Sources/Wo
 
 ## Resuming
 
-F4 production graduation, F2 sidebar integration, and E4 auto-reattach on launch are all **done**. cmux relaunches into the herdr workspace the user had attached at last quit; localhost + registered remote hosts appear under a "Herdr" sidebar section with live updates.
+Headline integration is feature-complete. **Lifecycle**: New / Rename / Open / Kill workspace all from the sidebar. **Cross-machine awareness**: agent_status badge per row, blocked-count badge in section header, macOS notification when an agent transitions to blocked, click notification → focus that workspace, Cmd+Opt+J jumps to next blocked. **Reliability**: SSH ControlMaster, 30s polling skipped while cmux backgrounded + immediate refresh on becoming active, capability probe alert when daemon predates D1-D4, missing-binary alert with build recipe, open-failure alert with one-click Install for SSH hosts. **Settings**: Test connection probe, auto-install on save toggle, blocked-notification toggle. **State**: HerdrPersistence cleared on stale workspace + on host removal, sidebar expanded-host state persisted via @AppStorage.
 
-Next: F4 command-palette entries, F3 host-add auto-install, F7 E2E CI test.
-
-Smaller follow-ups:
-- F4 command-palette entries (currently menu-only; palette would let users invoke "Open Herdr Workspace" via fuzzy search).
-- F3 auto-install on host-add (today it's a manual menu action).
-- F7 E2E CI test (fork daemon → open panel via cmux → type → assert round-trip).
+Open items (deprioritized):
+- F7 E2E CI test (needs GitHub Actions runner + herdr daemon spin-up).
+- E2d swap RPC (semantic mismatch — bonsplit emits tab-move, herdr expects pane-swap; deferred until the use case shows up).
+- E2e-3 swap inbound (bails when leaf set is preserved but positions move; revisit when dogfood reveals it).
+- Tab-level UI (hierarchy host → workspace → tab requires sidebar three-level structure; current "workspace = tab" mirror is enough for cmux).
+- pane.renamed inbound (no obvious cmux UI sink — bonsplit panes are anonymous).
+- Drag-reorder hosts in Settings.
