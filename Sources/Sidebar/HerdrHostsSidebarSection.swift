@@ -180,6 +180,14 @@ struct HerdrHostsSidebarSection: View {
             } catch {
                 return
             }
+            // Skip the poll while cmux isn't the active app — saves
+            // SSH bandwidth + battery when the user is in another
+            // app. The event pump still delivers any layout/lifecycle
+            // change immediately on the long-lived subscription, and
+            // when the user comes back to cmux the next 30s tick
+            // catches them up. Worst case: 30s of stale agent_status
+            // when they return.
+            if !NSApp.isActive { continue }
             for host in hosts {
                 workspaceListStore.refresh(host: host)
             }
