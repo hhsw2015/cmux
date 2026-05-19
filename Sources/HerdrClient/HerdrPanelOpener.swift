@@ -319,7 +319,49 @@ enum HerdrPanelOpener {
                 )
             } catch {
                 herdrPanelOpenerTrace("openWorkspace failed for host \(host.displayName): \(error)")
+                presentOpenFailureAlert(host: host, error: error)
             }
+        }
+    }
+
+    @MainActor
+    private static func presentOpenFailureAlert(host: HerdrHost, error: Error) {
+        // Heuristic: SSH stdio transport failures usually mean the
+        // remote herdr-cmux binary is missing or unreachable.
+        let isRemote: Bool = {
+            if case .sshStdio = host.transport { return true }
+            return false
+        }()
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = String(
+            localized: "herdr.alert.openFailed.title",
+            defaultValue: "Couldn't open Herdr workspace"
+        )
+        let detail = String(describing: error)
+        if isRemote {
+            alert.informativeText = String(
+                localized: "herdr.alert.openFailed.remote",
+                defaultValue: "\(host.displayName): \(detail)\n\nIf herdr-cmux isn't installed on the remote yet, click Install."
+            )
+            alert.addButton(withTitle: String(
+                localized: "herdr.alert.openFailed.install",
+                defaultValue: "Install on \(host.displayName)"
+            ))
+            alert.addButton(withTitle: String(
+                localized: "herdr.alert.openFailed.dismiss",
+                defaultValue: "Dismiss"
+            ))
+            if alert.runModal() == .alertFirstButtonReturn {
+                HerdrRemoteInstaller.installOnHost(host)
+            }
+        } else {
+            alert.informativeText = "\(host.displayName): \(detail)"
+            alert.addButton(withTitle: String(
+                localized: "herdr.alert.openFailed.dismiss",
+                defaultValue: "Dismiss"
+            ))
+            alert.runModal()
         }
     }
 

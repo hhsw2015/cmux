@@ -45581,6 +45581,34 @@
         "ja": { "stringUnit": { "state": "translated", "value": "Herdr エージェントが入力待ち" } }
       }
     },
+    "herdr.alert.openFailed.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Couldn't open Herdr workspace" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "Herdr ワークスペースを開けません" } }
+      }
+    },
+    "herdr.alert.openFailed.remote": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "If herdr-cmux isn't installed on the remote yet, click Install." } },
+        "ja": { "stringUnit": { "state": "translated", "value": "リモートに herdr-cmux が無い場合は「インストール」をクリック。" } }
+      }
+    },
+    "herdr.alert.openFailed.install": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Install" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "インストール" } }
+      }
+    },
+    "herdr.alert.openFailed.dismiss": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Dismiss" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "閉じる" } }
+      }
+    },
     "herdr.alert.incompatible.title": {
       "extractionState": "manual",
       "localizations": {
