@@ -72,6 +72,7 @@ final class HerdrEventPump {
                     "workspace.created",
                     "workspace.closed",
                     "workspace.focused",
+                    "workspace.renamed",
                     "pane.exited",
                 ])
                 clients[socketPath] = client
@@ -126,7 +127,8 @@ final class HerdrEventPump {
             }
             HerdrInboundLayoutSync.apply(tree: payload.tree)
         case "workspace_created", "workspace.created",
-             "workspace_focused", "workspace.focused":
+             "workspace_focused", "workspace.focused",
+             "workspace_renamed", "workspace.renamed":
             invalidateWorkspaceList(socketPath: socketPath, reason: event.event)
         case "workspace_closed", "workspace.closed":
             invalidateWorkspaceList(socketPath: socketPath, reason: event.event)
