@@ -17,11 +17,18 @@ struct HostsSettingsView: View {
         .settingsSearchAnchor(SettingsSearchIndex.sectionID(for: .hosts))
 
         SettingsCard {
-            ForEach(registry.hosts) { host in
+            ForEach(Array(registry.hosts.enumerated()), id: \.element.id) { index, host in
+                let canMoveUp = !host.isLocalhost
+                    && index > 0
+                    && registry.hosts[index - 1].id != HerdrHost.localhostID
+                let canMoveDown = !host.isLocalhost
+                    && index < registry.hosts.count - 1
                 HostRow(
                     host: host,
                     onEdit: { editing = host },
-                    onRemove: host.isLocalhost ? nil : { registry.remove(id: host.id) }
+                    onRemove: host.isLocalhost ? nil : { registry.remove(id: host.id) },
+                    onMoveUp: canMoveUp ? { registry.move(id: host.id, direction: .up) } : nil,
+                    onMoveDown: canMoveDown ? { registry.move(id: host.id, direction: .down) } : nil
                 )
                 if host.id != registry.hosts.last?.id {
                     Divider()
@@ -74,6 +81,8 @@ private struct HostRow: View {
     let host: HerdrHost
     let onEdit: () -> Void
     let onRemove: (() -> Void)?
+    let onMoveUp: (() -> Void)?
+    let onMoveDown: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -88,6 +97,26 @@ private struct HostRow: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
+            if let onMoveUp {
+                Button(action: onMoveUp) {
+                    Image(systemName: "chevron.up")
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel(String(
+                    localized: "settings.hosts.moveUp",
+                    defaultValue: "Move host up"
+                ))
+            }
+            if let onMoveDown {
+                Button(action: onMoveDown) {
+                    Image(systemName: "chevron.down")
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel(String(
+                    localized: "settings.hosts.moveDown",
+                    defaultValue: "Move host down"
+                ))
+            }
             Button(action: onEdit) {
                 Image(systemName: "pencil")
             }

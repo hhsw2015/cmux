@@ -45508,6 +45508,20 @@
         }
       }
     },
+    "settings.hosts.moveUp": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Move host up" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "ホストを上へ" } }
+      }
+    },
+    "settings.hosts.moveDown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Move host down" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "ホストを下へ" } }
+      }
+    },
     "settings.hosts.testConnection": {
       "extractionState": "manual",
       "localizations": {

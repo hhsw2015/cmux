@@ -67,6 +67,25 @@ final class HostRegistry: ObservableObject {
         persist()
     }
 
+    enum MoveDirection { case up, down }
+
+    /// Reorder a host one step in the list. Localhost is pinned at
+    /// index 0 so we refuse to swap into or out of it. No-op at
+    /// extremes.
+    func move(id: UUID, direction: MoveDirection) {
+        guard id != HerdrHost.localhostID else { return }
+        guard let idx = hosts.firstIndex(where: { $0.id == id }) else { return }
+        let target: Int
+        switch direction {
+        case .up: target = idx - 1
+        case .down: target = idx + 1
+        }
+        guard target >= 0, target < hosts.count else { return }
+        guard hosts[target].id != HerdrHost.localhostID else { return }
+        hosts.swapAt(idx, target)
+        persist()
+    }
+
     func remove(id: UUID) {
         guard id != HerdrHost.localhostID else { return }
         let removed = hosts.first { $0.id == id }
