@@ -1,4 +1,5 @@
 import Foundation
+import UserNotifications
 
 /// One herdr workspace as it appears in cmux's sidebar.
 struct HerdrWorkspaceSummary: Identifiable, Equatable, Hashable {
@@ -42,12 +43,65 @@ final class HerdrWorkspaceListStore: ObservableObject {
         Task { @MainActor in
             do {
                 let summaries = try await Self.fetch(host: host)
+                detectAgentBlockedTransitions(host: host, newSummaries: summaries)
                 workspacesByHost[hostId] = summaries
                 lastErrorByHost.removeValue(forKey: hostId)
             } catch {
                 lastErrorByHost[hostId] = String(describing: error)
             }
             inFlightHosts.remove(hostId)
+        }
+    }
+
+    /// Compare new agent_status against previous snapshot for the
+    /// host. For any workspace that flipped from non-blocked (or
+    /// unknown/missing) to blocked, post a notification. Skip the
+    /// first-ever refresh (no previous snapshot) so we don't fire
+    /// for everything that's already blocked when cmux starts up.
+    private func detectAgentBlockedTransitions(
+        host: HerdrHost,
+        newSummaries: [HerdrWorkspaceSummary]
+    ) {
+        guard let previous = workspacesByHost[host.id] else {
+            // First fetch for this host; establish baseline silently.
+            return
+        }
+        let prevStatus: [String: String?] = Dictionary(
+            uniqueKeysWithValues: previous.map { ($0.workspaceId, $0.agentStatus) }
+        )
+        for summary in newSummaries {
+            guard summary.agentStatus?.lowercased() == "blocked" else { continue }
+            let was = prevStatus[summary.workspaceId]??.lowercased()
+            if was == "blocked" { continue }
+            postBlockedNotification(host: host, workspace: summary)
+        }
+    }
+
+    private func postBlockedNotification(
+        host: HerdrHost,
+        workspace: HerdrWorkspaceSummary
+    ) {
+        let center = UNUserNotificationCenter.current()
+        let title = String(
+            localized: "herdr.notify.blocked.title",
+            defaultValue: "Herdr agent waiting for input"
+        )
+        let body = "\(host.displayName) · \(workspace.label)"
+        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            guard granted else { return }
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.body = body
+            content.userInfo = [
+                "cmux.herdr.hostId": host.id.uuidString,
+                "cmux.herdr.workspaceId": workspace.workspaceId,
+            ]
+            let request = UNNotificationRequest(
+                identifier: "cmux.herdr.blocked.\(host.id.uuidString).\(workspace.workspaceId)",
+                content: content,
+                trigger: nil
+            )
+            center.add(request) { _ in }
         }
     }
 

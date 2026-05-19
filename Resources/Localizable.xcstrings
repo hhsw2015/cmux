@@ -45539,6 +45539,13 @@
         "ja": { "stringUnit": { "state": "translated", "value": "エージェント完了" } }
       }
     },
+    "herdr.notify.blocked.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Herdr agent waiting for input" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "Herdr エージェントが入力待ち" } }
+      }
+    },
     "herdr.install.success.title": {
       "extractionState": "manual",
       "localizations": {
