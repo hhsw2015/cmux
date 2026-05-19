@@ -45546,6 +45546,27 @@
         "ja": { "stringUnit": { "state": "translated", "value": "全ホストで入力待ちの Herdr エージェント" } }
       }
     },
+    "sidebar.herdr.host.connecting": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Connecting…" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "接続中…" } }
+      }
+    },
+    "sidebar.herdr.host.connected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Connected" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "接続済み" } }
+      }
+    },
+    "sidebar.herdr.host.retrying": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Reconnecting…" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "再接続中…" } }
+      }
+    },
     "sidebar.herdr.agent.idle": {
       "extractionState": "manual",
       "localizations": {

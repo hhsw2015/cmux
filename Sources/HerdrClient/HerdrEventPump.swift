@@ -10,8 +10,20 @@ import Foundation
 /// binding's `HerdrDividerSync.lastSeen` so the next outbound diff
 /// uses the fresh server state instead of stale pre-disconnect ratios.
 @MainActor
-final class HerdrEventPump {
+final class HerdrEventPump: ObservableObject {
     static let shared = HerdrEventPump()
+
+    enum ConnectionState: Equatable {
+        case idle
+        case connecting
+        case connected
+        case retrying(attempt: Int, lastError: String)
+    }
+
+    /// Per-host connection state so the sidebar can show a "?" /
+    /// "..." / "" indicator. Keyed by host id (not socket path) so
+    /// callers don't have to know the transport.
+    @Published private(set) var connectionStateByHost: [UUID: ConnectionState] = [:]
 
     private var clients: [String: HerdrApiClient] = [:]
     private var consumers: [String: Task<Void, Never>] = [:]
@@ -45,6 +57,7 @@ final class HerdrEventPump {
             hosts.removeValue(forKey: socketPath)
             consumers[socketPath]?.cancel()
             consumers.removeValue(forKey: socketPath)
+            connectionStateByHost.removeValue(forKey: host.id)
             if let client = clients.removeValue(forKey: socketPath) {
                 await client.close()
             }
@@ -65,6 +78,7 @@ final class HerdrEventPump {
         while !Task.isCancelled, refCounts[socketPath] != nil {
             do {
                 guard let host = hosts[socketPath] else { return }
+                connectionStateByHost[host.id] = .connecting
                 let client = HerdrApiClient(transport: HerdrTransportFactory.make(host: host))
                 try await client.start()
                 try await client.subscribe([
@@ -76,6 +90,7 @@ final class HerdrEventPump {
                     "pane.exited",
                 ])
                 clients[socketPath] = client
+                connectionStateByHost[host.id] = .connected
                 cmuxDebugLog("herdr.pump: connected on \(socketPath) (attempt=\(attempt + 1))")
 
                 if attempt > 0 {
@@ -94,6 +109,12 @@ final class HerdrEventPump {
                     await oldClient.close()
                 }
             } catch {
+                if let host = hosts[socketPath] {
+                    connectionStateByHost[host.id] = .retrying(
+                        attempt: attempt + 1,
+                        lastError: String(describing: error)
+                    )
+                }
                 cmuxDebugLog("herdr.pump: connect failed for \(socketPath) (attempt=\(attempt + 1)): \(error)")
             }
             // Backoff before retry, but bail if released.

@@ -10,6 +10,7 @@ import SwiftUI
 struct HerdrHostsSidebarSection: View {
     @ObservedObject var hostRegistry: HostRegistry
     @ObservedObject var workspaceListStore: HerdrWorkspaceListStore
+    @ObservedObject private var eventPump = HerdrEventPump.shared
     let onOpenWorkspace: (HerdrHost, String) -> Void
 
     @State private var expandedHosts: Set<UUID> = []
@@ -134,6 +135,7 @@ struct HerdrHostsSidebarSection: View {
                     host: host,
                     isExpanded: expandedHosts.contains(host.id),
                     isLoading: workspaceListStore.isLoading(host: host),
+                    connectionState: eventPump.connectionStateByHost[host.id] ?? .idle,
                     workspaces: sortedWorkspaces(forHost: host),
                     lastError: workspaceListStore.lastErrorByHost[host.id],
                     onToggle: {
@@ -301,6 +303,7 @@ private struct HerdrHostRow: View {
     let host: HerdrHost
     let isExpanded: Bool
     let isLoading: Bool
+    let connectionState: HerdrEventPump.ConnectionState
     let workspaces: [HerdrWorkspaceSummary]
     let lastError: String?
     let onToggle: () -> Void
@@ -309,6 +312,39 @@ private struct HerdrHostRow: View {
     let onOpenWorkspace: (String) -> Void
     let onKillWorkspace: (HerdrWorkspaceSummary) -> Void
     let onRenameWorkspace: (HerdrWorkspaceSummary) -> Void
+
+    private var connectionTint: Color {
+        switch connectionState {
+        case .retrying:
+            return .red
+        case .connecting:
+            return .orange
+        case .connected, .idle:
+            return host.isLocalhost ? Color.secondary : Color.blue
+        }
+    }
+
+    private var connectionTooltip: String {
+        switch connectionState {
+        case .retrying(let attempt, let lastError):
+            return String(
+                localized: "sidebar.herdr.host.retrying",
+                defaultValue: "Reconnecting (attempt \(attempt)): \(lastError)"
+            )
+        case .connecting:
+            return String(
+                localized: "sidebar.herdr.host.connecting",
+                defaultValue: "Connecting…"
+            )
+        case .connected:
+            return String(
+                localized: "sidebar.herdr.host.connected",
+                defaultValue: "Connected"
+            )
+        case .idle:
+            return host.displayName
+        }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -319,8 +355,9 @@ private struct HerdrHostRow: View {
                         .foregroundStyle(.secondary)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                     Image(systemName: host.isLocalhost ? "desktopcomputer" : "network")
-                        .foregroundStyle(host.isLocalhost ? Color.secondary : Color.blue)
+                        .foregroundStyle(connectionTint)
                         .font(.caption)
+                        .help(connectionTooltip)
                     Text(host.displayName)
                         .font(.caption)
                         .lineLimit(1)
