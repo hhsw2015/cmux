@@ -226,6 +226,9 @@ Total cmux est: ~4 days, ~400-600 LOC across `Sources/HerdrClient/`, `Sources/Wo
 | **F10** (host-offline notify) | Sustained retry (>20s) on a `.sshStdio` host posts a macOS notification; reconnect dismisses it + posts a follow-up "reconnected" alert. Localhost UDS skipped (self-inflicted hangs would just be noise). New Settings → Hosts toggle: "Notify when a remote herdr host goes offline". `handleHerdrNotificationResponse` accepts host-only userInfo so the click brings cmux to the foreground. | done |
 | **F11** (push agent_status) | Subscribe to `pane.agent_status_changed` + `tab.reordered`. Blocked-count badge, sidebar dot, and macOS notification react in seconds instead of waiting up to 60s for the workspace.list poll. Locked the wire shape in tests. | done |
 | **F12** (event pump debug) | DEBUG-only window under Debug > Debug Windows: per-host connection state with retry attempt + last error, ring buffer of last 200 events. Helps verify push events land in real time during dogfood. | done |
+| **F13** (poll relax) | Workspace.list background safety-net poll relaxed from 60s to 300s. Push events drive realtime refresh; the poll only catches the narrow window where a host disconnects/reconnects without us replaying state. | done |
+| **F14** (drag-reorder hosts) | Settings → Hosts is `.onDrag` / `.onDrop` capable: drop a host on row N to insert before N, drop below the last row to append. Chevron up/down still works. Localhost pinned at index 0. New `HostRegistry.move(id:before:)` API. | done |
+| **F7** (macOS E2E) | New `herdr-live-integration-tests` macOS CI job. Builds the herdr fork, spawns a daemon in a temp HOME, runs `HerdrApiClientLiveTests` + `HerdrBackendLiveTests` against the daemon socket via `CMUX_HERDR_LIVE_SOCKET`. Deeper than the Ubuntu wire-protocol smoke job — exercises HerdrApiClient framing, events.subscribe, transport reuse from inside the cmux module. | done |
 
 ### Decision log
 
