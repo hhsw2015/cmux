@@ -1,4 +1,5 @@
 import Foundation
+import UserNotifications
 
 /// One long-lived `events.subscribe` connection per host. Reference-
 /// counted so the pump auto-starts when the first herdr-backed
@@ -32,6 +33,15 @@ final class HerdrEventPump: ObservableObject {
     /// transport on reconnect without holding the original `HerdrHost`.
     private var hosts: [String: HerdrHost] = [:]
 
+    /// Per-host pending offline-notification timer. Starts when the
+    /// host enters retrying; cancelled when it reconnects or the
+    /// notification fires.
+    private var offlineNotificationTasks: [UUID: Task<Void, Never>] = [:]
+    /// Set of host ids that already triggered the offline
+    /// notification — used so reconnect can post a follow-up
+    /// "back online" alert and avoid duplicate offline alerts.
+    private var hostsCurrentlyOffline: Set<UUID> = []
+
     private static let backoffSequence: [UInt64] = [
         1_000_000_000,   // 1s
         2_000_000_000,   // 2s
@@ -58,11 +68,50 @@ final class HerdrEventPump: ObservableObject {
             consumers[socketPath]?.cancel()
             consumers.removeValue(forKey: socketPath)
             connectionStateByHost.removeValue(forKey: host.id)
+            offlineNotificationTasks.removeValue(forKey: host.id)?.cancel()
+            hostsCurrentlyOffline.remove(host.id)
             if let client = clients.removeValue(forKey: socketPath) {
                 await client.close()
             }
         } else {
             refCounts[socketPath] = count - 1
+        }
+    }
+
+    /// Update connection state and run notification side-effects
+    /// (offline alert after sustained retry, back-online alert when
+    /// reconnected). Centralizes mutation so individual call sites
+    /// don't need to remember the alerts.
+    private func setConnectionState(hostId: UUID, host: HerdrHost?, _ state: ConnectionState) {
+        connectionStateByHost[hostId] = state
+        switch state {
+        case .connected:
+            // Reconnected: cancel pending alert, post follow-up if
+            // we already alerted as offline.
+            offlineNotificationTasks.removeValue(forKey: hostId)?.cancel()
+            if hostsCurrentlyOffline.remove(hostId) != nil, let host {
+                postBackOnlineNotification(for: host)
+            }
+        case .retrying(_, let lastError):
+            // Schedule offline notification after the configured
+            // delay if we don't already have one pending or fired.
+            guard let host else { return }
+            if hostsCurrentlyOffline.contains(hostId) { return }
+            if offlineNotificationTasks[hostId] != nil { return }
+            let delay = HerdrNotificationSettings.hostOfflineNotificationDelaySeconds
+            offlineNotificationTasks[hostId] = Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                guard !Task.isCancelled else { return }
+                guard let self else { return }
+                guard self.connectionStateByHost[hostId] != nil else { return }
+                if case .retrying = self.connectionStateByHost[hostId] {
+                    self.hostsCurrentlyOffline.insert(hostId)
+                    self.offlineNotificationTasks.removeValue(forKey: hostId)
+                    self.postOfflineNotification(for: host, reason: lastError)
+                }
+            }
+        case .connecting, .idle:
+            break
         }
     }
 
@@ -78,7 +127,7 @@ final class HerdrEventPump: ObservableObject {
         while !Task.isCancelled, refCounts[socketPath] != nil {
             do {
                 guard let host = hosts[socketPath] else { return }
-                connectionStateByHost[host.id] = .connecting
+                setConnectionState(hostId: host.id, host: host, .connecting)
                 let client = HerdrApiClient(transport: HerdrTransportFactory.make(host: host))
                 try await client.start()
                 try await client.subscribe([
@@ -90,7 +139,7 @@ final class HerdrEventPump: ObservableObject {
                     "pane.exited",
                 ])
                 clients[socketPath] = client
-                connectionStateByHost[host.id] = .connected
+                setConnectionState(hostId: host.id, host: host, .connected)
                 cmuxDebugLog("herdr.pump: connected on \(socketPath) (attempt=\(attempt + 1))")
 
                 if attempt > 0 {
@@ -116,9 +165,10 @@ final class HerdrEventPump: ObservableObject {
                     reason = "stream ended"
                 }
                 if let host = hosts[socketPath] {
-                    connectionStateByHost[host.id] = .retrying(
-                        attempt: attempt + 1,
-                        lastError: reason
+                    setConnectionState(
+                        hostId: host.id,
+                        host: host,
+                        .retrying(attempt: attempt + 1, lastError: reason)
                     )
                 }
                 if let oldClient = clients.removeValue(forKey: socketPath) {
@@ -126,9 +176,10 @@ final class HerdrEventPump: ObservableObject {
                 }
             } catch {
                 if let host = hosts[socketPath] {
-                    connectionStateByHost[host.id] = .retrying(
-                        attempt: attempt + 1,
-                        lastError: String(describing: error)
+                    setConnectionState(
+                        hostId: host.id,
+                        host: host,
+                        .retrying(attempt: attempt + 1, lastError: String(describing: error))
                     )
                 }
                 cmuxDebugLog("herdr.pump: connect failed for \(socketPath) (attempt=\(attempt + 1)): \(error)")
@@ -211,5 +262,67 @@ final class HerdrEventPump: ObservableObject {
     /// based key is fine.
     private static func socketPath(for host: HerdrHost) -> String {
         host.localApiSocketPath
+    }
+
+    private func postOfflineNotification(for host: HerdrHost, reason: String) {
+        guard HerdrNotificationSettings.hostOfflineNotificationsEnabled else { return }
+        // localhost UDS hangs are usually self-inflicted (user killed
+        // the daemon manually). Only notify for remote hosts.
+        if case .localUDS = host.transport { return }
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            guard granted else { return }
+            let content = UNMutableNotificationContent()
+            content.title = String(
+                localized: "herdr.host.offline.title",
+                defaultValue: "Herdr host offline"
+            )
+            content.body = String(
+                localized: "herdr.host.offline.body",
+                defaultValue: "\(host.displayName): \(reason)"
+            )
+            content.userInfo = [
+                "cmux.herdr.kind": "hostOffline",
+                "cmux.herdr.hostId": host.id.uuidString,
+            ]
+            let request = UNNotificationRequest(
+                identifier: "cmux.herdr.host.offline.\(host.id.uuidString)",
+                content: content,
+                trigger: nil
+            )
+            center.add(request) { _ in }
+        }
+    }
+
+    private func postBackOnlineNotification(for host: HerdrHost) {
+        guard HerdrNotificationSettings.hostOfflineNotificationsEnabled else { return }
+        if case .localUDS = host.transport { return }
+        let center = UNUserNotificationCenter.current()
+        // Drop the offline notification if it's still showing.
+        center.removeDeliveredNotifications(
+            withIdentifiers: ["cmux.herdr.host.offline.\(host.id.uuidString)"]
+        )
+        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            guard granted else { return }
+            let content = UNMutableNotificationContent()
+            content.title = String(
+                localized: "herdr.host.backOnline.title",
+                defaultValue: "Herdr host reconnected"
+            )
+            content.body = String(
+                localized: "herdr.host.backOnline.body",
+                defaultValue: "\(host.displayName): connection restored"
+            )
+            content.userInfo = [
+                "cmux.herdr.kind": "hostBackOnline",
+                "cmux.herdr.hostId": host.id.uuidString,
+            ]
+            let request = UNNotificationRequest(
+                identifier: "cmux.herdr.host.backOnline.\(host.id.uuidString)",
+                content: content,
+                trigger: nil
+            )
+            center.add(request) { _ in }
+        }
     }
 }

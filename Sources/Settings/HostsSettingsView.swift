@@ -16,6 +16,8 @@ struct HostsSettingsView: View {
     }
     @AppStorage(HerdrNotificationSettings.blockedNotificationsEnabledKey)
     private var blockedNotificationsEnabled: Bool = HerdrNotificationSettings.blockedNotificationsEnabledDefault
+    @AppStorage(HerdrNotificationSettings.hostOfflineNotificationsEnabledKey)
+    private var hostOfflineNotificationsEnabled: Bool = HerdrNotificationSettings.hostOfflineNotificationsEnabledDefault
 
     var body: some View {
         SettingsSectionHeader(
@@ -43,11 +45,17 @@ struct HostsSettingsView: View {
             }
         }
 
-        HStack {
+        VStack(alignment: .leading, spacing: 4) {
             Toggle(String(
                 localized: "settings.hosts.notifyBlocked",
                 defaultValue: "Notify when remote agent waits for input"
             ), isOn: $blockedNotificationsEnabled)
+            Toggle(String(
+                localized: "settings.hosts.notifyHostOffline",
+                defaultValue: "Notify when a remote herdr host goes offline"
+            ), isOn: $hostOfflineNotificationsEnabled)
+        }
+        HStack {
             Spacer()
             Button {
                 showingAdd = true
