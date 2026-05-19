@@ -1,4 +1,5 @@
 import Foundation
+import UserNotifications
 
 /// Pushes the local `herdr-cmux` binary to a remote SSH host's
 /// `~/.local/bin/herdr-cmux` so dogfooding doesn't require manual
@@ -43,12 +44,24 @@ enum HerdrRemoteInstaller {
     private static func install(target: String, localBinaryPath: String) async {
         // 1. Ensure ~/.local/bin exists on remote.
         if !runSSH(target: target, command: "mkdir -p ~/.local/bin") {
-            await MainActor.run { herdrInstallerTrace("\(target): mkdir ~/.local/bin failed") }
+            await MainActor.run {
+                herdrInstallerTrace("\(target): mkdir ~/.local/bin failed")
+                postNotification(
+                    title: String(localized: "herdr.install.failed.title", defaultValue: "Herdr install failed"),
+                    body: String(localized: "herdr.install.failed.mkdir", defaultValue: "\(target): could not create ~/.local/bin")
+                )
+            }
             return
         }
         // 2. scp the binary.
         if !runSCP(localBinaryPath: localBinaryPath, target: target) {
-            await MainActor.run { herdrInstallerTrace("\(target): scp failed") }
+            await MainActor.run {
+                herdrInstallerTrace("\(target): scp failed")
+                postNotification(
+                    title: String(localized: "herdr.install.failed.title", defaultValue: "Herdr install failed"),
+                    body: String(localized: "herdr.install.failed.scp", defaultValue: "\(target): scp transfer failed")
+                )
+            }
             return
         }
         // 3. chmod +x just in case scp didn't preserve permissions.
@@ -57,9 +70,38 @@ enum HerdrRemoteInstaller {
         let version = captureSSH(
             target: target,
             command: "~/.local/bin/herdr-cmux --version"
-        ) ?? "(unknown)"
+        )?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         await MainActor.run {
-            herdrInstallerTrace("\(target): installed \(version.trimmingCharacters(in: .whitespacesAndNewlines))")
+            if version.isEmpty {
+                herdrInstallerTrace("\(target): verification failed (no --version output)")
+                postNotification(
+                    title: String(localized: "herdr.install.failed.title", defaultValue: "Herdr install failed"),
+                    body: String(localized: "herdr.install.failed.verify", defaultValue: "\(target): herdr-cmux --version returned no output")
+                )
+            } else {
+                herdrInstallerTrace("\(target): installed \(version)")
+                postNotification(
+                    title: String(localized: "herdr.install.success.title", defaultValue: "Herdr installed"),
+                    body: String(localized: "herdr.install.success.body", defaultValue: "\(target): \(version)")
+                )
+            }
+        }
+    }
+
+    @MainActor
+    private static func postNotification(title: String, body: String) {
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            guard granted else { return }
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.body = body
+            let request = UNNotificationRequest(
+                identifier: "cmux.herdr.install.\(UUID().uuidString)",
+                content: content,
+                trigger: nil
+            )
+            center.add(request) { _ in }
         }
     }
 

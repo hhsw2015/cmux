@@ -45539,6 +45539,48 @@
         "ja": { "stringUnit": { "state": "translated", "value": "エージェント完了" } }
       }
     },
+    "herdr.install.success.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Herdr installed" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "Herdr をインストールしました" } }
+      }
+    },
+    "herdr.install.success.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Installed on remote host" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "リモートホストにインストールされました" } }
+      }
+    },
+    "herdr.install.failed.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Herdr install failed" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "Herdr のインストールに失敗" } }
+      }
+    },
+    "herdr.install.failed.mkdir": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Could not create ~/.local/bin" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "~/.local/bin を作成できません" } }
+      }
+    },
+    "herdr.install.failed.scp": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "scp transfer failed" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "scp 転送に失敗" } }
+      }
+    },
+    "herdr.install.failed.verify": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "herdr-cmux --version returned no output" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "herdr-cmux --version の出力が空" } }
+      }
+    },
     "sidebar.herdr.newWorkspace": {
       "extractionState": "manual",
       "localizations": {
