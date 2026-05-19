@@ -45508,6 +45508,62 @@
         }
       }
     },
+    "settings.hosts.add": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Add host" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "ホストを追加" } }
+      }
+    },
+    "settings.hosts.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Cancel" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "キャンセル" } }
+      }
+    },
+    "settings.hosts.save": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Save" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "保存" } }
+      }
+    },
+    "settings.hosts.edit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Edit host" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "ホストを編集" } }
+      }
+    },
+    "settings.hosts.remove": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove host" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "ホストを削除" } }
+      }
+    },
+    "settings.hosts.name": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Display name" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "表示名" } }
+      }
+    },
+    "settings.hosts.sshTarget": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "SSH target (user@host)" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "SSH ターゲット (user@host)" } }
+      }
+    },
+    "settings.hosts.session": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Herdr session name" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "Herdr セッション名" } }
+      }
+    },
     "settings.hosts.moveUp": {
       "extractionState": "manual",
       "localizations": {
