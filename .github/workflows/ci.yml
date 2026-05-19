@@ -204,7 +204,9 @@ jobs:
       - name: Spawn herdr daemon
         run: |
           set -euo pipefail
-          export TMP_HOME="$(mktemp -d -t cmh-XXXXXX)"
+          # AF_UNIX sun_path is 104 bytes on macOS; /var/folders/...
+          # mktemp prefix is too long. /tmp keeps headroom.
+          export TMP_HOME="$(mktemp -d /tmp/cmh-XXXXXX)"
           echo "TMP_HOME=$TMP_HOME" >> "$GITHUB_ENV"
           SOCKET="$TMP_HOME/.config/herdr/sessions/cmux-live/herdr.sock"
           echo "CMUX_HERDR_LIVE_SOCKET=$SOCKET" >> "$GITHUB_ENV"
