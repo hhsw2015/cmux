@@ -62,6 +62,7 @@ final class HerdrWorkspaceListStore: ObservableObject {
         host: HerdrHost,
         newSummaries: [HerdrWorkspaceSummary]
     ) {
+        guard HerdrNotificationSettings.blockedNotificationsEnabled else { return }
         guard let previous = workspacesByHost[host.id] else {
             // First fetch for this host; establish baseline silently.
             return

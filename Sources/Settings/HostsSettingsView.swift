@@ -7,6 +7,8 @@ struct HostsSettingsView: View {
     @ObservedObject private var registry: HostRegistry = .shared
     @State private var showingAdd = false
     @State private var editing: HerdrHost?
+    @AppStorage(HerdrNotificationSettings.blockedNotificationsEnabledKey)
+    private var blockedNotificationsEnabled: Bool = HerdrNotificationSettings.blockedNotificationsEnabledDefault
 
     var body: some View {
         SettingsSectionHeader(
@@ -28,6 +30,10 @@ struct HostsSettingsView: View {
         }
 
         HStack {
+            Toggle(String(
+                localized: "settings.hosts.notifyBlocked",
+                defaultValue: "Notify when remote agent waits for input"
+            ), isOn: $blockedNotificationsEnabled)
             Spacer()
             Button {
                 showingAdd = true

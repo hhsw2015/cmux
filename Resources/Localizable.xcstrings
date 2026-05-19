@@ -45494,6 +45494,13 @@
         }
       }
     },
+    "settings.hosts.notifyBlocked": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Notify when remote agent waits for input" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "リモートエージェントが入力待ちのとき通知" } }
+      }
+    },
     "settings.hosts.autoInstall": {
       "extractionState": "manual",
       "localizations": {
