@@ -45273,6 +45273,20 @@
         }
       }
     },
+    "menu.herdr.refreshAll": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Refresh All Hosts" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "すべてのホストを更新" } }
+      }
+    },
+    "command.refreshAllHerdrHosts.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Refresh All Herdr Hosts" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "すべての Herdr ホストを更新" } }
+      }
+    },
     "menu.herdr.installRemote": {
       "extractionState": "manual",
       "localizations": {

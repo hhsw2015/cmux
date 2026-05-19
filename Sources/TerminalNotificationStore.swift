@@ -848,7 +848,10 @@ final class TerminalNotificationStore: ObservableObject {
     }
 
     var unreadCount: Int {
-        indexes.unreadCount + workspaceUnreadIndicatorCount + HerdrWorkspaceListStore.shared.totalBlockedCount
+        let herdrCount = HerdrNotificationSettings.blockedNotificationsEnabled
+            ? HerdrWorkspaceListStore.shared.totalBlockedCount
+            : 0
+        return indexes.unreadCount + workspaceUnreadIndicatorCount + herdrCount
     }
 
     var workspaceUnreadIndicatorIds: Set<UUID> {

@@ -69,6 +69,19 @@ extension ContentView {
 
         contributions.append(
             CommandPaletteCommandContribution(
+                commandId: "palette.refreshAllHerdrHosts",
+                title: constant(String(
+                    localized: "command.refreshAllHerdrHosts.title",
+                    defaultValue: "Refresh All Herdr Hosts"
+                )),
+                subtitle: herdrSubtitle,
+                shortcutHint: "⌥⌘R",
+                keywords: ["herdr", "refresh", "reload", "hosts", "all"]
+            )
+        )
+
+        contributions.append(
+            CommandPaletteCommandContribution(
                 commandId: "palette.installHerdrCmux",
                 title: constant(String(
                     localized: "command.installHerdrCmux.title",
@@ -97,6 +110,11 @@ extension ContentView {
         }
         registry.register(commandId: "palette.killCurrentHerdrWorkspace") {
             HerdrKillCommands.killCurrentWorkspace()
+        }
+        registry.register(commandId: "palette.refreshAllHerdrHosts") {
+            for host in HostRegistry.shared.hosts {
+                HerdrWorkspaceListStore.shared.refresh(host: host)
+            }
         }
         registry.register(commandId: "palette.installHerdrCmux") {
             HerdrRemoteInstaller.installOnFirstRemoteHost()

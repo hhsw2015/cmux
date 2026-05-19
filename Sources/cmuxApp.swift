@@ -342,6 +342,13 @@ struct cmuxApp: App {
 
                     Divider()
 
+                    Button(String(localized: "menu.herdr.refreshAll", defaultValue: "Refresh All Hosts")) {
+                        for host in HostRegistry.shared.hosts {
+                            HerdrWorkspaceListStore.shared.refresh(host: host)
+                        }
+                    }
+                    .keyboardShortcut("r", modifiers: [.command, .option])
+
                     Button(String(localized: "menu.herdr.installRemote", defaultValue: "Install herdr-cmux on First Remote Host")) {
                         HerdrRemoteInstaller.installOnFirstRemoteHost()
                     }
