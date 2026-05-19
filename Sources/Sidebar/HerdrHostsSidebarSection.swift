@@ -39,6 +39,13 @@ struct HerdrHostsSidebarSection: View {
                 .task(id: hostRegistry.hosts.map(\.id)) {
                     await keepEventsFlowing()
                 }
+                .onReceive(NotificationCenter.default.publisher(
+                    for: NSApplication.didBecomeActiveNotification
+                )) { _ in
+                    for host in hostRegistry.hosts {
+                        workspaceListStore.refresh(host: host)
+                    }
+                }
                 .alert(item: $pendingKill) { kill in
                     Alert(
                         title: Text(String(
