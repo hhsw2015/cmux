@@ -397,6 +397,14 @@ struct cmuxApp: App {
                     Button("Background Debug…") {
                         BackgroundDebugWindowController.shared.show()
                     }
+                    Button(
+                        String(
+                            localized: "debug.menu.herdrEventPump",
+                            defaultValue: "Herdr Event Pump…"
+                        )
+                    ) {
+                        HerdrEventPumpDebugWindowController.shared.show()
+                    }
                     Button("Open Herdr Panel (localhost)") {
                         HerdrPanelOpener.openLocalhostPanel()
                     }

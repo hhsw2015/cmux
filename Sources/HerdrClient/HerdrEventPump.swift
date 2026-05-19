@@ -26,6 +26,22 @@ final class HerdrEventPump: ObservableObject {
     /// callers don't have to know the transport.
     @Published private(set) var connectionStateByHost: [UUID: ConnectionState] = [:]
 
+    /// Compact log entry for a recently received event. Surfaced via
+    /// the optional Herdr Event Pump debug window so dogfood can see
+    /// push-driven refresh activity in real time.
+    struct EventLogEntry: Identifiable, Equatable {
+        let id = UUID()
+        let timestamp: Date
+        let hostId: UUID
+        let hostName: String
+        let eventName: String
+    }
+
+    private static let recentEventsCap = 200
+
+    /// Ring buffer of recent events across all hosts. Newest first.
+    @Published private(set) var recentEvents: [EventLogEntry] = []
+
     private var clients: [String: HerdrApiClient] = [:]
     private var consumers: [String: Task<Void, Never>] = [:]
     private var refCounts: [String: Int] = [:]
@@ -206,7 +222,24 @@ final class HerdrEventPump: ObservableObject {
         }
     }
 
+    private func recordEvent(_ event: HerdrEvent, socketPath: String) {
+        guard let host = hosts[socketPath] else { return }
+        let entry = EventLogEntry(
+            timestamp: Date(),
+            hostId: host.id,
+            hostName: host.displayName,
+            eventName: event.event
+        )
+        var next = recentEvents
+        next.insert(entry, at: 0)
+        if next.count > Self.recentEventsCap {
+            next = Array(next.prefix(Self.recentEventsCap))
+        }
+        recentEvents = next
+    }
+
     private func handle(event: HerdrEvent, socketPath: String) {
+        recordEvent(event, socketPath: socketPath)
         // Line-protocol uses snake_case event names; some clients use
         // dotted ("layout.changed"). Match both for safety.
         switch event.event {
