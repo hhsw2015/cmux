@@ -343,6 +343,23 @@ enum HerdrPanelOpener {
             herdrPanelOpenerTrace("workspace: capabilities ok (daemon version \(version))")
         case .incompatible(let reason):
             herdrPanelOpenerTrace("workspace: incompatible daemon — \(reason)")
+            await MainActor.run {
+                let alert = NSAlert()
+                alert.messageText = String(
+                    localized: "herdr.alert.incompatible.title",
+                    defaultValue: "Herdr daemon incompatible"
+                )
+                alert.informativeText = String(
+                    localized: "herdr.alert.incompatible.message",
+                    defaultValue: "Host \(host.displayName) is running a herdr build without the layout RPCs cmux needs. Update the daemon to a build that includes layout.snapshot, pane.set_split_ratio, and pane.swap, then try again.\n\nDetails: \(reason)"
+                )
+                alert.alertStyle = .warning
+                alert.addButton(withTitle: String(
+                    localized: "herdr.alert.incompatible.dismiss",
+                    defaultValue: "OK"
+                ))
+                alert.runModal()
+            }
             return
         }
 

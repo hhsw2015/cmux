@@ -45581,6 +45581,27 @@
         "ja": { "stringUnit": { "state": "translated", "value": "Herdr エージェントが入力待ち" } }
       }
     },
+    "herdr.alert.incompatible.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Herdr daemon incompatible" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "Herdr デーモンに互換性がありません" } }
+      }
+    },
+    "herdr.alert.incompatible.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The remote herdr is missing the layout RPCs cmux needs." } },
+        "ja": { "stringUnit": { "state": "translated", "value": "リモート herdr に必要なレイアウト RPC が欠けています" } }
+      }
+    },
+    "herdr.alert.incompatible.dismiss": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "OK" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "OK" } }
+      }
+    },
     "herdr.install.success.title": {
       "extractionState": "manual",
       "localizations": {
