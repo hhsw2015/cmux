@@ -45868,6 +45868,22 @@
         "ja": { "stringUnit": { "state": "translated", "value": "キャンセル" } }
       }
     },
+    "sidebar.herdr.paneCount": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one":   { "stringUnit": { "state": "translated", "value": "%lld pane"  } },
+              "other": { "stringUnit": { "state": "translated", "value": "%lld panes" } }
+            }
+          }
+        },
+        "ja": {
+          "stringUnit": { "state": "translated", "value": "%lld ペイン" }
+        }
+      }
+    },
     "sidebar.herdr.openWorkspace": {
       "extractionState": "manual",
       "localizations": {

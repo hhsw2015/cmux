@@ -445,7 +445,10 @@ private struct HerdrWorkspaceRow: View {
                         .font(.caption)
                         .lineLimit(1)
                     if workspace.paneCount > 0 {
-                        Text("\(workspace.paneCount) pane\(workspace.paneCount == 1 ? "" : "s")")
+                        Text(String(
+                            localized: "sidebar.herdr.paneCount",
+                            defaultValue: "\(workspace.paneCount) panes"
+                        ))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
