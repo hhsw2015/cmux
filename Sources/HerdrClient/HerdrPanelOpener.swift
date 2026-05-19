@@ -380,6 +380,30 @@ enum HerdrPanelOpener {
             workspaceId = resolved.workspaceId
             activeTabId = resolved.tabId
             herdrPanelOpenerTrace("workspace: reusing persisted \(workspaceId) tab=\(activeTabId)")
+        } else if HerdrPersistence.shared.entry(forHostSession: host.sessionName) != nil {
+            // Persisted entry exists but doesn't resolve (workspace
+            // killed externally, tab gone, daemon doesn't recognize
+            // it). Drop the stale binding so future launches don't
+            // keep retrying it.
+            HerdrPersistence.shared.clear(host: host)
+            herdrPanelOpenerTrace("workspace: cleared stale persisted entry for \(host.sessionName)")
+            if let first = sessions.first {
+                workspaceId = first.name
+                guard let resp = try? await api.request(
+                    method: "workspace.get",
+                    params: ["workspace_id": first.name]
+                ),
+                let wsInfo = resp["workspace"] as? [String: Any],
+                let firstActiveTabId = wsInfo["active_tab_id"] as? String else {
+                    herdrPanelOpenerTrace("workspace: fallback workspace.get failed for \(first.name)")
+                    return
+                }
+                activeTabId = firstActiveTabId
+                herdrPanelOpenerTrace("workspace: fallback to first \(workspaceId) tab=\(activeTabId)")
+            } else {
+                herdrPanelOpenerTrace("workspace: no sessions to fall back to")
+                return
+            }
         } else if let first = sessions.first {
             // Fall back: first existing workspace, its active tab.
             let wsResp = try await api.request(
