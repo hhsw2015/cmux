@@ -139,8 +139,12 @@ jobs:
         run: python3 tests/test_herdr_wire_protocol.py
 
   herdr-live-integration-tests:
-    runs-on: warp-macos-15-arm64-6x
-    timeout-minutes: 35
+    # github-hosted runner: this job is not in the warp-guard list
+    # (tests/release-build/ui-regressions/etc). github-hosted has more
+    # capacity for the relatively cheap herdr-fork build + xcodebuild
+    # test pass.
+    runs-on: macos-15
+    timeout-minutes: 45
     env:
       HERDR_CMUX_REF: 123cf49fc3e0acb4bafa76929bd714e11c25aa35
       GHOSTTYKIT_BUILD_FLAVOR: crashsubdir-cmux-crash-v1
