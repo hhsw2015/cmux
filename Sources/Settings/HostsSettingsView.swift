@@ -7,6 +7,13 @@ struct HostsSettingsView: View {
     @ObservedObject private var registry: HostRegistry = .shared
     @State private var showingAdd = false
     @State private var editing: HerdrHost?
+    @State private var pendingForceRemove: PendingForceRemove?
+
+    private struct PendingForceRemove: Identifiable {
+        let host: HerdrHost
+        let activeCount: Int
+        var id: UUID { host.id }
+    }
     @AppStorage(HerdrNotificationSettings.blockedNotificationsEnabledKey)
     private var blockedNotificationsEnabled: Bool = HerdrNotificationSettings.blockedNotificationsEnabledDefault
 
@@ -26,7 +33,7 @@ struct HostsSettingsView: View {
                 HostRow(
                     host: host,
                     onEdit: { editing = host },
-                    onRemove: host.isLocalhost ? nil : { registry.remove(id: host.id) },
+                    onRemove: host.isLocalhost ? nil : { tryRemove(host) },
                     onMoveUp: canMoveUp ? { registry.move(id: host.id, direction: .up) } : nil,
                     onMoveDown: canMoveDown ? { registry.move(id: host.id, direction: .down) } : nil
                 )
@@ -73,6 +80,36 @@ struct HostsSettingsView: View {
                 },
                 onCancel: { editing = nil }
             )
+        }
+        .alert(item: $pendingForceRemove) { pending in
+            Alert(
+                title: Text(String(
+                    localized: "settings.hosts.removeWithActive.title",
+                    defaultValue: "Remove host with active workspaces?"
+                )),
+                message: Text(String(
+                    localized: "settings.hosts.removeWithActive.message",
+                    defaultValue: "“\(pending.host.displayName)” has \(pending.activeCount) attached workspace(s). Removing will not close them, but cmux will lose track of which host they came from."
+                )),
+                primaryButton: .destructive(Text(String(
+                    localized: "settings.hosts.removeWithActive.confirm",
+                    defaultValue: "Remove anyway"
+                ))) {
+                    registry.remove(id: pending.host.id, force: true)
+                },
+                secondaryButton: .cancel()
+            )
+        }
+    }
+
+    private func tryRemove(_ host: HerdrHost) {
+        switch registry.remove(id: host.id) {
+        case nil:
+            return
+        case .localhost:
+            return
+        case .hasActiveBindings(let count):
+            pendingForceRemove = PendingForceRemove(host: host, activeCount: count)
         }
     }
 }

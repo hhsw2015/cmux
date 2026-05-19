@@ -86,19 +86,34 @@ final class HostRegistry: ObservableObject {
         persist()
     }
 
-    func remove(id: UUID) {
-        guard id != HerdrHost.localhostID else { return }
+    /// Reasons remove() may refuse. Caller decides whether to confirm
+    /// + force, or back off.
+    enum RemoveBlock: Equatable {
+        case localhost
+        case hasActiveBindings(count: Int)
+    }
+
+    /// Returns nil on success, otherwise a reason. `force` overrides
+    /// the active-bindings guard but never localhost.
+    @discardableResult
+    func remove(id: UUID, force: Bool = false) -> RemoveBlock? {
+        guard id != HerdrHost.localhostID else { return .localhost }
         let removed = hosts.first { $0.id == id }
+        if !force, let removed {
+            let activeCount = HerdrTabRegistry.shared.allBindings.filter {
+                $0.host.id == removed.id
+            }.count
+            if activeCount > 0 {
+                return .hasActiveBindings(count: activeCount)
+            }
+        }
         hosts.removeAll { $0.id == id }
         persist()
-        // Drop the host's persisted last-attached workspace so we
-        // don't accumulate stale entries forever, and the next time
-        // the same session name comes back it starts from a clean
-        // slate (no auto-reattach to a workspace from a removed host).
         if let removed {
             HerdrPersistence.shared.clear(host: removed)
             HerdrWorkspaceListStore.shared.invalidate(hostId: id)
         }
+        return nil
     }
 
     func host(id: UUID) -> HerdrHost? {

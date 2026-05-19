@@ -45578,6 +45578,27 @@
         "ja": { "stringUnit": { "state": "translated", "value": "ホストを下へ" } }
       }
     },
+    "settings.hosts.removeWithActive.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove host with active workspaces?" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "アクティブなワークスペースがあるホストを削除しますか？" } }
+      }
+    },
+    "settings.hosts.removeWithActive.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Removing will not close attached workspaces, but cmux will lose track of which host they came from." } },
+        "ja": { "stringUnit": { "state": "translated", "value": "削除してもワークスペースは閉じませんが、ホストの紐付けは失われます。" } }
+      }
+    },
+    "settings.hosts.removeWithActive.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove anyway" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "それでも削除" } }
+      }
+    },
     "settings.hosts.testConnection": {
       "extractionState": "manual",
       "localizations": {
