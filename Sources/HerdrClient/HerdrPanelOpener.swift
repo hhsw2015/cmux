@@ -266,6 +266,23 @@ enum HerdrPanelOpener {
             herdrPanelOpenerTrace("workspace: no AppDelegate.shared")
             return
         }
+        // Already attached? Focus the existing cmux workspace instead
+        // of double-attaching the same herdr workspace.
+        if let workspaceId = requestedWorkspaceId,
+           let existing = HerdrTabRegistry.shared.allBindings.first(where: {
+               $0.host.id == host.id && $0.workspaceId == workspaceId
+           }),
+           let existingWorkspace = existing.workspace {
+            let managers = appDelegate.mainWindowContexts.values.compactMap { $0.tabManager }
+            for manager in managers
+            where manager.tabs.contains(where: { $0.id == existingWorkspace.id }) {
+                manager.selectedTabId = existingWorkspace.id
+                herdrPanelOpenerTrace(
+                    "workspace: focused existing binding for \(host.displayName)/\(workspaceId)"
+                )
+                return
+            }
+        }
         let tabManager: TabManager? = {
             if let raw = NSApp.keyWindow?.identifier?.rawValue,
                raw.hasPrefix("cmux.main."),
