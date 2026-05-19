@@ -1078,6 +1078,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 await MainActor.run { SessionExitTracker.shared.start() }
             }
             HerdrAutoReattach.runOnLaunch()
+            HerdrBackgroundService.start()
             // Fast panel-only sweep: 3s cadence so attach/detach badges
             // update promptly. Each tick reads ghostty_surface_foreground_pid
             // per registered panel + one argv read for any panel running

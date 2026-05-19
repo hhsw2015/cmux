@@ -347,6 +347,7 @@
 		C420Z000C420Z000C42AR102 /* HerdrAutoReattach.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42AR101 /* HerdrAutoReattach.swift */; };
 		C420Z000C420Z000C42KC102 /* HerdrKillCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42KC101 /* HerdrKillCommands.swift */; };
 		C420Z000C420Z000C42NS102 /* HerdrNotificationSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42NS101 /* HerdrNotificationSettings.swift */; };
+		C420Z000C420Z000C42BG102 /* HerdrBackgroundService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42BG101 /* HerdrBackgroundService.swift */; };
 		C420Z000C420Z000C42OR102 /* HerdrOneShotRPC.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42OR101 /* HerdrOneShotRPC.swift */; };
 		C420Z000C420Z000C42RI102 /* HerdrRemoteInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42RI101 /* HerdrRemoteInstaller.swift */; };
 		C420Z000C420Z000C42DC102 /* HerdrDisplayClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42DC101 /* HerdrDisplayClient.swift */; };
@@ -954,6 +955,7 @@
 		C420Z000C420Z000C42AR101 /* HerdrAutoReattach.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrAutoReattach.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42KC101 /* HerdrKillCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrKillCommands.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42NS101 /* HerdrNotificationSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrNotificationSettings.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42BG101 /* HerdrBackgroundService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrBackgroundService.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42OR101 /* HerdrOneShotRPC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrOneShotRPC.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42RI101 /* HerdrRemoteInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrRemoteInstaller.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42LU101 /* HerdrLayoutTypesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrLayoutTypesTests.swift; sourceTree = "<group>"; };
@@ -1466,6 +1468,7 @@
 				C420Z000C420Z000C42AR101 /* HerdrAutoReattach.swift */,
 				C420Z000C420Z000C42KC101 /* HerdrKillCommands.swift */,
 				C420Z000C420Z000C42NS101 /* HerdrNotificationSettings.swift */,
+				C420Z000C420Z000C42BG101 /* HerdrBackgroundService.swift */,
 				C420Z000C420Z000C42OR101 /* HerdrOneShotRPC.swift */,
 				C420Z000C420Z000C42RI101 /* HerdrRemoteInstaller.swift */,
 				C420Z000C420Z000C42DC101 /* HerdrDisplayClient.swift */,
@@ -2261,6 +2264,7 @@
 				C420Z000C420Z000C42AR102 /* HerdrAutoReattach.swift in Sources */,
 				C420Z000C420Z000C42KC102 /* HerdrKillCommands.swift in Sources */,
 				C420Z000C420Z000C42NS102 /* HerdrNotificationSettings.swift in Sources */,
+				C420Z000C420Z000C42BG102 /* HerdrBackgroundService.swift in Sources */,
 				C420Z000C420Z000C42OR102 /* HerdrOneShotRPC.swift in Sources */,
 				C420Z000C420Z000C42RI102 /* HerdrRemoteInstaller.swift in Sources */,
 				C420Z000C420Z000C42DC102 /* HerdrDisplayClient.swift in Sources */,
