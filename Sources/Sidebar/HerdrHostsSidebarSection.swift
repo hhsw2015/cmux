@@ -394,6 +394,19 @@ private struct HerdrHostRow: View {
                             .controlSize(.mini)
                             .scaleEffect(0.7)
                     } else if !workspaces.isEmpty {
+                        let blocked = workspaces.filter {
+                            $0.agentStatus?.lowercased() == "blocked"
+                        }.count
+                        if blocked > 0 {
+                            HStack(spacing: 3) {
+                                Circle().fill(Color.orange)
+                                    .frame(width: 5, height: 5)
+                                Text("\(blocked)")
+                                    .font(.caption2)
+                                    .foregroundStyle(.orange)
+                                    .monospacedDigit()
+                            }
+                        }
                         Text("\(workspaces.count)")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
