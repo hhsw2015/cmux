@@ -45539,6 +45539,34 @@
         "ja": { "stringUnit": { "state": "translated", "value": "エージェント完了" } }
       }
     },
+    "sidebar.herdr.newWorkspace": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "New workspace…" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "新規ワークスペース…" } }
+      }
+    },
+    "sidebar.herdr.create.sheet.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "New Herdr workspace" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "新しい Herdr ワークスペース" } }
+      }
+    },
+    "sidebar.herdr.create.placeholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Optional label" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "ラベル (任意)" } }
+      }
+    },
+    "sidebar.herdr.create.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Create" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "作成" } }
+      }
+    },
     "sidebar.herdr.rename.menu": {
       "extractionState": "manual",
       "localizations": {

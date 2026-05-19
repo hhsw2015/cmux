@@ -16,6 +16,8 @@ struct HerdrHostsSidebarSection: View {
     @State private var pendingKill: PendingKill?
     @State private var pendingRename: PendingRename?
     @State private var renameDraft: String = ""
+    @State private var pendingCreate: HerdrHost?
+    @State private var createDraft: String = ""
 
     private struct PendingKill: Identifiable {
         let host: HerdrHost
@@ -67,6 +69,17 @@ struct HerdrHostsSidebarSection: View {
                         onCancel: { pendingRename = nil }
                     )
                 }
+                .sheet(item: $pendingCreate) { host in
+                    HerdrWorkspaceCreateSheet(
+                        host: host,
+                        text: $createDraft,
+                        onConfirm: { label in
+                            createWorkspace(host: host, label: label)
+                            pendingCreate = nil
+                        },
+                        onCancel: { pendingCreate = nil }
+                    )
+                }
         }
     }
 
@@ -104,6 +117,10 @@ struct HerdrHostsSidebarSection: View {
                     onRefresh: {
                         workspaceListStore.refresh(host: host)
                     },
+                    onNewWorkspace: {
+                        createDraft = ""
+                        pendingCreate = host
+                    },
                     onOpenWorkspace: { workspaceId in
                         onOpenWorkspace(host, workspaceId)
                     },
@@ -136,6 +153,27 @@ struct HerdrHostsSidebarSection: View {
         }
         for host in hosts {
             await HerdrEventPump.shared.release(host: host)
+        }
+    }
+
+    private func createWorkspace(host: HerdrHost, label: String) {
+        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        Task { @MainActor in
+            let api = HerdrApiClient(transport: HerdrTransportFactory.make(host: host))
+            do {
+                try await api.start()
+                defer { Task { await api.close() } }
+                var params: [String: Any] = ["focus": true]
+                if !trimmed.isEmpty { params["label"] = trimmed }
+                let resp = try await api.request(method: "workspace.create", params: params)
+                workspaceListStore.refresh(host: host)
+                if let ws = resp["workspace"] as? [String: Any],
+                   let id = ws["workspace_id"] as? String {
+                    HerdrPanelOpener.openWorkspace(host: host, workspaceId: id)
+                }
+            } catch {
+                cmuxDebugLog("herdr.create: \(host.displayName): \(error)")
+            }
         }
     }
 
@@ -190,6 +228,7 @@ private struct HerdrHostRow: View {
     let lastError: String?
     let onToggle: () -> Void
     let onRefresh: () -> Void
+    let onNewWorkspace: () -> Void
     let onOpenWorkspace: (String) -> Void
     let onKillWorkspace: (HerdrWorkspaceSummary) -> Void
     let onRenameWorkspace: (HerdrWorkspaceSummary) -> Void
@@ -227,6 +266,10 @@ private struct HerdrHostRow: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("HerdrHostRow_\(host.id.uuidString)")
             .contextMenu {
+                Button(String(
+                    localized: "sidebar.herdr.newWorkspace",
+                    defaultValue: "New workspace…"
+                )) { onNewWorkspace() }
                 Button(String(
                     localized: "sidebar.herdr.refresh",
                     defaultValue: "Refresh"
@@ -353,6 +396,44 @@ private struct HerdrWorkspaceRow: View {
 
     private var agentStatusNormalized: String {
         workspace.agentStatus?.lowercased() ?? "unknown"
+    }
+}
+
+private struct HerdrWorkspaceCreateSheet: View {
+    let host: HerdrHost
+    @Binding var text: String
+    let onConfirm: (String) -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(String(
+                localized: "sidebar.herdr.create.sheet.title",
+                defaultValue: "New Herdr workspace on \(host.displayName)"
+            ))
+            .font(.headline)
+            TextField(String(
+                localized: "sidebar.herdr.create.placeholder",
+                defaultValue: "Optional label"
+            ), text: $text)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit { onConfirm(text) }
+            HStack {
+                Spacer()
+                Button(String(
+                    localized: "sidebar.herdr.rename.cancel",
+                    defaultValue: "Cancel"
+                ), action: onCancel)
+                .keyboardShortcut(.cancelAction)
+                Button(String(
+                    localized: "sidebar.herdr.create.confirm",
+                    defaultValue: "Create"
+                )) { onConfirm(text) }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .frame(width: 360)
     }
 }
 
