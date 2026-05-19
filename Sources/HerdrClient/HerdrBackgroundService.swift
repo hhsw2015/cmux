@@ -25,13 +25,16 @@ enum HerdrBackgroundService {
             }
         }
 
-        // 60s poll loop, gated on app being active. The sidebar
-        // section's own 30s loop covers the foreground "fast path";
-        // this catches the case where the section isn't mounted (or
-        // the host registry changes while it isn't mounted).
+        // 5min safety-net poll loop, gated on app being active.
+        // Push events (workspace.created/closed/renamed/focused +
+        // pane.agent_status_changed + tab.reordered) drive
+        // near-realtime refresh now, so this loop only catches the
+        // narrow window where a host disconnects and reconnects
+        // without us replaying state. The sidebar section's own
+        // 30s loop covers the foreground fast path.
         Task { @MainActor in
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 60_000_000_000)
+                try? await Task.sleep(nanoseconds: 300_000_000_000)
                 if !NSApp.isActive { continue }
                 for host in HostRegistry.shared.hosts {
                     HerdrWorkspaceListStore.shared.refresh(host: host)
