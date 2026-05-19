@@ -121,6 +121,21 @@ struct HerdrPaneExitedPayload: Codable, Equatable, Sendable {
     }
 }
 
+/// Payload of `pane.agent_status_changed`. Fires when the daemon's
+/// agent-detection loop reclassifies a pane (idle / working / blocked /
+/// done). cmux uses these for push-driven sidebar updates so the
+/// blocked-count badge + notification don't have to wait for the 60s
+/// workspace.list poll.
+struct HerdrPaneAgentStatusChangedPayload: Codable, Equatable, Sendable {
+    let paneId: String
+    let agentStatus: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case paneId = "pane_id"
+        case agentStatus = "agent_status"
+    }
+}
+
 extension HerdrApiClient {
     /// Fetch the current BSP tree for one tab. Used on attach to
     /// initialize cmux's bonsplit mirror; subsequent updates come from

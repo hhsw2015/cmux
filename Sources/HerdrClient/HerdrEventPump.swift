@@ -137,6 +137,8 @@ final class HerdrEventPump: ObservableObject {
                     "workspace.focused",
                     "workspace.renamed",
                     "pane.exited",
+                    "pane.agent_status_changed",
+                    "tab.reordered",
                 ])
                 clients[socketPath] = client
                 setConnectionState(hostId: host.id, host: host, .connected)
@@ -239,6 +241,18 @@ final class HerdrEventPump: ObservableObject {
             cmuxDebugLog(
                 "herdr.pump: pane_exited \(payload.paneId) in workspace \(payload.workspaceId)"
             )
+        case "pane_agent_status_changed", "pane.agent_status_changed":
+            // Push update for sidebar blocked-count + agent_status
+            // dot. Cheaper than waiting for the 60s workspace.list
+            // poll. We just invalidate + refresh; the store will
+            // re-detect blocked transitions and post the
+            // notification at most once per workspace.
+            invalidateWorkspaceList(socketPath: socketPath, reason: event.event)
+        case "tab_reordered", "tab.reordered":
+            // Tab order changed remotely (Mac B drags tabs); refresh
+            // the workspace list so the sidebar reflects the new
+            // ordering.
+            invalidateWorkspaceList(socketPath: socketPath, reason: event.event)
         default:
             break
         }
