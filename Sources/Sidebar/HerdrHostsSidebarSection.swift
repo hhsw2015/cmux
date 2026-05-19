@@ -11,6 +11,7 @@ struct HerdrHostsSidebarSection: View {
     @ObservedObject var hostRegistry: HostRegistry
     @ObservedObject var workspaceListStore: HerdrWorkspaceListStore
     @ObservedObject private var eventPump = HerdrEventPump.shared
+    @ObservedObject private var tabRegistry = HerdrTabRegistry.shared
     let onOpenWorkspace: (HerdrHost, String) -> Void
 
     @AppStorage(Self.expandedHostsKey) private var expandedHostsRaw: String = ""
@@ -161,6 +162,9 @@ struct HerdrHostsSidebarSection: View {
                     onRenameWorkspace: { ws in
                         renameDraft = ws.label
                         pendingRename = PendingRename(host: host, workspace: ws)
+                    },
+                    isWorkspaceAttached: { workspaceId in
+                        isAttached(host: host, workspaceId: workspaceId)
                     }
                 )
             }
@@ -281,6 +285,12 @@ struct HerdrHostsSidebarSection: View {
         }
     }
 
+    private func isAttached(host: HerdrHost, workspaceId: String) -> Bool {
+        tabRegistry.allBindings.contains {
+            $0.host.id == host.id && $0.workspaceId == workspaceId
+        }
+    }
+
     private var blockedCount: Int {
         hostRegistry.hosts.reduce(0) { acc, host in
             acc + workspaceListStore.workspaces(forHost: host).filter {
@@ -318,6 +328,7 @@ private struct HerdrHostRow: View {
     let onOpenWorkspace: (String) -> Void
     let onKillWorkspace: (HerdrWorkspaceSummary) -> Void
     let onRenameWorkspace: (HerdrWorkspaceSummary) -> Void
+    let isWorkspaceAttached: (String) -> Bool
 
     private var connectionTint: Color {
         switch connectionState {
@@ -417,6 +428,7 @@ private struct HerdrHostRow: View {
                     ForEach(workspaces) { ws in
                         HerdrWorkspaceRow(
                             workspace: ws,
+                            isAttached: isWorkspaceAttached(ws.workspaceId),
                             onOpen: { onOpenWorkspace(ws.workspaceId) },
                             onKill: { onKillWorkspace(ws) },
                             onRename: { onRenameWorkspace(ws) }
@@ -430,6 +442,7 @@ private struct HerdrHostRow: View {
 
 private struct HerdrWorkspaceRow: View {
     let workspace: HerdrWorkspaceSummary
+    let isAttached: Bool
     let onOpen: () -> Void
     let onKill: () -> Void
     let onRename: () -> Void
@@ -460,6 +473,8 @@ private struct HerdrWorkspaceRow: View {
             .padding(.trailing, 10)
             .padding(.vertical, 2)
             .contentShape(Rectangle())
+            .background(isAttached ? Color.accentColor.opacity(0.12) : Color.clear)
+            .cornerRadius(4)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("HerdrWorkspaceRow_\(workspace.workspaceId)")

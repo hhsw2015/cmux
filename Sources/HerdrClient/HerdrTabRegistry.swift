@@ -53,8 +53,15 @@ final class HerdrTabBinding {
 /// E2d mutation hooks to look up which herdr workspace+tab a cmux
 /// operation belongs to so the matching RPC can be sent.
 @MainActor
-final class HerdrTabRegistry {
+final class HerdrTabRegistry: ObservableObject {
     static let shared = HerdrTabRegistry()
+
+    /// Posted when bindings change so UIs (sidebar) can re-evaluate
+    /// "is this workspace currently attached" highlights without
+    /// being directly observed.
+    static let bindingsChangedNotification = Notification.Name(
+        "cmux.herdr.tabRegistry.bindingsChanged"
+    )
 
     private var bindings: [UUID: HerdrTabBinding] = [:]
 
@@ -63,10 +70,18 @@ final class HerdrTabRegistry {
     /// remove this binding later — typically the root cmux pane id.
     func register(key: UUID, binding: HerdrTabBinding) {
         bindings[key] = binding
+        objectWillChange.send()
+        NotificationCenter.default.post(
+            name: Self.bindingsChangedNotification, object: nil
+        )
     }
 
     func remove(key: UUID) {
-        bindings.removeValue(forKey: key)
+        guard bindings.removeValue(forKey: key) != nil else { return }
+        objectWillChange.send()
+        NotificationCenter.default.post(
+            name: Self.bindingsChangedNotification, object: nil
+        )
     }
 
     /// Find the binding that owns a given cmux pane id, if any. O(N)
