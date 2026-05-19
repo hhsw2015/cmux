@@ -105,6 +105,22 @@ final class HerdrEventPump: ObservableObject {
                     handle(event: event, socketPath: socketPath)
                 }
                 cmuxDebugLog("herdr.pump: stream closed on \(socketPath); will reconnect")
+                // Pull the transport-level reason (ssh stderr tail,
+                // socket errno, etc.) so the host row can display
+                // something better than "eof / api socket closed".
+                let reason: String
+                let finalStatus = await client.transportStatus()
+                if case .error(let detail) = finalStatus {
+                    reason = detail
+                } else {
+                    reason = "stream ended"
+                }
+                if let host = hosts[socketPath] {
+                    connectionStateByHost[host.id] = .retrying(
+                        attempt: attempt + 1,
+                        lastError: reason
+                    )
+                }
                 if let oldClient = clients.removeValue(forKey: socketPath) {
                     await oldClient.close()
                 }

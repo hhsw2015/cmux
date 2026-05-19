@@ -60,6 +60,13 @@ actor HerdrApiClient {
         }
     }
 
+    /// Current transport status (e.g. `.error("ssh exited 255: ...")`).
+    /// Used by the event pump to surface a friendly reason after a
+    /// silent stream-end disconnect.
+    func transportStatus() async -> HerdrTransportStatus {
+        await transport.status
+    }
+
     func close() async {
         pumpTask?.cancel()
         pumpTask = nil

@@ -29,6 +29,9 @@ actor SSHStdioTransport: HerdrTransport {
         return [
             "-T",
             "-o", "BatchMode=yes",
+            "-o", "ConnectTimeout=10",
+            "-o", "ServerAliveInterval=15",
+            "-o", "ServerAliveCountMax=3",
             "-o", "ControlMaster=auto",
             "-o", "ControlPath=\(cmDir)/cmux-cm-%C",
             "-o", "ControlPersist=60",
@@ -42,6 +45,8 @@ actor SSHStdioTransport: HerdrTransport {
     private var process: Process?
     private var stdinHandle: FileHandle?
     private var stdoutTask: Task<Void, Never>?
+    private var stderrTail: String = ""
+    private var explicitlyClosed: Bool = false
 
     init(
         target: String,
@@ -88,6 +93,21 @@ actor SSHStdioTransport: HerdrTransport {
         proc.standardOutput = stdoutPipe
         proc.standardError = stderrPipe
 
+        // Termination handler: fires when ssh exits for any reason
+        // (peer closed, network drop, auth failure, remote daemon
+        // crash). Called on a background queue. Drive transport
+        // status into .error and finish the incoming stream so the
+        // event pump notices and runs its reconnect path. Skip when
+        // the closure was triggered by an explicit close() call.
+        proc.terminationHandler = { [weak self] terminated in
+            Task { [weak self] in
+                await self?.handleProcessExit(
+                    terminationStatus: terminated.terminationStatus,
+                    reason: terminated.terminationReason
+                )
+            }
+        }
+
         do {
             try proc.run()
         } catch {
@@ -98,11 +118,41 @@ actor SSHStdioTransport: HerdrTransport {
         process = proc
         stdinHandle = stdinPipe.fileHandleForWriting
         status = .online
+        explicitlyClosed = false
+        stderrTail = ""
 
         startStdoutPump(handle: stdoutPipe.fileHandleForReading)
         // Stderr is best-effort: drain so the pipe doesn't block but
-        // don't crash on it. Surfaced via #if DEBUG callers' logs.
+        // don't crash on it. Surfaced via #if DEBUG callers' logs and
+        // captured into stderrTail so terminationHandler can include
+        // it in the error message.
         startStderrDrain(handle: stderrPipe.fileHandleForReading)
+    }
+
+    private func handleProcessExit(
+        terminationStatus: Int32,
+        reason: Process.TerminationReason
+    ) {
+        // Either close() was called (which sets explicitlyClosed and
+        // already flipped status to .disconnected) or the process
+        // died unexpectedly. In the unexpected case, surface a
+        // structured error so the event pump can resurface it in
+        // the host row.
+        if explicitlyClosed {
+            return
+        }
+        let suffix = stderrTail.isEmpty ? "" : ": \(stderrTail)"
+        let detail = reason == .uncaughtSignal
+            ? "ssh died on signal (status=\(terminationStatus))\(suffix)"
+            : "ssh exited \(terminationStatus)\(suffix)"
+        status = .error(detail)
+        sshTransportTrace(target: target, message: detail)
+        // End the incoming stream — the consumer's `for await` exits
+        // and the pump retries with backoff.
+        incomingContinuation.finish()
+        process = nil
+        stdinHandle?.closeFile()
+        stdinHandle = nil
     }
 
     func send(_ data: Data) async throws {
@@ -123,6 +173,7 @@ actor SSHStdioTransport: HerdrTransport {
     }
 
     func close() async {
+        explicitlyClosed = true
         stdinHandle?.closeFile()
         stdinHandle = nil
         process?.terminate()
@@ -149,14 +200,33 @@ actor SSHStdioTransport: HerdrTransport {
     }
 
     private func startStderrDrain(handle: FileHandle) {
-        Task.detached(priority: .background) {
+        // Capture stderr tail so terminationHandler can surface
+        // ssh's "Connection closed by remote host" / "Permission denied"
+        // / "Could not resolve hostname" lines as the error reason.
+        Task.detached(priority: .background) { [weak self] in
             while !Task.isCancelled {
                 let chunk = handle.availableData
                 if chunk.isEmpty { return }
                 if let text = String(data: chunk, encoding: .utf8) {
-                    sshTransportTrace(target: "stderr", message: text.trimmingCharacters(in: .whitespacesAndNewlines))
+                    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !trimmed.isEmpty {
+                        sshTransportTrace(target: "stderr", message: trimmed)
+                        await self?.appendStderr(trimmed)
+                    }
                 }
             }
+        }
+    }
+
+    private func appendStderr(_ line: String) {
+        // Keep only the most recent ~512 bytes; ssh stderr can be
+        // chatty (banner, motd) but only the last lines are useful
+        // when surfacing to UI.
+        let combined = stderrTail.isEmpty ? line : "\(stderrTail) \(line)"
+        if combined.count <= 512 {
+            stderrTail = combined
+        } else {
+            stderrTail = String(combined.suffix(512))
         }
     }
 }
