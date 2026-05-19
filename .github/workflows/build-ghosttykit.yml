@@ -9,8 +9,8 @@ concurrency:
 
 jobs:
   build-ghosttykit:
-    runs-on: warp-macos-15-arm64-6x
-    timeout-minutes: 20
+    runs-on: macos-15
+    timeout-minutes: 30
     env:
       GHOSTTYKIT_CRASH_REPORT_SUBDIR: cmux/crash
       GHOSTTYKIT_BUILD_FLAVOR: crashsubdir-cmux-crash-v1
