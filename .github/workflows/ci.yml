@@ -103,6 +103,18 @@ jobs:
           sh rustup-init.sh -y --profile minimal --default-toolchain stable
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
+      - name: Install zig (for vendored libghostty-vt build.rs)
+        run: |
+          set -euo pipefail
+          ZIG_VERSION="0.15.2"
+          ZIG_NAME="zig-x86_64-linux-${ZIG_VERSION}"
+          ZIG_TAR="/tmp/${ZIG_NAME}.tar.xz"
+          curl --proto '=https' --tlsv1.2 -sSfL -o "$ZIG_TAR" \
+            "https://ziglang.org/download/${ZIG_VERSION}/${ZIG_NAME}.tar.xz"
+          sudo tar -xJf "$ZIG_TAR" -C /opt
+          sudo ln -sf "/opt/${ZIG_NAME}/zig" /usr/local/bin/zig
+          zig version
+
       - name: Cache Cargo registry
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
