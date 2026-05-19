@@ -45602,6 +45602,27 @@
         "ja": { "stringUnit": { "state": "translated", "value": "Herdr エージェントが入力待ち" } }
       }
     },
+    "herdr.alert.missingBinary.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Local herdr-cmux not found" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "ローカルの herdr-cmux が見つかりません" } }
+      }
+    },
+    "herdr.alert.missingBinary.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Build the herdr fork and copy herdr-cmux to ~/.local/bin/" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "herdr fork をビルドして ~/.local/bin/ に herdr-cmux を配置してください" } }
+      }
+    },
+    "herdr.alert.missingBinary.dismiss": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "OK" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "OK" } }
+      }
+    },
     "herdr.alert.openFailed.title": {
       "extractionState": "manual",
       "localizations": {

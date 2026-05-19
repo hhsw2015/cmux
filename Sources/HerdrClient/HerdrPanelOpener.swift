@@ -306,6 +306,7 @@ enum HerdrPanelOpener {
         let exec = (("~/.local/bin/herdr-cmux") as NSString).expandingTildeInPath
         guard FileManager.default.isExecutableFile(atPath: exec) else {
             herdrPanelOpenerTrace("workspace: missing binary at \(exec)")
+            presentMissingLocalBinaryAlert(path: exec)
             return
         }
         Task { @MainActor in
@@ -322,6 +323,25 @@ enum HerdrPanelOpener {
                 presentOpenFailureAlert(host: host, error: error)
             }
         }
+    }
+
+    @MainActor
+    private static func presentMissingLocalBinaryAlert(path: String) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = String(
+            localized: "herdr.alert.missingBinary.title",
+            defaultValue: "Local herdr-cmux not found"
+        )
+        alert.informativeText = String(
+            localized: "herdr.alert.missingBinary.message",
+            defaultValue: "cmux looked for the herdr-cmux binary at \(path) but didn't find it.\n\nBuild it from the herdr fork:\n  cd /Users/wowdd1/Dev/herdr && cargo build --release\n  cp target/release/herdr-cmux ~/.local/bin/\n\nThen retry."
+        )
+        alert.addButton(withTitle: String(
+            localized: "herdr.alert.missingBinary.dismiss",
+            defaultValue: "OK"
+        ))
+        alert.runModal()
     }
 
     @MainActor
