@@ -13896,24 +13896,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         return true
     }
 
-    /// Routes a herdr-blocked-agent notification tap to
-    /// `HerdrPanelOpener.openWorkspace`. Returns `true` if the
-    /// notification was herdr-owned.
+    /// Routes herdr notification taps. Blocked-agent + workspace
+    /// notifications open the workspace; host offline / back-online
+    /// notifications just bring cmux to the foreground so the user
+    /// sees the sidebar host row. Returns `true` if the notification
+    /// was herdr-owned.
     private func handleHerdrNotificationResponse(_ response: UNNotificationResponse) -> Bool {
         let userInfo = response.notification.request.content.userInfo
         guard let hostIdString = userInfo["cmux.herdr.hostId"] as? String,
-              let hostId = UUID(uuidString: hostIdString),
-              let workspaceId = userInfo["cmux.herdr.workspaceId"] as? String,
-              let host = HostRegistry.shared.hosts.first(where: { $0.id == hostId })
+              let hostId = UUID(uuidString: hostIdString)
         else {
             return false
         }
+        let host = HostRegistry.shared.hosts.first(where: { $0.id == hostId })
         switch response.actionIdentifier {
         case UNNotificationDismissActionIdentifier:
             return true
         default:
             NSApp.activate(ignoringOtherApps: true)
-            HerdrPanelOpener.openWorkspace(host: host, workspaceId: workspaceId)
+            if let host, let workspaceId = userInfo["cmux.herdr.workspaceId"] as? String {
+                HerdrPanelOpener.openWorkspace(host: host, workspaceId: workspaceId)
+            }
+            // host-only kinds (hostOffline / hostBackOnline) just
+            // need foreground; no further routing.
         }
         return true
     }
