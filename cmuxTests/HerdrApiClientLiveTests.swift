@@ -44,6 +44,75 @@ final class HerdrApiClientLiveTests: XCTestCase {
         XCTAssertNotNil(result["workspaces"])
     }
 
+    func testWorkspaceCreateRenameCloseRoundTrip() async throws {
+        let path = try XCTUnwrap(socketPath)
+        let transport = LocalUDSTransport(socketPath: path)
+        let client = HerdrApiClient(transport: transport)
+        try await client.start()
+        defer { Task { await client.close() } }
+
+        // Create
+        let createResp = try await client.request(
+            method: "workspace.create",
+            params: ["focus": false, "label": "cmux-rt-original"]
+        )
+        let workspace = try XCTUnwrap(createResp["workspace"] as? [String: Any])
+        let workspaceId = try XCTUnwrap(workspace["workspace_id"] as? String)
+        XCTAssertEqual(workspace["label"] as? String, "cmux-rt-original")
+
+        // Rename
+        _ = try await client.request(
+            method: "workspace.rename",
+            params: ["workspace_id": workspaceId, "label": "cmux-rt-renamed"]
+        )
+        let getResp = try await client.request(
+            method: "workspace.get",
+            params: ["workspace_id": workspaceId]
+        )
+        let renamed = try XCTUnwrap(getResp["workspace"] as? [String: Any])
+        XCTAssertEqual(renamed["label"] as? String, "cmux-rt-renamed")
+
+        // Close (cleanup)
+        _ = try await client.request(
+            method: "workspace.close",
+            params: ["workspace_id": workspaceId]
+        )
+
+        // Verify gone from list
+        let listResp = try await client.request(method: "workspace.list", params: [:])
+        let workspaces = listResp["workspaces"] as? [[String: Any]] ?? []
+        let stillThere = workspaces.contains { ($0["workspace_id"] as? String) == workspaceId }
+        XCTAssertFalse(stillThere, "workspace should be gone after close")
+    }
+
+    func testLayoutSnapshotRPC() async throws {
+        let path = try XCTUnwrap(socketPath)
+        let transport = LocalUDSTransport(socketPath: path)
+        let client = HerdrApiClient(transport: transport)
+        try await client.start()
+        defer { Task { await client.close() } }
+
+        // Create workspace so we have a non-empty layout
+        let createResp = try await client.request(
+            method: "workspace.create",
+            params: ["focus": true, "label": "cmux-layout-probe"]
+        )
+        let workspace = try XCTUnwrap(createResp["workspace"] as? [String: Any])
+        let workspaceId = try XCTUnwrap(workspace["workspace_id"] as? String)
+        let activeTabId = try XCTUnwrap(workspace["active_tab_id"] as? String)
+
+        let snap = try await client.request(
+            method: "layout.snapshot",
+            params: ["workspace_id": workspaceId, "tab_id": activeTabId]
+        )
+        XCTAssertNotNil(snap["root"], "layout.snapshot must return a root LayoutNode")
+
+        _ = try await client.request(
+            method: "workspace.close",
+            params: ["workspace_id": workspaceId]
+        )
+    }
+
     func testSubscribeEmitsLifecycleEvents() async throws {
         let path = try XCTUnwrap(socketPath)
         let transport = LocalUDSTransport(socketPath: path)
