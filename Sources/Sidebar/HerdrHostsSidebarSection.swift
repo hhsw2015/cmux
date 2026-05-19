@@ -341,6 +341,15 @@ private struct HerdrHostRow: View {
         }
     }
 
+    private var hostTooltipDetail: String {
+        switch host.transport {
+        case .localUDS:
+            return "\(host.displayName) · localhost · \(host.sessionName)"
+        case .sshStdio(let target):
+            return "\(host.displayName) · ssh \(target) · \(host.sessionName)"
+        }
+    }
+
     private var connectionTooltip: String {
         switch connectionState {
         case .retrying(let attempt, let lastError):
@@ -378,6 +387,7 @@ private struct HerdrHostRow: View {
                     Text(host.displayName)
                         .font(.caption)
                         .lineLimit(1)
+                        .help(hostTooltipDetail)
                     Spacer(minLength: 0)
                     if isLoading {
                         ProgressView()
