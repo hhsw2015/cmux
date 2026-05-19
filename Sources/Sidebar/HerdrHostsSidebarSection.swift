@@ -127,7 +127,7 @@ struct HerdrHostsSidebarSection: View {
                     host: host,
                     isExpanded: expandedHosts.contains(host.id),
                     isLoading: workspaceListStore.isLoading(host: host),
-                    workspaces: workspaceListStore.workspaces(forHost: host),
+                    workspaces: sortedWorkspaces(forHost: host),
                     lastError: workspaceListStore.lastErrorByHost[host.id],
                     onToggle: {
                         toggleExpansion(host: host)
@@ -233,6 +233,30 @@ struct HerdrHostsSidebarSection: View {
             // also invalidates, but races are cheap to handle).
             try? await Task.sleep(nanoseconds: 250_000_000)
             await HerdrWorkspaceListStore.shared.refresh(host: host)
+        }
+    }
+
+    /// Sort workspaces by agent_status priority so the rows that
+    /// most likely need attention float to the top of the host's
+    /// list. Stable secondary sort by label so equal-priority
+    /// rows keep a deterministic order.
+    private func sortedWorkspaces(forHost host: HerdrHost) -> [HerdrWorkspaceSummary] {
+        let raw = workspaceListStore.workspaces(forHost: host)
+        return raw.sorted { lhs, rhs in
+            let lp = priority(for: lhs.agentStatus)
+            let rp = priority(for: rhs.agentStatus)
+            if lp != rp { return lp < rp }
+            return lhs.label.localizedCaseInsensitiveCompare(rhs.label) == .orderedAscending
+        }
+    }
+
+    private func priority(for status: String?) -> Int {
+        switch status?.lowercased() {
+        case "blocked": return 0
+        case "working": return 1
+        case "done":    return 2
+        case "idle":    return 3
+        default:        return 4
         }
     }
 
