@@ -237,6 +237,96 @@ class HerdrWireProtocolTests(unittest.TestCase):
         # Cleanup.
         request(self.socket_path, "workspace.close", {"workspace_id": ws_id})
 
+    def test_pane_swap(self):
+        """pane.swap a/b swaps the two panes' positions in the BSP tree."""
+        ws = request(
+            self.socket_path,
+            "workspace.create",
+            {"focus": True, "label": "wire-swap"},
+        )["result"]["workspace"]
+        ws_id = ws["workspace_id"]
+        get_resp = request(self.socket_path, "workspace.get", {"workspace_id": ws_id})
+        tab_id = get_resp["result"]["workspace"]["active_tab_id"]
+        snap = request(
+            self.socket_path,
+            "layout.snapshot",
+            {"workspace_id": ws_id, "tab_id": tab_id},
+        )
+        a_id = snap["result"]["tree"]["root"]["pane_id"]
+
+        split = request(
+            self.socket_path,
+            "pane.split",
+            {"target_pane_id": a_id, "direction": "right", "focus": False},
+        )
+        b_id = split["result"]["pane"]["pane_id"]
+
+        snap_before = request(
+            self.socket_path,
+            "layout.snapshot",
+            {"workspace_id": ws_id, "tab_id": tab_id},
+        )
+        first_before = snap_before["result"]["tree"]["root"]["first"]["pane_id"]
+        second_before = snap_before["result"]["tree"]["root"]["second"]["pane_id"]
+
+        request(self.socket_path, "pane.swap", {"a_pane_id": a_id, "b_pane_id": b_id})
+
+        snap_after = request(
+            self.socket_path,
+            "layout.snapshot",
+            {"workspace_id": ws_id, "tab_id": tab_id},
+        )
+        first_after = snap_after["result"]["tree"]["root"]["first"]["pane_id"]
+        second_after = snap_after["result"]["tree"]["root"]["second"]["pane_id"]
+
+        # The two should have switched positions.
+        self.assertEqual(first_before, second_after)
+        self.assertEqual(second_before, first_after)
+
+        request(self.socket_path, "workspace.close", {"workspace_id": ws_id})
+
+    def test_pane_focus(self):
+        """pane.focus changes which pane is reported as focused."""
+        ws = request(
+            self.socket_path,
+            "workspace.create",
+            {"focus": True, "label": "wire-focus"},
+        )["result"]["workspace"]
+        ws_id = ws["workspace_id"]
+        get_resp = request(self.socket_path, "workspace.get", {"workspace_id": ws_id})
+        tab_id = get_resp["result"]["workspace"]["active_tab_id"]
+        snap = request(
+            self.socket_path,
+            "layout.snapshot",
+            {"workspace_id": ws_id, "tab_id": tab_id},
+        )
+        a_id = snap["result"]["tree"]["root"]["pane_id"]
+
+        split = request(
+            self.socket_path,
+            "pane.split",
+            {"target_pane_id": a_id, "direction": "right", "focus": False},
+        )
+        b_id = split["result"]["pane"]["pane_id"]
+
+        request(self.socket_path, "pane.focus", {"pane_id": b_id})
+        snap_after = request(
+            self.socket_path,
+            "layout.snapshot",
+            {"workspace_id": ws_id, "tab_id": tab_id},
+        )
+        self.assertEqual(snap_after["result"]["tree"]["focused_pane_id"], b_id)
+
+        request(self.socket_path, "pane.focus", {"pane_id": a_id})
+        snap_after2 = request(
+            self.socket_path,
+            "layout.snapshot",
+            {"workspace_id": ws_id, "tab_id": tab_id},
+        )
+        self.assertEqual(snap_after2["result"]["tree"]["focused_pane_id"], a_id)
+
+        request(self.socket_path, "workspace.close", {"workspace_id": ws_id})
+
     def test_events_subscribe_emits_workspace_created(self):
         # Long-lived events.subscribe connection.
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
