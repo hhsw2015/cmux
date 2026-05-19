@@ -13860,6 +13860,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         return true
     }
 
+    /// Routes a herdr-blocked-agent notification tap to
+    /// `HerdrPanelOpener.openWorkspace`. Returns `true` if the
+    /// notification was herdr-owned.
+    private func handleHerdrNotificationResponse(_ response: UNNotificationResponse) -> Bool {
+        let userInfo = response.notification.request.content.userInfo
+        guard let hostIdString = userInfo["cmux.herdr.hostId"] as? String,
+              let hostId = UUID(uuidString: hostIdString),
+              let workspaceId = userInfo["cmux.herdr.workspaceId"] as? String,
+              let host = HostRegistry.shared.hosts.first(where: { $0.id == hostId })
+        else {
+            return false
+        }
+        switch response.actionIdentifier {
+        case UNNotificationDismissActionIdentifier:
+            return true
+        default:
+            NSApp.activate(ignoringOtherApps: true)
+            HerdrPanelOpener.openWorkspace(host: host, workspaceId: workspaceId)
+        }
+        return true
+    }
+
     private func disableNativeTabbingShortcut() {
         guard let menu = NSApp.mainMenu else { return }
         disableMenuItemShortcut(in: menu, action: #selector(NSWindow.toggleTabBar(_:)))
@@ -13998,6 +14020,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     private func handleNotificationResponse(_ response: UNNotificationResponse) {
         if handleFeedNotificationResponse(response) {
+            return
+        }
+        if handleHerdrNotificationResponse(response) {
             return
         }
         guard let tabIdString = response.notification.request.content.userInfo["tabId"] as? String,
