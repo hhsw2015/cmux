@@ -31,6 +31,7 @@
 		C420Z000C420Z000C42DT102 /* HerdrDividerSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42DT101 /* HerdrDividerSyncTests.swift */; };
 		C420Z000C420Z000C42XP102 /* HerdrPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42XP101 /* HerdrPersistenceTests.swift */; };
 		C420Z000C420Z000C42TX103 /* HerdrTransportFactoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42TX103R /* HerdrTransportFactoryTests.swift */; };
+		C420Z000C420Z000C42WLT2 /* HerdrWorkspaceListStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42WLT1 /* HerdrWorkspaceListStoreTests.swift */; };
 		C420Z000C420Z000C42IB102 /* HerdrInboundLayoutSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42IB101 /* HerdrInboundLayoutSyncTests.swift */; };
 		3865A0013865A0013865A001 /* SearchIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3865B0013865B0013865B001 /* SearchIndex.swift */; };
 		3865A0023865A0023865A002 /* GlobalSearchCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3865B0023865B0023865B002 /* GlobalSearchCoordinator.swift */; };
@@ -961,6 +962,7 @@
 		C420Z000C420Z000C42DT101 /* HerdrDividerSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrDividerSyncTests.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42XP101 /* HerdrPersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrPersistenceTests.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42TX103R /* HerdrTransportFactoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrTransportFactoryTests.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42WLT1 /* HerdrWorkspaceListStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrWorkspaceListStoreTests.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42IB101 /* HerdrInboundLayoutSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrInboundLayoutSyncTests.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42FF101 /* SessionPersistenceFeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPersistenceFeatureFlags.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42DL101 /* SessionPersistenceDebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPersistenceDebugLog.swift; sourceTree = "<group>"; };
@@ -1785,6 +1787,7 @@
 				C420Z000C420Z000C42DT101 /* HerdrDividerSyncTests.swift */,
 				C420Z000C420Z000C42XP101 /* HerdrPersistenceTests.swift */,
 				C420Z000C420Z000C42TX103R /* HerdrTransportFactoryTests.swift */,
+				C420Z000C420Z000C42WLT1 /* HerdrWorkspaceListStoreTests.swift */,
 				C420Z000C420Z000C42IB101 /* HerdrInboundLayoutSyncTests.swift */,
 				C1A2B3C4D5E6F70800000002 /* CmuxConfigTests.swift */,
 				C0DEF0A40000000000000002 /* CmuxConfigContextMenuTests.swift */,
@@ -2620,6 +2623,7 @@
 				C420Z000C420Z000C42DT102 /* HerdrDividerSyncTests.swift in Sources */,
 				C420Z000C420Z000C42XP102 /* HerdrPersistenceTests.swift in Sources */,
 				C420Z000C420Z000C42TX103 /* HerdrTransportFactoryTests.swift in Sources */,
+				C420Z000C420Z000C42WLT2 /* HerdrWorkspaceListStoreTests.swift in Sources */,
 				C420Z000C420Z000C42IB102 /* HerdrInboundLayoutSyncTests.swift in Sources */,
 				C1A2B3C4D5E6F70800000001 /* CmuxConfigTests.swift in Sources */,
 				C0DEF0A40000000000000001 /* CmuxConfigContextMenuTests.swift in Sources */,

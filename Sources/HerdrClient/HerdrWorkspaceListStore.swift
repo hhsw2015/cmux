@@ -63,18 +63,33 @@ final class HerdrWorkspaceListStore: ObservableObject {
         newSummaries: [HerdrWorkspaceSummary]
     ) {
         guard HerdrNotificationSettings.blockedNotificationsEnabled else { return }
-        guard let previous = workspacesByHost[host.id] else {
-            // First fetch for this host; establish baseline silently.
-            return
+        let transitioned = Self.blockedTransitions(
+            previous: workspacesByHost[host.id],
+            current: newSummaries
+        )
+        for summary in transitioned {
+            postBlockedNotification(host: host, workspace: summary)
+        }
+    }
+
+    /// Pure-function diff used by `detectAgentBlockedTransitions`.
+    /// Internal so tests can exercise the transition rules without
+    /// spinning up `UNUserNotificationCenter`.
+    static func blockedTransitions(
+        previous: [HerdrWorkspaceSummary]?,
+        current: [HerdrWorkspaceSummary]
+    ) -> [HerdrWorkspaceSummary] {
+        guard let previous else {
+            // First-ever refresh: establish baseline silently.
+            return []
         }
         let prevStatus: [String: String?] = Dictionary(
             uniqueKeysWithValues: previous.map { ($0.workspaceId, $0.agentStatus) }
         )
-        for summary in newSummaries {
-            guard summary.agentStatus?.lowercased() == "blocked" else { continue }
+        return current.filter { summary in
+            guard summary.agentStatus?.lowercased() == "blocked" else { return false }
             let was = prevStatus[summary.workspaceId]??.lowercased()
-            if was == "blocked" { continue }
-            postBlockedNotification(host: host, workspace: summary)
+            return was != "blocked"
         }
     }
 
