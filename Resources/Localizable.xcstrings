@@ -45511,6 +45511,34 @@
         }
       }
     },
+    "sidebar.herdr.agent.idle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Agent idle" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "エージェント待機中" } }
+      }
+    },
+    "sidebar.herdr.agent.working": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Agent working" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "エージェント動作中" } }
+      }
+    },
+    "sidebar.herdr.agent.blocked": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Agent waiting for input" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "エージェントが入力待ち" } }
+      }
+    },
+    "sidebar.herdr.agent.done": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Agent done" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "エージェント完了" } }
+      }
+    },
     "sidebar.herdr.openWorkspace": {
       "extractionState": "manual",
       "localizations": {

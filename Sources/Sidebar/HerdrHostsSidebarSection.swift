@@ -248,6 +248,7 @@ private struct HerdrWorkspaceRow: View {
                     }
                 }
                 Spacer(minLength: 0)
+                agentStatusBadge
             }
             .padding(.leading, 26)
             .padding(.trailing, 10)
@@ -256,6 +257,7 @@ private struct HerdrWorkspaceRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("HerdrWorkspaceRow_\(workspace.workspaceId)")
+        .help(agentStatusHelpText)
         .contextMenu {
             Button(String(
                 localized: "sidebar.herdr.openWorkspace",
@@ -269,5 +271,43 @@ private struct HerdrWorkspaceRow: View {
                 ))
             }
         }
+    }
+
+    @ViewBuilder
+    private var agentStatusBadge: some View {
+        if let color = agentStatusColor {
+            Circle()
+                .fill(color)
+                .frame(width: 6, height: 6)
+        }
+    }
+
+    private var agentStatusColor: Color? {
+        switch agentStatusNormalized {
+        case "idle":    return Color.gray.opacity(0.5)
+        case "working": return Color.green
+        case "blocked": return Color.orange
+        case "done":    return Color.blue
+        default:        return nil
+        }
+    }
+
+    private var agentStatusHelpText: String {
+        switch agentStatusNormalized {
+        case "idle":
+            return String(localized: "sidebar.herdr.agent.idle", defaultValue: "Agent idle")
+        case "working":
+            return String(localized: "sidebar.herdr.agent.working", defaultValue: "Agent working")
+        case "blocked":
+            return String(localized: "sidebar.herdr.agent.blocked", defaultValue: "Agent waiting for input")
+        case "done":
+            return String(localized: "sidebar.herdr.agent.done", defaultValue: "Agent done")
+        default:
+            return workspace.label
+        }
+    }
+
+    private var agentStatusNormalized: String {
+        workspace.agentStatus?.lowercased() ?? "unknown"
     }
 }
