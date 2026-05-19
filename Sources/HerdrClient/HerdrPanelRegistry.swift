@@ -29,6 +29,11 @@ final class HerdrPanelRegistry {
         var resizeDebounceTask: Task<Void, Never>?
         var lastReportedCols: UInt16?
         var lastReportedRows: UInt16?
+        /// True once the herdr daemon broadcast `pane.exited` for this
+        /// pane. Daemon keeps the pane alive (tmux semantics); the
+        /// panel just shows an "exited" badge so the user knows the
+        /// child process is gone.
+        var exited: Bool = false
     }
 
     private(set) var entries: [UUID: Entry] = [:]
@@ -79,6 +84,29 @@ final class HerdrPanelRegistry {
     func send(panelId: UUID, bytes: Data) {
         entries[panelId]?.controller.sendInput(bytes)
     }
+
+    /// Find the panel(s) backed by `paneId` on `host` and mark them
+    /// exited. Posts `Notification.Name.cmuxHerdrPaneExited` for each
+    /// matching panel so the panel view can render an exit badge.
+    /// Multiple matches are unlikely but possible if a future
+    /// duplicate-pane mode lands; we mark every match.
+    func markExited(host: HerdrHost, paneId: String) {
+        for (panelId, entry) in entries where entry.host.id == host.id && entry.paneId == paneId {
+            entries[panelId]?.exited = true
+            NotificationCenter.default.post(
+                name: .cmuxHerdrPaneExited,
+                object: nil,
+                userInfo: ["panelId": panelId]
+            )
+        }
+    }
+}
+
+extension Notification.Name {
+    /// Posted by HerdrPanelRegistry when the daemon broadcasts that a
+    /// herdr-backed pane's child process exited. `userInfo["panelId"]`
+    /// is the cmux panel UUID (matches `TerminalPanel.id`).
+    static let cmuxHerdrPaneExited = Notification.Name("cmuxHerdrPaneExited")
 }
 
 /// C-callable bridge: Ghostty hands us a userdata pointer when input

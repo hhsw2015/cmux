@@ -35,6 +35,13 @@ final class TerminalPanel: Panel, ObservableObject {
     /// it, so reopening cmux reattaches without losing scrollback.
     @Published var keepAlive: Bool = false
 
+    /// True when this panel is herdr-backed and its underlying child
+    /// process exited. The herdr daemon keeps the pane alive (tmux
+    /// semantics: history scrollable, can still type Enter to dismiss
+    /// the dead shell), so the panel remains; the flag drives a small
+    /// "exited" overlay so the user knows the process is gone.
+    @Published private(set) var herdrPaneExited: Bool = false
+
     /// Search state for find functionality
     @Published var searchState: TerminalSurface.SearchState? {
         didSet {
@@ -52,6 +59,7 @@ final class TerminalPanel: Panel, ObservableObject {
     var onRequestWorkspacePaneFlash: ((WorkspaceAttentionFlashReason) -> Void)?
 
     private var cancellables = Set<AnyCancellable>()
+    private var herdrPaneExitedObserver: NSObjectProtocol?
 
     var displayTitle: String {
         title.isEmpty ? "Terminal" : title
@@ -133,6 +141,22 @@ final class TerminalPanel: Panel, ObservableObject {
                 }
             }
             .store(in: &cancellables)
+
+        // Listen for `pane.exited` events broadcast by HerdrPanelRegistry.
+        // Captures self.id so the observer matches only this panel.
+        let panelId = self.id
+        herdrPaneExitedObserver = NotificationCenter.default.addObserver(
+            forName: .cmuxHerdrPaneExited,
+            object: nil,
+            queue: .main
+        ) { [weak self] note in
+            guard let self else { return }
+            guard let exitedId = note.userInfo?["panelId"] as? UUID,
+                  exitedId == panelId else { return }
+            if !self.herdrPaneExited {
+                self.herdrPaneExited = true
+            }
+        }
     }
 
     /// Create a new terminal panel with a fresh surface
@@ -228,6 +252,9 @@ final class TerminalPanel: Panel, ObservableObject {
 
     deinit {
         if let observer = zmxBinderSweepObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        if let observer = herdrPaneExitedObserver {
             NotificationCenter.default.removeObserver(observer)
         }
         ZmxPanelRegistry.shared.scheduleUnregister(panelId: id)

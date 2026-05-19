@@ -48,12 +48,18 @@ struct TerminalPanelView: View {
         .id(panel.id)
         .background(Color.clear)
         .overlay(alignment: .topTrailing) {
-            if let session = panel.zmxSessionName, !session.isEmpty {
-                ZmxPanelBadge(sessionName: session)
-                    .padding(.top, 4)
-                    .padding(.trailing, 6)
-                    .allowsHitTesting(false)
+            VStack(alignment: .trailing, spacing: 4) {
+                if let session = panel.zmxSessionName, !session.isEmpty {
+                    ZmxPanelBadge(sessionName: session)
+                        .allowsHitTesting(false)
+                }
+                if panel.herdrPaneExited {
+                    HerdrPaneExitedBadge()
+                        .allowsHitTesting(false)
+                }
             }
+            .padding(.top, 4)
+            .padding(.trailing, 6)
         }
         .overlay(alignment: .bottom) {
             if let exit = exitEntry {
@@ -75,6 +81,38 @@ struct TerminalPanelView: View {
         let engine = SessionDaemonResolver.shared.selectedKind() ?? .tsm
         let binary = engine == .tsm ? "tsm" : "zmx"
         _ = panel.surface.sendText("\(binary) attach \(exit.sessionName)\n")
+    }
+}
+
+/// Pill shown in a herdr-backed panel's top-right corner once the
+/// daemon broadcasts `pane.exited` for that pane. The pane itself
+/// stays alive (tmux semantics: scrollback is intact, the user can
+/// dismiss it explicitly via Close Pane); the badge tells the user
+/// the underlying process is gone.
+struct HerdrPaneExitedBadge: View {
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "xmark.octagon.fill")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.red)
+            Text(
+                String(
+                    localized: "panel.herdr.exited",
+                    defaultValue: "Process exited"
+                )
+            )
+            .font(.system(size: 10, weight: .medium, design: .monospaced))
+            .foregroundStyle(.primary)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(.thinMaterial, in: Capsule())
+        .accessibilityLabel(
+            String(
+                localized: "panel.herdr.exited.a11y",
+                defaultValue: "Herdr-backed pane process has exited"
+            )
+        )
     }
 }
 

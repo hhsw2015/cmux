@@ -179,10 +179,12 @@ final class HerdrEventPump: ObservableObject {
                 cmuxDebugLog("herdr.pump: pane_exited payload decode failed")
                 return
             }
-            // No UI surfacing yet — herdr keeps the pane alive after
-            // process exit (tmux semantics), so cmux's panel and PTY
-            // pipe stay valid. Once we have a "process exited"
-            // visual indicator on TerminalPanel we can flag it here.
+            // Daemon keeps the pane alive after the child process
+            // dies (tmux semantics). We flag the panel so it can
+            // render an "exited" badge while the PTY pipe + UI
+            // remain valid.
+            guard let host = hosts[socketPath] else { return }
+            HerdrPanelRegistry.shared.markExited(host: host, paneId: payload.paneId)
             cmuxDebugLog(
                 "herdr.pump: pane_exited \(payload.paneId) in workspace \(payload.workspaceId)"
             )
