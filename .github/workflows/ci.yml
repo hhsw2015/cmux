@@ -262,12 +262,20 @@ jobs:
             sleep $((attempt * 5))
           done
 
+      - name: Build cmux app target
+        # cmux-unit scheme + -only-testing skips the cmux target build
+        # somehow (see "no such module cmux" in cmuxTests). Pre-build
+        # the cmux scheme so the module is in DerivedData before the
+        # filtered test invocation.
+        run: |
+          set -euo pipefail
+          xcodebuild -project cmux.xcodeproj -scheme cmux -configuration Debug \
+            -clonedSourcePackagesDirPath "$PWD/.ci-source-packages" \
+            -disableAutomaticPackageResolution \
+            -destination "platform=macOS" \
+            build
+
       - name: Run herdr live integration tests
-        # Mirrors the main 'tests' job exactly: invoke `test` (not
-        # build-for-testing/test-without-building, which trips the
-        # 'no such module cmux' compile error against the cmuxTests
-        # SwiftPM dependency). Filter to the two live integration
-        # classes via -only-testing.
         run: |
           set -euo pipefail
           xcodebuild -project cmux.xcodeproj -scheme cmux-unit -configuration Debug \
