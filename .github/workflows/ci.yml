@@ -220,13 +220,53 @@ jobs:
           done
           [ -S "$SOCKET" ] || { echo "daemon socket never appeared"; cat "$TMP_HOME/daemon.log"; exit 1; }
 
+      - name: Cache Swift packages
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .ci-source-packages
+          key: spm-${{ hashFiles('cmux.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: spm-
+
+      - name: Cache DerivedData
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData/cmux-*
+          key: deriveddata-herdr-live-${{ hashFiles('cmux.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}-${{ hashFiles('cmux.xcodeproj/project.pbxproj') }}
+          restore-keys: |
+            deriveddata-herdr-live-${{ hashFiles('cmux.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}-
+            deriveddata-herdr-live-
+
       - name: Resolve Swift packages
         run: |
           set -euo pipefail
-          mkdir -p .ci-source-packages
+          SOURCE_PACKAGES_DIR="$PWD/.ci-source-packages"
+          mkdir -p "$SOURCE_PACKAGES_DIR"
+          for attempt in 1 2 3; do
+            if xcodebuild -project cmux.xcodeproj -scheme cmux-unit -configuration Debug \
+              -clonedSourcePackagesDirPath "$SOURCE_PACKAGES_DIR" \
+              -resolvePackageDependencies; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "Failed to resolve Swift packages after 3 attempts" >&2
+              exit 1
+            fi
+            echo "Package resolution failed on attempt $attempt, retrying..."
+            sleep $((attempt * 5))
+          done
+
+      - name: Build for testing
+        # Mirrors the main 'tests' job: a full build-for-testing populates
+        # the cmux module so cmuxTests can import it; -only-testing alone
+        # would otherwise skip the module build path and trigger
+        # 'no such module cmux'.
+        run: |
+          set -euo pipefail
           xcodebuild -project cmux.xcodeproj -scheme cmux-unit -configuration Debug \
             -clonedSourcePackagesDirPath "$PWD/.ci-source-packages" \
-            -resolvePackageDependencies
+            -disableAutomaticPackageResolution \
+            -destination "platform=macOS" \
+            build-for-testing
 
       - name: Run herdr live integration tests
         run: |
@@ -237,7 +277,7 @@ jobs:
             -destination "platform=macOS" \
             -only-testing:cmuxTests/HerdrApiClientLiveTests \
             -only-testing:cmuxTests/HerdrBackendLiveTests \
-            test
+            test-without-building
 
       - name: Stop daemon
         if: always()
