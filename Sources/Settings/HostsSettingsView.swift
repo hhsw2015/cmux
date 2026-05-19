@@ -130,6 +130,14 @@ private struct AddHostSheet: View {
     @State private var sshTarget: String
     @State private var sessionName: String
     @State private var autoInstall: Bool
+    @State private var probeResult: ProbeResult = .idle
+
+    enum ProbeResult: Equatable {
+        case idle
+        case probing
+        case success(version: String)
+        case failure(reason: String)
+    }
 
     init(
         initial: HerdrHost? = nil,
@@ -183,7 +191,21 @@ private struct AddHostSheet: View {
                 }
             }
 
+            if !isLocalhostEdit {
+                probeResultRow
+            }
+
             HStack {
+                if !isLocalhostEdit {
+                    Button(String(
+                        localized: "settings.hosts.testConnection",
+                        defaultValue: "Test connection"
+                    )) {
+                        runProbe()
+                    }
+                    .disabled(sshTarget.trimmingCharacters(in: .whitespaces).isEmpty
+                              || probeResult == .probing)
+                }
                 Spacer()
                 Button(String(localized: "settings.hosts.cancel", defaultValue: "Cancel"), action: onCancel)
                 Button(String(localized: "settings.hosts.save", defaultValue: "Save")) {
@@ -195,6 +217,81 @@ private struct AddHostSheet: View {
         }
         .padding(20)
         .frame(minWidth: 380)
+    }
+
+    @ViewBuilder
+    private var probeResultRow: some View {
+        switch probeResult {
+        case .idle:
+            EmptyView()
+        case .probing:
+            HStack(spacing: 6) {
+                ProgressView().controlSize(.mini).scaleEffect(0.7)
+                Text(String(
+                    localized: "settings.hosts.probing",
+                    defaultValue: "Probing remote…"
+                ))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+        case .success(let version):
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                Text(String(
+                    localized: "settings.hosts.probeOk",
+                    defaultValue: "Found \(version)"
+                ))
+                .font(.caption)
+            }
+        case .failure(let reason):
+            HStack(spacing: 6) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                Text(reason)
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .lineLimit(2)
+            }
+        }
+    }
+
+    private func runProbe() {
+        let target = sshTarget.trimmingCharacters(in: .whitespaces)
+        probeResult = .probing
+        Task.detached {
+            let proc = Process()
+            proc.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
+            proc.arguments = SSHStdioTransport.defaultOptions + [
+                target, "~/.local/bin/herdr-cmux --version || which herdr-cmux || echo 'NOT FOUND'"
+            ]
+            let pipe = Pipe()
+            proc.standardOutput = pipe
+            proc.standardError = Pipe()
+            do {
+                try proc.run()
+                proc.waitUntilExit()
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                let out = String(data: data, encoding: .utf8)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                await MainActor.run {
+                    if proc.terminationStatus == 0 && out.hasPrefix("herdr ") {
+                        probeResult = .success(version: out)
+                    } else if out.contains("NOT FOUND") || out.isEmpty {
+                        probeResult = .failure(reason: String(
+                            localized: "settings.hosts.probeMissing",
+                            defaultValue: "herdr-cmux not installed on remote (toggle Install on save)"
+                        ))
+                    } else {
+                        probeResult = .failure(reason: out)
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    probeResult = .failure(reason: String(describing: error))
+                }
+            }
+        }
     }
 
     private var canSave: Bool {

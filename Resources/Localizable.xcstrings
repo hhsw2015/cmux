@@ -45508,6 +45508,34 @@
         }
       }
     },
+    "settings.hosts.testConnection": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Test connection" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "接続テスト" } }
+      }
+    },
+    "settings.hosts.probing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Probing remote…" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "リモート確認中…" } }
+      }
+    },
+    "settings.hosts.probeOk": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Found herdr-cmux" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "herdr-cmux を確認" } }
+      }
+    },
+    "settings.hosts.probeMissing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "herdr-cmux not installed on remote (toggle Install on save)" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "リモートに herdr-cmux なし (Install on save をオンに)" } }
+      }
+    },
     "settings.hosts.notifyBlocked": {
       "extractionState": "manual",
       "localizations": {
