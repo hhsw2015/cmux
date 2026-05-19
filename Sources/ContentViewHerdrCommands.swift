@@ -43,6 +43,19 @@ extension ContentView {
 
         contributions.append(
             CommandPaletteCommandContribution(
+                commandId: "palette.jumpToBlockedHerdrWorkspace",
+                title: constant(String(
+                    localized: "command.jumpToBlockedHerdrWorkspace.title",
+                    defaultValue: "Jump to Next Blocked Herdr Workspace"
+                )),
+                subtitle: herdrSubtitle,
+                shortcutHint: "⌥⌘J",
+                keywords: ["herdr", "jump", "next", "blocked", "agent", "waiting"]
+            )
+        )
+
+        contributions.append(
+            CommandPaletteCommandContribution(
                 commandId: "palette.killCurrentHerdrWorkspace",
                 title: constant(String(
                     localized: "command.killCurrentHerdrWorkspace.title",
@@ -78,6 +91,9 @@ extension ContentView {
             ) {
                 HerdrPanelOpener.openWorkspace(host: capturedHost)
             }
+        }
+        registry.register(commandId: "palette.jumpToBlockedHerdrWorkspace") {
+            HerdrJumpCommands.jumpToNextBlockedWorkspace()
         }
         registry.register(commandId: "palette.killCurrentHerdrWorkspace") {
             HerdrKillCommands.killCurrentWorkspace()

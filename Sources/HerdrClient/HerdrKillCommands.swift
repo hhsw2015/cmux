@@ -4,6 +4,38 @@ import Foundation
 /// User-facing entry points for killing herdr resources from cmux.
 /// All actions confirm before destruction since they tear down
 /// processes (not detach — that path is automatic via tmux semantics).
+/// Round-robin pointer for `jumpToNextBlockedHerdrWorkspace` so
+/// repeated invocations cycle through every blocked workspace
+/// instead of always re-attaching the first one.
+@MainActor
+private var herdrJumpCursor: Int = 0
+
+@MainActor
+enum HerdrJumpCommands {
+    /// Find the next blocked workspace across all hosts and open it.
+    /// Cycles through every blocked workspace before wrapping. No-op
+    /// (with beep) when nothing is blocked.
+    static func jumpToNextBlockedWorkspace() {
+        var candidates: [(HerdrHost, HerdrWorkspaceSummary)] = []
+        for host in HostRegistry.shared.hosts {
+            for ws in HerdrWorkspaceListStore.shared.workspaces(forHost: host)
+            where ws.agentStatus?.lowercased() == "blocked" {
+                candidates.append((host, ws))
+            }
+        }
+        guard !candidates.isEmpty else {
+            NSSound.beep()
+            cmuxDebugLog("herdr.jump: no blocked workspaces")
+            return
+        }
+        let idx = herdrJumpCursor % candidates.count
+        herdrJumpCursor = (idx + 1) % candidates.count
+        let (host, ws) = candidates[idx]
+        cmuxDebugLog("herdr.jump: -> \(host.displayName)/\(ws.workspaceId)")
+        HerdrPanelOpener.openWorkspace(host: host, workspaceId: ws.workspaceId)
+    }
+}
+
 @MainActor
 enum HerdrKillCommands {
     /// Identify the currently focused cmux pane's herdr binding (if

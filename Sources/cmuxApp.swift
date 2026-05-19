@@ -330,6 +330,11 @@ struct cmuxApp: App {
 
                     Divider()
 
+                    Button(String(localized: "menu.herdr.jumpBlocked", defaultValue: "Jump to Next Blocked Workspace")) {
+                        HerdrJumpCommands.jumpToNextBlockedWorkspace()
+                    }
+                    .keyboardShortcut("j", modifiers: [.command, .option])
+
                     Button(String(localized: "menu.herdr.killCurrent", defaultValue: "Kill Current Workspace…")) {
                         HerdrKillCommands.killCurrentWorkspace()
                     }

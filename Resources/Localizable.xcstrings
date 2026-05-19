@@ -45392,6 +45392,20 @@
         }
       }
     },
+    "menu.herdr.jumpBlocked": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Jump to Next Blocked Workspace" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "次の入力待ちワークスペースへ" } }
+      }
+    },
+    "command.jumpToBlockedHerdrWorkspace.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Jump to Next Blocked Herdr Workspace" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "次の入力待ち Herdr ワークスペースへ" } }
+      }
+    },
     "menu.herdr.killCurrent": {
       "extractionState": "manual",
       "localizations": {
