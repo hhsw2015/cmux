@@ -69,8 +69,17 @@ final class HostRegistry: ObservableObject {
 
     func remove(id: UUID) {
         guard id != HerdrHost.localhostID else { return }
+        let removed = hosts.first { $0.id == id }
         hosts.removeAll { $0.id == id }
         persist()
+        // Drop the host's persisted last-attached workspace so we
+        // don't accumulate stale entries forever, and the next time
+        // the same session name comes back it starts from a clean
+        // slate (no auto-reattach to a workspace from a removed host).
+        if let removed {
+            HerdrPersistence.shared.clear(host: removed)
+            HerdrWorkspaceListStore.shared.invalidate(hostId: id)
+        }
     }
 
     func host(id: UUID) -> HerdrHost? {
