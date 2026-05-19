@@ -45539,6 +45539,34 @@
         "ja": { "stringUnit": { "state": "translated", "value": "エージェント完了" } }
       }
     },
+    "sidebar.herdr.rename.menu": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rename…" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "名前を変更…" } }
+      }
+    },
+    "sidebar.herdr.rename.sheet.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rename Herdr workspace" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "Herdr ワークスペースの名前を変更" } }
+      }
+    },
+    "sidebar.herdr.rename.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rename" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "変更" } }
+      }
+    },
+    "sidebar.herdr.rename.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Cancel" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "キャンセル" } }
+      }
+    },
     "sidebar.herdr.openWorkspace": {
       "extractionState": "manual",
       "localizations": {

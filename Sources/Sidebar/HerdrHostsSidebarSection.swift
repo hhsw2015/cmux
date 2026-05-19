@@ -14,8 +14,16 @@ struct HerdrHostsSidebarSection: View {
 
     @State private var expandedHosts: Set<UUID> = []
     @State private var pendingKill: PendingKill?
+    @State private var pendingRename: PendingRename?
+    @State private var renameDraft: String = ""
 
     private struct PendingKill: Identifiable {
+        let host: HerdrHost
+        let workspace: HerdrWorkspaceSummary
+        var id: String { "\(host.id.uuidString)/\(workspace.workspaceId)" }
+    }
+
+    private struct PendingRename: Identifiable {
         let host: HerdrHost
         let workspace: HerdrWorkspaceSummary
         var id: String { "\(host.id.uuidString)/\(workspace.workspaceId)" }
@@ -46,6 +54,17 @@ struct HerdrHostsSidebarSection: View {
                             killWorkspace(host: kill.host, workspaceId: kill.workspace.workspaceId)
                         },
                         secondaryButton: .cancel()
+                    )
+                }
+                .sheet(item: $pendingRename) { rename in
+                    HerdrWorkspaceRenameSheet(
+                        initialLabel: rename.workspace.label,
+                        text: $renameDraft,
+                        onConfirm: { newLabel in
+                            renameWorkspace(host: rename.host, workspaceId: rename.workspace.workspaceId, newLabel: newLabel)
+                            pendingRename = nil
+                        },
+                        onCancel: { pendingRename = nil }
                     )
                 }
         }
@@ -90,6 +109,10 @@ struct HerdrHostsSidebarSection: View {
                     },
                     onKillWorkspace: { ws in
                         pendingKill = PendingKill(host: host, workspace: ws)
+                    },
+                    onRenameWorkspace: { ws in
+                        renameDraft = ws.label
+                        pendingRename = PendingRename(host: host, workspace: ws)
                     }
                 )
             }
@@ -113,6 +136,20 @@ struct HerdrHostsSidebarSection: View {
         }
         for host in hosts {
             await HerdrEventPump.shared.release(host: host)
+        }
+    }
+
+    private func renameWorkspace(host: HerdrHost, workspaceId: String, newLabel: String) {
+        let trimmed = newLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        Task.detached {
+            await HerdrOneShotRPC.send(
+                host: host,
+                method: "workspace.rename",
+                params: ["workspace_id": workspaceId, "label": trimmed]
+            )
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            await HerdrWorkspaceListStore.shared.refresh(host: host)
         }
     }
 
@@ -155,6 +192,7 @@ private struct HerdrHostRow: View {
     let onRefresh: () -> Void
     let onOpenWorkspace: (String) -> Void
     let onKillWorkspace: (HerdrWorkspaceSummary) -> Void
+    let onRenameWorkspace: (HerdrWorkspaceSummary) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -217,7 +255,8 @@ private struct HerdrHostRow: View {
                         HerdrWorkspaceRow(
                             workspace: ws,
                             onOpen: { onOpenWorkspace(ws.workspaceId) },
-                            onKill: { onKillWorkspace(ws) }
+                            onKill: { onKillWorkspace(ws) },
+                            onRename: { onRenameWorkspace(ws) }
                         )
                     }
                 }
@@ -230,6 +269,7 @@ private struct HerdrWorkspaceRow: View {
     let workspace: HerdrWorkspaceSummary
     let onOpen: () -> Void
     let onKill: () -> Void
+    let onRename: () -> Void
 
     var body: some View {
         Button(action: onOpen) {
@@ -263,6 +303,10 @@ private struct HerdrWorkspaceRow: View {
                 localized: "sidebar.herdr.openWorkspace",
                 defaultValue: "Open"
             )) { onOpen() }
+            Button(String(
+                localized: "sidebar.herdr.rename.menu",
+                defaultValue: "Rename…"
+            )) { onRename() }
             Divider()
             Button(role: .destructive) { onKill() } label: {
                 Text(String(
@@ -309,5 +353,41 @@ private struct HerdrWorkspaceRow: View {
 
     private var agentStatusNormalized: String {
         workspace.agentStatus?.lowercased() ?? "unknown"
+    }
+}
+
+private struct HerdrWorkspaceRenameSheet: View {
+    let initialLabel: String
+    @Binding var text: String
+    let onConfirm: (String) -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(String(
+                localized: "sidebar.herdr.rename.sheet.title",
+                defaultValue: "Rename Herdr workspace"
+            ))
+            .font(.headline)
+            TextField(initialLabel, text: $text)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit { onConfirm(text) }
+            HStack {
+                Spacer()
+                Button(String(
+                    localized: "sidebar.herdr.rename.cancel",
+                    defaultValue: "Cancel"
+                ), action: onCancel)
+                .keyboardShortcut(.cancelAction)
+                Button(String(
+                    localized: "sidebar.herdr.rename.confirm",
+                    defaultValue: "Rename"
+                )) { onConfirm(text) }
+                .keyboardShortcut(.defaultAction)
+                .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(20)
+        .frame(width: 360)
     }
 }
