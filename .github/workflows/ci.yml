@@ -262,20 +262,12 @@ jobs:
             sleep $((attempt * 5))
           done
 
-      - name: Build for testing
-        # Mirrors the main 'tests' job: a full build-for-testing populates
-        # the cmux module so cmuxTests can import it; -only-testing alone
-        # would otherwise skip the module build path and trigger
-        # 'no such module cmux'.
-        run: |
-          set -euo pipefail
-          xcodebuild -project cmux.xcodeproj -scheme cmux-unit -configuration Debug \
-            -clonedSourcePackagesDirPath "$PWD/.ci-source-packages" \
-            -disableAutomaticPackageResolution \
-            -destination "platform=macOS" \
-            build-for-testing
-
       - name: Run herdr live integration tests
+        # Mirrors the main 'tests' job exactly: invoke `test` (not
+        # build-for-testing/test-without-building, which trips the
+        # 'no such module cmux' compile error against the cmuxTests
+        # SwiftPM dependency). Filter to the two live integration
+        # classes via -only-testing.
         run: |
           set -euo pipefail
           xcodebuild -project cmux.xcodeproj -scheme cmux-unit -configuration Debug \
@@ -284,7 +276,7 @@ jobs:
             -destination "platform=macOS" \
             -only-testing:cmuxTests/HerdrApiClientLiveTests \
             -only-testing:cmuxTests/HerdrBackendLiveTests \
-            test-without-building
+            test
 
       - name: Stop daemon
         if: always()
