@@ -184,7 +184,14 @@ final class HerdrWorkspaceListStore: ObservableObject {
     /// if data was already cached. Used when an event tells us the
     /// list changed remotely.
     func invalidate(hostId: UUID) {
+        let blockedBefore = totalBlockedCount
         workspacesByHost.removeValue(forKey: hostId)
+        if totalBlockedCount != blockedBefore {
+            NotificationCenter.default.post(
+                name: Self.blockedCountChangedNotification,
+                object: nil
+            )
+        }
     }
 
     private static func fetch(host: HerdrHost) async throws -> [HerdrWorkspaceSummary] {
