@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Settings page for managing herdr hosts (the machines that run a herdr
 /// daemon and persist sessions). Localhost is auto-listed; user can add
@@ -39,10 +40,22 @@ struct HostsSettingsView: View {
                     onMoveUp: canMoveUp ? { registry.move(id: host.id, direction: .up) } : nil,
                     onMoveDown: canMoveDown ? { registry.move(id: host.id, direction: .down) } : nil
                 )
+                .onDrag {
+                    // Localhost is pinned; refuse to start a drag.
+                    if host.isLocalhost { return NSItemProvider() }
+                    return NSItemProvider(object: host.id.uuidString as NSString)
+                }
+                .onDrop(of: [.text], isTargeted: nil) { providers in
+                    handleDrop(providers: providers, beforeHostId: host.id)
+                }
                 if host.id != registry.hosts.last?.id {
                     Divider()
                 }
             }
+        }
+        // Final drop zone — dropping below the last row appends to the end.
+        .onDrop(of: [.text], isTargeted: nil) { providers in
+            handleDrop(providers: providers, beforeHostId: nil)
         }
 
         VStack(alignment: .leading, spacing: 4) {
@@ -119,6 +132,22 @@ struct HostsSettingsView: View {
         case .hasActiveBindings(let count):
             pendingForceRemove = PendingForceRemove(host: host, activeCount: count)
         }
+    }
+
+    /// Bridges a String NSItemProvider drop into HostRegistry.move(id:before:).
+    /// Returns true if we consumed a recognizable host id; SwiftUI uses
+    /// the return value only to suppress the "rejected" haptic on macOS.
+    private func handleDrop(providers: [NSItemProvider], beforeHostId: UUID?) -> Bool {
+        guard let provider = providers.first else { return false }
+        provider.loadObject(ofClass: NSString.self) { object, _ in
+            guard let raw = object as? String, let dragged = UUID(uuidString: raw) else { return }
+            // No-op if the user dropped a host onto itself.
+            if dragged == beforeHostId { return }
+            DispatchQueue.main.async {
+                registry.move(id: dragged, before: beforeHostId)
+            }
+        }
+        return true
     }
 }
 

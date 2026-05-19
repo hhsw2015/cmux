@@ -138,6 +138,111 @@ jobs:
       - name: Run wire protocol tests
         run: python3 tests/test_herdr_wire_protocol.py
 
+  herdr-live-integration-tests:
+    runs-on: warp-macos-15-arm64-6x
+    timeout-minutes: 35
+    env:
+      HERDR_CMUX_REF: 123cf49fc3e0acb4bafa76929bd714e11c25aa35
+      GHOSTTYKIT_BUILD_FLAVOR: crashsubdir-cmux-crash-v1
+    steps:
+      - name: Checkout cmux
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: recursive
+
+      - name: Select Xcode
+        run: |
+          set -euo pipefail
+          if [ -d "/Applications/Xcode.app/Contents/Developer" ]; then
+            XCODE_DIR="/Applications/Xcode.app/Contents/Developer"
+          else
+            XCODE_APP="$(ls -d /Applications/Xcode*.app 2>/dev/null | head -n 1 || true)"
+            XCODE_DIR="$XCODE_APP/Contents/Developer"
+          fi
+          echo "DEVELOPER_DIR=$XCODE_DIR" >> "$GITHUB_ENV"
+
+      - name: Cache GhosttyKit.xcframework
+        id: cache-ghosttykit
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: GhosttyKit.xcframework
+          key: ghosttykit-${{ hashFiles('.gitmodules', 'ghostty') }}
+
+      - name: Download pre-built GhosttyKit.xcframework
+        if: steps.cache-ghosttykit.outputs.cache-hit != 'true'
+        run: ./scripts/download-prebuilt-ghosttykit.sh
+
+      - name: Install zig
+        run: ./scripts/install-zig-ci.sh
+
+      - name: Install Rust
+        run: ./scripts/install-rust-ci.sh
+
+      - name: Cache Cargo registry (herdr fork)
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-herdr-${{ env.HERDR_CMUX_REF }}-${{ runner.os }}
+
+      - name: Build herdr-cmux from hhsw2015/herdr fork
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/herdr-fork
+          git clone --depth 50 https://github.com/hhsw2015/herdr.git /tmp/herdr-fork
+          (cd /tmp/herdr-fork && git checkout "$HERDR_CMUX_REF")
+          (cd /tmp/herdr-fork && cargo build --release)
+          mkdir -p "$HOME/.local/bin"
+          install -m 0755 /tmp/herdr-fork/target/release/herdr "$HOME/.local/bin/herdr-cmux"
+          "$HOME/.local/bin/herdr-cmux" --version
+
+      - name: Spawn herdr daemon
+        run: |
+          set -euo pipefail
+          export TMP_HOME="$(mktemp -d -t cmh-XXXXXX)"
+          echo "TMP_HOME=$TMP_HOME" >> "$GITHUB_ENV"
+          SOCKET="$TMP_HOME/.config/herdr/sessions/cmux-live/herdr.sock"
+          echo "CMUX_HERDR_LIVE_SOCKET=$SOCKET" >> "$GITHUB_ENV"
+          HOME="$TMP_HOME" XDG_CONFIG_HOME="$TMP_HOME/.config" \
+            "$HOME/.local/bin/herdr-cmux" --session cmux-live server \
+            > "$TMP_HOME/daemon.log" 2>&1 &
+          echo "DAEMON_PID=$!" >> "$GITHUB_ENV"
+          for _ in $(seq 1 50); do
+            [ -S "$SOCKET" ] && break
+            sleep 0.1
+          done
+          [ -S "$SOCKET" ] || { echo "daemon socket never appeared"; cat "$TMP_HOME/daemon.log"; exit 1; }
+
+      - name: Resolve Swift packages
+        run: |
+          set -euo pipefail
+          mkdir -p .ci-source-packages
+          xcodebuild -project cmux.xcodeproj -scheme cmux-unit -configuration Debug \
+            -clonedSourcePackagesDirPath "$PWD/.ci-source-packages" \
+            -resolvePackageDependencies
+
+      - name: Run herdr live integration tests
+        run: |
+          set -euo pipefail
+          xcodebuild -project cmux.xcodeproj -scheme cmux-unit -configuration Debug \
+            -clonedSourcePackagesDirPath "$PWD/.ci-source-packages" \
+            -disableAutomaticPackageResolution \
+            -destination "platform=macOS" \
+            -only-testing:cmuxTests/HerdrApiClientLiveTests \
+            -only-testing:cmuxTests/HerdrBackendLiveTests \
+            test
+
+      - name: Stop daemon
+        if: always()
+        run: |
+          if [ -n "${DAEMON_PID:-}" ]; then
+            kill "$DAEMON_PID" 2>/dev/null || true
+          fi
+          if [ -n "${TMP_HOME:-}" ] && [ -d "$TMP_HOME" ]; then
+            cat "$TMP_HOME/daemon.log" || true
+          fi
+
   web-typecheck:
     runs-on: ubuntu-latest
     defaults:

@@ -86,6 +86,25 @@ final class HostRegistry: ObservableObject {
         persist()
     }
 
+    /// Reorder a host by dropping it just before another host. Used
+    /// by drag-and-drop in Settings → Hosts. Localhost stays pinned
+    /// at index 0; trying to drop on/before localhost is a no-op.
+    /// `beforeId == nil` means "drop at the end".
+    func move(id: UUID, before beforeId: UUID?) {
+        guard id != HerdrHost.localhostID else { return }
+        guard let from = hosts.firstIndex(where: { $0.id == id }) else { return }
+        let host = hosts.remove(at: from)
+        let to: Int
+        if let beforeId, let idx = hosts.firstIndex(where: { $0.id == beforeId }) {
+            to = idx
+        } else {
+            to = hosts.count
+        }
+        let safeTo = max(to, 1) // never insert at 0 (localhost slot)
+        hosts.insert(host, at: min(safeTo, hosts.count))
+        persist()
+    }
+
     /// Reasons remove() may refuse. Caller decides whether to confirm
     /// + force, or back off.
     enum RemoveBlock: Equatable {
