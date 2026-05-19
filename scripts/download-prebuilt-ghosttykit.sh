@@ -34,7 +34,13 @@ fi
 ARCHIVE_NAME="${GHOSTTYKIT_ARCHIVE_NAME:-GhosttyKit.xcframework.tar.gz}"
 OUTPUT_DIR="${GHOSTTYKIT_OUTPUT_DIR:-GhosttyKit.xcframework}"
 CHECKSUMS_FILE="${GHOSTTYKIT_CHECKSUMS_FILE:-$SCRIPT_DIR/ghosttykit-checksums.txt}"
-DOWNLOAD_URL="${GHOSTTYKIT_URL:-https://github.com/manaflow-ai/ghostty/releases/download/$TAG/$ARCHIVE_NAME}"
+# Build-ghosttykit publishes releases to hhsw2015/ghostty (the active
+# fork) starting with the 12762e14a submodule switch. Older SHAs were
+# only published on manaflow-ai/ghostty, so we try hhsw2015 first and
+# fall back to manaflow-ai if the asset isn't there. Override either
+# with GHOSTTYKIT_URL.
+DOWNLOAD_URL="${GHOSTTYKIT_URL:-https://github.com/hhsw2015/ghostty/releases/download/$TAG/$ARCHIVE_NAME}"
+DOWNLOAD_URL_FALLBACK="${GHOSTTYKIT_URL_FALLBACK:-https://github.com/manaflow-ai/ghostty/releases/download/$TAG/$ARCHIVE_NAME}"
 DOWNLOAD_RETRIES="${GHOSTTYKIT_DOWNLOAD_RETRIES:-30}"
 DOWNLOAD_RETRY_DELAY="${GHOSTTYKIT_DOWNLOAD_RETRY_DELAY:-20}"
 DOWNLOAD_CONNECT_TIMEOUT="${GHOSTTYKIT_DOWNLOAD_CONNECT_TIMEOUT:-10}"
@@ -74,14 +80,24 @@ ARCHIVE_PATH="$TMP_DIR/$ARCHIVE_BASENAME"
 EXTRACT_DIR="$TMP_DIR/extract"
 mkdir -p "$EXTRACT_DIR"
 
-curl --fail --show-error --location \
+if ! curl --fail --show-error --location \
   --connect-timeout "$DOWNLOAD_CONNECT_TIMEOUT" \
   --max-time "$DOWNLOAD_MAX_TIME" \
   --retry "$DOWNLOAD_RETRIES" \
   --retry-delay "$DOWNLOAD_RETRY_DELAY" \
   --retry-all-errors \
   -o "$ARCHIVE_PATH" \
-  "$DOWNLOAD_URL"
+  "$DOWNLOAD_URL"; then
+  echo "Primary download failed, trying fallback: $DOWNLOAD_URL_FALLBACK" >&2
+  curl --fail --show-error --location \
+    --connect-timeout "$DOWNLOAD_CONNECT_TIMEOUT" \
+    --max-time "$DOWNLOAD_MAX_TIME" \
+    --retry "$DOWNLOAD_RETRIES" \
+    --retry-delay "$DOWNLOAD_RETRY_DELAY" \
+    --retry-all-errors \
+    -o "$ARCHIVE_PATH" \
+    "$DOWNLOAD_URL_FALLBACK"
+fi
 
 ACTUAL_SHA256="$(shasum -a 256 "$ARCHIVE_PATH" | awk '{print $1}')"
 if [ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]; then
