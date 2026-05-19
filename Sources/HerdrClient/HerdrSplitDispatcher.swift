@@ -23,7 +23,7 @@ enum HerdrSplitDispatcher {
             return
         }
         let host = binding.host
-        let exec = (("~/.local/bin/herdr-cmux") as NSString).expandingTildeInPath
+        guard let exec = HerdrLocalBinary.resolve() else { return }
         let socketPath = host.localApiSocketPath
         // Bonsplit's horizontal = side-by-side (new pane on right);
         // herdr's SplitDirection::Right places the new pane on the

@@ -193,7 +193,10 @@ enum HerdrInboundLayoutSync {
         }
 
         let host = binding.host
-        let exec = (("~/.local/bin/herdr-cmux") as NSString).expandingTildeInPath
+        guard let exec = HerdrLocalBinary.resolve() else {
+            cmuxDebugLog("herdr.inbound: addition skipped — no local binary")
+            return
+        }
         let socketPath = host.localApiSocketPath
 
         let api = HerdrApiClient(transport: LocalUDSTransport(socketPath: socketPath))

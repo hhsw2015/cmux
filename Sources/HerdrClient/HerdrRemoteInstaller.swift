@@ -31,9 +31,8 @@ enum HerdrRemoteInstaller {
             herdrInstallerTrace("\(host.displayName): nothing to install for local transport")
             return
         }
-        let localBinary = (("~/.local/bin/herdr-cmux") as NSString).expandingTildeInPath
-        guard FileManager.default.isExecutableFile(atPath: localBinary) else {
-            herdrInstallerTrace("local binary missing at \(localBinary) — build the fork first")
+        guard let localBinary = HerdrLocalBinary.resolve() else {
+            herdrInstallerTrace("local binary missing — build the fork or rebuild cmux")
             return
         }
         Task.detached {

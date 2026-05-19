@@ -53,10 +53,9 @@ enum HerdrPanelOpener {
         }
 
         let host = HerdrHost.localhost()
-        let exec = (("~/.local/bin/herdr-cmux") as NSString).expandingTildeInPath
-        guard FileManager.default.isExecutableFile(atPath: exec) else {
-            herdrPanelOpenerTrace("missing binary at \(exec)")
-            presentMissingLocalBinaryAlert(path: exec)
+        guard let exec = HerdrLocalBinary.resolve() else {
+            herdrPanelOpenerTrace("missing herdr-cmux binary")
+            presentMissingLocalBinaryAlert(path: HerdrLocalBinary.userInstallPath)
             return
         }
 
@@ -305,10 +304,9 @@ enum HerdrPanelOpener {
             herdrPanelOpenerTrace("workspace: no focused pane in workspace \(workspace.id)")
             return
         }
-        let exec = (("~/.local/bin/herdr-cmux") as NSString).expandingTildeInPath
-        guard FileManager.default.isExecutableFile(atPath: exec) else {
-            herdrPanelOpenerTrace("workspace: missing binary at \(exec)")
-            presentMissingLocalBinaryAlert(path: exec)
+        guard let exec = HerdrLocalBinary.resolve() else {
+            herdrPanelOpenerTrace("workspace: missing herdr-cmux binary")
+            presentMissingLocalBinaryAlert(path: HerdrLocalBinary.userInstallPath)
             return
         }
         Task { @MainActor in
