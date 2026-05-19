@@ -30,6 +30,22 @@ final class HerdrWorkspaceListStore: ObservableObject {
         workspacesByHost[host.id] ?? []
     }
 
+    /// Sum of blocked workspaces across every cached host. Used by
+    /// `TerminalNotificationStore.unreadCount` to roll into the dock
+    /// badge so a blocked remote agent shows up as a number on the
+    /// app icon even when the user is in another app.
+    var totalBlockedCount: Int {
+        workspacesByHost.values.reduce(0) { acc, list in
+            acc + list.filter { $0.agentStatus?.lowercased() == "blocked" }.count
+        }
+    }
+
+    /// Notification posted when blocked count may have changed so
+    /// `TerminalNotificationStore` can refresh the dock badge.
+    static let blockedCountChangedNotification = Notification.Name(
+        "cmux.herdr.blockedCountChanged"
+    )
+
     func isLoading(host: HerdrHost) -> Bool {
         inFlightHosts.contains(host.id)
     }
@@ -44,8 +60,15 @@ final class HerdrWorkspaceListStore: ObservableObject {
             do {
                 let summaries = try await Self.fetch(host: host)
                 detectAgentBlockedTransitions(host: host, newSummaries: summaries)
+                let blockedBefore = totalBlockedCount
                 workspacesByHost[hostId] = summaries
                 lastErrorByHost.removeValue(forKey: hostId)
+                if totalBlockedCount != blockedBefore {
+                    NotificationCenter.default.post(
+                        name: Self.blockedCountChangedNotification,
+                        object: nil
+                    )
+                }
             } catch {
                 lastErrorByHost[hostId] = String(describing: error)
             }

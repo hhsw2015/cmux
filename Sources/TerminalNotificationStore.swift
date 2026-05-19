@@ -797,10 +797,19 @@ final class TerminalNotificationStore: ObservableObject {
     private var lastNotificationHookFailureDateByKey: [NotificationHookFailureThrottleKey: Date] = [:]
     private var indexes = NotificationIndexes()
 
+    private var herdrBlockedCountObserver: NSObjectProtocol?
+
     private init() {
         indexes = Self.buildIndexes(for: notifications)
         userDefaultsObserver = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.refreshDockBadge()
+        }
+        herdrBlockedCountObserver = NotificationCenter.default.addObserver(
+            forName: HerdrWorkspaceListStore.blockedCountChangedNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
@@ -813,6 +822,9 @@ final class TerminalNotificationStore: ObservableObject {
     deinit {
         if let userDefaultsObserver {
             NotificationCenter.default.removeObserver(userDefaultsObserver)
+        }
+        if let herdrBlockedCountObserver {
+            NotificationCenter.default.removeObserver(herdrBlockedCountObserver)
         }
     }
 
@@ -836,7 +848,7 @@ final class TerminalNotificationStore: ObservableObject {
     }
 
     var unreadCount: Int {
-        indexes.unreadCount + workspaceUnreadIndicatorCount
+        indexes.unreadCount + workspaceUnreadIndicatorCount + HerdrWorkspaceListStore.shared.totalBlockedCount
     }
 
     var workspaceUnreadIndicatorIds: Set<UUID> {
