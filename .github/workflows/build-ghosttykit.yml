@@ -100,6 +100,24 @@ jobs:
           COPYFILE_DISABLE=1 tar czf GhosttyKit.xcframework.tar.gz GhosttyKit.xcframework
           python3 scripts/validate-xcframework-archive.py GhosttyKit.xcframework.tar.gz
 
+      - name: Compute archive sha256
+        if: steps.check-release.outputs.exists == 'false'
+        run: |
+          set -euo pipefail
+          SHA="$(shasum -a 256 GhosttyKit.xcframework.tar.gz | awk '{print $1}')"
+          echo "GhosttyKit.xcframework.tar.gz sha256 = $SHA"
+          echo "$SHA  GhosttyKit.xcframework.tar.gz" > GhosttyKit.xcframework.tar.gz.sha256
+
+      - name: Upload xcframework artifact
+        if: steps.check-release.outputs.exists == 'false'
+        uses: actions/upload-artifact@de65e23aa2b7e23d713bb51fbfcb6d502f8667d8 # v4.6.2
+        with:
+          name: ghosttykit-${{ steps.ghostty-sha.outputs.sha }}-${{ env.GHOSTTYKIT_BUILD_FLAVOR }}
+          path: |
+            GhosttyKit.xcframework.tar.gz
+            GhosttyKit.xcframework.tar.gz.sha256
+          retention-days: 7
+
       - name: Upload xcframework release
         if: steps.check-release.outputs.exists == 'false'
         env:
@@ -107,7 +125,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${GH_TOKEN:-}" ]; then
-            echo "GHOSTTY_RELEASE_TOKEN not available (fork PR), skipping upload"
+            echo "GHOSTTY_RELEASE_TOKEN not available, skipping upload (artifact still uploaded above)"
             exit 0
           fi
           TAG="${{ steps.ghosttykit.outputs.tag }}"
