@@ -139,20 +139,32 @@ struct HerdrHostsSidebarSection: View {
     /// While the section is mounted, hold a refcount on the per-host
     /// event pump so workspace.created/closed/focused events drive
     /// `HerdrWorkspaceListStore` invalidation and the sidebar count
-    /// badges stay live without manual refresh.
+    /// badges stay live without manual refresh. Also poll every 30s
+    /// to catch agent_status changes that aren't surfaced as
+    /// workspace.* events (the event pump only fires on lifecycle
+    /// changes, not status flips).
     private func keepEventsFlowing() async {
         let hosts = hostRegistry.hosts
         for host in hosts {
             await HerdrEventPump.shared.acquire(host: host)
+            // Prime each host once on mount so agent_status badges
+            // show up before the first poll.
+            workspaceListStore.refresh(host: host)
         }
-        do {
-            try await Task.sleep(nanoseconds: .max)
-        } catch {
-            // Cancelled by .task lifecycle (view disappeared or
-            // hostRegistry.hosts changed). Fall through to release.
+        defer {
+            for host in hosts {
+                Task { await HerdrEventPump.shared.release(host: host) }
+            }
         }
-        for host in hosts {
-            await HerdrEventPump.shared.release(host: host)
+        while !Task.isCancelled {
+            do {
+                try await Task.sleep(nanoseconds: 30_000_000_000)
+            } catch {
+                return
+            }
+            for host in hosts {
+                workspaceListStore.refresh(host: host)
+            }
         }
     }
 
