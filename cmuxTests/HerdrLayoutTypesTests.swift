@@ -145,6 +145,43 @@ final class HerdrLayoutTypesTests: XCTestCase {
         XCTAssertEqual(restored, payload)
     }
 
+    func testPaneAgentStatusChangedPayloadDecodesWireShape() throws {
+        // Mirrors herdr's `EventKind::PaneAgentStatusChanged` in
+        // src/api/schema.rs. Locking the snake_case mapping here
+        // so a fork bump that renames the field doesn't silently
+        // disable the push-driven sidebar refresh.
+        let wireJson = """
+        { "pane_id": "w1-3", "agent_status": "blocked" }
+        """
+        let payload = try JSONDecoder().decode(
+            HerdrPaneAgentStatusChangedPayload.self,
+            from: wireJson.data(using: .utf8)!
+        )
+        XCTAssertEqual(payload.paneId, "w1-3")
+        XCTAssertEqual(payload.agentStatus, "blocked")
+    }
+
+    func testPaneAgentStatusChangedPayloadAllowsNullStatus() throws {
+        // Daemon may emit the event with no status (e.g. agent
+        // detection cleared). Decoder must accept both shapes.
+        let absent = """
+        { "pane_id": "w1-3" }
+        """
+        let nullStatus = """
+        { "pane_id": "w1-3", "agent_status": null }
+        """
+        let p1 = try JSONDecoder().decode(
+            HerdrPaneAgentStatusChangedPayload.self,
+            from: absent.data(using: .utf8)!
+        )
+        let p2 = try JSONDecoder().decode(
+            HerdrPaneAgentStatusChangedPayload.self,
+            from: nullStatus.data(using: .utf8)!
+        )
+        XCTAssertNil(p1.agentStatus)
+        XCTAssertNil(p2.agentStatus)
+    }
+
     func testTabReorderedPayloadRoundTrips() throws {
         let payload = HerdrTabReorderedPayload(
             workspaceId: "w1",
