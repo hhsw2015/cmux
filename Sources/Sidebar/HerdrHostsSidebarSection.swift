@@ -95,6 +95,24 @@ struct HerdrHostsSidebarSection: View {
                 ))
                 .font(.caption.smallCaps())
                 .foregroundStyle(.secondary)
+                if blockedCount > 0 {
+                    HStack(spacing: 3) {
+                        Circle()
+                            .fill(Color.orange)
+                            .frame(width: 5, height: 5)
+                        Text(String(
+                            localized: "sidebar.herdr.blockedBadge",
+                            defaultValue: "\(blockedCount) waiting"
+                        ))
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                        .monospacedDigit()
+                    }
+                    .help(String(
+                        localized: "sidebar.herdr.blockedBadge.tooltip",
+                        defaultValue: "Herdr agents waiting for input across all hosts"
+                    ))
+                }
                 Spacer(minLength: 0)
                 Text("\(hostRegistry.hosts.count)")
                     .font(.caption2)
@@ -215,6 +233,14 @@ struct HerdrHostsSidebarSection: View {
             // also invalidates, but races are cheap to handle).
             try? await Task.sleep(nanoseconds: 250_000_000)
             await HerdrWorkspaceListStore.shared.refresh(host: host)
+        }
+    }
+
+    private var blockedCount: Int {
+        hostRegistry.hosts.reduce(0) { acc, host in
+            acc + workspaceListStore.workspaces(forHost: host).filter {
+                $0.agentStatus?.lowercased() == "blocked"
+            }.count
         }
     }
 

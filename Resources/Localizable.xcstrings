@@ -45518,6 +45518,20 @@
         }
       }
     },
+    "sidebar.herdr.blockedBadge": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%lld waiting" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "%lld 件保留中" } }
+      }
+    },
+    "sidebar.herdr.blockedBadge.tooltip": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Herdr agents waiting for input across all hosts" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "全ホストで入力待ちの Herdr エージェント" } }
+      }
+    },
     "sidebar.herdr.agent.idle": {
       "extractionState": "manual",
       "localizations": {
