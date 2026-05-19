@@ -70,6 +70,42 @@ final class HerdrWorkspaceListStore: ObservableObject {
         for summary in transitioned {
             postBlockedNotification(host: host, workspace: summary)
         }
+        // Reverse: any workspace that was blocked but isn't anymore
+        // (or vanished) should drop its pending notification so the
+        // notification center doesn't accumulate stale alerts.
+        let resolved = Self.resolvedBlockedWorkspaceIds(
+            previous: workspacesByHost[host.id],
+            current: newSummaries
+        )
+        if !resolved.isEmpty {
+            let ids = resolved.map { "cmux.herdr.blocked.\(host.id.uuidString).\($0)" }
+            UNUserNotificationCenter.current()
+                .removeDeliveredNotifications(withIdentifiers: ids)
+            UNUserNotificationCenter.current()
+                .removePendingNotificationRequests(withIdentifiers: ids)
+        }
+    }
+
+    /// Workspaces that were blocked in `previous` but are no longer
+    /// blocked (or are missing) in `current`. Used to dismiss the
+    /// "waiting for input" notification once the agent moves on.
+    static func resolvedBlockedWorkspaceIds(
+        previous: [HerdrWorkspaceSummary]?,
+        current: [HerdrWorkspaceSummary]
+    ) -> [String] {
+        guard let previous else { return [] }
+        let currentStatus: [String: String?] = Dictionary(
+            uniqueKeysWithValues: current.map { ($0.workspaceId, $0.agentStatus) }
+        )
+        return previous.compactMap { prev -> String? in
+            guard prev.agentStatus?.lowercased() == "blocked" else { return nil }
+            let now = currentStatus[prev.workspaceId]
+            // Missing entirely (workspace closed) or status flipped
+            // away from blocked.
+            if now == nil { return prev.workspaceId }
+            if now??.lowercased() != "blocked" { return prev.workspaceId }
+            return nil
+        }
     }
 
     /// Pure-function diff used by `detectAgentBlockedTransitions`.

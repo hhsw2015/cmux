@@ -75,6 +75,40 @@ final class HerdrWorkspaceListStoreTests: XCTestCase {
         XCTAssertEqual(result.map { $0.workspaceId }, ["a"])
     }
 
+    // MARK: - resolvedBlockedWorkspaceIds
+
+    func testResolvedReportsBlockedToWorking() {
+        let result = HerdrWorkspaceListStore.resolvedBlockedWorkspaceIds(
+            previous: [ws("a", status: "blocked"), ws("b", status: "blocked")],
+            current: [ws("a", status: "working"), ws("b", status: "blocked")]
+        )
+        XCTAssertEqual(result, ["a"])
+    }
+
+    func testResolvedReportsBlockedThenMissing() {
+        let result = HerdrWorkspaceListStore.resolvedBlockedWorkspaceIds(
+            previous: [ws("a", status: "blocked")],
+            current: []
+        )
+        XCTAssertEqual(result, ["a"])
+    }
+
+    func testResolvedDoesNotReportNewBlocked() {
+        let result = HerdrWorkspaceListStore.resolvedBlockedWorkspaceIds(
+            previous: [ws("a", status: "idle")],
+            current: [ws("a", status: "blocked")]
+        )
+        XCTAssertTrue(result.isEmpty)
+    }
+
+    func testResolvedIsEmptyOnFirstRefresh() {
+        let result = HerdrWorkspaceListStore.resolvedBlockedWorkspaceIds(
+            previous: nil,
+            current: [ws("a", status: "blocked")]
+        )
+        XCTAssertTrue(result.isEmpty)
+    }
+
     func testMultipleSimultaneousTransitions() {
         let result = HerdrWorkspaceListStore.blockedTransitions(
             previous: [
