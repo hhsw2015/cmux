@@ -172,6 +172,71 @@ class HerdrWireProtocolTests(unittest.TestCase):
         # cleanup
         request(self.socket_path, "workspace.close", {"workspace_id": ws_id})
 
+    def test_pane_split_set_ratio_close(self):
+        """pane.split → layout becomes a horizontal split → pane.set_split_ratio
+        moves the divider → pane.close drops back to a single pane."""
+        # Create workspace + pull active tab + initial pane.
+        ws = request(
+            self.socket_path,
+            "workspace.create",
+            {"focus": True, "label": "wire-split"},
+        )["result"]["workspace"]
+        ws_id = ws["workspace_id"]
+        get_resp = request(self.socket_path, "workspace.get", {"workspace_id": ws_id})
+        tab_id = get_resp["result"]["workspace"]["active_tab_id"]
+        snap = request(
+            self.socket_path,
+            "layout.snapshot",
+            {"workspace_id": ws_id, "tab_id": tab_id},
+        )
+        first_pane_id = snap["result"]["tree"]["root"]["pane_id"]
+
+        # Split right (horizontal split, new pane on the right).
+        split_resp = request(
+            self.socket_path,
+            "pane.split",
+            {"target_pane_id": first_pane_id, "direction": "right", "focus": False},
+        )
+        new_pane_id = split_resp["result"]["pane"]["pane_id"]
+
+        # Confirm layout is now a split with two panes.
+        snap2 = request(
+            self.socket_path,
+            "layout.snapshot",
+            {"workspace_id": ws_id, "tab_id": tab_id},
+        )
+        root = snap2["result"]["tree"]["root"]
+        self.assertEqual(root.get("kind"), "split", msg=f"expected split root: {root}")
+        self.assertIn(root.get("first", {}).get("pane_id"), (first_pane_id, new_pane_id))
+        self.assertIn(root.get("second", {}).get("pane_id"), (first_pane_id, new_pane_id))
+
+        # Move the divider via pane.set_split_ratio (path = [] targets the root split).
+        request(
+            self.socket_path,
+            "pane.set_split_ratio",
+            {"workspace_id": ws_id, "tab_id": tab_id, "path": [], "ratio": 0.7},
+        )
+        snap3 = request(
+            self.socket_path,
+            "layout.snapshot",
+            {"workspace_id": ws_id, "tab_id": tab_id},
+        )
+        self.assertAlmostEqual(snap3["result"]["tree"]["root"]["ratio"], 0.7, places=2)
+
+        # Close the new pane → root collapses back to a single pane.
+        request(self.socket_path, "pane.close", {"pane_id": new_pane_id})
+        snap4 = request(
+            self.socket_path,
+            "layout.snapshot",
+            {"workspace_id": ws_id, "tab_id": tab_id},
+        )
+        self.assertEqual(snap4["result"]["tree"]["root"].get("kind"), "pane")
+        # After close, the surviving pane is the original.
+        self.assertEqual(snap4["result"]["tree"]["root"]["pane_id"], first_pane_id)
+
+        # Cleanup.
+        request(self.socket_path, "workspace.close", {"workspace_id": ws_id})
+
     def test_events_subscribe_emits_workspace_created(self):
         # Long-lived events.subscribe connection.
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
