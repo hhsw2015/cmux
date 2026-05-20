@@ -60,10 +60,14 @@ enum HerdrPanelOpener {
         }
 
         Task { @MainActor in
+            HostHealthStore.shared.reportChecking(hostId: host.id)
             do {
                 try await openLocalhostPanelImpl(host: host, exec: exec, paneId: focusedPane, workspace: workspace)
+                HostHealthStore.shared.reportOnline(hostId: host.id)
             } catch {
                 herdrPanelOpenerTrace("openLocalhostPanel failed: \(error)")
+                let reason = friendlyErrorMessage(error, isRemote: false)
+                HostHealthStore.shared.reportOffline(hostId: host.id, reason: reason)
                 presentOpenFailureAlert(host: host, error: error)
             }
         }
@@ -310,6 +314,11 @@ enum HerdrPanelOpener {
             return
         }
         Task { @MainActor in
+            HostHealthStore.shared.reportChecking(hostId: host.id)
+            let isRemote: Bool = {
+                if case .sshStdio = host.transport { return true }
+                return false
+            }()
             do {
                 try await openLocalhostWorkspaceImpl(
                     host: host,
@@ -318,8 +327,11 @@ enum HerdrPanelOpener {
                     workspace: workspace,
                     requestedWorkspaceId: requestedWorkspaceId
                 )
+                HostHealthStore.shared.reportOnline(hostId: host.id)
             } catch {
                 herdrPanelOpenerTrace("openWorkspace failed for host \(host.displayName): \(error)")
+                let reason = friendlyErrorMessage(error, isRemote: isRemote)
+                HostHealthStore.shared.reportOffline(hostId: host.id, reason: reason)
                 presentOpenFailureAlert(host: host, error: error)
             }
         }
@@ -346,8 +358,6 @@ enum HerdrPanelOpener {
 
     @MainActor
     private static func presentOpenFailureAlert(host: HerdrHost, error: Error) {
-        // Heuristic: SSH stdio transport failures usually mean the
-        // remote herdr-cmux binary is missing or unreachable.
         let isRemote: Bool = {
             if case .sshStdio = host.transport { return true }
             return false
@@ -356,13 +366,14 @@ enum HerdrPanelOpener {
         alert.alertStyle = .warning
         alert.messageText = String(
             localized: "herdr.alert.openFailed.title",
-            defaultValue: "Couldn't open Herdr workspace"
+            defaultValue: "Couldn't open workspace on \(host.displayName)"
         )
-        let detail = String(describing: error)
+        let body = friendlyErrorMessage(error, isRemote: isRemote)
+        let technicalDetail = String(describing: error)
         if isRemote {
-            alert.informativeText = String(
-                localized: "herdr.alert.openFailed.remote",
-                defaultValue: "\(host.displayName): \(detail)\n\nIf herdr-cmux isn't installed on the remote yet, click Install."
+            alert.informativeText = body + "\n\n" + String(
+                localized: "herdr.alert.openFailed.remote.hint",
+                defaultValue: "If \(host.displayName) is new, click Install to set up cmux on it."
             )
             alert.addButton(withTitle: String(
                 localized: "herdr.alert.openFailed.install",
@@ -372,17 +383,97 @@ enum HerdrPanelOpener {
                 localized: "herdr.alert.openFailed.dismiss",
                 defaultValue: "Dismiss"
             ))
+            // Surface the raw error in the expandable accessory so
+            // power users can still copy it; hidden by default.
+            alert.accessoryView = makeExpandableDetailView(technicalDetail)
             if alert.runModal() == .alertFirstButtonReturn {
                 HerdrRemoteInstaller.installOnHost(host)
             }
         } else {
-            alert.informativeText = "\(host.displayName): \(detail)"
+            alert.informativeText = body
+            alert.addButton(withTitle: String(
+                localized: "herdr.alert.openFailed.retry",
+                defaultValue: "Retry"
+            ))
             alert.addButton(withTitle: String(
                 localized: "herdr.alert.openFailed.dismiss",
                 defaultValue: "Dismiss"
             ))
-            alert.runModal()
+            alert.accessoryView = makeExpandableDetailView(technicalDetail)
+            if alert.runModal() == .alertFirstButtonReturn {
+                openWorkspace(host: host)
+            }
         }
+    }
+
+    /// Translate a HerdrTransportError or generic Error into product
+    /// language. Power users still get the raw description in the
+    /// alert's expandable detail accessory.
+    private static func friendlyErrorMessage(_ error: Error, isRemote: Bool) -> String {
+        if let t = error as? HerdrTransportError {
+            switch t {
+            case .socketConnect(let errno):
+                switch errno {
+                case 2:  // ENOENT
+                    return isRemote
+                        ? String(localized: "herdr.err.remote.noSocket",
+                                 defaultValue: "Couldn't reach the cmux agent on the remote. It may not be installed yet.")
+                        : String(localized: "herdr.err.local.noSocket",
+                                 defaultValue: "The local cmux agent isn't running. cmux will retry automatically next time you open a workspace.")
+                case 61: // ECONNREFUSED
+                    return String(localized: "herdr.err.connRefused",
+                                  defaultValue: "The cmux agent isn't accepting connections right now.")
+                case 60: // ETIMEDOUT
+                    return String(localized: "herdr.err.timeout",
+                                  defaultValue: "Timed out talking to the cmux agent.")
+                default:
+                    return String(localized: "herdr.err.connectGeneric",
+                                  defaultValue: "Couldn't connect to the cmux agent (errno \(errno)).")
+                }
+            case .socketCreate:
+                return String(localized: "herdr.err.socketCreate",
+                              defaultValue: "Couldn't open a local socket. Check macOS sandbox / app permissions.")
+            case .pathTooLong:
+                return String(localized: "herdr.err.pathTooLong",
+                              defaultValue: "The agent socket path is too long. Try a shorter session name in Advanced settings.")
+            case .notConnected:
+                return String(localized: "herdr.err.notConnected",
+                              defaultValue: "The cmux agent disconnected. cmux will retry automatically.")
+            case .alreadyConnected:
+                return String(localized: "herdr.err.alreadyConnected",
+                              defaultValue: "An existing connection to the cmux agent is still open.")
+            case .other(let s):
+                return s
+            }
+        }
+        return String(describing: error)
+    }
+
+    /// Returns an NSAlert accessory view that shows a small "Show
+    /// details" disclosure with the raw technical text inside. Keeps
+    /// the friendly headline clean for typical users while still
+    /// letting power users grab the original error.
+    @MainActor
+    private static func makeExpandableDetailView(_ text: String) -> NSView {
+        let detail = NSTextView()
+        detail.string = text
+        detail.isEditable = false
+        detail.isSelectable = true
+        detail.drawsBackground = false
+        detail.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        detail.textContainerInset = NSSize(width: 4, height: 4)
+        let scroll = NSScrollView()
+        scroll.documentView = detail
+        scroll.hasVerticalScroller = true
+        scroll.borderType = .lineBorder
+        scroll.frame = NSRect(x: 0, y: 0, width: 360, height: 80)
+        let disclosure = NSBox()
+        disclosure.titlePosition = .noTitle
+        disclosure.boxType = .custom
+        disclosure.borderType = .noBorder
+        disclosure.contentView = scroll
+        disclosure.frame = NSRect(x: 0, y: 0, width: 360, height: 80)
+        return disclosure
     }
 
     private static func openLocalhostWorkspaceImpl(

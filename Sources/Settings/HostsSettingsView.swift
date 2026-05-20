@@ -157,12 +157,17 @@ private struct HostRow: View {
     let onRemove: (() -> Void)?
     let onMoveUp: (() -> Void)?
     let onMoveDown: (() -> Void)?
+    @ObservedObject private var healthStore = HostHealthStore.shared
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: host.isLocalhost ? "laptopcomputer" : "server.rack")
-                .foregroundStyle(.secondary)
-                .frame(width: 24)
+            ZStack(alignment: .bottomTrailing) {
+                Image(systemName: host.isLocalhost ? "laptopcomputer" : "server.rack")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 24)
+                statusDot
+                    .offset(x: 2, y: 2)
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text(host.displayName)
                     .font(.body)
@@ -221,6 +226,34 @@ private struct HostRow: View {
         case .sshStdio(let target, _, _, let sshExe, _):
             let prefix = (sshExe.map { (($0 as NSString).lastPathComponent == "sshpass") ? "sshpass " : "" } ?? "")
             return "\(prefix)ssh: \(target) · session: \(host.sessionName)"
+        }
+    }
+
+    /// Small colored dot indicating last-known connection state. Stays
+    /// invisible until at least one probe/connect has happened so the
+    /// row doesn't broadcast a misleading "offline" before we've ever
+    /// tested. Tooltip carries the offline reason for power users.
+    @ViewBuilder
+    private var statusDot: some View {
+        let h = healthStore.health(for: host.id)
+        switch h.status {
+        case .unknown:
+            EmptyView()
+        case .checking:
+            Circle()
+                .fill(Color.yellow)
+                .frame(width: 8, height: 8)
+                .help(String(localized: "settings.hosts.status.checking", defaultValue: "Checking…"))
+        case .online:
+            Circle()
+                .fill(Color.green)
+                .frame(width: 8, height: 8)
+                .help(String(localized: "settings.hosts.status.online", defaultValue: "Reachable"))
+        case .offline(let reason):
+            Circle()
+                .fill(Color.red)
+                .frame(width: 8, height: 8)
+                .help(reason)
         }
     }
 }

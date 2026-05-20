@@ -94,15 +94,21 @@ enum HerdrRemoteInstaller {
         await MainActor.run {
             if version.isEmpty {
                 herdrInstallerTrace("\(target): verification failed (no --version output)")
+                HostHealthStore.shared.reportOffline(
+                    hostId: host.id,
+                    reason: String(localized: "herdr.err.installVerifyFailed",
+                                   defaultValue: "Set up didn't finish — couldn't verify the cmux agent.")
+                )
                 postNotification(
-                    title: String(localized: "herdr.install.failed.title", defaultValue: "Herdr install failed"),
-                    body: String(localized: "herdr.install.failed.verify", defaultValue: "\(target): herdr-cmux --version returned no output")
+                    title: String(localized: "herdr.install.failed.title", defaultValue: "Set up failed"),
+                    body: String(localized: "herdr.install.failed.verify", defaultValue: "\(host.displayName): cmux agent didn't respond after install.")
                 )
             } else {
                 herdrInstallerTrace("\(target): installed \(version) (\(assetName))")
+                HostHealthStore.shared.reportOnline(hostId: host.id)
                 postNotification(
-                    title: String(localized: "herdr.install.success.title", defaultValue: "Herdr installed"),
-                    body: String(localized: "herdr.install.success.body", defaultValue: "\(target): \(version)")
+                    title: String(localized: "herdr.install.success.title", defaultValue: "\(host.displayName) is ready"),
+                    body: String(localized: "herdr.install.success.body", defaultValue: "Installed \(version).")
                 )
             }
         }

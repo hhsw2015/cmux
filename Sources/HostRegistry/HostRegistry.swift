@@ -131,6 +131,7 @@ final class HostRegistry: ObservableObject {
         if let removed {
             HerdrPersistence.shared.clear(host: removed)
             HerdrWorkspaceListStore.shared.invalidate(hostId: id)
+            Task { @MainActor in HostHealthStore.shared.forget(hostId: id) }
         }
         return nil
     }

@@ -340,6 +340,7 @@
 		C420Z000C420Z000C42SV102 /* ZmxSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42SV101 /* ZmxSettingsView.swift */; };
 		C420Z000C420Z000C42HH102 /* HerdrHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42HH101 /* HerdrHost.swift */; };
 		C420Z000C420Z000C42HR102 /* HostRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42HR101 /* HostRegistry.swift */; };
+		C420Z000C420Z000C42HZ102 /* HostHealthStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42HZ101 /* HostHealthStore.swift */; };
 		C420Z000C420Z000C42HS102 /* HostsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42HS101 /* HostsSettingsView.swift */; };
 		C420Z000C420Z000C42TR102 /* HerdrTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42TR101 /* HerdrTransport.swift */; };
 		C420Z000C420Z000C42TL102 /* LocalUDSTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42TL101 /* LocalUDSTransport.swift */; };
@@ -956,6 +957,7 @@
 		C420Z000C420Z000C42SV101 /* ZmxSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings/ZmxSettingsView.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42HH101 /* HerdrHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostRegistry/HerdrHost.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42HR101 /* HostRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostRegistry/HostRegistry.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42HZ101 /* HostHealthStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostRegistry/HostHealthStore.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42HS101 /* HostsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings/HostsSettingsView.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42TR101 /* HerdrTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrTransport/HerdrTransport.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42TL101 /* LocalUDSTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrTransport/LocalUDSTransport.swift; sourceTree = "<group>"; };
@@ -1483,6 +1485,7 @@
 				C420Z000C420Z000C42SV101 /* ZmxSettingsView.swift */,
 				C420Z000C420Z000C42HH101 /* HerdrHost.swift */,
 				C420Z000C420Z000C42HR101 /* HostRegistry.swift */,
+				C420Z000C420Z000C42HZ101 /* HostHealthStore.swift */,
 				C420Z000C420Z000C42HS101 /* HostsSettingsView.swift */,
 				C420Z000C420Z000C42TR101 /* HerdrTransport.swift */,
 				C420Z000C420Z000C42TL101 /* LocalUDSTransport.swift */,
@@ -2316,6 +2319,7 @@
 				C420Z000C420Z000C42SV102 /* ZmxSettingsView.swift in Sources */,
 				C420Z000C420Z000C42HH102 /* HerdrHost.swift in Sources */,
 				C420Z000C420Z000C42HR102 /* HostRegistry.swift in Sources */,
+				C420Z000C420Z000C42HZ102 /* HostHealthStore.swift in Sources */,
 				C420Z000C420Z000C42HS102 /* HostsSettingsView.swift in Sources */,
 				C420Z000C420Z000C42TR102 /* HerdrTransport.swift in Sources */,
 				C420Z000C420Z000C42TL102 /* LocalUDSTransport.swift in Sources */,
