@@ -4329,6 +4329,23 @@ class TabManager: ObservableObject {
     func closeWorkspace(_ workspace: Workspace, recordHistory: Bool = true) {
         guard tabs.count > 1 else { return }
         sentryBreadcrumb("workspace.close", data: ["tabCount": tabs.count - 1])
+
+        // Mark this workspace as detaching so HerdrCloseHandler skips
+        // the per-pane pane.close RPC cascade that would otherwise
+        // delete the daemon-side workspace + its custom_name. Default
+        // close = tmux detach: daemon keeps the workspace, next launch
+        // can reattach with the saved title intact. The "Kill herdr
+        // workspace" command path explicitly destroys via
+        // HerdrKillCommands instead.
+        let hasHerdrBinding = HerdrTabRegistry.shared.allBindings.contains { $0.workspace?.id == workspace.id }
+        if hasHerdrBinding {
+            HerdrCloseHandler.detachingWorkspaceIds.insert(workspace.id)
+        }
+        defer {
+            if hasHerdrBinding {
+                HerdrCloseHandler.detachingWorkspaceIds.remove(workspace.id)
+            }
+        }
         if recordHistory,
            let index = tabs.firstIndex(where: { $0.id == workspace.id }) {
             let snapshot = workspace.sessionSnapshot(

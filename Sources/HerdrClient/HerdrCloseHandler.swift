@@ -15,6 +15,14 @@ enum HerdrCloseHandler {
     /// other clients.
     static var suppressNextCloseFor: Set<String> = []
 
+    /// Workspace ids currently being torn down as a detach (Cmd-W on a
+    /// herdr-backed tab). When TabManager.closeWorkspace removes a
+    /// herdr-backed workspace it adds the workspace id here so the
+    /// per-panel `handlePanelClosed` calls treat the close as a detach
+    /// even though the caller didn't pass `isDetach: true`. The set
+    /// holds the cmux Workspace.id (UUID), not herdr's workspace_id.
+    static var detachingWorkspaceIds: Set<UUID> = []
+
     /// Best-effort cleanup for a single closed panel. Safe to call for
     /// any panel — if the panel wasn't herdr-backed, this is a no-op.
     ///
@@ -31,6 +39,17 @@ enum HerdrCloseHandler {
         let herdrPaneId = entry.paneId
         let host = entry.host
 
+        // Promote to detach if TabManager.closeWorkspace marked this
+        // workspace as a detaching close. Without this promotion, Cmd-W
+        // on a herdr-backed tab cascades pane.close RPCs that destroy
+        // the daemon-side workspace + custom_name; the user wants close
+        // to follow tmux detach semantics so the workspace persists.
+        let workspaceTearingDown = HerdrTabRegistry.shared.allBindings.first(where: {
+            $0.paneBindings.cmuxPaneId(forHerdrId: herdrPaneId) != nil
+        })?.workspace?.id
+        let effectiveDetach = isDetach
+            || (workspaceTearingDown.map { detachingWorkspaceIds.contains($0) } ?? false)
+
         // Find any HerdrTabBinding that owned a cmux pane bound to this
         // herdr pane and drop the mapping so subsequent E2 mutation
         // lookups stop seeing a closed pane.
@@ -45,7 +64,7 @@ enum HerdrCloseHandler {
                     // Detach preserves the binding for next-launch reattach;
                     // explicit close drops it so we don't try to reattach
                     // a workspace the user just killed.
-                    if !isDetach {
+                    if !effectiveDetach {
                         HerdrPersistence.shared.clear(host: bindingHost)
                     }
                 }
@@ -64,7 +83,7 @@ enum HerdrCloseHandler {
 
         // tmux detach semantics: local resources released, daemon
         // process preserved for the next reattach.
-        if isDetach {
+        if effectiveDetach {
             return
         }
 
