@@ -86,6 +86,7 @@ final class HerdrWorkspaceSync {
     /// from what we last echoed outbound (re-entrance guard).
     func applyRemoteWorkspace(host: HerdrHost, workspaceId: String, label: String, description: String?) {
         let key = Key(hostId: host.id, workspaceId: workspaceId)
+        let isFirstSync = cache[key] == nil
         var entry = cache[key] ?? LastKnown()
         var labelChanged = false
         var descChanged = false
@@ -106,6 +107,46 @@ final class HerdrWorkspaceSync {
             forHerdrWorkspace: workspaceId, host: host
         ) else { return }
         guard let manager = AppDelegate.shared?.tabManagerFor(tabId: cmuxId) else { return }
+
+        // First-sync rule: cmux is authoritative for a freshly-bound
+        // workspace. If cmux already has a name/description set on the
+        // tab (or it just got created with a server-default label we
+        // don't want stamped onto the local customTitle), push cmux's
+        // value to the daemon instead of letting the daemon's default
+        // overwrite the local one. Without this guard, the very first
+        // workspace.list refresh after binding silently renames the
+        // user's existing tab to the daemon's `cmux-workspace`.
+        if isFirstSync {
+            if let cmuxTab = manager.tabs.first(where: { $0.id == cmuxId }) {
+                if let localTitle = cmuxTab.customTitle, !localTitle.isEmpty, localTitle != label {
+                    entry.label = localTitle
+                    cache[key] = entry
+                    Task.detached { [host] in
+                        await HerdrOneShotRPC.send(
+                            host: host,
+                            method: "workspace.rename",
+                            params: ["workspace_id": workspaceId, "label": localTitle]
+                        )
+                    }
+                    labelChanged = false
+                }
+                if let localDesc = cmuxTab.customDescription,
+                   !localDesc.isEmpty,
+                   localDesc != description {
+                    entry.description = localDesc
+                    cache[key] = entry
+                    Task.detached { [host] in
+                        await HerdrOneShotRPC.send(
+                            host: host,
+                            method: "workspace.set_description",
+                            params: ["workspace_id": workspaceId, "description": localDesc]
+                        )
+                    }
+                    descChanged = false
+                }
+            }
+        }
+
         if labelChanged {
             // Empty label means the user cleared it on the other side
             // — clear our customTitle too so we fall back to

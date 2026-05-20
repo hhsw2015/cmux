@@ -293,15 +293,22 @@ enum HerdrPanelOpener {
             }
             return appDelegate.tabManager
         }()
-        guard let tabManager,
-              let workspace = tabManager.tabs.first(where: { $0.id == tabManager.selectedTabId })
-                ?? tabManager.tabs.first
-        else {
-            herdrPanelOpenerTrace("workspace: no focused workspace")
+        guard let tabManager else {
+            herdrPanelOpenerTrace("workspace: no tabManager")
             return
         }
+        // Always create a fresh cmux workspace tab for a persistent
+        // workspace open. Reusing the focused tab silently rebound the
+        // user's existing workspace into a herdr session and
+        // (erroneously) propagated the daemon's default label back into
+        // its customTitle, overwriting the user-given name.
+        let workspace = tabManager.addWorkspace(
+            title: nil,
+            select: true,
+            eagerLoadTerminal: true
+        )
         guard let focusedPane = workspace.bonsplitController.focusedPaneId else {
-            herdrPanelOpenerTrace("workspace: no focused pane in workspace \(workspace.id)")
+            herdrPanelOpenerTrace("workspace: no focused pane in newly-created workspace \(workspace.id)")
             return
         }
         guard let exec = HerdrLocalBinary.resolve() else {
