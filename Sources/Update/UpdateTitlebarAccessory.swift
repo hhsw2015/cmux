@@ -949,6 +949,24 @@ struct TitlebarControlsView: View {
         }
     }
 
+    /// Theme-reload-aware overload introduced upstream — the
+    /// foregroundColor is recomputed when the active theme flips so
+    /// the badge contrast tracks the live background. Forwards through
+    /// titlebarIconChrome so spacing matches the no-color overload.
+    @ViewBuilder
+    private func iconLabel(
+        systemName: String,
+        config: TitlebarControlsStyleConfig,
+        foregroundColor: Color
+    ) -> some View {
+        titlebarIconChrome(config: config) {
+            Image(systemName: systemName)
+                .symbolRenderingMode(.monochrome)
+                .font(.system(size: config.iconSize, weight: TitlebarControlIconStyle.weight))
+                .foregroundColor(foregroundColor)
+        }
+    }
+
     @ViewBuilder
     private func sidebarIconLabel(config: TitlebarControlsStyleConfig) -> some View {
         titlebarIconChrome(config: config) {
