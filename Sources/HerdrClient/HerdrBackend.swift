@@ -35,28 +35,20 @@ final class HerdrBackend: SessionDaemonBackend, @unchecked Sendable {
 
     let host: HerdrHost
     let executablePath: String
-    private let api: HerdrApiClient
-    private let transport: any HerdrTransport
 
     init(host: HerdrHost, executablePath: String) throws {
         self.host = host
         self.executablePath = executablePath
-        self.transport = HerdrTransportFactory.make(host: host)
-        self.api = HerdrApiClient(transport: self.transport)
     }
 
-    /// Connect the underlying API socket. Idempotent.
-    ///
-    /// For `.localUDS` hosts: if the API socket file doesn't exist, the
-    /// daemon isn't running. Spawn `herdr-cmux --session <name> server`
-    /// in the background and poll for the socket up to ~3 s before
-    /// attempting the connect. Removes the manual "start herdr first"
-    /// step that previously broke first-time UX.
+    /// Boot the local daemon if needed. The daemon's API socket is
+    /// one-shot per connection, so we no longer keep a long-lived
+    /// HerdrApiClient on this backend — every RPC opens a fresh
+    /// transport via HerdrOneShotRPC.
     func start() async throws {
         if case .localUDS = host.transport {
             try await ensureLocalDaemonRunning()
         }
-        try await api.start()
     }
 
     private func ensureLocalDaemonRunning() async throws {
@@ -75,9 +67,10 @@ final class HerdrBackend: SessionDaemonBackend, @unchecked Sendable {
         )
     }
 
-    func close() async {
-        await api.close()
-    }
+    /// Backwards-compatible no-op. Old call sites used to close the
+    /// shared HerdrApiClient; with one-shot RPCs there's nothing to
+    /// release. Kept so existing `await backend.close()` calls compile.
+    func close() async {}
 
     // MARK: - SessionDaemonBackend
 
@@ -116,7 +109,9 @@ final class HerdrBackend: SessionDaemonBackend, @unchecked Sendable {
         // separately by the host's pane registry, not via this method.
         let result: [String: Any]
         do {
-            result = try await api.request(method: "workspace.list", params: [:])
+            result = try await HerdrOneShotRPC.request(
+                host: host, method: "workspace.list", params: [:]
+            )
         } catch let err as HerdrApiError {
             throw SessionDaemonError.nonZeroExit(status: -1, stderr: err.message)
         }
@@ -149,7 +144,8 @@ final class HerdrBackend: SessionDaemonBackend, @unchecked Sendable {
         // herdr has no top-level "kill workspace" beyond `workspace.close`;
         // closing terminates all panes.
         do {
-            _ = try await api.request(
+            _ = try await HerdrOneShotRPC.request(
+                host: host,
                 method: "workspace.close",
                 params: ["workspace_id": name]
             )
@@ -184,8 +180,10 @@ final class HerdrBackend: SessionDaemonBackend, @unchecked Sendable {
     func probeCapabilities() async -> CapabilitiesProbe {
         let version: String
         do {
-            let pong = try await api.ping()
-            version = pong.version
+            let pong = try await HerdrOneShotRPC.request(
+                host: host, method: "ping", params: [:]
+            )
+            version = pong["version"] as? String ?? ""
         } catch {
             // Ping failed at the transport layer (broken pipe, connect
             // refused, etc.). This is NOT an incompatibility — daemon
@@ -194,7 +192,8 @@ final class HerdrBackend: SessionDaemonBackend, @unchecked Sendable {
             return .unreachable(reason: "ping failed: \(error)")
         }
         do {
-            _ = try await api.request(
+            _ = try await HerdrOneShotRPC.request(
+                host: host,
                 method: "layout.snapshot",
                 params: ["workspace_id": "_cmux_probe_", "tab_id": "_cmux_probe_:1"]
             )

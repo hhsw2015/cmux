@@ -91,10 +91,8 @@ enum HerdrPanelOpener {
         if let first = sessions.first {
             workspaceId = first.name
         } else {
-            let api = HerdrApiClient(transport: HerdrTransportFactory.make(host: host))
-            try await api.start()
-            defer { Task { await api.close() } }
-            let r = try await api.request(
+            let r = try await HerdrOneShotRPC.request(
+                host: host,
                 method: "workspace.create",
                 params: ["focus": false, "label": "cmux-panel"]
             )
@@ -107,10 +105,8 @@ enum HerdrPanelOpener {
             workspaceId = id
         }
 
-        let api = HerdrApiClient(transport: HerdrTransportFactory.make(host: host))
-        try await api.start()
-        defer { Task { await api.close() } }
-        let panesResp = try await api.request(
+        let panesResp = try await HerdrOneShotRPC.request(
+            host: host,
             method: "pane.list",
             params: ["workspace_id": workspaceId]
         )
@@ -635,19 +631,19 @@ enum HerdrPanelOpener {
             return
         }
 
-        let api = HerdrApiClient(transport: HerdrTransportFactory.make(host: host))
-        try await api.start()
-        defer { Task { await api.close() } }
-
-        // E4: prefer the previously-attached workspace+tab if it still
-        // exists on the daemon. This makes Cmd+Q + relaunch + click
-        // "Open Herdr Workspace" land back on the same panes.
+        // Daemon's API socket is one-shot per connection (see
+        // herdr/src/api/mod.rs handle_connection — reads exactly one
+        // line then returns). Every helper below opens a fresh
+        // transport via HerdrOneShotRPC.request; do NOT keep a single
+        // HerdrApiClient open across multiple `request` calls — the
+        // second one would EPIPE.
         let workspaceId: String
         let activeTabId: String
         if let requested = requestedWorkspaceId {
             // Sidebar / explicit-id path: skip auto-select. We still
             // need active_tab_id, fetched via workspace.get.
-            let wsResp = try await api.request(
+            let wsResp = try await HerdrOneShotRPC.request(
+                host: host,
                 method: "workspace.get",
                 params: ["workspace_id": requested]
             )
@@ -662,7 +658,7 @@ enum HerdrPanelOpener {
             herdrPanelOpenerTrace("workspace: opening explicit \(workspaceId) tab=\(activeTabId)")
         } else if let persisted = HerdrPersistence.shared.entry(forHostSession: host.sessionName),
            let resolved = await Self.resolvePersistedWorkspace(
-               api: api,
+               host: host,
                sessions: sessions,
                persisted: persisted
            ) {
@@ -670,15 +666,12 @@ enum HerdrPanelOpener {
             activeTabId = resolved.tabId
             herdrPanelOpenerTrace("workspace: reusing persisted \(workspaceId) tab=\(activeTabId)")
         } else if HerdrPersistence.shared.entry(forHostSession: host.sessionName) != nil {
-            // Persisted entry exists but doesn't resolve (workspace
-            // killed externally, tab gone, daemon doesn't recognize
-            // it). Drop the stale binding so future launches don't
-            // keep retrying it.
             HerdrPersistence.shared.clear(host: host)
             herdrPanelOpenerTrace("workspace: cleared stale persisted entry for \(host.sessionName)")
             if let first = sessions.first {
                 workspaceId = first.name
-                guard let resp = try? await api.request(
+                guard let resp = try? await HerdrOneShotRPC.request(
+                    host: host,
                     method: "workspace.get",
                     params: ["workspace_id": first.name]
                 ),
@@ -695,7 +688,8 @@ enum HerdrPanelOpener {
             }
         } else if let first = sessions.first {
             // Fall back: first existing workspace, its active tab.
-            let wsResp = try await api.request(
+            let wsResp = try await HerdrOneShotRPC.request(
+                host: host,
                 method: "workspace.get",
                 params: ["workspace_id": first.name]
             )
@@ -709,7 +703,8 @@ enum HerdrPanelOpener {
             activeTabId = firstActiveTabId
         } else {
             // No existing workspace — create one.
-            let r = try await api.request(
+            let r = try await HerdrOneShotRPC.request(
+                host: host,
                 method: "workspace.create",
                 params: ["focus": false, "label": "cmux-workspace"]
             )
@@ -727,7 +722,8 @@ enum HerdrPanelOpener {
         // Map herdr pane id -> terminal id from pane.list, so the
         // executor's paneFactory can spin up display clients pointed
         // at the right terminal.
-        let panesResp = try await api.request(
+        let panesResp = try await HerdrOneShotRPC.request(
+            host: host,
             method: "pane.list",
             params: ["workspace_id": workspaceId]
         )
@@ -743,10 +739,12 @@ enum HerdrPanelOpener {
             }
         }
 
-        let tree = try await api.layoutSnapshot(
-            workspaceId: workspaceId,
-            tabId: activeTabId
+        let layoutResp = try await HerdrOneShotRPC.request(
+            host: host,
+            method: "layout.snapshot",
+            params: ["workspace_id": workspaceId, "tab_id": activeTabId]
         )
+        let tree = try HerdrApiClient.decodeLayoutTree(from: layoutResp)
         let spec = HerdrLayoutSpec(from: tree)
         let plan = HerdrLayoutApplyPlan(spec: spec)
         herdrPanelOpenerTrace(
@@ -814,14 +812,15 @@ enum HerdrPanelOpener {
     /// or workspace.get returns a different active tab, we fall back
     /// to the first available.
     private static func resolvePersistedWorkspace(
-        api: HerdrApiClient,
+        host: HerdrHost,
         sessions: [DaemonSession],
         persisted: HerdrPersistence.Entry
     ) async -> (workspaceId: String, tabId: String)? {
         guard sessions.contains(where: { $0.name == persisted.workspaceId }) else {
             return nil
         }
-        guard let resp = try? await api.request(
+        guard let resp = try? await HerdrOneShotRPC.request(
+            host: host,
             method: "workspace.get",
             params: ["workspace_id": persisted.workspaceId]
         ) else {
@@ -830,9 +829,8 @@ enum HerdrPanelOpener {
         guard let wsInfo = resp["workspace"] as? [String: Any] else {
             return nil
         }
-        // If the tab still exists in the workspace, reuse it; else use
-        // the workspace's current active tab.
-        guard let tabsResp = try? await api.request(
+        guard let tabsResp = try? await HerdrOneShotRPC.request(
+            host: host,
             method: "tab.list",
             params: ["workspace_id": persisted.workspaceId]
         ) else {

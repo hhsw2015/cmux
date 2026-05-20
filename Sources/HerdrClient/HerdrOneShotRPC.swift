@@ -1,28 +1,42 @@
 import Foundation
 
-/// Fire-and-forget single-RPC helper. Opens a fresh transport for the
-/// host (LocalUDS or SSH stdio via `HerdrTransportFactory`), sends
-/// one method call, drops any response, tears the transport down.
+/// One-shot RPC helper. Opens a fresh transport for the host (LocalUDS
+/// or SSH stdio via `HerdrTransportFactory`), sends one method call,
+/// reads exactly one response, tears the transport down.
 ///
-/// Used by E2d outbound mutation hooks (pane.close, pane.set_split_ratio)
-/// where we don't need the response — the daemon will broadcast the
-/// resulting state via events.subscribe and our inbound apply path
-/// handles it. SSH compatibility falls out of the factory: same code
-/// path works for localhost or remote.
+/// This is the canonical RPC path for the herdr daemon. The daemon's
+/// API socket reads ONE line per connection then closes (see
+/// herdr/src/api/mod.rs handle_connection), so any caller that tries
+/// to multiplex two requests on the same HerdrApiClient gets EPIPE
+/// on the second send. Always go through this helper for non-subscribe
+/// RPCs; only HerdrEventPump's `events.subscribe` flow keeps a
+/// connection long-lived (the daemon transitions that connection into
+/// streaming mode).
 enum HerdrOneShotRPC {
+    /// Fire-and-forget. Used when the broadcast event will reconcile
+    /// the resulting state, so we don't care about the response body.
     static func send(
         host: HerdrHost,
         method: String,
         params: [String: Any]
     ) async {
-        let api = HerdrApiClient(transport: HerdrTransportFactory.make(host: host))
         do {
-            try await api.start()
-            _ = try await api.request(method: method, params: params)
+            _ = try await request(host: host, method: method, params: params)
         } catch {
-            // Best-effort: log and let the broadcast event reconcile.
             cmuxDebugLog("herdr.oneshot \(method) on \(host.sessionName) failed: \(error)")
         }
-        await api.close()
+    }
+
+    /// Request + response. Throws on transport / API error. Caller
+    /// owns retry / classification (HerdrApiError vs transport error).
+    static func request(
+        host: HerdrHost,
+        method: String,
+        params: [String: Any]
+    ) async throws -> [String: Any] {
+        let api = HerdrApiClient(transport: HerdrTransportFactory.make(host: host))
+        try await api.start()
+        defer { Task { await api.close() } }
+        return try await api.request(method: method, params: params)
     }
 }
