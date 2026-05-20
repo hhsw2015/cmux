@@ -9952,6 +9952,11 @@ struct VerticalTabsSidebar: View {
     /// "single-region" (localhost only) and "split-region" (remote
     /// computers present) the moment a host is added or removed.
     @ObservedObject private var hostRegistry: HostRegistry = .shared
+    /// Observe the herdr tab registry so the persistent-workspace
+    /// indicator (bookmark glyph in the row) appears the instant a
+    /// workspace becomes herdr-backed, without waiting for some other
+    /// state change to trigger a re-render.
+    @ObservedObject private var herdrTabRegistry: HerdrTabRegistry = .shared
 
     /// True when the user has any non-localhost computer registered.
     /// Drives whether the sidebar carves out a bottom region for the
@@ -13311,10 +13316,11 @@ private struct TabItemView: View, Equatable {
                 }
 
                 if isHerdrBacked {
-                    // Persistent workspace marker. Using "bolt.horizontal"
-                    // (link/anchor connotation) to convey "this survives
-                    // a cmux quit" without a noisy badge.
-                    Image(systemName: "bolt.horizontal.fill")
+                    // Persistent workspace marker. bookmark.fill reads
+                    // as "saved/kept" — closer to the actual semantic
+                    // ("survives cmux restarts") than bolt.horizontal,
+                    // which most people parse as "fast" or "power".
+                    Image(systemName: "bookmark.fill")
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(.tertiary)
                         .help(String(

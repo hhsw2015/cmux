@@ -412,6 +412,7 @@ private struct AddHostSheet: View {
             HStack {
                 Spacer()
                 Button(String(localized: "settings.hosts.cancel", defaultValue: "Cancel"), action: onCancel)
+                    .keyboardShortcut(.cancelAction)
                 Button(String(localized: "settings.hosts.save", defaultValue: "Save")) { save() }
                     .keyboardShortcut(.defaultAction)
                     .disabled(displayName.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -479,6 +480,7 @@ private struct AddHostSheet: View {
             HStack {
                 Spacer()
                 Button(String(localized: "settings.hosts.cancel", defaultValue: "Cancel"), action: onCancel)
+                    .keyboardShortcut(.cancelAction)
                 Button(String(localized: "settings.hosts.save", defaultValue: "Save")) { save() }
                     .keyboardShortcut(.defaultAction)
                     .disabled(sshCommand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -812,6 +814,9 @@ enum AddComputerWindow {
         )
         w.contentViewController = hosting
         w.title = String(localized: "menu.workspaces.addComputer", defaultValue: "Add a computer…")
+        // Without an explicit minSize the user can shrink past the
+        // sheet's intrinsic SwiftUI minWidth and clip Save/Cancel.
+        w.minSize = NSSize(width: 440, height: 320)
         w.center()
         w.isReleasedWhenClosed = false
         // Closing via the red traffic light should reset our singleton
