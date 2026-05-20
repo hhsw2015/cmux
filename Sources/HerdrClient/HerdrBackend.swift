@@ -46,8 +46,43 @@ final class HerdrBackend: SessionDaemonBackend, @unchecked Sendable {
     }
 
     /// Connect the underlying API socket. Idempotent.
+    ///
+    /// For `.localUDS` hosts: if the API socket file doesn't exist, the
+    /// daemon isn't running. Spawn `herdr-cmux --session <name> server`
+    /// in the background and poll for the socket up to ~3 s before
+    /// attempting the connect. Removes the manual "start herdr first"
+    /// step that previously broke first-time UX.
     func start() async throws {
+        if case .localUDS = host.transport {
+            try ensureLocalDaemonRunning()
+        }
         try await api.start()
+    }
+
+    private func ensureLocalDaemonRunning() throws {
+        let socketPath = host.localApiSocketPath
+        if FileManager.default.fileExists(atPath: socketPath) {
+            return
+        }
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: executablePath)
+        proc.arguments = ["--session", host.sessionName, "server"]
+        // Detach from cmux: separate stdio + new process group so the
+        // daemon survives if cmux quits later.
+        proc.standardInput = FileHandle.nullDevice
+        proc.standardOutput = FileHandle.nullDevice
+        proc.standardError = FileHandle.nullDevice
+        try proc.run()
+        // Poll for the socket file. herdr usually creates it within
+        // ~150 ms; cap at 3 s to surface a clear error if the daemon
+        // crashed on launch.
+        let deadline = Date().addingTimeInterval(3)
+        while Date() < deadline {
+            if FileManager.default.fileExists(atPath: socketPath) {
+                return
+            }
+            Thread.sleep(forTimeInterval: 0.05)
+        }
     }
 
     func close() async {
