@@ -306,10 +306,16 @@ enum HerdrPanelOpener {
         // user's existing workspace into a herdr session and
         // (erroneously) propagated the daemon's default label back into
         // its customTitle, overwriting the user-given name.
+        // eagerLoadTerminal: false — wireHerdrBackedPanel will create
+        // the only TerminalPanel itself and bind it to the herdr pane.
+        // If we let addWorkspace eager-spawn a local panel here, the
+        // workspace ends up with two panels in the same pane (the
+        // local stub + the herdr-backed one), which is the user-
+        // visible "2 cmux pannel TUI 1" bug.
         let workspace = tabManager.addWorkspace(
             title: nil,
             select: true,
-            eagerLoadTerminal: true
+            eagerLoadTerminal: false
         )
         guard let focusedPane = workspace.bonsplitController.focusedPaneId else {
             herdrPanelOpenerTrace("workspace: no focused pane in newly-created workspace \(workspace.id)")
