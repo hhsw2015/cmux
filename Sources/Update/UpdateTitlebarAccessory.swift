@@ -690,19 +690,17 @@ struct TitlebarControlsView: View {
             .onReceive(NotificationCenter.default.publisher(for: KeyboardShortcutSettings.didChangeNotification)) { _ in
                 shortcutRefreshTick &+= 1
             }
-<<<<<<< HEAD
             .onReceive(NotificationCenter.default.publisher(for: .tabManagerFocusHistoryRevisionDidChange)) { _ in
                 focusHistoryAvailabilityRevision &+= 1
             }
             .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
                 focusHistoryAvailabilityRevision &+= 1
-=======
+            }
             .onReceive(NotificationCenter.default.publisher(for: .ghosttyConfigDidReload)) { _ in
                 appearanceRefreshTick &+= 1
             }
             .onReceive(NotificationCenter.default.publisher(for: .ghosttyDefaultBackgroundDidChange)) { _ in
                 appearanceRefreshTick &+= 1
->>>>>>> upstream/main
             }
             .onAppear {
                 modifierKeyMonitor.start()
@@ -739,11 +737,7 @@ struct TitlebarControlsView: View {
                 #endif
                 onToggleSidebar()
             }) {
-<<<<<<< HEAD
                 sidebarIconLabel(config: config)
-=======
-                iconLabel(systemName: "sidebar.left", config: config, foregroundColor: foregroundColor)
->>>>>>> upstream/main
             }
             .safeHelp(KeyboardShortcutSettings.Action.toggleSidebar.tooltip(String(localized: "titlebar.sidebar.tooltip", defaultValue: "Show or hide the sidebar")))
 
@@ -947,28 +941,11 @@ struct TitlebarControlsView: View {
     }
 
     @ViewBuilder
-<<<<<<< HEAD
     private func iconLabel(systemName: String, config: TitlebarControlsStyleConfig) -> some View {
         titlebarIconChrome(config: config) {
             Image(systemName: systemName)
                 .symbolRenderingMode(.monochrome)
                 .font(.system(size: config.iconSize, weight: TitlebarControlIconStyle.weight))
-=======
-    private func iconLabel(systemName: String, config: TitlebarControlsStyleConfig, foregroundColor: Color) -> some View {
-        let icon = Image(systemName: systemName)
-            .font(.system(size: config.iconSize, weight: .semibold))
-            .foregroundColor(foregroundColor)
-            .frame(width: config.buttonSize, height: config.buttonSize)
-
-        if config.buttonBackground {
-            icon
-                .background(
-                    RoundedRectangle(cornerRadius: config.buttonCornerRadius)
-                        .fill(Color(nsColor: .controlBackgroundColor).opacity(0.7))
-                )
-        } else {
-            icon
->>>>>>> upstream/main
         }
     }
 
