@@ -10,7 +10,7 @@ extension ContentView {
 
         let herdrSubtitle = constant(String(
             localized: "command.herdr.subtitle",
-            defaultValue: "Herdr"
+            defaultValue: "Computers"
         ))
 
         contributions.append(
@@ -18,7 +18,7 @@ extension ContentView {
                 commandId: "palette.openHerdrWorkspace.localhost",
                 title: constant(String(
                     localized: "command.openHerdrWorkspace.localhost.title",
-                    defaultValue: "Open Herdr Workspace (localhost)"
+                    defaultValue: "Open Workspace on This Mac"
                 )),
                 subtitle: herdrSubtitle,
                 shortcutHint: "⌥⌘H",
@@ -33,7 +33,7 @@ extension ContentView {
                     commandId: "palette.openHerdrWorkspace.host.\(host.id.uuidString)",
                     title: constant(String(
                         localized: "command.openHerdrWorkspace.host.title",
-                        defaultValue: "Open Herdr Workspace on \(displayName)"
+                        defaultValue: "Open Workspace on \(displayName)"
                     )),
                     subtitle: herdrSubtitle,
                     keywords: ["herdr", "open", "workspace", "host", "remote", displayName]
@@ -46,7 +46,7 @@ extension ContentView {
                 commandId: "palette.jumpToBlockedHerdrWorkspace",
                 title: constant(String(
                     localized: "command.jumpToBlockedHerdrWorkspace.title",
-                    defaultValue: "Jump to Next Blocked Herdr Workspace"
+                    defaultValue: "Jump to Next Workspace Waiting on You"
                 )),
                 subtitle: herdrSubtitle,
                 shortcutHint: "⌥⌘J",
@@ -59,7 +59,7 @@ extension ContentView {
                 commandId: "palette.killCurrentHerdrWorkspace",
                 title: constant(String(
                     localized: "command.killCurrentHerdrWorkspace.title",
-                    defaultValue: "Kill Current Herdr Workspace"
+                    defaultValue: "Close Current Workspace"
                 )),
                 subtitle: herdrSubtitle,
                 shortcutHint: "⌥⇧⌘K",
@@ -72,7 +72,7 @@ extension ContentView {
                 commandId: "palette.refreshAllHerdrHosts",
                 title: constant(String(
                     localized: "command.refreshAllHerdrHosts.title",
-                    defaultValue: "Refresh All Herdr Hosts"
+                    defaultValue: "Refresh Computers"
                 )),
                 subtitle: herdrSubtitle,
                 shortcutHint: "⌥⌘R",
@@ -85,10 +85,10 @@ extension ContentView {
                 commandId: "palette.installHerdrCmux",
                 title: constant(String(
                     localized: "command.installHerdrCmux.title",
-                    defaultValue: "Install herdr-cmux on First Remote Host"
+                    defaultValue: "Reinstall agent on first remote computer"
                 )),
                 subtitle: herdrSubtitle,
-                keywords: ["herdr", "install", "remote", "cmux", "scp", "deploy"]
+                keywords: ["herdr", "install", "remote", "cmux", "agent", "deploy", "reinstall"]
             )
         )
     }

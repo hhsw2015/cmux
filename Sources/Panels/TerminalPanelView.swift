@@ -110,7 +110,7 @@ struct HerdrPaneExitedBadge: View {
         .accessibilityLabel(
             String(
                 localized: "panel.herdr.exited.a11y",
-                defaultValue: "Herdr-backed pane process has exited"
+                defaultValue: "Workspace pane has exited"
             )
         )
     }

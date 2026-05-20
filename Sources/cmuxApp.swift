@@ -334,13 +334,22 @@ struct cmuxApp: App {
                     .disabled(!snapshot.hasNotifications)
                 }
 
-                CommandMenu(String(localized: "menu.herdr.title", defaultValue: "Herdr")) {
-                    Button(String(localized: "menu.herdr.openLocalhostWorkspace", defaultValue: "Open Workspace (localhost)")) {
+                CommandMenu(String(
+                    localized: "menu.workspaces.title",
+                    defaultValue: "Workspaces"
+                )) {
+                    Button(String(
+                        localized: "menu.workspaces.newOnThisMac",
+                        defaultValue: "New Workspace on This Mac"
+                    )) {
                         HerdrPanelOpener.openLocalhostWorkspace()
                     }
                     .keyboardShortcut("h", modifiers: [.command, .option])
 
-                    Menu(String(localized: "menu.herdr.openOnHost", defaultValue: "Open Workspace on…")) {
+                    Menu(String(
+                        localized: "menu.workspaces.newOnComputer",
+                        defaultValue: "New Workspace on…"
+                    )) {
                         ForEach(HostRegistry.shared.hosts) { host in
                             Button(host.displayName) {
                                 HerdrPanelOpener.openWorkspace(host: host)
@@ -350,28 +359,36 @@ struct cmuxApp: App {
 
                     Divider()
 
-                    Button(String(localized: "menu.herdr.jumpBlocked", defaultValue: "Jump to Next Blocked Workspace")) {
+                    Button(String(
+                        localized: "menu.workspaces.jumpBlocked",
+                        defaultValue: "Jump to Next Workspace Waiting on You"
+                    )) {
                         HerdrJumpCommands.jumpToNextBlockedWorkspace()
                     }
                     .keyboardShortcut("j", modifiers: [.command, .option])
 
-                    Button(String(localized: "menu.herdr.killCurrent", defaultValue: "Kill Current Workspace…")) {
+                    Button(String(
+                        localized: "menu.workspaces.killCurrent",
+                        defaultValue: "Close Current Workspace…"
+                    )) {
                         HerdrKillCommands.killCurrentWorkspace()
                     }
                     .keyboardShortcut("k", modifiers: [.command, .option, .shift])
 
                     Divider()
 
-                    Button(String(localized: "menu.herdr.refreshAll", defaultValue: "Refresh All Hosts")) {
+                    Button(String(
+                        localized: "menu.workspaces.refreshAll",
+                        defaultValue: "Refresh Computers"
+                    )) {
                         for host in HostRegistry.shared.hosts {
                             HerdrWorkspaceListStore.shared.refresh(host: host)
                         }
                     }
                     .keyboardShortcut("r", modifiers: [.command, .option])
-
-                    Button(String(localized: "menu.herdr.installRemote", defaultValue: "Install herdr-cmux on First Remote Host")) {
-                        HerdrRemoteInstaller.installOnFirstRemoteHost()
-                    }
+                    // "Install on first remote" was removed — every Add Computer
+                    // flow installs automatically on save. No explicit user action
+                    // is needed and exposing it created confusion.
                 }
             }
 

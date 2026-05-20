@@ -54,7 +54,7 @@ enum HerdrRemoteInstaller {
             await MainActor.run {
                 herdrInstallerTrace("\(target): could not detect remote OS/arch")
                 postNotification(
-                    title: String(localized: "herdr.install.failed.title", defaultValue: "Herdr install failed"),
+                    title: String(localized: "herdr.install.failed.title", defaultValue: "Set up failed"),
                     body: String(localized: "herdr.install.failed.unsupported", defaultValue: "\(target): unsupported remote OS or architecture")
                 )
             }
@@ -80,7 +80,7 @@ enum HerdrRemoteInstaller {
             await MainActor.run {
                 herdrInstallerTrace("\(target): download failed")
                 postNotification(
-                    title: String(localized: "herdr.install.failed.title", defaultValue: "Herdr install failed"),
+                    title: String(localized: "herdr.install.failed.title", defaultValue: "Set up failed"),
                     body: String(localized: "herdr.install.failed.download", defaultValue: "\(target): could not download \(assetName) from latest release")
                 )
             }

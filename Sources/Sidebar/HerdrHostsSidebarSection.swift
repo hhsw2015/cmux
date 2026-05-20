@@ -104,7 +104,7 @@ struct HerdrHostsSidebarSection: View {
                     .foregroundStyle(.secondary)
                 Text(String(
                     localized: "sidebar.herdr.title",
-                    defaultValue: "Herdr"
+                    defaultValue: "Computers"
                 ))
                 .font(.caption.smallCaps())
                 .foregroundStyle(.secondary)
@@ -123,7 +123,7 @@ struct HerdrHostsSidebarSection: View {
                     }
                     .help(String(
                         localized: "sidebar.herdr.blockedBadge.tooltip",
-                        defaultValue: "Herdr agents waiting for input across all hosts"
+                        defaultValue: "Workspaces waiting for input across all your computers"
                     ))
                 }
                 Spacer(minLength: 0)
@@ -570,7 +570,7 @@ private struct HerdrWorkspaceCreateSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(String(
                 localized: "sidebar.herdr.create.sheet.title",
-                defaultValue: "New Herdr workspace on \(host.displayName)"
+                defaultValue: "New workspace on \(host.displayName)"
             ))
             .font(.headline)
             TextField(String(
@@ -608,7 +608,7 @@ private struct HerdrWorkspaceRenameSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(String(
                 localized: "sidebar.herdr.rename.sheet.title",
-                defaultValue: "Rename Herdr workspace"
+                defaultValue: "Rename workspace"
             ))
             .font(.headline)
             TextField(initialLabel, text: $text)

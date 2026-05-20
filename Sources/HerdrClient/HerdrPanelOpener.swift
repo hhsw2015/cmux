@@ -343,11 +343,11 @@ enum HerdrPanelOpener {
         alert.alertStyle = .warning
         alert.messageText = String(
             localized: "herdr.alert.missingBinary.title",
-            defaultValue: "Local herdr-cmux not found"
+            defaultValue: "Local cmux agent not found"
         )
         alert.informativeText = String(
             localized: "herdr.alert.missingBinary.message",
-            defaultValue: "cmux looked for the herdr-cmux binary at \(path) but didn't find it.\n\nBuild it from the herdr fork:\n  cd /Users/wowdd1/Dev/herdr && cargo build --release\n  cp target/release/herdr-cmux ~/.local/bin/\n\nThen retry."
+            defaultValue: "cmux's local agent isn't bundled with this build.\nReinstall cmux from a release that bundles the agent, or place a herdr-cmux binary at \(path) and try again."
         )
         alert.addButton(withTitle: String(
             localized: "herdr.alert.missingBinary.dismiss",
@@ -500,11 +500,11 @@ enum HerdrPanelOpener {
                 let alert = NSAlert()
                 alert.messageText = String(
                     localized: "herdr.alert.incompatible.title",
-                    defaultValue: "Herdr daemon incompatible"
+                    defaultValue: "cmux agent incompatible"
                 )
                 alert.informativeText = String(
                     localized: "herdr.alert.incompatible.message",
-                    defaultValue: "Host \(host.displayName) is running a herdr build without the layout RPCs cmux needs. Update the daemon to a build that includes layout.snapshot, pane.set_split_ratio, and pane.swap, then try again.\n\nDetails: \(reason)"
+                    defaultValue: "\(host.displayName) is running an older cmux agent. Reinstall the agent on this computer, then try again.\n\nDetails: \(reason)"
                 )
                 alert.alertStyle = .warning
                 alert.addButton(withTitle: String(

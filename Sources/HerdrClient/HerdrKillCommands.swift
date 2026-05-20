@@ -60,7 +60,7 @@ enum HerdrKillCommands {
         let alert = NSAlert()
         alert.messageText = String(
             localized: "herdr.kill.alert.title",
-            defaultValue: "Kill current Herdr workspace?"
+            defaultValue: "Close current workspace?"
         )
         alert.informativeText = String(
             localized: "herdr.kill.alert.message",

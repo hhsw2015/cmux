@@ -322,7 +322,7 @@ final class HerdrEventPump: ObservableObject {
             let content = UNMutableNotificationContent()
             content.title = String(
                 localized: "herdr.host.offline.title",
-                defaultValue: "Herdr host offline"
+                defaultValue: "Computer offline"
             )
             content.body = String(
                 localized: "herdr.host.offline.body",
@@ -354,7 +354,7 @@ final class HerdrEventPump: ObservableObject {
             let content = UNMutableNotificationContent()
             content.title = String(
                 localized: "herdr.host.backOnline.title",
-                defaultValue: "Herdr host reconnected"
+                defaultValue: "Computer reconnected"
             )
             content.body = String(
                 localized: "herdr.host.backOnline.body",

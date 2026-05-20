@@ -159,7 +159,7 @@ final class HerdrWorkspaceListStore: ObservableObject {
         let center = UNUserNotificationCenter.current()
         let title = String(
             localized: "herdr.notify.blocked.title",
-            defaultValue: "Herdr agent waiting for input"
+            defaultValue: "Workspace waiting for input"
         )
         let body = "\(host.displayName) · \(workspace.label)"
         center.requestAuthorization(options: [.alert, .sound]) { granted, _ in

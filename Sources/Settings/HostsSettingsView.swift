@@ -22,7 +22,7 @@ struct HostsSettingsView: View {
 
     var body: some View {
         SettingsSectionHeader(
-            title: String(localized: "settings.section.hosts", defaultValue: "Hosts")
+            title: String(localized: "settings.section.hosts", defaultValue: "Computers")
         )
         .settingsSearchAnchor(SettingsSearchIndex.sectionID(for: .hosts))
 
@@ -61,11 +61,11 @@ struct HostsSettingsView: View {
         VStack(alignment: .leading, spacing: 4) {
             Toggle(String(
                 localized: "settings.hosts.notifyBlocked",
-                defaultValue: "Notify when remote agent waits for input"
+                defaultValue: "Notify when a workspace waits for input"
             ), isOn: $blockedNotificationsEnabled)
             Toggle(String(
                 localized: "settings.hosts.notifyHostOffline",
-                defaultValue: "Notify when a remote herdr host goes offline"
+                defaultValue: "Notify when a remote computer goes offline"
             ), isOn: $hostOfflineNotificationsEnabled)
         }
         HStack {
@@ -74,7 +74,7 @@ struct HostsSettingsView: View {
                 showingAdd = true
             } label: {
                 Label(
-                    String(localized: "settings.hosts.add", defaultValue: "Add host"),
+                    String(localized: "settings.hosts.add", defaultValue: "Add computer"),
                     systemImage: "plus.circle"
                 )
             }
@@ -106,7 +106,7 @@ struct HostsSettingsView: View {
             Alert(
                 title: Text(String(
                     localized: "settings.hosts.removeWithActive.title",
-                    defaultValue: "Remove host with active workspaces?"
+                    defaultValue: "Remove this computer with active workspaces?"
                 )),
                 message: Text(String(
                     localized: "settings.hosts.removeWithActive.message",
@@ -183,7 +183,7 @@ private struct HostRow: View {
                 .buttonStyle(.borderless)
                 .accessibilityLabel(String(
                     localized: "settings.hosts.moveUp",
-                    defaultValue: "Move host up"
+                    defaultValue: "Move up"
                 ))
             }
             if let onMoveDown {
@@ -193,7 +193,7 @@ private struct HostRow: View {
                 .buttonStyle(.borderless)
                 .accessibilityLabel(String(
                     localized: "settings.hosts.moveDown",
-                    defaultValue: "Move host down"
+                    defaultValue: "Move down"
                 ))
             }
             Button(action: onEdit) {
@@ -202,7 +202,7 @@ private struct HostRow: View {
             .buttonStyle(.borderless)
             .accessibilityLabel(String(
                 localized: "settings.hosts.edit",
-                defaultValue: "Edit host"
+                defaultValue: "Edit computer"
             ))
             if let onRemove {
                 Button(role: .destructive, action: onRemove) {
@@ -211,7 +211,7 @@ private struct HostRow: View {
                 .buttonStyle(.borderless)
                 .accessibilityLabel(String(
                     localized: "settings.hosts.remove",
-                    defaultValue: "Remove host"
+                    defaultValue: "Remove"
                 ))
             }
         }
@@ -378,7 +378,7 @@ private struct AddHostSheet: View {
     @ViewBuilder
     private var localhostEditBody: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(String(localized: "settings.hosts.edit", defaultValue: "Edit host"))
+            Text(String(localized: "settings.hosts.edit", defaultValue: "Edit computer"))
                 .font(.headline)
             Form {
                 TextField(
@@ -386,7 +386,7 @@ private struct AddHostSheet: View {
                     text: $displayName
                 )
                 TextField(
-                    String(localized: "settings.hosts.session", defaultValue: "Herdr session name"),
+                    String(localized: "settings.hosts.session", defaultValue: "Session name"),
                     text: $sessionName
                 )
             }
@@ -485,12 +485,12 @@ private struct AddHostSheet: View {
                         ?? String(localized: "settings.hosts.namePlaceholder", defaultValue: "auto from target"))
                 )
                 TextField(
-                    String(localized: "settings.hosts.session", defaultValue: "Herdr session name"),
+                    String(localized: "settings.hosts.session", defaultValue: "Session name"),
                     text: $sessionName
                 )
                 Toggle(String(
                     localized: "settings.hosts.autoInstall",
-                    defaultValue: "Install herdr-cmux on save"
+                    defaultValue: "Install cmux agent on save"
                 ), isOn: $autoInstall)
                 Toggle(String(
                     localized: "settings.hosts.skipDefaultOptions",
@@ -507,7 +507,7 @@ private struct AddHostSheet: View {
                 TextField(
                     String(
                         localized: "settings.hosts.remoteBinaryPath",
-                        defaultValue: "Remote herdr-cmux path"
+                        defaultValue: "Custom cmux agent path on remote"
                     ),
                     text: $overrideRemoteBinaryPath,
                     prompt: Text("herdr-cmux  (uses remote $PATH)")
@@ -665,7 +665,7 @@ private struct AddHostSheet: View {
                     } else if out.contains("NOT FOUND") || out.isEmpty {
                         probeResult = .failure(reason: String(
                             localized: "settings.hosts.probeMissing",
-                            defaultValue: "herdr-cmux not installed on remote (toggle Install on save)"
+                            defaultValue: "cmux agent isn't installed on the remote yet. Toggle Install on save."
                         ))
                     } else {
                         probeResult = .failure(reason: out)
