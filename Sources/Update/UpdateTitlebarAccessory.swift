@@ -441,7 +441,11 @@ func titlebarControlBorderOpacity(
 
 struct TitlebarControlButton<Content: View>: View {
     let config: TitlebarControlsStyleConfig
-    let foregroundColor: Color
+    /// Override for the icon foreground when the active theme needs a
+    /// specific contrast (live-theme reload path). Existing callers
+    /// who don't care can omit this; HEAD's body funnels through
+    /// TitlebarControlIconStyle.foregroundColor anyway.
+    var foregroundColor: Color = TitlebarControlIconStyle.foregroundColor
     let accessibilityIdentifier: String
     let accessibilityLabel: String
     let action: () -> Void
