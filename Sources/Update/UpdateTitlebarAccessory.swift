@@ -441,6 +441,7 @@ func titlebarControlBorderOpacity(
 
 struct TitlebarControlButton<Content: View>: View {
     let config: TitlebarControlsStyleConfig
+    let foregroundColor: Color
     let accessibilityIdentifier: String
     let accessibilityLabel: String
     let action: () -> Void
@@ -603,6 +604,7 @@ struct TitlebarControlsView: View {
     @ObservedObject private var popoverVisibilityState = NotificationsPopoverVisibilityState.shared
     @AppStorage("titlebarControlsStyle") private var styleRawValue = TitlebarControlsStyle.classic.rawValue
     @State private var shortcutRefreshTick = 0
+    @State private var appearanceRefreshTick = 0
     @State private var isHoveringControls = false
     @State private var hostWindowNumber: Int?
     @State private var focusHistoryAvailabilityRevision: UInt64 = 0
@@ -656,9 +658,11 @@ struct TitlebarControlsView: View {
         // Force the `.safeHelp(...)` tooltips to re-evaluate when shortcuts are changed in settings.
         // (The titlebar controls don't otherwise re-render on UserDefaults changes.)
         let _ = shortcutRefreshTick
+        let _ = appearanceRefreshTick
         let style = TitlebarControlsStyle(rawValue: styleRawValue) ?? .classic
         let config = style.config
-        controlsGroup(config: config)
+        let foregroundColor = Color(nsColor: titlebarControlForegroundNSColor(opacity: 0.78))
+        controlsGroup(config: config, foregroundColor: foregroundColor)
             .padding(.leading, 4)
             .padding(.trailing, titlebarHintTrailingInset)
             .contentShape(Rectangle())
@@ -686,11 +690,19 @@ struct TitlebarControlsView: View {
             .onReceive(NotificationCenter.default.publisher(for: KeyboardShortcutSettings.didChangeNotification)) { _ in
                 shortcutRefreshTick &+= 1
             }
+<<<<<<< HEAD
             .onReceive(NotificationCenter.default.publisher(for: .tabManagerFocusHistoryRevisionDidChange)) { _ in
                 focusHistoryAvailabilityRevision &+= 1
             }
             .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
                 focusHistoryAvailabilityRevision &+= 1
+=======
+            .onReceive(NotificationCenter.default.publisher(for: .ghosttyConfigDidReload)) { _ in
+                appearanceRefreshTick &+= 1
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .ghosttyDefaultBackgroundDidChange)) { _ in
+                appearanceRefreshTick &+= 1
+>>>>>>> upstream/main
             }
             .onAppear {
                 modifierKeyMonitor.start()
@@ -712,12 +724,13 @@ struct TitlebarControlsView: View {
 
     @MainActor
     @ViewBuilder
-    private func controlsGroup(config: TitlebarControlsStyleConfig) -> some View {
+    private func controlsGroup(config: TitlebarControlsStyleConfig, foregroundColor: Color) -> some View {
         let hintLayoutItems = titlebarHintLayoutItems(config: config)
         let focusHistoryAvailability = focusHistoryNavigationAvailabilitySnapshot
         let content = HStack(spacing: config.spacing) {
             TitlebarControlButton(
                 config: config,
+                foregroundColor: foregroundColor,
                 accessibilityIdentifier: "titlebarControl.toggleSidebar",
                 accessibilityLabel: String(localized: "titlebar.sidebar.accessibilityLabel", defaultValue: "Toggle Sidebar"),
                 action: {
@@ -726,12 +739,17 @@ struct TitlebarControlsView: View {
                 #endif
                 onToggleSidebar()
             }) {
+<<<<<<< HEAD
                 sidebarIconLabel(config: config)
+=======
+                iconLabel(systemName: "sidebar.left", config: config, foregroundColor: foregroundColor)
+>>>>>>> upstream/main
             }
             .safeHelp(KeyboardShortcutSettings.Action.toggleSidebar.tooltip(String(localized: "titlebar.sidebar.tooltip", defaultValue: "Show or hide the sidebar")))
 
             TitlebarControlButton(
                 config: config,
+                foregroundColor: foregroundColor,
                 accessibilityIdentifier: "titlebarControl.showNotifications",
                 accessibilityLabel: String(localized: "titlebar.notifications.accessibilityLabel", defaultValue: "Notifications"),
                 action: {
@@ -741,7 +759,7 @@ struct TitlebarControlsView: View {
                 onToggleNotifications()
             }) {
                 ZStack(alignment: .topTrailing) {
-                    iconLabel(systemName: "bell", config: config)
+                    iconLabel(systemName: "bell", config: config, foregroundColor: foregroundColor)
 
                     if notificationStore.unreadCount > 0 {
                         Text("\(min(notificationStore.unreadCount, 99))")
@@ -761,6 +779,7 @@ struct TitlebarControlsView: View {
 
             TitlebarControlButton(
                 config: config,
+                foregroundColor: foregroundColor,
                 accessibilityIdentifier: "titlebarControl.newTab",
                 accessibilityLabel: String(localized: "titlebar.newWorkspace.accessibilityLabel", defaultValue: "New Workspace"),
                 action: {
@@ -772,7 +791,7 @@ struct TitlebarControlsView: View {
                 rightClickAction: { anchorView, event in
                     _ = AppDelegate.shared?.showNewWorkspaceContextMenu(anchorView: anchorView, event: event)
                 }) {
-                iconLabel(systemName: "plus", config: config)
+                iconLabel(systemName: "plus", config: config, foregroundColor: foregroundColor)
             }
             .safeHelp(KeyboardShortcutSettings.Action.newTab.tooltip(String(localized: "titlebar.newWorkspace.tooltip", defaultValue: "New workspace")))
 
@@ -928,11 +947,28 @@ struct TitlebarControlsView: View {
     }
 
     @ViewBuilder
+<<<<<<< HEAD
     private func iconLabel(systemName: String, config: TitlebarControlsStyleConfig) -> some View {
         titlebarIconChrome(config: config) {
             Image(systemName: systemName)
                 .symbolRenderingMode(.monochrome)
                 .font(.system(size: config.iconSize, weight: TitlebarControlIconStyle.weight))
+=======
+    private func iconLabel(systemName: String, config: TitlebarControlsStyleConfig, foregroundColor: Color) -> some View {
+        let icon = Image(systemName: systemName)
+            .font(.system(size: config.iconSize, weight: .semibold))
+            .foregroundColor(foregroundColor)
+            .frame(width: config.buttonSize, height: config.buttonSize)
+
+        if config.buttonBackground {
+            icon
+                .background(
+                    RoundedRectangle(cornerRadius: config.buttonCornerRadius)
+                        .fill(Color(nsColor: .controlBackgroundColor).opacity(0.7))
+                )
+        } else {
+            icon
+>>>>>>> upstream/main
         }
     }
 
