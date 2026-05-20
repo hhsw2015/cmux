@@ -341,6 +341,7 @@
 		C420Z000C420Z000C42HH102 /* HerdrHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42HH101 /* HerdrHost.swift */; };
 		C420Z000C420Z000C42HR102 /* HostRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42HR101 /* HostRegistry.swift */; };
 		C420Z000C420Z000C42HZ102 /* HostHealthStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42HZ101 /* HostHealthStore.swift */; };
+		C420Z000C420Z000C42DS102 /* DaemonSpawnCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42DS101 /* DaemonSpawnCoordinator.swift */; };
 		C420Z000C420Z000C42HS102 /* HostsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42HS101 /* HostsSettingsView.swift */; };
 		C420Z000C420Z000C42TR102 /* HerdrTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42TR101 /* HerdrTransport.swift */; };
 		C420Z000C420Z000C42TL102 /* LocalUDSTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42TL101 /* LocalUDSTransport.swift */; };
@@ -968,6 +969,7 @@
 		C420Z000C420Z000C42AC101 /* HerdrApiClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrApiClient.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42DC101 /* HerdrDisplayClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrDisplayClient.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42BB101 /* HerdrBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrBackend.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42DS101 /* DaemonSpawnCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/DaemonSpawnCoordinator.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42SC101 /* HerdrSurfaceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrSurfaceController.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42PR101 /* HerdrPanelRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrPanelRegistry.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42PO101 /* HerdrPanelOpener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrPanelOpener.swift; sourceTree = "<group>"; };
@@ -1514,6 +1516,7 @@
 				C420Z000C420Z000C42RI101 /* HerdrRemoteInstaller.swift */,
 				C420Z000C420Z000C42DC101 /* HerdrDisplayClient.swift */,
 				C420Z000C420Z000C42BB101 /* HerdrBackend.swift */,
+				C420Z000C420Z000C42DS101 /* DaemonSpawnCoordinator.swift */,
 				C420Z000C420Z000C42SC101 /* HerdrSurfaceController.swift */,
 				C420Z000C420Z000C42PR101 /* HerdrPanelRegistry.swift */,
 				C420Z000C420Z000C42PO101 /* HerdrPanelOpener.swift */,
@@ -2348,6 +2351,7 @@
 				C420Z000C420Z000C42RI102 /* HerdrRemoteInstaller.swift in Sources */,
 				C420Z000C420Z000C42DC102 /* HerdrDisplayClient.swift in Sources */,
 				C420Z000C420Z000C42BB102 /* HerdrBackend.swift in Sources */,
+				C420Z000C420Z000C42DS102 /* DaemonSpawnCoordinator.swift in Sources */,
 				C420Z000C420Z000C42SC102 /* HerdrSurfaceController.swift in Sources */,
 				C420Z000C420Z000C42PR102 /* HerdrPanelRegistry.swift in Sources */,
 				C420Z000C420Z000C42PO102 /* HerdrPanelOpener.swift in Sources */,

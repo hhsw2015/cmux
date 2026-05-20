@@ -9948,6 +9948,17 @@ struct VerticalTabsSidebar: View {
     @AppStorage("sidebar.herdrSection.height")
     private var herdrSectionHeight: Double = 220
     @State private var herdrDividerDragInitialHeight: Double?
+    /// Observe the host registry so the sidebar layout flips between
+    /// "single-region" (localhost only) and "split-region" (remote
+    /// computers present) the moment a host is added or removed.
+    @ObservedObject private var hostRegistry: HostRegistry = .shared
+
+    /// True when the user has any non-localhost computer registered.
+    /// Drives whether the sidebar carves out a bottom region for the
+    /// computers list.
+    private var hasRemoteHosts: Bool {
+        hostRegistry.hosts.contains { !$0.isLocalhost }
+    }
 
     private let tabRowSpacing: CGFloat = 2
     private var sidebarTitlebarInteractionHeight: CGFloat {
@@ -10076,23 +10087,31 @@ struct VerticalTabsSidebar: View {
         )
 
         ZStack(alignment: .bottomLeading) {
-            GeometryReader { sidebarGeo in
-                let totalHeight = sidebarGeo.size.height
-                let clampedHerdrHeight = clampHerdrSectionHeight(
-                    proposed: herdrSectionHeight,
-                    totalHeight: totalHeight
-                )
-                VStack(spacing: 0) {
-                    workspaceScrollArea(renderContext: renderContext)
-                    SidebarSectionDivider(
-                        sectionHeight: $herdrSectionHeight,
-                        dragInitialHeight: $herdrDividerDragInitialHeight,
-                        totalHeight: totalHeight,
-                        clamp: clampHerdrSectionHeight
+            // Only carve out a dedicated bottom region when the user has
+            // remote computers to show. Localhost-only setups (the
+            // common case) keep the full sidebar height for the
+            // workspace list — no wasted 220pt under it.
+            if hasRemoteHosts {
+                GeometryReader { sidebarGeo in
+                    let totalHeight = sidebarGeo.size.height
+                    let clampedHerdrHeight = clampHerdrSectionHeight(
+                        proposed: herdrSectionHeight,
+                        totalHeight: totalHeight
                     )
-                    herdrSectionScrollArea()
-                        .frame(height: clampedHerdrHeight)
+                    VStack(spacing: 0) {
+                        workspaceScrollArea(renderContext: renderContext)
+                        SidebarSectionDivider(
+                            sectionHeight: $herdrSectionHeight,
+                            dragInitialHeight: $herdrDividerDragInitialHeight,
+                            totalHeight: totalHeight,
+                            clamp: clampHerdrSectionHeight
+                        )
+                        herdrSectionScrollArea()
+                            .frame(height: clampedHerdrHeight)
+                    }
                 }
+            } else {
+                workspaceScrollArea(renderContext: renderContext)
             }
             SidebarFooter(updateViewModel: updateViewModel, fileExplorerState: fileExplorerState, onSendFeedback: onSendFeedback)
                 .frame(maxWidth: .infinity, alignment: .leading)

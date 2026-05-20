@@ -54,35 +54,25 @@ final class HerdrBackend: SessionDaemonBackend, @unchecked Sendable {
     /// step that previously broke first-time UX.
     func start() async throws {
         if case .localUDS = host.transport {
-            try ensureLocalDaemonRunning()
+            try await ensureLocalDaemonRunning()
         }
         try await api.start()
     }
 
-    private func ensureLocalDaemonRunning() throws {
+    private func ensureLocalDaemonRunning() async throws {
         let socketPath = host.localApiSocketPath
         if FileManager.default.fileExists(atPath: socketPath) {
             return
         }
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: executablePath)
-        proc.arguments = ["--session", host.sessionName, "server"]
-        // Detach from cmux: separate stdio + new process group so the
-        // daemon survives if cmux quits later.
-        proc.standardInput = FileHandle.nullDevice
-        proc.standardOutput = FileHandle.nullDevice
-        proc.standardError = FileHandle.nullDevice
-        try proc.run()
-        // Poll for the socket file. herdr usually creates it within
-        // ~150 ms; cap at 3 s to surface a clear error if the daemon
-        // crashed on launch.
-        let deadline = Date().addingTimeInterval(3)
-        while Date() < deadline {
-            if FileManager.default.fileExists(atPath: socketPath) {
-                return
-            }
-            Thread.sleep(forTimeInterval: 0.05)
-        }
+        // Coalesce concurrent spawns: if another start() is already
+        // launching the daemon for this socket, await its result instead
+        // of running a second `herdr-cmux server` (which would race for
+        // the same UDS path and either fail or leak a zombie process).
+        try await DaemonSpawnCoordinator.shared.spawnIfNeeded(
+            socketPath: socketPath,
+            executablePath: executablePath,
+            sessionName: host.sessionName
+        )
     }
 
     func close() async {

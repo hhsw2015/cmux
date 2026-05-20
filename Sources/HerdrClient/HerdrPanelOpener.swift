@@ -385,7 +385,7 @@ enum HerdrPanelOpener {
             ))
             // Surface the raw error in the expandable accessory so
             // power users can still copy it; hidden by default.
-            alert.accessoryView = makeExpandableDetailView(technicalDetail)
+            alert.accessoryView = makeDetailAccessory(technicalDetail)
             if alert.runModal() == .alertFirstButtonReturn {
                 HerdrRemoteInstaller.installOnHost(host)
             }
@@ -399,7 +399,7 @@ enum HerdrPanelOpener {
                 localized: "herdr.alert.openFailed.dismiss",
                 defaultValue: "Dismiss"
             ))
-            alert.accessoryView = makeExpandableDetailView(technicalDetail)
+            alert.accessoryView = makeDetailAccessory(technicalDetail)
             if alert.runModal() == .alertFirstButtonReturn {
                 openWorkspace(host: host)
             }
@@ -458,12 +458,17 @@ enum HerdrPanelOpener {
         return String(describing: error)
     }
 
-    /// Returns an NSAlert accessory view that shows a small "Show
-    /// details" disclosure with the raw technical text inside. Keeps
-    /// the friendly headline clean for typical users while still
-    /// letting power users grab the original error.
+    /// NSAlert accessory holding the raw technical error inside an
+    /// NSDisclosureButton-driven container. Collapsed by default so
+    /// typical users see only the friendly headline + buttons; clicking
+    /// "Show details" reveals the monospaced original error for power
+    /// users / bug reports.
     @MainActor
-    private static func makeExpandableDetailView(_ text: String) -> NSView {
+    private static func makeDetailAccessory(_ text: String) -> NSView {
+        let containerWidth: CGFloat = 360
+        let triangleHeight: CGFloat = 18
+        let scrollHeight: CGFloat = 80
+
         let detail = NSTextView()
         detail.string = text
         detail.isEditable = false
@@ -471,18 +476,62 @@ enum HerdrPanelOpener {
         detail.drawsBackground = false
         detail.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
         detail.textContainerInset = NSSize(width: 4, height: 4)
-        let scroll = NSScrollView()
+        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: containerWidth, height: scrollHeight))
         scroll.documentView = detail
         scroll.hasVerticalScroller = true
         scroll.borderType = .lineBorder
-        scroll.frame = NSRect(x: 0, y: 0, width: 360, height: 80)
-        let disclosure = NSBox()
-        disclosure.titlePosition = .noTitle
-        disclosure.boxType = .custom
-        disclosure.borderType = .noBorder
-        disclosure.contentView = scroll
-        disclosure.frame = NSRect(x: 0, y: 0, width: 360, height: 80)
-        return disclosure
+        scroll.isHidden = true
+
+        let toggle = NSButton(frame: NSRect(x: 0, y: scrollHeight, width: containerWidth, height: triangleHeight))
+        toggle.bezelStyle = .disclosure
+        toggle.title = ""
+        toggle.imagePosition = .imageOnly
+        toggle.state = .off
+        let label = NSTextField(labelWithString: String(
+            localized: "herdr.alert.detail.toggle",
+            defaultValue: "Show details"
+        ))
+        label.font = NSFont.systemFont(ofSize: 11)
+        label.textColor = .secondaryLabelColor
+        label.frame = NSRect(
+            x: triangleHeight + 2,
+            y: scrollHeight + 2,
+            width: containerWidth - triangleHeight - 4,
+            height: triangleHeight - 4
+        )
+
+        let container = NSView(frame: NSRect(
+            x: 0, y: 0, width: containerWidth, height: scrollHeight + triangleHeight
+        ))
+        container.addSubview(scroll)
+        container.addSubview(toggle)
+        container.addSubview(label)
+
+        // Shrink to just the toggle when collapsed; expand to full size
+        // when shown. NSAlert sizes itself to the accessory frame.
+        let collapsedFrame = NSRect(x: 0, y: 0, width: containerWidth, height: triangleHeight)
+        let expandedFrame = container.frame
+        container.setFrameSize(collapsedFrame.size)
+        // Push toggle/label down to y=0 in collapsed state.
+        toggle.frame.origin.y = 0
+        label.frame.origin.y = 2
+        scroll.isHidden = true
+
+        let target = DisclosureToggleHandler { sender in
+            let expanding = sender.state == .on
+            scroll.isHidden = !expanding
+            container.setFrameSize(expanding ? expandedFrame.size : collapsedFrame.size)
+            toggle.frame.origin.y = expanding ? scrollHeight : 0
+            label.frame.origin.y = (expanding ? scrollHeight : 0) + 2
+            // Ask the alert to relayout around the new accessory size.
+            container.window?.layoutIfNeeded()
+        }
+        toggle.target = target
+        toggle.action = #selector(DisclosureToggleHandler.handle(_:))
+        // Keep the handler alive for the alert's lifetime.
+        objc_setAssociatedObject(container, &disclosureHandlerKey, target, .OBJC_ASSOCIATION_RETAIN)
+
+        return container
     }
 
     private static func openLocalhostWorkspaceImpl(
@@ -919,5 +968,17 @@ private func herdrPanelOpenerTrace(_ message: String) {
         } else {
             FileManager.default.createFile(atPath: "/tmp/herdr-debug.log", contents: data)
         }
+    }
+}
+
+private var disclosureHandlerKey: UInt8 = 0
+
+/// Plain Cocoa target/action sink so we can use a closure-style
+/// callback for NSButton without subclassing each time.
+private final class DisclosureToggleHandler: NSObject {
+    let block: (NSButton) -> Void
+    init(_ block: @escaping (NSButton) -> Void) { self.block = block }
+    @objc func handle(_ sender: Any?) {
+        if let b = sender as? NSButton { block(b) }
     }
 }

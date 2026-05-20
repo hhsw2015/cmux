@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 /// remote SSH targets.
 struct HostsSettingsView: View {
     @ObservedObject private var registry: HostRegistry = .shared
+    @ObservedObject private var healthStore: HostHealthStore = .shared
     @State private var showingAdd = false
     @State private var editing: HerdrHost?
     @State private var pendingForceRemove: PendingForceRemove?
@@ -35,11 +36,13 @@ struct HostsSettingsView: View {
                     && index < registry.hosts.count - 1
                 HostRow(
                     host: host,
+                    health: healthStore.health(for: host.id),
                     onEdit: { editing = host },
                     onRemove: host.isLocalhost ? nil : { tryRemove(host) },
                     onMoveUp: canMoveUp ? { registry.move(id: host.id, direction: .up) } : nil,
                     onMoveDown: canMoveDown ? { registry.move(id: host.id, direction: .down) } : nil
                 )
+                .equatable()
                 .onDrag {
                     // Localhost is pinned; refuse to start a drag.
                     if host.isLocalhost { return NSItemProvider() }
@@ -151,13 +154,29 @@ struct HostsSettingsView: View {
     }
 }
 
-private struct HostRow: View {
+/// Pure value-snapshot row: no ObservableObject references below the
+/// ForEach boundary. Per CLAUDE.md "snapshot boundary" rule, this lets
+/// SwiftUI's diff skip body re-evaluation for rows whose inputs didn't
+/// change when an unrelated host's health flips. Equatable conformance
+/// is what unlocks `.equatable()`'s memoization.
+private struct HostRow: View, Equatable {
     let host: HerdrHost
+    let health: HostHealthStore.HostHealth
     let onEdit: () -> Void
     let onRemove: (() -> Void)?
     let onMoveUp: (() -> Void)?
     let onMoveDown: (() -> Void)?
-    @ObservedObject private var healthStore = HostHealthStore.shared
+
+    static func == (lhs: HostRow, rhs: HostRow) -> Bool {
+        // Closures aren't Equatable; we treat closure presence as the
+        // only signal (true vs nil). The inputs that drive rendering
+        // are host + health.
+        lhs.host == rhs.host
+            && lhs.health == rhs.health
+            && (lhs.onRemove == nil) == (rhs.onRemove == nil)
+            && (lhs.onMoveUp == nil) == (rhs.onMoveUp == nil)
+            && (lhs.onMoveDown == nil) == (rhs.onMoveDown == nil)
+    }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -235,8 +254,7 @@ private struct HostRow: View {
     /// tested. Tooltip carries the offline reason for power users.
     @ViewBuilder
     private var statusDot: some View {
-        let h = healthStore.health(for: host.id)
-        switch h.status {
+        switch health.status {
         case .unknown:
             EmptyView()
         case .checking:
@@ -639,6 +657,8 @@ private struct AddHostSheet: View {
             return
         }
         probeResult = .probing
+        let reportId = initial?.id ?? probeHost.id
+        HostHealthStore.shared.reportChecking(hostId: reportId)
         Task.detached {
             guard let invocation = SSHCommandBuilder.build(
                 for: probeHost,
@@ -660,20 +680,32 @@ private struct AddHostSheet: View {
                 let out = String(data: data, encoding: .utf8)?
                     .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 await MainActor.run {
+                    // Mirror probe outcomes into the shared HostHealthStore
+                    // so the row dot and the inline probe row never
+                    // disagree. Use the *initial* host id when editing —
+                    // probeHost is a transient throwaway with a fresh UUID.
+                    let reportId = initial?.id ?? probeHost.id
                     if proc.terminationStatus == 0 && out.hasPrefix("herdr ") {
                         probeResult = .success(version: out)
+                        HostHealthStore.shared.reportOnline(hostId: reportId)
                     } else if out.contains("NOT FOUND") || out.isEmpty {
-                        probeResult = .failure(reason: String(
+                        let reason = String(
                             localized: "settings.hosts.probeMissing",
                             defaultValue: "cmux agent isn't installed on the remote yet. Toggle Install on save."
-                        ))
+                        )
+                        probeResult = .failure(reason: reason)
+                        HostHealthStore.shared.reportOffline(hostId: reportId, reason: reason)
                     } else {
                         probeResult = .failure(reason: out)
+                        HostHealthStore.shared.reportOffline(hostId: reportId, reason: out)
                     }
                 }
             } catch {
                 await MainActor.run {
-                    probeResult = .failure(reason: String(describing: error))
+                    let reason = String(describing: error)
+                    probeResult = .failure(reason: reason)
+                    let reportId = initial?.id ?? probeHost.id
+                    HostHealthStore.shared.reportOffline(hostId: reportId, reason: reason)
                 }
             }
         }
