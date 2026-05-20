@@ -84,17 +84,10 @@ final class HerdrBackendLiveTests: XCTestCase {
         )
     }
 
-    func testRemoteHostThrowsRemoteNotSupportedYet() {
-        let bin = "/nonexistent/bin"
-        let host = HerdrHost(
-            id: UUID(),
-            displayName: "remote",
-            transport: .sshStdio(target: "ignored"),
-            sessionName: "ignored",
-            addedAt: Date()
-        )
-        XCTAssertThrowsError(try HerdrBackend(host: host, executablePath: bin)) { err in
-            XCTAssertEqual(err as? HerdrBackendError, .remoteNotSupportedYet)
-        }
-    }
+    // testRemoteHostThrowsRemoteNotSupportedYet was removed: HerdrBackend
+    // is now transport-agnostic — every RPC opens a fresh transport via
+    // HerdrOneShotRPC, which routes localUDS / sshStdio through
+    // HerdrTransportFactory. Constructing a backend with an SSH host
+    // is no longer an error; failure surfaces at the actual RPC call
+    // if the SSH connection itself fails.
 }
