@@ -26,52 +26,67 @@ enum HerdrRemoteInstaller {
     /// `.sshStdio`, kicks off a background scp+verify via the same
     /// path the menu uses. Used by the Settings → Hosts add flow to
     /// auto-deploy at host-registration time.
+    /// Source repo for the herdr-cmux binary release. Always pulls
+    /// `releases/latest/download/<asset>` so newly published tags are
+    /// picked up automatically — no version pin maintenance required.
+    static let releaseRepoOwner = "hhsw2015"
+    static let releaseRepoName = "herdr"
+
     static func installOnHost(_ host: HerdrHost) {
         guard case .sshStdio = host.transport else {
             herdrInstallerTrace("\(host.displayName): nothing to install for local transport")
             return
         }
-        guard let localBinary = HerdrLocalBinary.resolve() else {
-            herdrInstallerTrace("local binary missing — build the fork or rebuild cmux")
-            return
-        }
         Task.detached {
-            await install(host: host, localBinaryPath: localBinary)
+            await install(host: host)
         }
     }
 
-    private static func install(host: HerdrHost, localBinaryPath: String) async {
+    private static func install(host: HerdrHost) async {
         let target: String
         if case .sshStdio(let t, _, _, _, _) = host.transport {
             target = t
         } else {
             return
         }
-        // 1. Ensure ~/.local/bin exists on remote.
-        if !runSSH(host: host, command: "mkdir -p ~/.local/bin") {
+        // 1. Detect remote OS+arch so we know which release asset to fetch.
+        guard let assetName = detectRemoteAsset(host: host) else {
             await MainActor.run {
-                herdrInstallerTrace("\(target): mkdir ~/.local/bin failed")
+                herdrInstallerTrace("\(target): could not detect remote OS/arch")
                 postNotification(
                     title: String(localized: "herdr.install.failed.title", defaultValue: "Herdr install failed"),
-                    body: String(localized: "herdr.install.failed.mkdir", defaultValue: "\(target): could not create ~/.local/bin")
+                    body: String(localized: "herdr.install.failed.unsupported", defaultValue: "\(target): unsupported remote OS or architecture")
                 )
             }
             return
         }
-        // 2. scp the binary.
-        if !runSCP(host: host, localBinaryPath: localBinaryPath) {
+        herdrInstallerTrace("\(target): detected asset \(assetName)")
+
+        // 2. Ensure ~/.local/bin exists, then curl the right asset down
+        //    on the remote itself. Avoids scp'ing a mac binary to linux.
+        let url = "https://github.com/\(releaseRepoOwner)/\(releaseRepoName)/releases/latest/download/\(assetName)"
+        let installCmd = """
+        mkdir -p ~/.local/bin && \
+        if command -v curl >/dev/null 2>&1; then \
+          curl -fSL --retry 2 -o ~/.local/bin/herdr-cmux '\(url)'; \
+        elif command -v wget >/dev/null 2>&1; then \
+          wget -q -O ~/.local/bin/herdr-cmux '\(url)'; \
+        else \
+          echo 'no curl or wget on remote' >&2; exit 1; \
+        fi && \
+        chmod +x ~/.local/bin/herdr-cmux
+        """
+        if !runSSH(host: host, command: installCmd) {
             await MainActor.run {
-                herdrInstallerTrace("\(target): scp failed")
+                herdrInstallerTrace("\(target): download failed")
                 postNotification(
                     title: String(localized: "herdr.install.failed.title", defaultValue: "Herdr install failed"),
-                    body: String(localized: "herdr.install.failed.scp", defaultValue: "\(target): scp transfer failed")
+                    body: String(localized: "herdr.install.failed.download", defaultValue: "\(target): could not download \(assetName) from latest release")
                 )
             }
             return
         }
-        // 3. chmod +x just in case scp didn't preserve permissions.
-        _ = runSSH(host: host, command: "chmod +x ~/.local/bin/herdr-cmux")
-        // 4. Verify with --version.
+        // 3. Verify with --version.
         let version = captureSSH(
             host: host,
             command: "~/.local/bin/herdr-cmux --version"
@@ -84,12 +99,40 @@ enum HerdrRemoteInstaller {
                     body: String(localized: "herdr.install.failed.verify", defaultValue: "\(target): herdr-cmux --version returned no output")
                 )
             } else {
-                herdrInstallerTrace("\(target): installed \(version)")
+                herdrInstallerTrace("\(target): installed \(version) (\(assetName))")
                 postNotification(
                     title: String(localized: "herdr.install.success.title", defaultValue: "Herdr installed"),
                     body: String(localized: "herdr.install.success.body", defaultValue: "\(target): \(version)")
                 )
             }
+        }
+    }
+
+    /// Runs `uname -s` and `uname -m` on the remote and maps to a
+    /// release asset name. Returns nil on unsupported combinations.
+    private static func detectRemoteAsset(host: HerdrHost) -> String? {
+        guard let raw = captureSSH(
+            host: host,
+            command: "printf '%s %s' \"$(uname -s)\" \"$(uname -m)\""
+        )?.trimmingCharacters(in: .whitespacesAndNewlines) else {
+            return nil
+        }
+        let parts = raw.split(separator: " ").map(String.init)
+        guard parts.count == 2 else { return nil }
+        let os = parts[0].lowercased()
+        let arch = parts[1].lowercased()
+        switch (os, arch) {
+        case ("linux", "x86_64"), ("linux", "amd64"):
+            return "herdr-linux-x86_64"
+        case ("linux", "aarch64"), ("linux", "arm64"):
+            return "herdr-linux-aarch64"
+        case ("darwin", "arm64"), ("darwin", "aarch64"):
+            return "herdr-macos-aarch64"
+        case ("darwin", "x86_64"):
+            return "herdr-macos-x86_64"
+        default:
+            herdrInstallerTrace("unsupported remote: \(os)/\(arch)")
+            return nil
         }
     }
 
@@ -147,51 +190,6 @@ enum HerdrRemoteInstaller {
         }
     }
 
-    /// scp uses a slightly different option set than ssh (no -T, no
-    /// remote command, target is `<host>:<path>`). Reuse the user's
-    /// extraArgs (-i / -p / -o ...) and BatchMode/ControlMaster
-    /// defaults but build the argv ourselves.
-    private static func runSCP(host: HerdrHost, localBinaryPath: String) -> Bool {
-        guard case .sshStdio(let target, let extraArgs, let skipDefault, _, _) = host.transport else {
-            return false
-        }
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: "/usr/bin/scp")
-        var args: [String] = []
-        if !skipDefault {
-            // scp needs port via -P (uppercase), not -p; users rarely
-            // hit this in practice — they paste -p into ssh extraArgs
-            // which we translate below.
-            args.append(contentsOf: ["-o", "BatchMode=yes",
-                                     "-o", "ConnectTimeout=10",
-                                     "-o", "ControlMaster=auto",
-                                     "-o", "ControlPath=" + (("~/.ssh/cmux-cm-%C") as NSString).expandingTildeInPath,
-                                     "-o", "ControlPersist=60"])
-        }
-        // Translate ssh -p into scp -P; pass through everything else.
-        var i = 0
-        while i < extraArgs.count {
-            let t = extraArgs[i]
-            if t == "-p" && i + 1 < extraArgs.count {
-                args.append("-P")
-                args.append(extraArgs[i + 1])
-                i += 2
-                continue
-            }
-            args.append(t)
-            i += 1
-        }
-        args.append(localBinaryPath)
-        args.append("\(target):.local/bin/herdr-cmux")
-        proc.arguments = args
-        do {
-            try proc.run()
-            proc.waitUntilExit()
-            return proc.terminationStatus == 0
-        } catch {
-            return false
-        }
-    }
 }
 
 private func herdrInstallerTrace(_ message: String) {
