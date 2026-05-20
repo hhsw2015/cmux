@@ -116,4 +116,25 @@ final class HerdrTabRegistry: ObservableObject {
         }
         return false
     }
+
+    /// Returns the first binding whose owning cmux Workspace has the
+    /// given id. Used by the bidirectional sync bridge to find the
+    /// herdr handle for a cmux native rename / mutation.
+    func firstBinding(forWorkspaceId workspaceId: UUID) -> HerdrTabBinding? {
+        for binding in bindings.values where binding.workspace?.id == workspaceId {
+            return binding
+        }
+        return nil
+    }
+
+    /// Reverse lookup: given a herdr workspace_id, find the cmux
+    /// workspace UUID it's mirrored into. Drives the inbound apply
+    /// path (daemon broadcast → update cmux side).
+    func cmuxWorkspaceId(forHerdrWorkspace workspaceId: String, host: HerdrHost) -> UUID? {
+        for binding in bindings.values
+            where binding.workspaceId == workspaceId && binding.host.id == host.id {
+            return binding.workspace?.id
+        }
+        return nil
+    }
 }

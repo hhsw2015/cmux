@@ -344,6 +344,7 @@
 		C420Z000C420Z000C42DSC102 /* DaemonSpawnCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42DSC101 /* DaemonSpawnCoordinator.swift */; };
 		C420Z000C420Z000C42LA102 /* HerdrLocalAgentInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42LA101 /* HerdrLocalAgentInstaller.swift */; };
 		C420Z000C420Z000C42AP102 /* HerdrAgentPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42AP101 /* HerdrAgentPaths.swift */; };
+		C420Z000C420Z000C42WS102 /* HerdrWorkspaceSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42WS101 /* HerdrWorkspaceSync.swift */; };
 		C420Z000C420Z000C42HS102 /* HostsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42HS101 /* HostsSettingsView.swift */; };
 		C420Z000C420Z000C42TR102 /* HerdrTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42TR101 /* HerdrTransport.swift */; };
 		C420Z000C420Z000C42TL102 /* LocalUDSTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42TL101 /* LocalUDSTransport.swift */; };
@@ -974,6 +975,7 @@
 		C420Z000C420Z000C42DSC101 /* DaemonSpawnCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/DaemonSpawnCoordinator.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42LA101 /* HerdrLocalAgentInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrLocalAgentInstaller.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42AP101 /* HerdrAgentPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrAgentPaths.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42WS101 /* HerdrWorkspaceSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrWorkspaceSync.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42SC101 /* HerdrSurfaceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrSurfaceController.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42PR101 /* HerdrPanelRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrPanelRegistry.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42PO101 /* HerdrPanelOpener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrPanelOpener.swift; sourceTree = "<group>"; };
@@ -1523,6 +1525,7 @@
 				C420Z000C420Z000C42DSC101 /* DaemonSpawnCoordinator.swift */,
 				C420Z000C420Z000C42LA101 /* HerdrLocalAgentInstaller.swift */,
 				C420Z000C420Z000C42AP101 /* HerdrAgentPaths.swift */,
+				C420Z000C420Z000C42WS101 /* HerdrWorkspaceSync.swift */,
 				C420Z000C420Z000C42SC101 /* HerdrSurfaceController.swift */,
 				C420Z000C420Z000C42PR101 /* HerdrPanelRegistry.swift */,
 				C420Z000C420Z000C42PO101 /* HerdrPanelOpener.swift */,
@@ -2360,6 +2363,7 @@
 				C420Z000C420Z000C42DSC102 /* DaemonSpawnCoordinator.swift in Sources */,
 				C420Z000C420Z000C42LA102 /* HerdrLocalAgentInstaller.swift in Sources */,
 				C420Z000C420Z000C42AP102 /* HerdrAgentPaths.swift in Sources */,
+				C420Z000C420Z000C42WS102 /* HerdrWorkspaceSync.swift in Sources */,
 				C420Z000C420Z000C42SC102 /* HerdrSurfaceController.swift in Sources */,
 				C420Z000C420Z000C42PR102 /* HerdrPanelRegistry.swift in Sources */,
 				C420Z000C420Z000C42PO102 /* HerdrPanelOpener.swift in Sources */,

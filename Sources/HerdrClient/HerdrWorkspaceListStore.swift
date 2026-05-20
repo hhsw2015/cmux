@@ -62,6 +62,18 @@ final class HerdrWorkspaceListStore: ObservableObject {
                 detectAgentBlockedTransitions(host: host, newSummaries: summaries)
                 let blockedBefore = totalBlockedCount
                 workspacesByHost[hostId] = summaries
+                // Mirror the daemon's labels back into cmux's native
+                // tab.customTitle for any cmux workspace bound to this
+                // herdr workspace. The sync bridge dedupes via its
+                // last-known cache so we don't loop with our own echoes.
+                for summary in summaries {
+                    HerdrWorkspaceSync.shared.applyRemoteWorkspace(
+                        host: host,
+                        workspaceId: summary.workspaceId,
+                        label: summary.label,
+                        description: nil
+                    )
+                }
                 lastErrorByHost.removeValue(forKey: hostId)
                 if totalBlockedCount != blockedBefore {
                     NotificationCenter.default.post(

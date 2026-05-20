@@ -4058,11 +4058,16 @@ class TabManager: ObservableObject {
         return false
     }
 
-    func setCustomTitle(tabId: UUID, title: String?) {
+    func setCustomTitle(tabId: UUID, title: String?, source: WorkspaceMutationSource = .userInput) {
         guard let index = tabs.firstIndex(where: { $0.id == tabId }) else { return }
         tabs[index].setCustomTitle(title)
         if selectedTabId == tabId {
             updateWindowTitle(for: tabs[index])
+        }
+        // Mirror to herdr only on local user edits. Inbound apply
+        // already came from the daemon — echoing it back would loop.
+        if source == .userInput {
+            HerdrWorkspaceSync.shared.reportLocalRename(cmuxWorkspaceId: tabId, newTitle: title)
         }
     }
 
@@ -4070,9 +4075,12 @@ class TabManager: ObservableObject {
         setCustomTitle(tabId: tabId, title: nil)
     }
 
-    func setCustomDescription(tabId: UUID, description: String?) {
+    func setCustomDescription(tabId: UUID, description: String?, source: WorkspaceMutationSource = .userInput) {
         guard let index = tabs.firstIndex(where: { $0.id == tabId }) else { return }
         tabs[index].setCustomDescription(description)
+        if source == .userInput {
+            HerdrWorkspaceSync.shared.reportLocalDescription(cmuxWorkspaceId: tabId, newDescription: description)
+        }
     }
 
     func clearCustomDescription(tabId: UUID) {
