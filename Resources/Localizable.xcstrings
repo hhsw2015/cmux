@@ -48329,13 +48329,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The remote herdr is missing the layout RPCs cmux needs."
+            "value": "%@ is running an older cmux agent. Reinstall the agent on this computer, then try again."
           }
         },
         "ja": {
           "stringUnit": {
-            "state": "translated",
-            "value": "リモート herdr に必要なレイアウト RPC が欠けています"
+            "state": "needs_review",
+            "value": "%@ は古い cmux エージェントを実行しています。エージェントをインストールし直してから再度お試しください。"
           }
         }
       }
@@ -120402,6 +120402,91 @@
           "stringUnit": {
             "state": "needs_review",
             "value": "コンピュータを追加…"
+          }
+        }
+      }
+    },
+    "herdr.alert.incompatible.reinstall": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reinstall"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "インストールし直す"
+          }
+        }
+      }
+    },
+    "herdr.alert.unreachable.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't reach the cmux agent on %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "%@ の cmux エージェントに接続できません"
+          }
+        }
+      }
+    },
+    "herdr.alert.unreachable.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The agent stopped responding. cmux can try again — the agent will be restarted automatically if it's missing."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "エージェントが応答を停止しました。cmux はもう一度試せます — エージェントが見つからなければ自動的に再起動します。"
+          }
+        }
+      }
+    },
+    "herdr.alert.unreachable.retry": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retry"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "再試行"
+          }
+        }
+      }
+    },
+    "herdr.alert.unreachable.dismiss": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dismiss"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "閉じる"
           }
         }
       }

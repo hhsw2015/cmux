@@ -582,14 +582,55 @@ enum HerdrPanelOpener {
                 )
                 alert.informativeText = String(
                     localized: "herdr.alert.incompatible.message",
-                    defaultValue: "\(host.displayName) is running an older cmux agent. Reinstall the agent on this computer, then try again.\n\nDetails: \(reason)"
+                    defaultValue: "\(host.displayName) is running an older cmux agent. Reinstall the agent on this computer, then try again."
                 )
                 alert.alertStyle = .warning
+                alert.accessoryView = makeDetailAccessory(reason)
+                alert.addButton(withTitle: String(
+                    localized: "herdr.alert.incompatible.reinstall",
+                    defaultValue: "Reinstall"
+                ))
                 alert.addButton(withTitle: String(
                     localized: "herdr.alert.incompatible.dismiss",
-                    defaultValue: "OK"
+                    defaultValue: "Dismiss"
                 ))
-                alert.runModal()
+                if alert.runModal() == .alertFirstButtonReturn {
+                    if case .sshStdio = host.transport {
+                        HerdrRemoteInstaller.installOnHost(host)
+                    } else {
+                        HerdrLocalAgentInstaller.installToUserBin()
+                    }
+                }
+            }
+            return
+        case .unreachable(let reason):
+            // Transport-level failure: don't tell the user to reinstall
+            // (binary may be fine). Daemon likely crashed or socket
+            // went stale. Offer Retry instead.
+            herdrPanelOpenerTrace("workspace: agent unreachable — \(reason)")
+            await MainActor.run {
+                let alert = NSAlert()
+                alert.messageText = String(
+                    localized: "herdr.alert.unreachable.title",
+                    defaultValue: "Couldn't reach the cmux agent on \(host.displayName)"
+                )
+                alert.informativeText = String(
+                    localized: "herdr.alert.unreachable.message",
+                    defaultValue: "The agent stopped responding. cmux can try again — the agent will be restarted automatically if it's missing."
+                )
+                alert.alertStyle = .warning
+                alert.accessoryView = makeDetailAccessory(reason)
+                alert.addButton(withTitle: String(
+                    localized: "herdr.alert.unreachable.retry",
+                    defaultValue: "Retry"
+                ))
+                alert.addButton(withTitle: String(
+                    localized: "herdr.alert.unreachable.dismiss",
+                    defaultValue: "Dismiss"
+                ))
+                if alert.runModal() == .alertFirstButtonReturn {
+                    openWorkspace(host: host, requestedWorkspaceId: requestedWorkspaceId)
+                }
             }
             return
         }

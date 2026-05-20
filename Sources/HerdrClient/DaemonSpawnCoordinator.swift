@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 /// Serializes `herdr-cmux server` spawns per-socket so two concurrent
@@ -40,7 +41,15 @@ actor DaemonSpawnCoordinator {
         sessionName: String
     ) async throws {
         if FileManager.default.fileExists(atPath: socketPath) {
-            return
+            // Detect a STALE socket: file exists but no daemon is
+            // listening (e.g. previous daemon crashed without unlinking
+            // the socket node). connect(2) with EOF/refused → unlink
+            // and respawn. This is the path that caused users to see
+            // "socketWrite(32)" / EPIPE on retry.
+            if Self.isSocketAlive(at: socketPath) {
+                return
+            }
+            try? FileManager.default.removeItem(atPath: socketPath)
         }
         if let existing = inFlight[socketPath] {
             try await existing.value
@@ -56,6 +65,35 @@ actor DaemonSpawnCoordinator {
         inFlight[socketPath] = task
         defer { inFlight[socketPath] = nil }
         try await task.value
+    }
+
+    /// Quick non-blocking probe to tell apart a live UDS server from a
+    /// stale socket node left behind by a crashed daemon. Returns true
+    /// if connect(2) succeeds within 100ms.
+    private static func isSocketAlive(at path: String) -> Bool {
+        let fd = Darwin.socket(AF_UNIX, SOCK_STREAM, 0)
+        guard fd >= 0 else { return false }
+        defer { Darwin.close(fd) }
+        var addr = sockaddr_un()
+        addr.sun_family = sa_family_t(AF_UNIX)
+        let pathBytes = Array(path.utf8)
+        let cap = MemoryLayout.size(ofValue: addr.sun_path)
+        guard pathBytes.count < cap else { return false }
+        withUnsafeMutablePointer(to: &addr.sun_path) { ptr in
+            ptr.withMemoryRebound(to: CChar.self, capacity: cap) { rebound in
+                for i in 0..<pathBytes.count {
+                    rebound[i] = CChar(bitPattern: pathBytes[i])
+                }
+                rebound[pathBytes.count] = 0
+            }
+        }
+        let len = socklen_t(MemoryLayout<sockaddr_un>.size)
+        let rc = withUnsafePointer(to: &addr) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
+                Darwin.connect(fd, sa, len)
+            }
+        }
+        return rc == 0
     }
 
     /// Spawn the daemon, redirect stderr to a Pipe so we can echo a

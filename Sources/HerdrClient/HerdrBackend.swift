@@ -163,9 +163,15 @@ final class HerdrBackend: SessionDaemonBackend, @unchecked Sendable {
         /// HerdrPanelOpener workspace path. `version` is the daemon's
         /// reported version string, useful in logs.
         case ok(version: String)
-        /// Daemon is reachable but lacks one or more required
-        /// methods. `reason` describes which probe failed.
+        /// Daemon is reachable AND responded, but lacks one or more
+        /// required methods. `reason` describes which probe failed.
+        /// Means the user should reinstall a newer agent.
         case incompatible(reason: String)
+        /// Couldn't talk to the daemon at all (broken pipe, connect
+        /// refused, ping never returned). Means the daemon crashed,
+        /// the socket is stale, or the SSH tunnel dropped — Reinstall
+        /// won't help; user should Retry.
+        case unreachable(reason: String)
     }
 
     /// Verify the daemon supports the methods cmux's workspace
@@ -181,7 +187,11 @@ final class HerdrBackend: SessionDaemonBackend, @unchecked Sendable {
             let pong = try await api.ping()
             version = pong.version
         } catch {
-            return .incompatible(reason: "ping failed: \(error)")
+            // Ping failed at the transport layer (broken pipe, connect
+            // refused, etc.). This is NOT an incompatibility — daemon
+            // version is unknown because we couldn't reach it. UI uses
+            // .unreachable to offer Retry instead of Reinstall.
+            return .unreachable(reason: "ping failed: \(error)")
         }
         do {
             _ = try await api.request(
