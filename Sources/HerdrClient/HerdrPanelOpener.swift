@@ -94,7 +94,11 @@ enum HerdrPanelOpener {
             let r = try await HerdrOneShotRPC.request(
                 host: host,
                 method: "workspace.create",
-                params: ["focus": false, "label": "cmux-panel"]
+                params: [
+                    "focus": false,
+                    "label": "cmux-panel",
+                    "cwd": NSHomeDirectory(),
+                ]
             )
             guard let ws = r["workspace"] as? [String: Any],
                   let id = ws["workspace_id"] as? String
@@ -709,11 +713,18 @@ enum HerdrPanelOpener {
             workspaceId = first.name
             activeTabId = firstActiveTabId
         } else {
-            // No existing workspace — create one.
+            // No existing workspace — create one. Pass cwd so the
+            // initial pane spawns in the user's home directory instead
+            // of the daemon's working directory ("/" when launched
+            // headless).
             let r = try await HerdrOneShotRPC.request(
                 host: host,
                 method: "workspace.create",
-                params: ["focus": false, "label": "cmux-workspace"]
+                params: [
+                    "focus": false,
+                    "label": "cmux-workspace",
+                    "cwd": NSHomeDirectory(),
+                ]
             )
             guard let ws = r["workspace"] as? [String: Any],
                   let id = ws["workspace_id"] as? String,
