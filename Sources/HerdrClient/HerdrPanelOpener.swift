@@ -444,6 +444,15 @@ enum HerdrPanelOpener {
                               defaultValue: "An existing connection to the cmux agent is still open.")
             case .other(let s):
                 return s
+            case .socketRead(let errno):
+                return String(localized: "herdr.err.socketRead",
+                              defaultValue: "Lost connection to the cmux agent (errno \(errno)).")
+            case .socketWrite(let errno):
+                return String(localized: "herdr.err.socketWrite",
+                              defaultValue: "Couldn't send data to the cmux agent (errno \(errno)).")
+            case .eof:
+                return String(localized: "herdr.err.eof",
+                              defaultValue: "The cmux agent closed the connection.")
             }
         }
         return String(describing: error)
