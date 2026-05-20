@@ -1,4 +1,5 @@
 import Foundation
+import os.log
 
 /// One-shot RPC helper. Opens a fresh transport for the host (LocalUDS
 /// or SSH stdio via `HerdrTransportFactory`), sends one method call,
@@ -22,7 +23,9 @@ enum HerdrOneShotRPC {
     ) async {
         do {
             _ = try await request(host: host, method: method, params: params)
+            os_log("herdr.oneshot.ok method=%{public}@ session=%{public}@", method, host.sessionName)
         } catch {
+            os_log("herdr.oneshot.fail method=%{public}@ session=%{public}@ error=%{public}@", method, host.sessionName, String(describing: error))
             cmuxDebugLog("herdr.oneshot \(method) on \(host.sessionName) failed: \(error)")
         }
     }
