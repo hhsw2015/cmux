@@ -1,7 +1,5 @@
-import Foundation
 import Darwin
-
-private nonisolated let cmuxTopPIDPathBufferSize = 4096
+import Foundation
 
 nonisolated struct CmuxTopResourceSummary: Sendable {
     var cpuPercent: Double = 0
@@ -48,9 +46,9 @@ nonisolated struct CmuxTopResourceSummary: Sendable {
 }
 
 nonisolated enum CmuxTopProcessMemorySource: String, Sendable {
-    case physicalFootprint = "proc_pid_rusage.RUSAGE_INFO_V2.ri_phys_footprint"
+    case physicalFootprint = "proc_pid_rusage.RUSAGE_INFO_V4.ri_phys_footprint"
     case residentSize = "proc_pidinfo.PROC_PIDTASKINFO.pti_resident_size"
-    case rusageResidentSize = "proc_pid_rusage.RUSAGE_INFO_V2.ri_resident_size"
+    case rusageResidentSize = "proc_pid_rusage.RUSAGE_INFO_V4.ri_resident_size"
     case mixed
     case unavailable
 }
@@ -134,7 +132,7 @@ nonisolated struct CmuxTopProcessScope: Sendable {
 nonisolated final class CmuxTopProcessSnapshot: @unchecked Sendable {
     let sampledAt: Date
     private let includesProcessDetails: Bool
-    private let processesByPID: [Int: CmuxTopProcessInfo]
+    let processesByPID: [Int: CmuxTopProcessInfo]
     private let childrenByParentPID: [Int: [Int]]
     private let pidsByTTYDevice: [Int64: [Int]]
     private let pidsByCMUXSurfaceID: [UUID: [Int]]
@@ -188,7 +186,7 @@ nonisolated final class CmuxTopProcessSnapshot: @unchecked Sendable {
         let residentMemorySourceNames = residentMemorySources.map(\.rawValue)
         return [
             "sampled_at": ISO8601DateFormatter().string(from: sampledAt),
-            "source": "sysctl+proc_pidinfo",
+            "source": "proc_listallpids+proc_pidinfo",
             "cpu_source": "proc_pidinfo.PROC_PIDTASKINFO.pti_total_user+pti_total_system",
             "memory_source": CmuxTopProcessMemorySource.physicalFootprint.rawValue,
             "memory_fallback_source": CmuxTopProcessMemorySource.residentSize.rawValue,
@@ -240,6 +238,10 @@ nonisolated final class CmuxTopProcessSnapshot: @unchecked Sendable {
             .sorted { $0.pid < $1.pid }
     }
 
+    func process(pid: Int) -> CmuxTopProcessInfo? {
+        processesByPID[pid]
+    }
+
     func expandedPIDs(rootPIDs: Set<Int>) -> Set<Int> {
         var result: Set<Int> = []
         var stack = Array(rootPIDs.filter { $0 > 0 })
@@ -250,6 +252,56 @@ nonisolated final class CmuxTopProcessSnapshot: @unchecked Sendable {
         }
 
         return result
+    }
+
+    func descendantPIDs(rootPID: Int, includeRoot: Bool = false) -> Set<Int> {
+        guard rootPID > 0 else { return [] }
+
+        var result: Set<Int> = includeRoot && processesByPID[rootPID] != nil ? [rootPID] : []
+        var visited: Set<Int> = []
+        var stack = childrenByParentPID[rootPID] ?? []
+        stack.append(contentsOf: Self.listedChildPIDs(parentPID: rootPID))
+        while let pid = stack.popLast() {
+            guard visited.insert(pid).inserted else { continue }
+            guard result.insert(pid).inserted else { continue }
+            stack.append(contentsOf: childrenByParentPID[pid] ?? [])
+            stack.append(contentsOf: Self.listedChildPIDs(parentPID: pid))
+        }
+        return result
+    }
+
+    private static func listedChildPIDs(parentPID: Int) -> [Int] {
+        guard parentPID > 0 else { return [] }
+
+        let pidStride = MemoryLayout<pid_t>.stride
+        var capacity = 16
+        var lastChildren: [Int] = []
+        for _ in 0..<4 {
+            var pids = Array(repeating: pid_t(), count: capacity)
+            let returnedCount = pids.withUnsafeMutableBufferPointer { buffer in
+                proc_listchildpids(
+                    pid_t(parentPID),
+                    buffer.baseAddress,
+                    Int32(buffer.count * pidStride)
+                )
+            }
+            guard returnedCount >= 0 else {
+                return lastChildren
+            }
+
+            let count = min(pids.count, Int(returnedCount))
+            lastChildren = pids
+                .prefix(count)
+                .compactMap { pid in
+                    let intPID = Int(pid)
+                    return intPID > 0 ? intPID : nil
+                }
+            if Int(returnedCount) < pids.count {
+                return lastChildren
+            }
+            capacity = max(pids.count * 2, Int(returnedCount) + 16)
+        }
+        return lastChildren
     }
 
     func summaryPayload(for pids: Set<Int>, rootPIDs: Set<Int> = []) -> [String: Any] {
@@ -759,61 +811,10 @@ nonisolated final class CmuxTopProcessSnapshot: @unchecked Sendable {
         return Int64(statInfo.st_rdev)
     }
 
-    private static func clampedAdd(_ lhs: Int64, _ rhs: Int64) -> Int64 {
+    static func clampedAdd(_ lhs: Int64, _ rhs: Int64) -> Int64 {
         if rhs > 0, lhs > Int64.max - rhs {
             return Int64.max
         }
         return lhs + rhs
-    }
-
-    private static func taskInfo(for pid: Int) -> proc_taskinfo? {
-        var info = proc_taskinfo()
-        let expectedSize = MemoryLayout<proc_taskinfo>.stride
-        let size = proc_pidinfo(pid_t(pid), PROC_PIDTASKINFO, 0, &info, Int32(expectedSize))
-        return size == expectedSize ? info : nil
-    }
-
-    private static func resourceUsage(for pid: Int) -> rusage_info_v2? {
-        var info = rusage_info_v2()
-        let result = withUnsafeMutableBytes(of: &info) { rawBuffer -> Int32 in
-            guard let baseAddress = rawBuffer.baseAddress else { return -1 }
-            // proc_pid_rusage imports as rusage_info_t *; callers pass the concrete
-            // rusage struct address cast to that opaque buffer type.
-            let buffer = baseAddress.assumingMemoryBound(to: rusage_info_t?.self)
-            return proc_pid_rusage(
-                pid_t(pid),
-                RUSAGE_INFO_V2,
-                buffer
-            )
-        }
-        return result == 0 ? info : nil
-    }
-
-    private static func processName(pid: Int, fallback: String) -> String {
-        var buffer = [CChar](repeating: 0, count: Int(MAXCOMLEN + 1))
-        let length = proc_name(pid_t(pid), &buffer, UInt32(buffer.count))
-        guard length > 0 else { return fallback }
-        let name = String(cString: buffer).trimmingCharacters(in: .whitespacesAndNewlines)
-        return name.isEmpty ? fallback : name
-    }
-
-    private static func processPath(pid: Int) -> String? {
-        var buffer = [CChar](repeating: 0, count: cmuxTopPIDPathBufferSize)
-        let length = proc_pidpath(pid_t(pid), &buffer, UInt32(buffer.count))
-        guard length > 0 else { return nil }
-        let path = String(cString: buffer).trimmingCharacters(in: .whitespacesAndNewlines)
-        return path.isEmpty ? nil : path
-    }
-
-    private static func fixedString<T>(_ value: T) -> String {
-        withUnsafeBytes(of: value) { rawBuffer in
-            let endIndex = rawBuffer.firstIndex(of: 0) ?? rawBuffer.endIndex
-            return String(decoding: rawBuffer[..<endIndex], as: UTF8.self)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-    }
-
-    private static func int64Clamped(_ value: UInt64) -> Int64 {
-        value > UInt64(Int64.max) ? Int64.max : Int64(value)
     }
 }

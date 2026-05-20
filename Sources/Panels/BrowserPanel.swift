@@ -2785,6 +2785,7 @@ final class BrowserPanel: Panel, ObservableObject {
     private var restoredBackHistoryStack: [URL] = []
     private var restoredForwardHistoryStack: [URL] = []
     private var restoredHistoryCurrentURL: URL?
+    private var isMainFrameProvisionalNavigationActive: Bool = false
 
     /// Published estimated progress (0.0 - 1.0)
     @Published private(set) var estimatedProgress: Double = 0.0
@@ -3111,6 +3112,7 @@ final class BrowserPanel: Panel, ObservableObject {
         closeBackgroundPreloadHost(reason: "discardHiddenWebView")
         BrowserWindowPortalRegistry.detach(webView: oldWebView)
         oldWebView.stopLoading()
+        isMainFrameProvisionalNavigationActive = false
         oldWebView.navigationDelegate = nil
         oldWebView.uiDelegate = nil
         if let oldCmuxWebView = oldWebView as? CmuxWebView {
@@ -3497,20 +3499,38 @@ final class BrowserPanel: Panel, ObservableObject {
         let boundWebViewInstanceID = webViewInstanceID
         let boundHistoryStore = historyStore
 
-        navigationDelegate.didFinish = { [weak self] webView in
-            Task { @MainActor [weak self] in
+        navigationDelegate.didStartProvisionalNavigation = { [weak self] webView in
+            MainActor.assumeIsolated {
                 guard let self, self.isCurrentWebView(webView, instanceID: boundWebViewInstanceID) else { return }
+                self.isMainFrameProvisionalNavigationActive = true
+            }
+        }
+        navigationDelegate.didCommit = { [weak self] webView in
+            MainActor.assumeIsolated {
+                guard let self, self.isCurrentWebView(webView, instanceID: boundWebViewInstanceID) else { return }
+                self.isMainFrameProvisionalNavigationActive = false
+                self.publishCommittedURL(from: webView)
+            }
+        }
+        navigationDelegate.didFinish = { [weak self] webView in
+            MainActor.assumeIsolated {
+                guard let self, self.isCurrentWebView(webView, instanceID: boundWebViewInstanceID) else { return }
+                self.isMainFrameProvisionalNavigationActive = false
+                self.publishCommittedURL(from: webView)
                 self.realignRestoredSessionHistoryToLiveCurrentIfPossible()
                 boundHistoryStore.recordVisit(url: webView.url, title: webView.title)
                 self.refreshFavicon(from: webView)
                 // Keep find-in-page open through load completion and refresh matches for the new DOM.
                 self.restoreFindStateAfterNavigation(replaySearch: true)
-                GlobalSearchCoordinator.shared.captureBrowserPanel(self)
             }
         }
         navigationDelegate.didFailNavigation = { [weak self] failedWebView, failedURL in
-            Task { @MainActor in
+            MainActor.assumeIsolated {
                 guard let self, self.isCurrentWebView(failedWebView, instanceID: boundWebViewInstanceID) else { return }
+                self.isMainFrameProvisionalNavigationActive = false
+                if let url = URL(string: failedURL) {
+                    self.currentURL = Self.remoteProxyDisplayURL(for: url) ?? url
+                }
                 // Clear stale title/favicon from the previous page so the tab
                 // shows the failed URL instead of the old page's branding.
                 self.pageTitle = failedURL.isEmpty ? "" : failedURL
@@ -3520,6 +3540,17 @@ final class BrowserPanel: Panel, ObservableObject {
                 self.restoreFindStateAfterNavigation(replaySearch: false)
             }
         }
+        navigationDelegate.didCancelProvisionalNavigation = { [weak self] webView in
+            MainActor.assumeIsolated {
+                guard let self, self.isCurrentWebView(webView, instanceID: boundWebViewInstanceID) else { return }
+                self.isMainFrameProvisionalNavigationActive = false
+            }
+        }
+    }
+
+    private func publishCommittedURL(from webView: WKWebView) {
+        currentURL = Self.remoteProxyDisplayURL(for: webView.url)
+        GlobalSearchCoordinator.shared.captureBrowserPanel(self)
     }
 
     private func isCurrentWebView(_ candidate: WKWebView, instanceID: UUID? = nil) -> Bool {
@@ -3985,6 +4016,7 @@ final class BrowserPanel: Panel, ObservableObject {
         cancelPendingInteractiveBrowserPrompts(reason: "profileSwitch")
         closeBackgroundPreloadHost(reason: "profileSwitch")
         tearDownCurrentWebViewForRelease(previousWebView, reason: "profileSwitch")
+        isMainFrameProvisionalNavigationActive = false
         previousWebView.navigationDelegate = nil
         previousWebView.uiDelegate = nil
         if let previousCmuxWebView = previousWebView as? CmuxWebView {
@@ -4208,10 +4240,12 @@ final class BrowserPanel: Panel, ObservableObject {
         let observedWebViewInstanceID = webViewInstanceID
 
         // URL changes
-        let urlObserver = webView.observe(\.url, options: [.new]) { [weak self] webView, _ in
-            Task { @MainActor in
+        let urlObserver = webView.observe(\.url, options: [.new]) { [weak self] webView, change in
+            let observedURL = change.newValue ?? webView.url
+            MainActor.assumeIsolated {
                 guard let self, self.isCurrentWebView(webView, instanceID: observedWebViewInstanceID) else { return }
-                self.currentURL = Self.remoteProxyDisplayURL(for: webView.url)
+                guard !self.isMainFrameProvisionalNavigationActive else { return }
+                self.currentURL = Self.remoteProxyDisplayURL(for: observedURL)
                 GlobalSearchCoordinator.shared.captureBrowserPanel(self)
             }
         }
@@ -4351,6 +4385,7 @@ final class BrowserPanel: Panel, ObservableObject {
         cancelPendingInteractiveBrowserPrompts(reason: reason)
         closeBackgroundPreloadHost(reason: reason)
         tearDownCurrentWebViewForRelease(oldWebView, reason: reason)
+        isMainFrameProvisionalNavigationActive = false
         oldWebView.navigationDelegate = nil
         oldWebView.uiDelegate = nil
         if let oldCmuxWebView = oldWebView as? CmuxWebView {
@@ -4509,6 +4544,7 @@ final class BrowserPanel: Panel, ObservableObject {
         faviconTask?.cancel()
         faviconTask = nil
         tearDownCurrentWebViewForRelease(webView, reason: "panelClose")
+        isMainFrameProvisionalNavigationActive = false
         navigationDelegate = nil
         uiDelegate = nil
         webViewDidRequestClose = nil
@@ -5306,6 +5342,7 @@ extension BrowserPanel {
         cancelPendingInteractiveBrowserPrompts(reason: "contextReset")
         closeBackgroundPreloadHost(reason: "contextReset")
         tearDownCurrentWebViewForRelease(oldWebView, reason: reason)
+        isMainFrameProvisionalNavigationActive = false
         oldWebView.navigationDelegate = nil
         oldWebView.uiDelegate = nil
         if let oldCmuxWebView = oldWebView as? CmuxWebView {
@@ -5379,11 +5416,17 @@ func resolveBrowserNavigableURL(_ input: String) -> URL? {
 }
 
 extension BrowserPanel {
+    private func cancelInFlightNavigationBeforeHistoryTraversal() {
+        guard webView.isLoading || isMainFrameProvisionalNavigationActive else { return }
+        webView.stopLoading()
+        isMainFrameProvisionalNavigationActive = false
+    }
 
     /// Go back in history
     func goBack() {
         guard canGoBack else { return }
         reactivateDiscardedWebViewWithoutNavigation(reason: "goBack")
+        cancelInFlightNavigationBeforeHistoryTraversal()
         if usesRestoredSessionHistory {
             realignRestoredSessionHistoryToLiveCurrentIfPossible()
 
@@ -5418,6 +5461,7 @@ extension BrowserPanel {
     func goForward() {
         guard canGoForward else { return }
         reactivateDiscardedWebViewWithoutNavigation(reason: "goForward")
+        cancelInFlightNavigationBeforeHistoryTraversal()
         if usesRestoredSessionHistory {
             realignRestoredSessionHistoryToLiveCurrentIfPossible()
 
@@ -5550,6 +5594,7 @@ extension BrowserPanel {
     /// Stop loading
     func stopLoading() {
         webView.stopLoading()
+        isMainFrameProvisionalNavigationActive = false
     }
 
     private static func windowContainsInspectorViews(_ root: NSView) -> Bool {
@@ -7522,8 +7567,11 @@ func browserNavigationShouldOpenSimpleUserGesturePopupInCurrentTab(
 }
 
 private class BrowserNavigationDelegate: NSObject, WKNavigationDelegate {
+    var didStartProvisionalNavigation: ((WKWebView) -> Void)?
+    var didCommit: ((WKWebView) -> Void)?
     var didFinish: ((WKWebView) -> Void)?
     var didFailNavigation: ((WKWebView, String) -> Void)?
+    var didCancelProvisionalNavigation: ((WKWebView) -> Void)?
     var didTerminateWebContentProcess: ((WKWebView) -> Void)?
     var openInNewTab: ((URL) -> Void)?
     var requestNavigation: ((URLRequest, BrowserInsecureHTTPNavigationIntent) -> Void)?
@@ -7538,6 +7586,11 @@ private class BrowserNavigationDelegate: NSObject, WKNavigationDelegate {
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
         lastAttemptedURL = webView.url
+        didStartProvisionalNavigation?(webView)
+    }
+
+    func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+        didCommit?(webView)
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -7558,6 +7611,7 @@ private class BrowserNavigationDelegate: NSObject, WKNavigationDelegate {
 
         // Cancelled navigations (e.g. rapid typing) are not real errors.
         if nsError.domain == NSURLErrorDomain, nsError.code == NSURLErrorCancelled {
+            didCancelProvisionalNavigation?(webView)
             return
         }
 
@@ -7565,6 +7619,7 @@ private class BrowserNavigationDelegate: NSObject, WKNavigationDelegate {
         // navigation response is converted into a download via .download policy.
         // This is expected and should not show an error page.
         if nsError.domain == "WebKitErrorDomain", nsError.code == 102 {
+            didCancelProvisionalNavigation?(webView)
             return
         }
 

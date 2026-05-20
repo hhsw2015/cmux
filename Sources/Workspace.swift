@@ -235,6 +235,7 @@ extension Workspace {
         let hasWorkspaceUnreadIndicator =
             (notificationStore?.hasUnreadNotification(forTabId: id, surfaceId: nil) ?? false) ||
             (notificationStore?.hasRestoredUnreadIndicator(forTabId: id) ?? false)
+        let workspaceNotificationSnapshots = notificationSnapshots(surfaceId: nil)
 
         return SessionWorkspaceSnapshot(
             processTitle: processTitle,
@@ -244,6 +245,7 @@ extension Workspace {
             isPinned: isPinned,
             isManuallyUnread: isWorkspaceManuallyUnread,
             hasUnreadIndicator: hasWorkspaceUnreadIndicator,
+            notifications: workspaceNotificationSnapshots.isEmpty ? nil : workspaceNotificationSnapshots,
             terminalScrollBarHidden: terminalScrollBarHidden ? true : nil,
             currentDirectory: currentDirectory,
             focusedPanelId: focusedPanelId,
@@ -342,11 +344,18 @@ extension Workspace {
         }
         let isWorkspaceManuallyUnread = snapshot.isManuallyUnread == true
         restoreWorkspaceManualUnread(isWorkspaceManuallyUnread)
-        if snapshot.hasUnreadIndicator == true {
+        let restoredNotifications = restoredSessionNotifications(
+            from: snapshot,
+            oldToNewPanelIds: oldToNewPanelIds
+        )
+        let hasUnreadWorkspaceNotification = snapshot.notifications?.contains { !$0.isRead } == true
+        if snapshot.hasUnreadIndicator == true, !hasUnreadWorkspaceNotification {
             AppDelegate.shared?.notificationStore?.restoreUnreadIndicator(forTabId: id)
         } else {
             AppDelegate.shared?.notificationStore?.clearRestoredUnreadIndicator(forTabId: id)
         }
+        AppDelegate.shared?.notificationStore?.restoreSessionNotifications(restoredNotifications, forTabId: id)
+        syncUnreadBadgeStateForAllPanels()
     }
 
     private func sessionLayoutSnapshot(from node: ExternalTreeNode) -> SessionWorkspaceLayoutSnapshot {
@@ -454,6 +463,7 @@ extension Workspace {
         }()
         let isPinned = pinnedPanelIds.contains(panelId)
         let isManuallyUnread = manualUnreadPanelIds.contains(panelId)
+        let panelNotificationSnapshots = notificationSnapshots(surfaceId: panelId)
         let hasUnreadIndicator =
             restoredUnreadPanelIds.contains(panelId) ||
             hasUnreadNotification(panelId: panelId)
@@ -582,6 +592,7 @@ extension Workspace {
             isPinned: isPinned,
             isManuallyUnread: isManuallyUnread,
             hasUnreadIndicator: hasUnreadIndicator,
+            notifications: panelNotificationSnapshots.isEmpty ? nil : panelNotificationSnapshots,
             gitBranch: branchSnapshot,
             listeningPorts: listeningPorts,
             ttyName: ttyName,
@@ -1196,7 +1207,8 @@ extension Workspace {
         } else {
             clearManualUnread(panelId: panelId)
         }
-        if snapshot.hasUnreadIndicator == true {
+        if snapshot.hasUnreadIndicator == true,
+           snapshot.notifications?.contains(where: { !$0.isRead }) != true {
             restorePanelUnreadIndicator(panelId)
         } else {
             clearRestoredUnreadIndicator(panelId: panelId)
@@ -1248,6 +1260,36 @@ extension Workspace {
             notificationStore.clearManualUnread(forTabId: id)
         }
         syncUnreadBadgeStateForAllPanels()
+    }
+
+    private func notificationSnapshots(surfaceId: UUID?) -> [SessionNotificationSnapshot] {
+        AppDelegate.shared?.notificationStore?
+            .notifications(forTabId: id, surfaceId: surfaceId)
+            .map(SessionNotificationSnapshot.init(notification:)) ?? []
+    }
+
+    private func restoredSessionNotifications(
+        from snapshot: SessionWorkspaceSnapshot,
+        oldToNewPanelIds: [UUID: UUID]
+    ) -> [TerminalNotification] {
+        var notifications = (snapshot.notifications ?? []).map {
+            $0.terminalNotification(tabId: id, surfaceId: nil, panelId: nil)
+        }
+
+        for panelSnapshot in snapshot.panels {
+            guard let newPanelId = oldToNewPanelIds[panelSnapshot.id] else { continue }
+            notifications.append(
+                contentsOf: (panelSnapshot.notifications ?? []).map {
+                    $0.terminalNotification(
+                        tabId: id,
+                        surfaceId: newPanelId,
+                        panelId: newPanelId
+                    )
+                }
+            )
+        }
+
+        return notifications
     }
 
     private func applySessionDividerPositions(
@@ -1308,7 +1350,9 @@ extension Workspace {
 
         case .split(let split):
             guard split.children.count == 2 else {
+                #if DEBUG
                 NSLog("[CmuxConfig] split node requires exactly 2 children, got %d", split.children.count)
+                #endif
                 leaves.append((paneId: paneId, surfaces: []))
                 return
             }
@@ -1520,7 +1564,9 @@ extension Workspace {
                 }
 
                 self.removePendingTerminalInputObserver(registration, forPanelId: panelId)
+                #if DEBUG
                 NSLog("[CmuxConfig] surface not ready after 3s, dropping command (%d chars)", text.count)
+                #endif
             }
         }
     }
@@ -12770,9 +12816,9 @@ final class Workspace: Identifiable, ObservableObject {
         requestAttentionFlash(panelId: panelId, reason: .notificationDismiss)
     }
 
-    func triggerManualUnreadDismissFlash(panelId: UUID) {
+    func triggerUnreadIndicatorDismissFlash(panelId: UUID) {
         guard terminalPanel(for: panelId) != nil else { return }
-        requestAttentionFlash(panelId: panelId, reason: .manualUnreadDismiss)
+        requestAttentionFlash(panelId: panelId, reason: .unreadIndicatorDismiss)
     }
 
     func triggerDebugFlash(panelId: UUID) {
