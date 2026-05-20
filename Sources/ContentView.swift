@@ -10501,6 +10501,7 @@ struct VerticalTabsSidebar: View {
             tab: tab,
             index: index,
             isActive: tabManager.selectedTabId == tab.id,
+            isHerdrBacked: HerdrTabRegistry.shared.hasBinding(forWorkspaceId: tab.id),
             workspaceShortcutDigit: WorkspaceShortcutMapper.digitForWorkspace(
                 at: index,
                 workspaceCount: renderContext.workspaceCount
@@ -12975,6 +12976,7 @@ private struct TabItemView: View, Equatable {
         lhs.tab === rhs.tab &&
         lhs.index == rhs.index &&
         lhs.isActive == rhs.isActive &&
+        lhs.isHerdrBacked == rhs.isHerdrBacked &&
         lhs.workspaceShortcutDigit == rhs.workspaceShortcutDigit &&
         lhs.workspaceShortcutModifierSymbol == rhs.workspaceShortcutModifierSymbol &&
         lhs.canCloseWorkspace == rhs.canCloseWorkspace &&
@@ -13001,6 +13003,11 @@ private struct TabItemView: View, Equatable {
     let tab: Tab
     let index: Int
     let isActive: Bool
+    /// True when at least one pane in this workspace has been wired
+    /// to a herdr daemon (HerdrTabRegistry binding). Drives the small
+    /// anchor icon in the row that distinguishes a persistent
+    /// workspace from a normal ephemeral cmux tab.
+    let isHerdrBacked: Bool
     let workspaceShortcutDigit: Int?
     let workspaceShortcutModifierSymbol: String
     let canCloseWorkspace: Bool
@@ -13301,6 +13308,19 @@ private struct TabItemView: View, Equatable {
                             .foregroundColor(.white)
                     }
                     .frame(width: 16, height: 16)
+                }
+
+                if isHerdrBacked {
+                    // Persistent workspace marker. Using "bolt.horizontal"
+                    // (link/anchor connotation) to convey "this survives
+                    // a cmux quit" without a noisy badge.
+                    Image(systemName: "bolt.horizontal.fill")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                        .help(String(
+                            localized: "sidebar.tab.persistent.tooltip",
+                            defaultValue: "Persistent workspace — survives cmux restarts."
+                        ))
                 }
 
                 if workspaceSnapshot.isPinned {

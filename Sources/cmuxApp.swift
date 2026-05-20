@@ -364,10 +364,7 @@ struct cmuxApp: App {
                             localized: "menu.workspaces.addComputer",
                             defaultValue: "Add a computer…"
                         )) {
-                            AppDelegate.shared?.openPreferencesWindow(
-                                debugSource: "menu.workspaces.addComputer",
-                                navigationTarget: .hosts
-                            )
+                            AddComputerWindow.show()
                         }
                     }
 

@@ -104,4 +104,16 @@ final class HerdrTabRegistry: ObservableObject {
     var count: Int {
         bindings.count
     }
+
+    /// True when any binding's owning workspace matches `workspaceId`.
+    /// Used by the sidebar tab item to render the persistent-workspace
+    /// indicator (anchor icon) without subscribing to the registry's
+    /// ObservableObject from inside the row, which would violate the
+    /// snapshot-boundary perf rule on the workspace ForEach.
+    func hasBinding(forWorkspaceId workspaceId: UUID) -> Bool {
+        for binding in bindings.values where binding.workspace?.id == workspaceId {
+            return true
+        }
+        return false
+    }
 }

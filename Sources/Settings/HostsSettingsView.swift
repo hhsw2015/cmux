@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -777,3 +778,62 @@ private struct AddHostSheet: View {
         onSave(host, install)
     }
 }
+
+/// Standalone window host for the Add Computer flow so menu actions
+/// can drop the user straight into the paste-ssh-command dialog
+/// without first navigating to Settings → Computers. Mirrors the
+/// sheet experience used inside the Settings page; same AddHostSheet
+/// view, same save/install path.
+@MainActor
+enum AddComputerWindow {
+    private static var window: NSWindow?
+
+    static func show() {
+        if let existing = window {
+            existing.makeKeyAndOrderFront(nil)
+            return
+        }
+        let sheet = AddHostSheet(
+            onSave: { newHost, install in
+                HostRegistry.shared.add(newHost)
+                if install {
+                    HerdrRemoteInstaller.installOnHost(newHost)
+                }
+                close()
+            },
+            onCancel: close
+        )
+        let hosting = NSHostingController(rootView: sheet)
+        let w = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 460, height: 380),
+            styleMask: [.titled, .closable, .miniaturizable],
+            backing: .buffered,
+            defer: false
+        )
+        w.contentViewController = hosting
+        w.title = String(localized: "menu.workspaces.addComputer", defaultValue: "Add a computer…")
+        w.center()
+        w.isReleasedWhenClosed = false
+        // Closing via the red traffic light should reset our singleton
+        // so a subsequent show() rebuilds a fresh window.
+        let observer = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: w,
+            queue: .main
+        ) { _ in
+            window = nil
+        }
+        // Park the observer on the window itself so it deallocates with it.
+        objc_setAssociatedObject(w, &windowCloseObserverKey, observer, .OBJC_ASSOCIATION_RETAIN)
+        window = w
+        w.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private static func close() {
+        window?.close()
+        window = nil
+    }
+}
+
+private var windowCloseObserverKey: UInt8 = 0

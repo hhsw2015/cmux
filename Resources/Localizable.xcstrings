@@ -120490,6 +120490,23 @@
           }
         }
       }
+    },
+    "sidebar.tab.persistent.tooltip": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Persistent workspace — survives cmux restarts."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "永続ワークスペース — cmux 再起動後も残ります。"
+          }
+        }
+      }
     }
   }
 }
