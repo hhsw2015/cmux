@@ -87,7 +87,17 @@ actor DaemonSpawnCoordinator {
                 rebound[pathBytes.count] = 0
             }
         }
-        let len = socklen_t(MemoryLayout<sockaddr_un>.size)
+        // macOS sockaddr_un carries a sun_len byte that some path code
+        // checks before connect. Without it, connect can fail
+        // (EINVAL/EADDRNOTAVAIL) on a perfectly live socket — which
+        // then makes our "stale socket" branch unlink the live socket
+        // node, and subsequent cmux connects hit ENOENT. The caller
+        // surfaces that as "Couldn't reach the cmux agent" even though
+        // the daemon process is healthy.
+        let pathLen = pathBytes.count
+        let totalLen = MemoryLayout<sockaddr_un>.offset(of: \.sun_path)! + pathLen + 1
+        addr.sun_len = UInt8(min(totalLen, Int(UInt8.max)))
+        let len = socklen_t(totalLen)
         let rc = withUnsafePointer(to: &addr) {
             $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
                 Darwin.connect(fd, sa, len)
