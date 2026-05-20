@@ -237,6 +237,14 @@ private struct AddHostSheet: View {
     @State private var probeResult: ProbeResult = .idle
     @State private var parseError: String?
 
+    // Advanced override fields. Empty / false means "use parser /
+    // sensible default". Non-empty / true means the user typed a
+    // specific value that wins over both the parser and cmux defaults.
+    @State private var overrideSshExecutable: String
+    @State private var overrideRemoteBinaryPath: String
+    @State private var overrideSkipDefaultOptions: Bool
+    @State private var showAdvanced: Bool
+
     enum ProbeResult: Equatable {
         case idle
         case probing
@@ -258,6 +266,31 @@ private struct AddHostSheet: View {
         // Default the install checkbox on for fresh remote hosts; off
         // when editing (the binary is presumably already deployed).
         _autoInstall = State(initialValue: initial == nil)
+
+        // Pull existing override values from the initial host so the
+        // Advanced fields show what's actually persisted (and we can
+        // detect a non-default state to auto-expand the disclosure).
+        var sshExe = ""
+        var remoteBin = ""
+        var skipDefault = false
+        if case .sshStdio(_, _, let skip, let exe, let bin) = initial?.transport {
+            sshExe = exe ?? ""
+            remoteBin = bin ?? ""
+            skipDefault = skip
+        }
+        _overrideSshExecutable = State(initialValue: sshExe)
+        _overrideRemoteBinaryPath = State(initialValue: remoteBin)
+        _overrideSkipDefaultOptions = State(initialValue: skipDefault)
+
+        // Auto-expand the Advanced disclosure when editing a host that
+        // has any non-default override, so the user immediately sees
+        // why the saved values look the way they do. New hosts default
+        // to collapsed.
+        let nonDefault = !sshExe.isEmpty
+            || !remoteBin.isEmpty
+            || skipDefault
+            || (initial != nil && initial?.sessionName != HerdrHost.defaultLocalSessionName())
+        _showAdvanced = State(initialValue: nonDefault)
     }
 
     /// Reverse the parser's normalized fields back to a single-line ssh
@@ -299,12 +332,21 @@ private struct AddHostSheet: View {
     private var isLocalhostEdit: Bool { initial?.isLocalhost ?? false }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(initial == nil
-                 ? String(localized: "settings.hosts.add", defaultValue: "Add host")
-                 : String(localized: "settings.hosts.edit", defaultValue: "Edit host"))
-                .font(.headline)
+        if isLocalhostEdit {
+            localhostEditBody
+        } else {
+            sshAddBody
+        }
+    }
 
+    /// Localhost editing is rare and only needs rename/session-tweak.
+    /// Keep it as a small two-field sheet so power users can still
+    /// retarget the local agent if they want.
+    @ViewBuilder
+    private var localhostEditBody: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(String(localized: "settings.hosts.edit", defaultValue: "Edit host"))
+                .font(.headline)
             Form {
                 TextField(
                     String(localized: "settings.hosts.name", defaultValue: "Name"),
@@ -314,74 +356,144 @@ private struct AddHostSheet: View {
                     String(localized: "settings.hosts.session", defaultValue: "Herdr session name"),
                     text: $sessionName
                 )
-                if !isLocalhostEdit {
-                    Toggle(String(
-                        localized: "settings.hosts.autoInstall",
-                        defaultValue: "Install herdr-cmux on save"
-                    ), isOn: $autoInstall)
-                }
             }
-
-            if !isLocalhostEdit {
-                Text(String(
-                    localized: "settings.hosts.sshCommand.label",
-                    defaultValue: "Paste your ssh command"
-                ))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-                TextEditor(text: $sshCommand)
-                    .font(.system(.body, design: .monospaced))
-                    .frame(minHeight: 80, maxHeight: 160)
-                    .overlay(RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1))
-                    .onChange(of: sshCommand) { _, _ in parseError = nil; probeResult = .idle }
-
-                Text(String(
-                    localized: "settings.hosts.sshCommand.hint",
-                    defaultValue: "Examples:\n  ssh user@host -i ~/.ssh/id_ed25519\n  sshpass -p 'pw' ssh -o StrictHostKeyChecking=no root@host -p 9022\ncmux auto-applies its own ControlMaster/keepalive defaults; -t/-tt and remote commands are stripped."
-                ))
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-                if let parseError {
-                    Text(parseError)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                }
-
-                if let preview = parsedPreview() {
-                    parsedPreviewRow(preview)
-                }
-            }
-
-            if !isLocalhostEdit {
-                probeResultRow
-            }
-
             HStack {
-                if !isLocalhostEdit {
-                    Button(String(
-                        localized: "settings.hosts.testConnection",
-                        defaultValue: "Test connection"
-                    )) {
-                        runProbe()
-                    }
-                    .disabled(sshCommand.trimmingCharacters(in: .whitespaces).isEmpty
-                              || probeResult == .probing)
-                }
                 Spacer()
                 Button(String(localized: "settings.hosts.cancel", defaultValue: "Cancel"), action: onCancel)
-                Button(String(localized: "settings.hosts.save", defaultValue: "Save")) {
-                    save()
-                }
-                .keyboardShortcut(.defaultAction)
-                .disabled(!canSave)
+                Button(String(localized: "settings.hosts.save", defaultValue: "Save")) { save() }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(displayName.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
         .padding(20)
-        .frame(minWidth: 380)
+        .frame(minWidth: 360)
+    }
+
+    /// SSH add/edit: simple path is just paste + Save. Power users
+    /// expand the Advanced disclosure to override display name, session
+    /// namespace, install behavior, and cmux's auto-injected SSH
+    /// defaults. The simple path covers ~95% of cases without the user
+    /// having to know any of that exists.
+    @ViewBuilder
+    private var sshAddBody: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(initial == nil
+                 ? String(localized: "settings.hosts.addRemote", defaultValue: "Add a computer")
+                 : String(localized: "settings.hosts.editRemote", defaultValue: "Edit computer"))
+                .font(.headline)
+
+            Text(String(
+                localized: "settings.hosts.sshCommand.label",
+                defaultValue: "Paste your ssh command"
+            ))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+            TextEditor(text: $sshCommand)
+                .font(.system(.body, design: .monospaced))
+                .frame(minHeight: 80, maxHeight: 160)
+                .overlay(RoundedRectangle(cornerRadius: 6)
+                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1))
+                .onChange(of: sshCommand) { _, _ in parseError = nil; probeResult = .idle }
+
+            Text(String(
+                localized: "settings.hosts.sshCommand.hintShort",
+                defaultValue: "e.g.  ssh user@host -i ~/.ssh/id_ed25519"
+            ))
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+
+            if let parseError {
+                Text(parseError).font(.caption).foregroundStyle(.red)
+            }
+
+            if let preview = parsedPreview() {
+                parsedPreviewRow(preview)
+            }
+
+            DisclosureGroup(
+                isExpanded: $showAdvanced,
+                content: { advancedSection },
+                label: {
+                    Text(String(
+                        localized: "settings.hosts.advanced",
+                        defaultValue: "Advanced"
+                    ))
+                    .font(.caption)
+                }
+            )
+            .padding(.top, 4)
+
+            HStack {
+                Spacer()
+                Button(String(localized: "settings.hosts.cancel", defaultValue: "Cancel"), action: onCancel)
+                Button(String(localized: "settings.hosts.save", defaultValue: "Save")) { save() }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(sshCommand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(20)
+        .frame(minWidth: 440)
+    }
+
+    /// Power-user fields. Empty text/false toggle means "use the
+    /// parser's value or cmux's sensible default." A non-empty/true
+    /// override wins over both. Keep this collapsed by default; the
+    /// init() auto-expands it when editing a host that already has
+    /// non-default values so the user immediately sees them.
+    @ViewBuilder
+    private var advancedSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Form {
+                TextField(
+                    String(localized: "settings.hosts.name", defaultValue: "Name"),
+                    text: $displayName,
+                    prompt: Text(parsedPreview()?.target
+                        ?? String(localized: "settings.hosts.namePlaceholder", defaultValue: "auto from target"))
+                )
+                TextField(
+                    String(localized: "settings.hosts.session", defaultValue: "Herdr session name"),
+                    text: $sessionName
+                )
+                Toggle(String(
+                    localized: "settings.hosts.autoInstall",
+                    defaultValue: "Install herdr-cmux on save"
+                ), isOn: $autoInstall)
+                Toggle(String(
+                    localized: "settings.hosts.skipDefaultOptions",
+                    defaultValue: "Don't inject cmux SSH defaults (ControlMaster, keepalives)"
+                ), isOn: $overrideSkipDefaultOptions)
+                TextField(
+                    String(
+                        localized: "settings.hosts.sshExecutable",
+                        defaultValue: "Custom ssh executable"
+                    ),
+                    text: $overrideSshExecutable,
+                    prompt: Text("/usr/bin/ssh")
+                )
+                TextField(
+                    String(
+                        localized: "settings.hosts.remoteBinaryPath",
+                        defaultValue: "Remote herdr-cmux path"
+                    ),
+                    text: $overrideRemoteBinaryPath,
+                    prompt: Text("herdr-cmux  (uses remote $PATH)")
+                )
+            }
+
+            HStack {
+                Button(String(
+                    localized: "settings.hosts.testConnection",
+                    defaultValue: "Test connection"
+                )) {
+                    runProbe()
+                }
+                .disabled(sshCommand.trimmingCharacters(in: .whitespaces).isEmpty
+                          || probeResult == .probing)
+                probeResultRow
+                Spacer()
+            }
+        }
     }
 
     @ViewBuilder
@@ -534,32 +646,49 @@ private struct AddHostSheet: View {
         }
     }
 
+    /// Localhost edit only requires a non-empty display name. Remote
+    /// add only requires a non-empty paste box (display name and
+    /// session name fall back to derived defaults if left empty).
     private var canSave: Bool {
-        let trimmed = displayName.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return false }
-        guard !sessionName.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
-        if !isLocalhostEdit && initial?.transport != .localUDS {
-            return !sshCommand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if isLocalhostEdit {
+            return !displayName.trimmingCharacters(in: .whitespaces).isEmpty
         }
-        return true
+        return !sshCommand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func save() {
         let transport: HerdrHost.Transport
+        let derivedDisplayName: String
+        let derivedSessionName: String
         if isLocalhostEdit {
             transport = .localUDS
+            derivedDisplayName = displayName.trimmingCharacters(in: .whitespaces)
+            derivedSessionName = sessionName.trimmingCharacters(in: .whitespaces)
         } else {
             do {
                 let parsed = try SSHCommandParser.parse(
                     sshCommand.trimmingCharacters(in: .whitespacesAndNewlines)
                 )
+                // Power-user overrides: empty fields fall back to the
+                // parser; non-empty wins over both parser and defaults.
+                let trimmedExe = overrideSshExecutable.trimmingCharacters(in: .whitespaces)
+                let trimmedBin = overrideRemoteBinaryPath.trimmingCharacters(in: .whitespaces)
+                let resolvedExe = trimmedExe.isEmpty ? parsed.sshExecutable : trimmedExe
+                let resolvedBin = trimmedBin.isEmpty ? parsed.remoteBinaryPath : trimmedBin
+                let resolvedSkip = parsed.skipDefaultOptions || overrideSkipDefaultOptions
                 transport = .sshStdio(
                     target: parsed.target,
                     extraArgs: parsed.extraArgs,
-                    skipDefaultOptions: parsed.skipDefaultOptions,
-                    sshExecutable: parsed.sshExecutable,
-                    remoteBinaryPath: parsed.remoteBinaryPath
+                    skipDefaultOptions: resolvedSkip,
+                    sshExecutable: resolvedExe,
+                    remoteBinaryPath: resolvedBin
                 )
+                let trimmedName = displayName.trimmingCharacters(in: .whitespaces)
+                derivedDisplayName = trimmedName.isEmpty ? parsed.target : trimmedName
+                let trimmedSession = sessionName.trimmingCharacters(in: .whitespaces)
+                derivedSessionName = trimmedSession.isEmpty
+                    ? HerdrHost.defaultLocalSessionName()
+                    : trimmedSession
             } catch {
                 parseError = error.localizedDescription
                 return
@@ -567,9 +696,9 @@ private struct AddHostSheet: View {
         }
         let host = HerdrHost(
             id: initial?.id ?? UUID(),
-            displayName: displayName.trimmingCharacters(in: .whitespaces),
+            displayName: derivedDisplayName,
             transport: transport,
-            sessionName: sessionName.trimmingCharacters(in: .whitespaces),
+            sessionName: derivedSessionName,
             addedAt: initial?.addedAt ?? Date()
         )
         let install = autoInstall && !isLocalhostEdit
