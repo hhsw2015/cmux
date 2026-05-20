@@ -306,17 +306,20 @@ enum HerdrPanelOpener {
         // user's existing workspace into a herdr session and
         // (erroneously) propagated the daemon's default label back into
         // its customTitle, overwriting the user-given name.
-        // eagerLoadTerminal: false — wireHerdrBackedPanel will create
-        // the only TerminalPanel itself and bind it to the herdr pane.
-        // If we let addWorkspace eager-spawn a local panel here, the
-        // workspace ends up with two panels in the same pane (the
-        // local stub + the herdr-backed one), which is the user-
-        // visible "2 cmux pannel TUI 1" bug.
+        // Workspace.init unconditionally creates an initial local
+        // TerminalPanel; wireHerdrBackedPanel then adds a herdr-backed
+        // panel in the same pane, leaving two tabs side-by-side. After
+        // we wire the herdr panel below, every TerminalPanel that
+        // existed on entry must be closed so the user sees a single
+        // herdr-backed tab matching daemon-side leaf count. eagerLoad
+        // = false skips the background Ghostty surface boot since we'd
+        // tear it down 200ms later anyway.
         let workspace = tabManager.addWorkspace(
             title: nil,
             select: true,
             eagerLoadTerminal: false
         )
+        let preExistingPanelIds = Set(workspace.panels.keys)
         guard let focusedPane = workspace.bonsplitController.focusedPaneId else {
             herdrPanelOpenerTrace("workspace: no focused pane in newly-created workspace \(workspace.id)")
             return
@@ -338,7 +341,8 @@ enum HerdrPanelOpener {
                     exec: exec,
                     rootPaneId: focusedPane,
                     workspace: workspace,
-                    requestedWorkspaceId: requestedWorkspaceId
+                    requestedWorkspaceId: requestedWorkspaceId,
+                    preExistingPanelIds: preExistingPanelIds
                 )
                 HostHealthStore.shared.reportOnline(hostId: host.id)
             } catch {
@@ -572,7 +576,8 @@ enum HerdrPanelOpener {
         exec: String,
         rootPaneId: PaneID,
         workspace: Workspace,
-        requestedWorkspaceId: String? = nil
+        requestedWorkspaceId: String? = nil,
+        preExistingPanelIds: Set<UUID> = []
     ) async throws {
         let socketPath = host.localApiSocketPath
 
@@ -829,6 +834,18 @@ enum HerdrPanelOpener {
         )
         await HerdrEventPump.shared.acquire(host: host)
         HerdrPersistence.shared.record(host: host, workspaceId: workspaceId, tabId: activeTabId)
+
+        // Close the local TerminalPanel(s) that Workspace.init created
+        // before the herdr binding existed. wireHerdrBackedPanel just
+        // added a new TerminalPanel in the same pane; without this
+        // cleanup the user sees two tabs side-by-side (the local stub
+        // + the herdr panel) while herdr's TUI shows one pane. The
+        // herdr panel is the only new panel, so anything in
+        // preExistingPanelIds that's still alive is stale.
+        let stalePanelIds = preExistingPanelIds.intersection(workspace.panels.keys)
+        for panelId in stalePanelIds {
+            _ = workspace.closePanel(panelId, force: true)
+        }
     }
 
     /// Verify the persisted workspace+tab still exists on the daemon
