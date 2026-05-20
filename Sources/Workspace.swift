@@ -14947,6 +14947,11 @@ extension Workspace: BonsplitDelegate {
            let terminalPanel = panels[panelId] as? TerminalPanel {
             terminalPanel.applyWindowBackgroundIfActive()
         }
+
+        // Mirror to herdr: keep the daemon's pane.focus state in
+        // sync so other cmux clients on the same daemon see the
+        // focus move and so reattach restores the right pane.
+        HerdrFocusSync.shared.reportLocalFocus(cmuxPaneId: pane.id)
     }
 
     func splitTabBar(_ controller: BonsplitController, didClosePane paneId: PaneID) {

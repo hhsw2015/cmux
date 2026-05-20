@@ -153,6 +153,7 @@ final class HerdrEventPump: ObservableObject {
                     "workspace.focused",
                     "workspace.renamed",
                     "pane.exited",
+                    "pane.focused",
                     "pane.agent_status_changed",
                     "tab.reordered",
                 ])
@@ -286,6 +287,15 @@ final class HerdrEventPump: ObservableObject {
             // the workspace list so the sidebar reflects the new
             // ordering.
             invalidateWorkspaceList(socketPath: socketPath, reason: event.event)
+        case "pane_focused", "pane.focused":
+            // Another client moved focus, or the daemon rotated focus
+            // after a split. Mirror it into cmux so all clients agree
+            // on which pane is active.
+            guard let host = hosts[socketPath] else { return }
+            if let payload = event.data,
+               let paneId = payload["pane_id"] as? String {
+                HerdrFocusSync.shared.applyRemoteFocus(host: host, herdrPaneId: paneId)
+            }
         default:
             break
         }
