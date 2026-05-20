@@ -41,6 +41,10 @@ enum HerdrLocalAgentInstaller {
           exit 1
         fi
         chmod +x "\(installPath)"
+        # Clear macOS quarantine xattr in case it was set by the
+        # download tool. Without this, Gatekeeper would block the
+        # first execution with a "verifying developer" prompt.
+        xattr -cr "\(installPath)" 2>/dev/null || true
         """
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: cmd)
