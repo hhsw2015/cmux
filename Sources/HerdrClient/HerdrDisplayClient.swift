@@ -7,6 +7,8 @@ enum HerdrDisplayClientError: Error, Equatable {
     /// case fires only if a new `HerdrHost.Transport` variant is
     /// added without display-client support.
     case remoteNotSupportedYet
+    /// SSH command construction failed (non-sshStdio host slipped in).
+    case spawnFailed(String)
 }
 
 /// Drives a herdr pane in RawPty mode by spawning the fork's
@@ -73,18 +75,17 @@ final class HerdrDisplayClient {
         case .localUDS:
             proc.executableURL = URL(fileURLWithPath: executablePath)
             proc.arguments = rawPtyArgs
-        case .sshStdio(let target):
-            proc.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-            // -T: no remote tty (we're piping bytes); BatchMode=yes:
-            // fail fast on missing key instead of prompting.
-            // remoteBinaryPath defaults to "herdr-cmux" in $PATH on
-            // the remote host.
-            var args = SSHStdioTransport.defaultOptions
-            args.append(target)
-            args.append("--")
-            args.append("herdr-cmux")
-            args.append(contentsOf: rawPtyArgs)
-            proc.arguments = args
+        case .sshStdio:
+            let remoteBin = SSHCommandBuilder.remoteBinaryPath(for: host)
+            var remoteCommand: [String] = [remoteBin]
+            remoteCommand.append(contentsOf: rawPtyArgs)
+            guard let invocation = SSHCommandBuilder.build(
+                for: host, remoteCommand: remoteCommand
+            ) else {
+                throw HerdrDisplayClientError.spawnFailed("invalid sshStdio host")
+            }
+            proc.executableURL = URL(fileURLWithPath: invocation.executable)
+            proc.arguments = invocation.args
         }
 
         let stdinPipe = Pipe()

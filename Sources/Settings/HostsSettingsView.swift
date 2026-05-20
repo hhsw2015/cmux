@@ -218,8 +218,9 @@ private struct HostRow: View {
         switch host.transport {
         case .localUDS:
             return "session: \(host.sessionName) · local socket"
-        case .sshStdio(let target):
-            return "ssh: \(target) · session: \(host.sessionName)"
+        case .sshStdio(let target, _, _, let sshExe, _):
+            let prefix = (sshExe.map { (($0 as NSString).lastPathComponent == "sshpass") ? "sshpass " : "" } ?? "")
+            return "\(prefix)ssh: \(target) · session: \(host.sessionName)"
         }
     }
 }
@@ -230,10 +231,11 @@ private struct AddHostSheet: View {
     let onCancel: () -> Void
 
     @State private var displayName: String
-    @State private var sshTarget: String
+    @State private var sshCommand: String
     @State private var sessionName: String
     @State private var autoInstall: Bool
     @State private var probeResult: ProbeResult = .idle
+    @State private var parseError: String?
 
     enum ProbeResult: Equatable {
         case idle
@@ -252,14 +254,46 @@ private struct AddHostSheet: View {
         self.onCancel = onCancel
         _displayName = State(initialValue: initial?.displayName ?? "")
         _sessionName = State(initialValue: initial?.sessionName ?? HerdrHost.defaultLocalSessionName())
-        if case .sshStdio(let t) = initial?.transport {
-            _sshTarget = State(initialValue: t)
-        } else {
-            _sshTarget = State(initialValue: "")
-        }
+        _sshCommand = State(initialValue: AddHostSheet.renderCommand(initial?.transport))
         // Default the install checkbox on for fresh remote hosts; off
         // when editing (the binary is presumably already deployed).
         _autoInstall = State(initialValue: initial == nil)
+    }
+
+    /// Reverse the parser's normalized fields back to a single-line ssh
+    /// command for display when editing. We don't preserve the user's
+    /// exact original spelling (quoting choices, flag order in the rare
+    /// `-pPORT` glued form), but the resulting command parses back to the
+    /// same fields, so a round-trip Save+Edit is a no-op for the model.
+    static func renderCommand(_ transport: HerdrHost.Transport?) -> String {
+        guard let transport else { return "" }
+        guard case .sshStdio(let target, let extraArgs, _, let sshExe, _) = transport else {
+            return ""
+        }
+        var parts: [String] = []
+        if let exe = sshExe, !exe.isEmpty {
+            parts.append(shellQuote(exe))
+        } else {
+            parts.append("ssh")
+        }
+        for arg in extraArgs { parts.append(shellQuote(arg)) }
+        parts.append(shellQuote(target))
+        return parts.joined(separator: " ")
+    }
+
+    /// Single-quote any token that contains shell metacharacters or
+    /// spaces. Escapes embedded single quotes by closing the quote,
+    /// emitting a backslash-quote, and reopening — the standard POSIX
+    /// idiom (`'it'\''s'`).
+    private static func shellQuote(_ s: String) -> String {
+        if s.isEmpty { return "''" }
+        let safe = CharacterSet(charactersIn:
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@%+=:,./-_")
+        if s.unicodeScalars.allSatisfy({ safe.contains($0) }) {
+            return s
+        }
+        let escaped = s.replacingOccurrences(of: "'", with: "'\\''")
+        return "'\(escaped)'"
     }
 
     private var isLocalhostEdit: Bool { initial?.isLocalhost ?? false }
@@ -276,12 +310,6 @@ private struct AddHostSheet: View {
                     String(localized: "settings.hosts.name", defaultValue: "Name"),
                     text: $displayName
                 )
-                if !isLocalhostEdit {
-                    TextField(
-                        String(localized: "settings.hosts.sshTarget", defaultValue: "SSH target (user@host or alias)"),
-                        text: $sshTarget
-                    )
-                }
                 TextField(
                     String(localized: "settings.hosts.session", defaultValue: "Herdr session name"),
                     text: $sessionName
@@ -291,6 +319,40 @@ private struct AddHostSheet: View {
                         localized: "settings.hosts.autoInstall",
                         defaultValue: "Install herdr-cmux on save"
                     ), isOn: $autoInstall)
+                }
+            }
+
+            if !isLocalhostEdit {
+                Text(String(
+                    localized: "settings.hosts.sshCommand.label",
+                    defaultValue: "Paste your ssh command"
+                ))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+                TextEditor(text: $sshCommand)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(minHeight: 80, maxHeight: 160)
+                    .overlay(RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1))
+                    .onChange(of: sshCommand) { _, _ in parseError = nil; probeResult = .idle }
+
+                Text(String(
+                    localized: "settings.hosts.sshCommand.hint",
+                    defaultValue: "Examples:\n  ssh user@host -i ~/.ssh/id_ed25519\n  sshpass -p 'pw' ssh -o StrictHostKeyChecking=no root@host -p 9022\ncmux auto-applies its own ControlMaster/keepalive defaults; -t/-tt and remote commands are stripped."
+                ))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+                if let parseError {
+                    Text(parseError)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+
+                if let preview = parsedPreview() {
+                    parsedPreviewRow(preview)
                 }
             }
 
@@ -306,7 +368,7 @@ private struct AddHostSheet: View {
                     )) {
                         runProbe()
                     }
-                    .disabled(sshTarget.trimmingCharacters(in: .whitespaces).isEmpty
+                    .disabled(sshCommand.trimmingCharacters(in: .whitespaces).isEmpty
                               || probeResult == .probing)
                 }
                 Spacer()
@@ -359,15 +421,90 @@ private struct AddHostSheet: View {
         }
     }
 
+    private func parsedPreview() -> SSHCommandParser.Parsed? {
+        let trimmed = sshCommand.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return try? SSHCommandParser.parse(trimmed)
+    }
+
+    @ViewBuilder
+    private func parsedPreviewRow(_ p: SSHCommandParser.Parsed) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 4) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                Text(String(
+                    localized: "settings.hosts.parsedTarget",
+                    defaultValue: "Target: "
+                )) + Text(p.target).bold()
+            }
+            .font(.caption)
+
+            if p.skipDefaultOptions {
+                Text(String(
+                    localized: "settings.hosts.parsedSshpass",
+                    defaultValue: "Detected sshpass — interactive auth defaults will be used."
+                ))
+                .font(.caption2)
+                .foregroundStyle(.orange)
+            }
+            if !p.extraArgs.isEmpty {
+                Text("args: " + p.extraArgs.joined(separator: " "))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        }
+    }
+
+    /// Build a transient HerdrHost from the current sshCommand for use
+    /// by the probe button. Sets `parseError` and returns nil on parse
+    /// failure so the caller can short-circuit.
+    private func buildHostForProbe() -> HerdrHost? {
+        let trimmed = sshCommand.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            parseError = "Empty command"
+            return nil
+        }
+        do {
+            let parsed = try SSHCommandParser.parse(trimmed)
+            parseError = nil
+            return HerdrHost(
+                id: UUID(),
+                displayName: displayName.isEmpty ? parsed.target : displayName,
+                transport: .sshStdio(
+                    target: parsed.target,
+                    extraArgs: parsed.extraArgs,
+                    skipDefaultOptions: parsed.skipDefaultOptions,
+                    sshExecutable: parsed.sshExecutable,
+                    remoteBinaryPath: parsed.remoteBinaryPath
+                ),
+                sessionName: sessionName.isEmpty ? HerdrHost.defaultLocalSessionName() : sessionName,
+                addedAt: Date()
+            )
+        } catch {
+            parseError = error.localizedDescription
+            return nil
+        }
+    }
+
     private func runProbe() {
-        let target = sshTarget.trimmingCharacters(in: .whitespaces)
+        guard let probeHost = buildHostForProbe() else {
+            probeResult = .failure(reason: parseError ?? "Invalid SSH command")
+            return
+        }
         probeResult = .probing
         Task.detached {
+            guard let invocation = SSHCommandBuilder.build(
+                for: probeHost,
+                remoteCommand: ["~/.local/bin/herdr-cmux --version || which herdr-cmux || echo 'NOT FOUND'"]
+            ) else {
+                await MainActor.run { probeResult = .failure(reason: "Builder rejected host") }
+                return
+            }
             let proc = Process()
-            proc.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-            proc.arguments = SSHStdioTransport.defaultOptions + [
-                target, "~/.local/bin/herdr-cmux --version || which herdr-cmux || echo 'NOT FOUND'"
-            ]
+            proc.executableURL = URL(fileURLWithPath: invocation.executable)
+            proc.arguments = invocation.args
             let pipe = Pipe()
             proc.standardOutput = pipe
             proc.standardError = Pipe()
@@ -402,7 +539,7 @@ private struct AddHostSheet: View {
         guard !trimmed.isEmpty else { return false }
         guard !sessionName.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
         if !isLocalhostEdit && initial?.transport != .localUDS {
-            return !sshTarget.trimmingCharacters(in: .whitespaces).isEmpty
+            return !sshCommand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
         return true
     }
@@ -412,7 +549,21 @@ private struct AddHostSheet: View {
         if isLocalhostEdit {
             transport = .localUDS
         } else {
-            transport = .sshStdio(target: sshTarget.trimmingCharacters(in: .whitespaces))
+            do {
+                let parsed = try SSHCommandParser.parse(
+                    sshCommand.trimmingCharacters(in: .whitespacesAndNewlines)
+                )
+                transport = .sshStdio(
+                    target: parsed.target,
+                    extraArgs: parsed.extraArgs,
+                    skipDefaultOptions: parsed.skipDefaultOptions,
+                    sshExecutable: parsed.sshExecutable,
+                    remoteBinaryPath: parsed.remoteBinaryPath
+                )
+            } catch {
+                parseError = error.localizedDescription
+                return
+            }
         }
         let host = HerdrHost(
             id: initial?.id ?? UUID(),

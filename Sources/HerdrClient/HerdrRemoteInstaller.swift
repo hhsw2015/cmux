@@ -27,7 +27,7 @@ enum HerdrRemoteInstaller {
     /// path the menu uses. Used by the Settings → Hosts add flow to
     /// auto-deploy at host-registration time.
     static func installOnHost(_ host: HerdrHost) {
-        guard case .sshStdio(let target) = host.transport else {
+        guard case .sshStdio = host.transport else {
             herdrInstallerTrace("\(host.displayName): nothing to install for local transport")
             return
         }
@@ -36,13 +36,19 @@ enum HerdrRemoteInstaller {
             return
         }
         Task.detached {
-            await install(target: target, localBinaryPath: localBinary)
+            await install(host: host, localBinaryPath: localBinary)
         }
     }
 
-    private static func install(target: String, localBinaryPath: String) async {
+    private static func install(host: HerdrHost, localBinaryPath: String) async {
+        let target: String
+        if case .sshStdio(let t, _, _, _, _) = host.transport {
+            target = t
+        } else {
+            return
+        }
         // 1. Ensure ~/.local/bin exists on remote.
-        if !runSSH(target: target, command: "mkdir -p ~/.local/bin") {
+        if !runSSH(host: host, command: "mkdir -p ~/.local/bin") {
             await MainActor.run {
                 herdrInstallerTrace("\(target): mkdir ~/.local/bin failed")
                 postNotification(
@@ -53,7 +59,7 @@ enum HerdrRemoteInstaller {
             return
         }
         // 2. scp the binary.
-        if !runSCP(localBinaryPath: localBinaryPath, target: target) {
+        if !runSCP(host: host, localBinaryPath: localBinaryPath) {
             await MainActor.run {
                 herdrInstallerTrace("\(target): scp failed")
                 postNotification(
@@ -64,10 +70,10 @@ enum HerdrRemoteInstaller {
             return
         }
         // 3. chmod +x just in case scp didn't preserve permissions.
-        _ = runSSH(target: target, command: "chmod +x ~/.local/bin/herdr-cmux")
+        _ = runSSH(host: host, command: "chmod +x ~/.local/bin/herdr-cmux")
         // 4. Verify with --version.
         let version = captureSSH(
-            target: target,
+            host: host,
             command: "~/.local/bin/herdr-cmux --version"
         )?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         await MainActor.run {
@@ -104,10 +110,13 @@ enum HerdrRemoteInstaller {
         }
     }
 
-    private static func runSSH(target: String, command: String) -> Bool {
+    private static func runSSH(host: HerdrHost, command: String) -> Bool {
+        guard let invocation = SSHCommandBuilder.build(
+            for: host, remoteCommand: [command]
+        ) else { return false }
         let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-        proc.arguments = SSHStdioTransport.defaultOptions + [target, command]
+        proc.executableURL = URL(fileURLWithPath: invocation.executable)
+        proc.arguments = invocation.args
         do {
             try proc.run()
             proc.waitUntilExit()
@@ -117,10 +126,13 @@ enum HerdrRemoteInstaller {
         }
     }
 
-    private static func captureSSH(target: String, command: String) -> String? {
+    private static func captureSSH(host: HerdrHost, command: String) -> String? {
+        guard let invocation = SSHCommandBuilder.build(
+            for: host, remoteCommand: [command]
+        ) else { return nil }
         let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-        proc.arguments = SSHStdioTransport.defaultOptions + [target, command]
+        proc.executableURL = URL(fileURLWithPath: invocation.executable)
+        proc.arguments = invocation.args
         let pipe = Pipe()
         proc.standardOutput = pipe
         proc.standardError = Pipe()
@@ -135,14 +147,43 @@ enum HerdrRemoteInstaller {
         }
     }
 
-    private static func runSCP(localBinaryPath: String, target: String) -> Bool {
+    /// scp uses a slightly different option set than ssh (no -T, no
+    /// remote command, target is `<host>:<path>`). Reuse the user's
+    /// extraArgs (-i / -p / -o ...) and BatchMode/ControlMaster
+    /// defaults but build the argv ourselves.
+    private static func runSCP(host: HerdrHost, localBinaryPath: String) -> Bool {
+        guard case .sshStdio(let target, let extraArgs, let skipDefault, _, _) = host.transport else {
+            return false
+        }
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/usr/bin/scp")
-        proc.arguments = [
-            "-o", "BatchMode=yes",
-            localBinaryPath,
-            "\(target):.local/bin/herdr-cmux",
-        ]
+        var args: [String] = []
+        if !skipDefault {
+            // scp needs port via -P (uppercase), not -p; users rarely
+            // hit this in practice — they paste -p into ssh extraArgs
+            // which we translate below.
+            args.append(contentsOf: ["-o", "BatchMode=yes",
+                                     "-o", "ConnectTimeout=10",
+                                     "-o", "ControlMaster=auto",
+                                     "-o", "ControlPath=" + (("~/.ssh/cmux-cm-%C") as NSString).expandingTildeInPath,
+                                     "-o", "ControlPersist=60"])
+        }
+        // Translate ssh -p into scp -P; pass through everything else.
+        var i = 0
+        while i < extraArgs.count {
+            let t = extraArgs[i]
+            if t == "-p" && i + 1 < extraArgs.count {
+                args.append("-P")
+                args.append(extraArgs[i + 1])
+                i += 2
+                continue
+            }
+            args.append(t)
+            i += 1
+        }
+        args.append(localBinaryPath)
+        args.append("\(target):.local/bin/herdr-cmux")
+        proc.arguments = args
         do {
             try proc.run()
             proc.waitUntilExit()

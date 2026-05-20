@@ -11,24 +11,20 @@ import Foundation
 /// callers can pass `--session` either as a remote arg or by setting
 /// `LANG`-style env via ssh's `SendEnv` / `AcceptEnv`.
 actor SSHStdioTransport: HerdrTransport {
+    private let host: HerdrHost
     private let target: String
-    private let sessionName: String?
-    private let remoteBinaryPath: String
-    private let extraSSHOptions: [String]
 
-    /// Default ssh options. ControlMaster lets the 30s polling
-    /// + raw-pty-attach + api-bridge invocations to the same host
-    /// reuse one TCP/auth handshake (60s persist) instead of paying
-    /// the full SSH negotiation per call. cmsocket dir is created
-    /// once on first use.
-    static let defaultOptions: [String] = {
+    /// Always-good options that benefit every ssh launch (including
+    /// sshpass-wrapped ones): ControlMaster reuse, keepalives, no-tty.
+    /// These never break interactive auth, so they're injected even
+    /// when the user pasted a sshpass command that needs a password.
+    static let alwaysGoodOptions: [String] = {
         let cmDir = (("~/.ssh") as NSString).expandingTildeInPath
         try? FileManager.default.createDirectory(
             atPath: cmDir, withIntermediateDirectories: true
         )
         return [
             "-T",
-            "-o", "BatchMode=yes",
             "-o", "ConnectTimeout=10",
             "-o", "ServerAliveInterval=15",
             "-o", "ServerAliveCountMax=3",
@@ -37,6 +33,16 @@ actor SSHStdioTransport: HerdrTransport {
             "-o", "ControlPersist=60",
         ]
     }()
+
+    /// Non-interactive options. Skipped when a custom executable
+    /// (sshpass) is in play — BatchMode=yes blocks the very password
+    /// prompt sshpass relies on.
+    static let nonInteractiveOptions: [String] = ["-o", "BatchMode=yes"]
+
+    /// Combined defaults for the plain-ssh case. Kept as the public
+    /// constant other callers (HerdrDisplayClient/HerdrRemoteInstaller)
+    /// historically referenced.
+    static var defaultOptions: [String] { alwaysGoodOptions + nonInteractiveOptions }
 
     private(set) var status: HerdrTransportStatus = .disconnected
     let incoming: AsyncStream<Data>
@@ -48,16 +54,15 @@ actor SSHStdioTransport: HerdrTransport {
     private var stderrTail: String = ""
     private var explicitlyClosed: Bool = false
 
-    init(
-        target: String,
-        sessionName: String? = nil,
-        remoteBinaryPath: String = "herdr-cmux",
-        extraSSHOptions: [String] = SSHStdioTransport.defaultOptions
-    ) {
-        self.target = target
-        self.sessionName = sessionName
-        self.remoteBinaryPath = remoteBinaryPath
-        self.extraSSHOptions = extraSSHOptions
+    init(host: HerdrHost) {
+        self.host = host
+        if case .sshStdio(let target, _, _, _, _) = host.transport {
+            self.target = target
+        } else {
+            // Defensive: caller should only construct this for sshStdio
+            // hosts. Localhost goes through LocalUDSTransport.
+            self.target = ""
+        }
         var continuation: AsyncStream<Data>.Continuation!
         self.incoming = AsyncStream { c in continuation = c }
         self.incomingContinuation = continuation
@@ -69,22 +74,22 @@ actor SSHStdioTransport: HerdrTransport {
         }
         status = .connecting
 
-        let proc = Process()
-        proc.launchPath = "/usr/bin/ssh"
-        var args = extraSSHOptions
-        args.append(target)
-        if let session = sessionName {
-            args.append("--")
-            args.append(remoteBinaryPath)
-            args.append("--session")
-            args.append(session)
-            args.append("api-bridge")
-        } else {
-            args.append("--")
-            args.append(remoteBinaryPath)
-            args.append("api-bridge")
+        let remoteBinary = SSHCommandBuilder.remoteBinaryPath(for: host)
+        var remoteCommand: [String] = [remoteBinary]
+        if !host.sessionName.isEmpty {
+            remoteCommand.append("--session")
+            remoteCommand.append(host.sessionName)
         }
-        proc.arguments = args
+        remoteCommand.append("api-bridge")
+
+        guard let invocation = SSHCommandBuilder.build(
+            for: host, remoteCommand: remoteCommand
+        ) else {
+            throw HerdrTransportError.other("non-sshStdio host given to SSHStdioTransport")
+        }
+        let proc = Process()
+        proc.launchPath = invocation.executable
+        proc.arguments = invocation.args
 
         let stdinPipe = Pipe()
         let stdoutPipe = Pipe()

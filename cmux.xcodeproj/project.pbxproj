@@ -31,6 +31,7 @@
 		C420Z000C420Z000C42DT102 /* HerdrDividerSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42DT101 /* HerdrDividerSyncTests.swift */; };
 		C420Z000C420Z000C42XP102 /* HerdrPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42XP101 /* HerdrPersistenceTests.swift */; };
 		C420Z000C420Z000C42TX103 /* HerdrTransportFactoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42TX103R /* HerdrTransportFactoryTests.swift */; };
+		C420Z000C420Z000C42SP103 /* SSHCommandParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42SP103R /* SSHCommandParserTests.swift */; };
 		C420Z000C420Z000C42WLT2 /* HerdrWorkspaceListStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42WLT1 /* HerdrWorkspaceListStoreTests.swift */; };
 		C420Z000C420Z000C42IB102 /* HerdrInboundLayoutSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42IB101 /* HerdrInboundLayoutSyncTests.swift */; };
 		3865A0013865A0013865A001 /* SearchIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3865B0013865B0013865B001 /* SearchIndex.swift */; };
@@ -344,6 +345,8 @@
 		C420Z000C420Z000C42TL102 /* LocalUDSTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42TL101 /* LocalUDSTransport.swift */; };
 		C420Z000C420Z000C42SS102 /* SSHStdioTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42SS101 /* SSHStdioTransport.swift */; };
 		C420Z000C420Z000C42TF102 /* HerdrTransportFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42TF101 /* HerdrTransportFactory.swift */; };
+		C420Z000C420Z000C42CP102 /* SSHCommandParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42CP101 /* SSHCommandParser.swift */; };
+		C420Z000C420Z000C42CB102 /* SSHCommandBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42CB101 /* SSHCommandBuilder.swift */; };
 		C420Z000C420Z000C42AC102 /* HerdrApiClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42AC101 /* HerdrApiClient.swift */; };
 		C420Z000C420Z000C42LT102 /* HerdrLayoutTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42LT101 /* HerdrLayoutTypes.swift */; };
 		C420Z000C420Z000C42LS102 /* HerdrLayoutSpec.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42LS101 /* HerdrLayoutSpec.swift */; };
@@ -958,6 +961,8 @@
 		C420Z000C420Z000C42TL101 /* LocalUDSTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrTransport/LocalUDSTransport.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42SS101 /* SSHStdioTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrTransport/SSHStdioTransport.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42TF101 /* HerdrTransportFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrTransport/HerdrTransportFactory.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42CP101 /* SSHCommandParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrTransport/SSHCommandParser.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42CB101 /* SSHCommandBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrTransport/SSHCommandBuilder.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42AC101 /* HerdrApiClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrApiClient.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42DC101 /* HerdrDisplayClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrDisplayClient.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42BB101 /* HerdrBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrBackend.swift; sourceTree = "<group>"; };
@@ -989,6 +994,7 @@
 		C420Z000C420Z000C42DT101 /* HerdrDividerSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrDividerSyncTests.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42XP101 /* HerdrPersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrPersistenceTests.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42TX103R /* HerdrTransportFactoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrTransportFactoryTests.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42SP103R /* SSHCommandParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHCommandParserTests.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42WLT1 /* HerdrWorkspaceListStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrWorkspaceListStoreTests.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42IB101 /* HerdrInboundLayoutSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrInboundLayoutSyncTests.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42FF101 /* SessionPersistenceFeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPersistenceFeatureFlags.swift; sourceTree = "<group>"; };
@@ -1482,6 +1488,8 @@
 				C420Z000C420Z000C42TL101 /* LocalUDSTransport.swift */,
 				C420Z000C420Z000C42SS101 /* SSHStdioTransport.swift */,
 				C420Z000C420Z000C42TF101 /* HerdrTransportFactory.swift */,
+				C420Z000C420Z000C42CP101 /* SSHCommandParser.swift */,
+				C420Z000C420Z000C42CB101 /* SSHCommandBuilder.swift */,
 				C420Z000C420Z000C42AC101 /* HerdrApiClient.swift */,
 				C420Z000C420Z000C42LT101 /* HerdrLayoutTypes.swift */,
 				C420Z000C420Z000C42LS101 /* HerdrLayoutSpec.swift */,
@@ -1830,6 +1838,7 @@
 				C420Z000C420Z000C42DT101 /* HerdrDividerSyncTests.swift */,
 				C420Z000C420Z000C42XP101 /* HerdrPersistenceTests.swift */,
 				C420Z000C420Z000C42TX103R /* HerdrTransportFactoryTests.swift */,
+				C420Z000C420Z000C42SP103R /* SSHCommandParserTests.swift */,
 				C420Z000C420Z000C42WLT1 /* HerdrWorkspaceListStoreTests.swift */,
 				C420Z000C420Z000C42IB101 /* HerdrInboundLayoutSyncTests.swift */,
 				C1A2B3C4D5E6F70800000002 /* CmuxConfigTests.swift */,
@@ -2312,6 +2321,8 @@
 				C420Z000C420Z000C42TL102 /* LocalUDSTransport.swift in Sources */,
 				C420Z000C420Z000C42SS102 /* SSHStdioTransport.swift in Sources */,
 				C420Z000C420Z000C42TF102 /* HerdrTransportFactory.swift in Sources */,
+				C420Z000C420Z000C42CP102 /* SSHCommandParser.swift in Sources */,
+				C420Z000C420Z000C42CB102 /* SSHCommandBuilder.swift in Sources */,
 				C420Z000C420Z000C42AC102 /* HerdrApiClient.swift in Sources */,
 				C420Z000C420Z000C42LT102 /* HerdrLayoutTypes.swift in Sources */,
 				C420Z000C420Z000C42LS102 /* HerdrLayoutSpec.swift in Sources */,
@@ -2702,6 +2713,7 @@
 				C420Z000C420Z000C42DT102 /* HerdrDividerSyncTests.swift in Sources */,
 				C420Z000C420Z000C42XP102 /* HerdrPersistenceTests.swift in Sources */,
 				C420Z000C420Z000C42TX103 /* HerdrTransportFactoryTests.swift in Sources */,
+				C420Z000C420Z000C42SP103 /* SSHCommandParserTests.swift in Sources */,
 				C420Z000C420Z000C42WLT2 /* HerdrWorkspaceListStoreTests.swift in Sources */,
 				C420Z000C420Z000C42IB102 /* HerdrInboundLayoutSyncTests.swift in Sources */,
 				C1A2B3C4D5E6F70800000001 /* CmuxConfigTests.swift in Sources */,

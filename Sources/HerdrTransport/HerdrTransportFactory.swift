@@ -9,11 +9,8 @@ enum HerdrTransportFactory {
         switch host.transport {
         case .localUDS:
             return LocalUDSTransport(socketPath: host.localApiSocketPath)
-        case .sshStdio(let target):
-            return SSHStdioTransport(
-                target: target,
-                sessionName: host.sessionName
-            )
+        case .sshStdio:
+            return SSHStdioTransport(host: host)
         }
     }
 }
