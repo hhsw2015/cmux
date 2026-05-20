@@ -1,4 +1,5 @@
 import Foundation
+import os.log
 import UserNotifications
 
 /// One long-lived `events.subscribe` connection per host. Reference-
@@ -70,7 +71,7 @@ final class HerdrEventPump: ObservableObject {
         hosts[socketPath] = host
         let count = refCounts[socketPath] ?? 0
         refCounts[socketPath] = count + 1
-        NSLog("herdr.pump.acquire host=%@ socket=%@ refCount=%d", host.displayName, socketPath, count + 1)
+        os_log("herdr.pump.acquire host=%{public}@ socket=%{public}@ refCount=%{public}d", host.displayName, socketPath, count + 1)
         if count == 0 {
             startConsumerLoop(socketPath: socketPath)
         }
@@ -141,12 +142,12 @@ final class HerdrEventPump: ObservableObject {
 
     private func consumerLoop(socketPath: String) async {
         var attempt = 0
-        NSLog("herdr.pump.consumerLoop entered socket=%@", socketPath)
+        os_log("herdr.pump.consumerLoop entered socket=%{public}@", socketPath)
         while !Task.isCancelled, refCounts[socketPath] != nil {
             do {
                 guard let host = hosts[socketPath] else { return }
                 setConnectionState(hostId: host.id, host: host, .connecting)
-                NSLog("herdr.pump.connect attempting host=%@ socket=%@ attempt=%d", host.displayName, socketPath, attempt + 1)
+                os_log("herdr.pump.connect attempting host=%{public}@ socket=%{public}@ attempt=%{public}d", host.displayName, socketPath, attempt + 1)
                 let client = HerdrApiClient(transport: HerdrTransportFactory.make(host: host))
                 try await client.start()
                 try await client.subscribe([
@@ -162,7 +163,7 @@ final class HerdrEventPump: ObservableObject {
                 ])
                 clients[socketPath] = client
                 setConnectionState(hostId: host.id, host: host, .connected)
-                NSLog("herdr.pump.connected socket=%@ attempt=%d", socketPath, attempt + 1)
+                os_log("herdr.pump.connected socket=%{public}@ attempt=%{public}d", socketPath, attempt + 1)
                 cmuxDebugLog("herdr.pump: connected on \(socketPath) (attempt=\(attempt + 1))")
 
                 if attempt > 0 {
@@ -205,7 +206,7 @@ final class HerdrEventPump: ObservableObject {
                         .retrying(attempt: attempt + 1, lastError: String(describing: error))
                     )
                 }
-                NSLog("herdr.pump.connect_failed socket=%@ attempt=%d error=%@", socketPath, attempt + 1, String(describing: error))
+                os_log("herdr.pump.connect_failed socket=%{public}@ attempt=%{public}d error=%{public}@", socketPath, attempt + 1, String(describing: error))
                 cmuxDebugLog("herdr.pump: connect failed for \(socketPath) (attempt=\(attempt + 1)): \(error)")
             }
             // Backoff before retry, but bail if released.
@@ -246,7 +247,7 @@ final class HerdrEventPump: ObservableObject {
 
     private func handle(event: HerdrEvent, socketPath: String) {
         recordEvent(event, socketPath: socketPath)
-        NSLog("herdr.pump.handle event=%@ socket=%@", event.event, socketPath)
+        os_log("herdr.pump.handle event=%{public}@ socket=%{public}@", event.event, socketPath)
         // Line-protocol uses snake_case event names; some clients use
         // dotted ("layout.changed"). Match both for safety.
         switch event.event {
