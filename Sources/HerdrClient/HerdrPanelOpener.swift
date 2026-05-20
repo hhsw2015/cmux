@@ -347,13 +347,19 @@ enum HerdrPanelOpener {
         )
         alert.informativeText = String(
             localized: "herdr.alert.missingBinary.message",
-            defaultValue: "cmux's local agent isn't bundled with this build.\nReinstall cmux from a release that bundles the agent, or place a herdr-cmux binary at \(path) and try again."
+            defaultValue: "cmux's local agent isn't bundled with this build.\ncmux can download the right binary from the herdr release for you. Click Install to drop it at \(path)."
         )
         alert.addButton(withTitle: String(
-            localized: "herdr.alert.missingBinary.dismiss",
-            defaultValue: "OK"
+            localized: "herdr.alert.missingBinary.install",
+            defaultValue: "Install"
         ))
-        alert.runModal()
+        alert.addButton(withTitle: String(
+            localized: "herdr.alert.missingBinary.dismiss",
+            defaultValue: "Cancel"
+        ))
+        if alert.runModal() == .alertFirstButtonReturn {
+            HerdrLocalAgentInstaller.installToUserBin()
+        }
     }
 
     @MainActor
@@ -453,6 +459,20 @@ enum HerdrPanelOpener {
             case .eof:
                 return String(localized: "herdr.err.eof",
                               defaultValue: "The cmux agent closed the connection.")
+            }
+        }
+        if let s = error as? DaemonSpawnCoordinator.SpawnError {
+            switch s {
+            case .daemonExitedDuringStartup(let status, let stderr):
+                if stderr.isEmpty {
+                    return String(localized: "herdr.err.localCrash",
+                                  defaultValue: "The local cmux agent quit during startup (status \(status)).")
+                }
+                return String(localized: "herdr.err.localCrashWithDetail",
+                              defaultValue: "The local cmux agent quit during startup: \(stderr)")
+            case .socketDidNotAppear:
+                return String(localized: "herdr.err.localNoSocket",
+                              defaultValue: "The local cmux agent didn't open its socket in time.")
             }
         }
         return String(describing: error)

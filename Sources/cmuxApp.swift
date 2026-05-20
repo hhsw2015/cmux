@@ -340,7 +340,7 @@ struct cmuxApp: App {
                 )) {
                     Button(String(
                         localized: "menu.workspaces.newOnThisMac",
-                        defaultValue: "New Workspace on This Mac"
+                        defaultValue: "New Persistent Workspace"
                     )) {
                         HerdrPanelOpener.openLocalhostWorkspace()
                     }
@@ -348,7 +348,7 @@ struct cmuxApp: App {
 
                     Menu(String(
                         localized: "menu.workspaces.newOnComputer",
-                        defaultValue: "New Workspace on…"
+                        defaultValue: "New Persistent Workspace on…"
                     )) {
                         ForEach(HostRegistry.shared.hosts) { host in
                             Button(host.displayName) {

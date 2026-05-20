@@ -58833,13 +58833,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "New Workspace on…"
+            "value": "New Persistent Workspace on…"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "needs_review",
-            "value": "New Workspace on…"
+            "value": "New Persistent Workspace on…"
           }
         }
       }
@@ -58850,13 +58850,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "New Workspace on This Mac"
+            "value": "New Persistent Workspace"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "needs_review",
-            "value": "New Workspace on This Mac"
+            "value": "New Persistent Workspace"
           }
         }
       }

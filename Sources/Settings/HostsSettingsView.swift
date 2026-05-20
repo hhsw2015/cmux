@@ -728,7 +728,14 @@ private struct AddHostSheet: View {
         if isLocalhostEdit {
             transport = .localUDS
             derivedDisplayName = displayName.trimmingCharacters(in: .whitespaces)
-            derivedSessionName = sessionName.trimmingCharacters(in: .whitespaces)
+            // Empty session falls back to the cmux default. Saving an
+            // empty session name was previously possible because canSave
+            // only checked displayName, leading to a host that couldn't
+            // ever connect.
+            let trimmedSession = sessionName.trimmingCharacters(in: .whitespaces)
+            derivedSessionName = trimmedSession.isEmpty
+                ? HerdrHost.defaultLocalSessionName()
+                : trimmedSession
         } else {
             do {
                 let parsed = try SSHCommandParser.parse(
