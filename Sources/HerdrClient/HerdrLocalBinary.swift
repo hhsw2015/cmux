@@ -15,8 +15,8 @@ enum HerdrLocalBinary {
             return cached
         }
         let candidates: [String] = [
-            Bundle.main.path(forResource: "herdr-cmux", ofType: nil, inDirectory: "bin"),
-            (("~/.local/bin/herdr-cmux") as NSString).expandingTildeInPath
+            Bundle.main.path(forResource: HerdrAgentPaths.binaryName, ofType: nil, inDirectory: "bin"),
+            HerdrAgentPaths.userInstallPath,
         ].compactMap { $0 }
         for candidate in candidates {
             if FileManager.default.isExecutableFile(atPath: candidate) {
@@ -28,6 +28,7 @@ enum HerdrLocalBinary {
     }
 
     /// Path the user is expected to install the dev fallback at —
-    /// shown by the missing-binary alert.
-    static let userInstallPath: String = (("~/.local/bin/herdr-cmux") as NSString).expandingTildeInPath
+    /// shown by the missing-binary alert. Re-exported from
+    /// HerdrAgentPaths so existing callers don't break.
+    static let userInstallPath: String = HerdrAgentPaths.userInstallPath
 }

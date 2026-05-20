@@ -18,7 +18,7 @@ enum HerdrLocalAgentInstaller {
     }
 
     private static func runInstall() async {
-        let installPath = (("~/.local/bin/herdr-cmux") as NSString).expandingTildeInPath
+        let installPath = HerdrAgentPaths.userInstallPath
         let asset: String
         #if arch(arm64)
         asset = "herdr-macos-aarch64"
