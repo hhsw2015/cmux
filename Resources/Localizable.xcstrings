@@ -120388,6 +120388,23 @@
           }
         }
       }
+    },
+    "menu.workspaces.addComputer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add a computer…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "コンピュータを追加…"
+          }
+        }
+      }
     }
   }
 }

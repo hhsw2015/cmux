@@ -355,6 +355,20 @@ struct cmuxApp: App {
                                 HerdrPanelOpener.openWorkspace(host: host)
                             }
                         }
+                        Divider()
+                        // Discovery affordance: the submenu is the
+                        // natural place for a new user to wonder "where
+                        // would another computer live?". Sending them
+                        // to Settings → Computers is one click away.
+                        Button(String(
+                            localized: "menu.workspaces.addComputer",
+                            defaultValue: "Add a computer…"
+                        )) {
+                            AppDelegate.shared?.openPreferencesWindow(
+                                debugSource: "menu.workspaces.addComputer",
+                                navigationTarget: .hosts
+                            )
+                        }
                     }
 
                     Divider()
