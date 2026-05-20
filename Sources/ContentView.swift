@@ -9942,6 +9942,12 @@ struct VerticalTabsSidebar: View {
     private var workspacePresentationMode = WorkspacePresentationModeSettings.defaultMode.rawValue
     @AppStorage("sidebarMatchTerminalBackground")
     private var sidebarMatchTerminalBackground = false
+    /// Persisted height of the bottom Herdr-hosts pane in the sidebar.
+    /// Clamped at runtime to [80, totalHeight - 200] so the workspace list
+    /// always retains usable space even after window resizes.
+    @AppStorage("sidebar.herdrSection.height")
+    private var herdrSectionHeight: Double = 220
+    @State private var herdrDividerDragInitialHeight: Double?
 
     private let tabRowSpacing: CGFloat = 2
     private var sidebarTitlebarInteractionHeight: CGFloat {
@@ -10070,7 +10076,24 @@ struct VerticalTabsSidebar: View {
         )
 
         ZStack(alignment: .bottomLeading) {
-            workspaceScrollArea(renderContext: renderContext)
+            GeometryReader { sidebarGeo in
+                let totalHeight = sidebarGeo.size.height
+                let clampedHerdrHeight = clampHerdrSectionHeight(
+                    proposed: herdrSectionHeight,
+                    totalHeight: totalHeight
+                )
+                VStack(spacing: 0) {
+                    workspaceScrollArea(renderContext: renderContext)
+                    SidebarSectionDivider(
+                        sectionHeight: $herdrSectionHeight,
+                        dragInitialHeight: $herdrDividerDragInitialHeight,
+                        totalHeight: totalHeight,
+                        clamp: clampHerdrSectionHeight
+                    )
+                    herdrSectionScrollArea()
+                        .frame(height: clampedHerdrHeight)
+                }
+            }
             SidebarFooter(updateViewModel: updateViewModel, fileExplorerState: fileExplorerState, onSendFeedback: onSendFeedback)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -10284,14 +10307,6 @@ struct VerticalTabsSidebar: View {
                 )
             }
 
-            HerdrHostsSidebarSection(
-                hostRegistry: HostRegistry.shared,
-                workspaceListStore: HerdrWorkspaceListStore.shared,
-                onOpenWorkspace: { host, workspaceId in
-                    HerdrPanelOpener.openWorkspace(host: host, workspaceId: workspaceId)
-                }
-            )
-
             SidebarEmptyArea(
                 rowSpacing: tabRowSpacing,
                 selection: $selection,
@@ -10304,6 +10319,37 @@ struct VerticalTabsSidebar: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minHeight: minHeight, alignment: .top)
+    }
+
+    /// Bottom region of the sidebar: a fixed-height pane containing the
+    /// Herdr hosts list with its own ScrollView. Independent from the
+    /// workspace list above so a long workspace list never pushes the
+    /// remote machines off-screen.
+    @ViewBuilder
+    private func herdrSectionScrollArea() -> some View {
+        ScrollView {
+            HerdrHostsSidebarSection(
+                hostRegistry: HostRegistry.shared,
+                workspaceListStore: HerdrWorkspaceListStore.shared,
+                onOpenWorkspace: { host, workspaceId in
+                    HerdrPanelOpener.openWorkspace(host: host, workspaceId: workspaceId)
+                }
+            )
+            .padding(.bottom, SidebarWorkspaceListMetrics.bottomScrimHeight)
+        }
+        .scrollIndicators(.hidden)
+    }
+
+    /// Clamp the persisted Herdr-section height so the workspace list
+    /// always retains usable space (>= 200pt) even on small windows.
+    private func clampHerdrSectionHeight(
+        proposed: Double,
+        totalHeight: CGFloat
+    ) -> CGFloat {
+        let totalH = max(0, Double(totalHeight))
+        let minH: Double = 80
+        let maxH = max(minH, totalH - 200)
+        return CGFloat(min(max(proposed, minH), maxH))
     }
 
     private func workspaceRows(renderContext: WorkspaceListRenderContext) -> some View {
@@ -11412,6 +11458,49 @@ final class WindowScopedShortcutHintModifierMonitor {
             NotificationCenter.default.removeObserver(hostWindowDidResignKeyObserver)
             self.hostWindowDidResignKeyObserver = nil
         }
+    }
+}
+
+/// Drag-to-resize divider between the workspace list (above) and the
+/// Herdr hosts pane (below). Persists the new height through the bound
+/// AppStorage value. The actual clamp is supplied by the parent so the
+/// minimum/maximum stays in sync with the parent's geometry.
+private struct SidebarSectionDivider: View {
+    @Binding var sectionHeight: Double
+    @Binding var dragInitialHeight: Double?
+    let totalHeight: CGFloat
+    let clamp: (Double, CGFloat) -> CGFloat
+
+    var body: some View {
+        Rectangle()
+            .fill(Color.secondary.opacity(0.18))
+            .frame(height: 1)
+            .overlay(
+                Rectangle()
+                    .fill(Color.clear)
+                    .frame(height: 6)
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { value in
+                                if dragInitialHeight == nil {
+                                    dragInitialHeight = sectionHeight
+                                }
+                                guard let base = dragInitialHeight else { return }
+                                // Drag up = grow herdr section; drag down = shrink.
+                                let proposed = base - Double(value.translation.height)
+                                sectionHeight = Double(clamp(proposed, totalHeight))
+                            }
+                            .onEnded { _ in dragInitialHeight = nil }
+                    )
+                    .onHover { hovering in
+                        if hovering {
+                            NSCursor.resizeUpDown.push()
+                        } else {
+                            NSCursor.pop()
+                        }
+                    }
+            )
     }
 }
 
