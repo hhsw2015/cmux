@@ -48385,8 +48385,8 @@
         },
         "ja": {
           "stringUnit": {
-            "state": "translated",
-            "value": "herdr fork をビルドして ~/.local/bin/ に herdr-cmux を配置してください"
+            "state": "needs_review",
+            "value": "このビルドには cmux エージェントが同梱されていません。herdr リリースから対応するバイナリを取得して %@ に配置できます。"
           }
         }
       }
@@ -48402,8 +48402,8 @@
         },
         "ja": {
           "stringUnit": {
-            "state": "translated",
-            "value": "ローカルの herdr-cmux が見つかりません"
+            "state": "needs_review",
+            "value": "ローカル cmux エージェントが見つかりません"
           }
         }
       }
@@ -48453,8 +48453,8 @@
         },
         "ja": {
           "stringUnit": {
-            "state": "translated",
-            "value": "リモートに herdr-cmux が無い場合は「インストール」をクリック。"
+            "state": "needs_review",
+            "value": "リモートに cmux エージェントが見つからない場合は「インストール」をクリック。"
           }
         }
       }
@@ -48504,8 +48504,8 @@
         },
         "ja": {
           "stringUnit": {
-            "state": "translated",
-            "value": "Herdr ワークスペースを開けません"
+            "state": "needs_review",
+            "value": "%@ でワークスペースを開けません"
           }
         }
       }
@@ -48776,8 +48776,8 @@
         },
         "ja": {
           "stringUnit": {
-            "state": "translated",
-            "value": "Herdr のインストールに失敗"
+            "state": "needs_review",
+            "value": "セットアップに失敗しました"
           }
         }
       }
@@ -48793,8 +48793,8 @@
         },
         "ja": {
           "stringUnit": {
-            "state": "translated",
-            "value": "herdr-cmux --version の出力が空"
+            "state": "needs_review",
+            "value": "%@: cmux エージェントがインストール後に応答しませんでした。"
           }
         }
       }
@@ -48827,8 +48827,8 @@
         },
         "ja": {
           "stringUnit": {
-            "state": "translated",
-            "value": "Herdr をインストールしました"
+            "state": "needs_review",
+            "value": "%@ の準備ができました"
           }
         }
       }
@@ -48895,8 +48895,8 @@
         },
         "ja": {
           "stringUnit": {
-            "state": "translated",
-            "value": "現在の Herdr ワークスペースを強制終了しますか？"
+            "state": "needs_review",
+            "value": "現在のワークスペースを閉じますか？"
           }
         }
       }
@@ -48912,8 +48912,8 @@
         },
         "ja": {
           "stringUnit": {
-            "state": "translated",
-            "value": "Herdr エージェントが入力待ち"
+            "state": "needs_review",
+            "value": "ワークスペースが入力待ち"
           }
         }
       }
@@ -78253,8 +78253,8 @@
         },
         "ja": {
           "stringUnit": {
-            "state": "translated",
-            "value": "保存時に herdr-cmux をインストール"
+            "state": "needs_review",
+            "value": "保存時に cmux エージェントをインストール"
           }
         }
       }
@@ -78440,8 +78440,8 @@
         },
         "ja": {
           "stringUnit": {
-            "state": "translated",
-            "value": "リモートに herdr-cmux なし (Install on save をオンに)"
+            "state": "needs_review",
+            "value": "cmux エージェントがリモートにまだインストールされていません。「保存時にインストール」をオンにしてください。"
           }
         }
       }
@@ -78593,8 +78593,8 @@
         },
         "ja": {
           "stringUnit": {
-            "state": "translated",
-            "value": "Herdr セッション名"
+            "state": "needs_review",
+            "value": "セッション名"
           }
         }
       }
