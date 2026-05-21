@@ -10228,6 +10228,7 @@ struct VerticalTabsSidebar: View {
                         )
                     )
                 }
+                .scrollIndicators(.hidden)
                 .background(
                     SidebarScrollViewResolver { scrollView in
                         dragAutoScrollController.attach(scrollView: scrollView)
