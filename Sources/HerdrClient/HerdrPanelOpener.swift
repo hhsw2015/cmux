@@ -11,6 +11,14 @@ import GhosttyKit
 /// result the panel inherits font, theme, background-opacity, blur,
 /// keyboard, IME, focus, and tab-routing from cmux without any
 /// additional plumbing.
+enum HerdrPanelOpenerError: Error {
+    /// AutoReattach / openWorkspace was invoked but the daemon has no
+    /// workspace to attach to and nothing usable is persisted (e.g.
+    /// the user just ran `herdr session delete`). Caller should drop
+    /// the placeholder cmux tab and abort silently.
+    case noWorkspaceAvailable
+}
+
 @MainActor
 enum HerdrPanelOpener {
     /// Open a herdr-backed panel at the focused pane in the focused
@@ -344,6 +352,14 @@ enum HerdrPanelOpener {
                     requestedWorkspaceId: requestedWorkspaceId,
                     preExistingPanelIds: preExistingPanelIds
                 )
+                HostHealthStore.shared.reportOnline(hostId: host.id)
+            } catch HerdrPanelOpenerError.noWorkspaceAvailable {
+                // No daemon-side workspace to attach to (and nothing
+                // useful in persistence). Silently tear down the
+                // placeholder tab we made up front; no alert because
+                // this is a normal no-op outcome from AutoReattach.
+                herdrPanelOpenerTrace("openWorkspace: nothing to attach for \(host.displayName)")
+                tabManager.closeWorkspace(workspace, recordHistory: false)
                 HostHealthStore.shared.reportOnline(hostId: host.id)
             } catch {
                 herdrPanelOpenerTrace("openWorkspace failed for host \(host.displayName): \(error)")
@@ -704,13 +720,20 @@ enum HerdrPanelOpener {
                 let wsInfo = resp["workspace"] as? [String: Any],
                 let firstActiveTabId = wsInfo["active_tab_id"] as? String else {
                     herdrPanelOpenerTrace("workspace: fallback workspace.get failed for \(first.name)")
-                    return
+                    throw HerdrPanelOpenerError.noWorkspaceAvailable
                 }
                 activeTabId = firstActiveTabId
                 herdrPanelOpenerTrace("workspace: fallback to first \(workspaceId) tab=\(activeTabId)")
             } else {
-                herdrPanelOpenerTrace("workspace: no sessions to fall back to")
-                return
+                // Persistence pointed at a workspace that no longer
+                // exists on the daemon AND there's nothing else to
+                // attach to. Bail with an error so the caller's catch
+                // handler tears down the placeholder cmux tab it
+                // created up front; otherwise AutoReattach leaves the
+                // user with an empty 'auto-created' workspace tab even
+                // after `herdr session delete cmux`.
+                herdrPanelOpenerTrace("workspace: no sessions to fall back to — aborting reattach")
+                throw HerdrPanelOpenerError.noWorkspaceAvailable
             }
         } else if let first = sessions.first {
             // Fall back: first existing workspace, its active tab.
