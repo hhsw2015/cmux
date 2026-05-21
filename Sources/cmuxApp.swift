@@ -356,7 +356,38 @@ struct cmuxApp: App {
                                 HerdrPanelOpener.openWorkspace(host: host)
                             }
                         }
+                        let unregisteredSessions = herdrSessionDiscovery.sessions.filter {
+                            session in
+                            !HostRegistry.shared.hosts.contains { host in
+                                if case .localUDS = host.transport,
+                                   host.sessionName == session.name {
+                                    return true
+                                }
+                                return false
+                            }
+                        }
+                        if !unregisteredSessions.isEmpty {
+                            Divider()
+                            Section(String(
+                                localized: "menu.workspaces.discoveredSessions",
+                                defaultValue: "Detected herdr sessions"
+                            )) {
+                                ForEach(unregisteredSessions) { session in
+                                    Button(session.isRunning ? "● \(session.name)" : "○ \(session.name)") {
+                                        guard let host = HerdrSessionDiscovery.shared
+                                            .ensureHost(for: session) else { return }
+                                        HerdrPanelOpener.openWorkspace(host: host)
+                                    }
+                                }
+                            }
+                        }
                         Divider()
+                        Button(String(
+                            localized: "menu.workspaces.refreshSessions",
+                            defaultValue: "Refresh detected sessions"
+                        )) {
+                            herdrSessionDiscovery.refresh()
+                        }
                         // Discovery affordance: the submenu is the
                         // natural place for a new user to wonder "where
                         // would another computer live?". Sending them
@@ -761,51 +792,6 @@ struct cmuxApp: App {
         }
     }
 
-    private var herdrSessionsCommands: some Commands {
-        CommandMenu(String(
-            localized: "menu.herdr.title",
-            defaultValue: "Herdr"
-        )) {
-            // First refresh happens at launch via HerdrAutoReattach;
-            // SwiftUI Commands has no onAppear hook so subsequent
-            // refreshes are user-driven via the explicit button. We
-            // can't safely refresh on every body rebuild — refresh()
-            // mutates sessions which would feed back into the
-            // rebuild loop.
-            Button(String(
-                localized: "menu.herdr.refreshSessions",
-                defaultValue: "Refresh sessions"
-            )) {
-                herdrSessionDiscovery.refresh()
-            }
-            Divider()
-            if herdrSessionDiscovery.sessions.isEmpty {
-                Text(String(
-                    localized: "menu.herdr.noSessions",
-                    defaultValue: "No sessions discovered"
-                ))
-                .foregroundStyle(.secondary)
-            } else {
-                ForEach(herdrSessionDiscovery.sessions) { session in
-                    Button {
-                        guard let host = HerdrSessionDiscovery.shared
-                            .ensureHost(for: session) else { return }
-                        HerdrPanelOpener.openWorkspace(host: host)
-                    } label: {
-                        Text(menuLabelForSession(session))
-                    }
-                }
-            }
-        }
-    }
-
-    private func menuLabelForSession(
-        _ session: HerdrSessionDiscovery.Session
-    ) -> String {
-        let prefix = session.isRunning ? "● " : "○ "
-        return prefix + session.name
-    }
-
     @CommandsBuilder
     private var windowAndViewCommands: some Commands {
         CommandGroup(after: .windowArrangement) {
@@ -815,7 +801,6 @@ struct cmuxApp: App {
         }
         helpCommands
         historyCommands
-        herdrSessionsCommands
         CommandGroup(after: .toolbar) {
             splitCommandButton(title: String(localized: "menu.view.toggleLeftSidebar", defaultValue: "Toggle Left Sidebar"), shortcut: menuShortcut(for: .toggleSidebar)) {
                 if AppDelegate.shared?.toggleSidebarInActiveMainWindow() != true {

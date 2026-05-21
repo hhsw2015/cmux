@@ -24,12 +24,21 @@ enum HerdrInboundLayoutSync {
     private static var dividerApplyScheduled: Set<UUID> = []
 
     static func apply(tree: HerdrLayoutTree) {
-        guard let binding = HerdrTabRegistry.shared.allBindings.first(where: {
+        let allBindings = HerdrTabRegistry.shared.allBindings
+        guard let binding = allBindings.first(where: {
             $0.workspaceId == tree.workspaceId && $0.tabId == tree.tabId
         }) else {
+            os_log(
+                "herdr.inbound.apply no_binding ws=%{public}@ tab=%{public}@ bindings=%{public}d",
+                tree.workspaceId, tree.tabId, allBindings.count
+            )
             return
         }
         guard let workspace = binding.workspace else {
+            os_log(
+                "herdr.inbound.apply no_workspace ws=%{public}@ tab=%{public}@",
+                tree.workspaceId, tree.tabId
+            )
             return
         }
 
@@ -41,9 +50,22 @@ enum HerdrInboundLayoutSync {
             scheduleDividerApply(spec: spec, binding: binding, workspace: workspace)
             return
         }
+        os_log(
+            "herdr.inbound.apply structural ws=%{public}@ tab=%{public}@ new=%{public}d old=%{public}d",
+            tree.workspaceId, tree.tabId, newPaneIds.count, oldPaneIds.count
+        )
 
         let added = newPaneIds.subtracting(oldPaneIds)
         let removed = oldPaneIds.subtracting(newPaneIds)
+
+        // Drop any in-flight divider coalescer for this binding —
+        // a structural change supersedes ratio-only updates and
+        // applying a stale divider spec on top of the new tree
+        // could resize panes that no longer exist or skip the
+        // ratios for newly added panes.
+        let key = binding.rootCmuxPaneId
+        pendingDividerSpec.removeValue(forKey: key)
+        dividerApplyScheduled.remove(key)
 
         // Removals are order-independent — each cmux pane closes
         // standalone — so process the whole set up front so subsequent
@@ -292,19 +314,26 @@ enum HerdrInboundLayoutSync {
         workspace: Workspace
     ) async {
         guard let parent = findParentSplit(node: spec.root, target: addedHerdrId) else {
-            cmuxDebugLog("herdr.inbound: added pane \(addedHerdrId) has no parent split")
+            os_log(
+                "herdr.inbound.applyAddition no_parent_split pane=%{public}@",
+                addedHerdrId
+            )
             return
         }
         guard let cmuxSiblingId = binding.paneBindings.cmuxPaneId(forHerdrId: parent.siblingHerdrId) else {
-            cmuxDebugLog(
-                "herdr.inbound: sibling \(parent.siblingHerdrId) of added \(addedHerdrId) has no cmux pane"
+            os_log(
+                "herdr.inbound.applyAddition sibling_unbound sibling=%{public}@ pane=%{public}@",
+                parent.siblingHerdrId, addedHerdrId
             )
             return
         }
 
         let host = binding.host
         guard let exec = HerdrLocalBinary.resolve() else {
-            cmuxDebugLog("herdr.inbound: addition skipped — no local binary")
+            os_log(
+                "herdr.inbound.applyAddition no_binary pane=%{public}@",
+                addedHerdrId
+            )
             return
         }
         let socketPath = host.localApiSocketPath
