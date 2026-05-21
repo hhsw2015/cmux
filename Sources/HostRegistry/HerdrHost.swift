@@ -9,9 +9,20 @@ struct HerdrHost: Identifiable, Codable, Equatable, Hashable, Sendable {
     var sessionName: String      // herdr `--session <name>` namespace
     let addedAt: Date
 
-    /// Whether this is the auto-registered localhost entry. Localhost is
-    /// always present and cannot be removed.
+    /// Whether this is the auto-registered, pinned localhost row.
+    /// Multiple `.localUDS` hosts can coexist now — each pointing at
+    /// a different `herdr session` (`cmux`, `project-a`, …) — so
+    /// "localhost" no longer means "any local UDS host". Identity
+    /// alone determines pinning.
     var isLocalhost: Bool {
+        id == Self.localhostID
+    }
+
+    /// True when this host talks to a daemon over a local UDS socket
+    /// (regardless of whether it's the pinned localhost row). Used by
+    /// the auto-reattach socket-stat check and other paths that care
+    /// about the transport, not the identity.
+    var isLocalUDS: Bool {
         if case .localUDS = transport { return true }
         return false
     }
