@@ -349,6 +349,10 @@ enum HerdrPanelOpener {
                 herdrPanelOpenerTrace("openWorkspace failed for host \(host.displayName): \(error)")
                 let reason = friendlyErrorMessage(error, isRemote: isRemote)
                 HostHealthStore.shared.reportOffline(hostId: host.id, reason: reason)
+                // Drop the empty cmux workspace we created up front so a
+                // failed open doesn't leave the user with a placeholder
+                // tab pinned to a dead host.
+                tabManager.closeWorkspace(workspace, recordHistory: false)
                 presentOpenFailureAlert(host: host, error: error)
             }
         }
