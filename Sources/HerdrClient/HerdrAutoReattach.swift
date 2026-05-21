@@ -19,9 +19,9 @@ enum HerdrAutoReattach {
             }
 
             for host in HostRegistry.shared.hosts {
-                guard let persisted = HerdrPersistence.shared
-                    .entry(forHostSession: host.sessionName)
-                else { continue }
+                let persisted = HerdrPersistence.shared
+                    .entries(forHostSession: host.sessionName)
+                if persisted.isEmpty { continue }
                 // Don't passively respawn the daemon just because cmux
                 // remembered a workspace from a previous session. If
                 // the user shut the daemon down (`herdr session stop`
@@ -43,19 +43,30 @@ enum HerdrAutoReattach {
                         continue
                     }
                 }
-                if let cmuxId = persisted.cmuxWorkspaceId {
-                    cmuxDebugLog(
-                        "herdr.autoReattach: rebinding existing cmux workspace \(cmuxId) for \(host.displayName)"
-                    )
-                    HerdrPanelOpener.openWorkspace(host: host, reuseCmuxWorkspaceId: cmuxId)
-                } else {
-                    cmuxDebugLog("herdr.autoReattach: opening \(host.displayName)")
-                    HerdrPanelOpener.openWorkspace(host: host)
+                for entry in persisted {
+                    if let cmuxId = entry.cmuxWorkspaceId {
+                        cmuxDebugLog(
+                            "herdr.autoReattach: rebinding cmux workspace \(cmuxId) for \(host.displayName) → \(entry.workspaceId)/\(entry.tabId)"
+                        )
+                        HerdrPanelOpener.openWorkspace(
+                            host: host,
+                            attachExistingHerdrWorkspaceId: entry.workspaceId,
+                            reuseCmuxWorkspaceId: cmuxId
+                        )
+                    } else {
+                        cmuxDebugLog(
+                            "herdr.autoReattach: attaching \(host.displayName) → \(entry.workspaceId) (no cmux uuid)"
+                        )
+                        HerdrPanelOpener.openWorkspace(
+                            host: host,
+                            workspaceId: entry.workspaceId
+                        )
+                    }
+                    // Yield between opens so each one's pane.attach +
+                    // Ghostty surface mount finishes before the next
+                    // one starts splitting the focused pane.
+                    try? await Task.sleep(nanoseconds: 500_000_000)
                 }
-                // Yield between hosts so each open's pane.attach +
-                // Ghostty surface mount finishes before the next one
-                // starts splitting the focused pane.
-                try? await Task.sleep(nanoseconds: 500_000_000)
             }
         }
     }

@@ -1,14 +1,15 @@
 import Foundation
 
-/// Last-opened herdr workspace per host. Persists to disk so that the
-/// next time the user clicks "Open Herdr Workspace" cmux reattaches
-/// to the same workspace+tab they were on before — assuming the
-/// daemon still has it (E5 detach guarantees that for the common
-/// quit-cmux-and-reopen flow).
+/// Persisted herdr workspace bindings per host. Keyed by host session
+/// name; each entry holds the (workspace_id, tab_id) plus the cmux
+/// Workspace UUID so that next-launch reattach lands the user back on
+/// the same sidebar entries with the same daemon-side state.
 ///
-/// Format on disk: a single JSON object keyed by host session name
-/// (matches `HerdrHost.sessionName`). Values are `{ workspace_id,
-/// tab_id }` snapshots.
+/// Format on disk: `{ "<sessionName>": [ { workspace_id, tab_id,
+/// cmux_workspace_id }, ... ] }`. Pre-cmux12 builds wrote a single
+/// Entry per session (`{ "<sessionName>": { ... } }`); the loader
+/// falls back to that shape so users don't lose their last binding
+/// on the upgrade.
 @MainActor
 final class HerdrPersistence {
     static let shared = HerdrPersistence()
@@ -17,12 +18,7 @@ final class HerdrPersistence {
         let workspaceId: String
         let tabId: String
         /// cmux Workspace UUID this herdr workspace was bound to.
-        /// Persisted so that on next launch HerdrAutoReattach can reuse
-        /// the existing cmux Workspace (now restored from cmux's normal
-        /// state but no longer bound to herdr) instead of creating a
-        /// fresh sibling — which left the user with two visually
-        /// identical sidebar entries every quit/reopen cycle. Optional
-        /// for back-compat with pre-cmux10 entries.
+        /// Optional for back-compat with pre-cmux10 entries.
         let cmuxWorkspaceId: UUID?
 
         enum CodingKeys: String, CodingKey {
@@ -33,7 +29,7 @@ final class HerdrPersistence {
     }
 
     private let url: URL
-    private var cache: [String: Entry]
+    private var cache: [String: [Entry]]
 
     convenience init() {
         let bundleId = Bundle.main.bundleIdentifier ?? "cmux"
@@ -46,34 +42,72 @@ final class HerdrPersistence {
         self.init(url: dir.appendingPathComponent("herdr-bindings-\(bundleId).json"))
     }
 
-    /// Test-only init: bypass the Application Support resolution so
-    /// tests can use a temp file path and not pollute real cmux state.
+    /// Test-only init.
     init(url: URL) {
         self.url = url
         self.cache = Self.loadFromDisk(url: url)
     }
 
-    func entry(forHostSession session: String) -> Entry? {
-        cache[session]
+    /// All persisted bindings for a host session, in insertion order.
+    func entries(forHostSession session: String) -> [Entry] {
+        cache[session] ?? []
     }
 
+    /// Append or update an entry. If a record for the same
+    /// (workspaceId, tabId) already exists, update its cmuxWorkspaceId
+    /// in place; otherwise append.
     func record(host: HerdrHost, workspaceId: String, tabId: String, cmuxWorkspaceId: UUID?) {
-        cache[host.sessionName] = Entry(
+        var list = cache[host.sessionName] ?? []
+        let entry = Entry(
             workspaceId: workspaceId,
             tabId: tabId,
             cmuxWorkspaceId: cmuxWorkspaceId
         )
+        if let idx = list.firstIndex(where: {
+            $0.workspaceId == workspaceId && $0.tabId == tabId
+        }) {
+            list[idx] = entry
+        } else {
+            list.append(entry)
+        }
+        cache[host.sessionName] = list
         saveToDisk()
     }
 
+    /// Remove every binding for a host. Used when the daemon socket
+    /// vanishes (`herdr session stop`) or the user revokes attachment.
     func clear(host: HerdrHost) {
         guard cache.removeValue(forKey: host.sessionName) != nil else { return }
         saveToDisk()
     }
 
-    private static func loadFromDisk(url: URL) -> [String: Entry] {
+    /// Remove a specific (workspaceId, tabId) binding for a host.
+    /// Used when the user closes one cmux workspace but keeps others
+    /// attached.
+    func clearOne(host: HerdrHost, workspaceId: String, tabId: String) {
+        guard var list = cache[host.sessionName] else { return }
+        let before = list.count
+        list.removeAll {
+            $0.workspaceId == workspaceId && $0.tabId == tabId
+        }
+        if list.count == before { return }
+        if list.isEmpty {
+            cache.removeValue(forKey: host.sessionName)
+        } else {
+            cache[host.sessionName] = list
+        }
+        saveToDisk()
+    }
+
+    private static func loadFromDisk(url: URL) -> [String: [Entry]] {
         guard let data = try? Data(contentsOf: url) else { return [:] }
-        return (try? JSONDecoder().decode([String: Entry].self, from: data)) ?? [:]
+        if let arrays = try? JSONDecoder().decode([String: [Entry]].self, from: data) {
+            return arrays
+        }
+        if let singles = try? JSONDecoder().decode([String: Entry].self, from: data) {
+            return singles.mapValues { [$0] }
+        }
+        return [:]
     }
 
     private func saveToDisk() {

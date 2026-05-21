@@ -288,6 +288,23 @@ enum HerdrPanelOpener {
         )
     }
 
+    /// Combined: reuse an existing cmux Workspace AND attach to a
+    /// specific existing herdr workspace (skipping the
+    /// create-if-missing logic). Used by HerdrAutoReattach when
+    /// restoring multiple persisted bindings — each call resolves
+    /// to one cmux+herdr pair.
+    static func openWorkspace(
+        host: HerdrHost,
+        attachExistingHerdrWorkspaceId: String,
+        reuseCmuxWorkspaceId: UUID
+    ) {
+        openWorkspace(
+            host: host,
+            requestedWorkspaceId: attachExistingHerdrWorkspaceId,
+            reuseCmuxWorkspaceId: reuseCmuxWorkspaceId
+        )
+    }
+
     private static func openWorkspace(
         host: HerdrHost,
         requestedWorkspaceId: String?,
@@ -747,16 +764,17 @@ enum HerdrPanelOpener {
             workspaceId = requested
             activeTabId = requestedActiveTabId
             herdrPanelOpenerTrace("workspace: opening explicit \(workspaceId) tab=\(activeTabId)")
-        } else if let persisted = HerdrPersistence.shared.entry(forHostSession: host.sessionName),
-           let resolved = await Self.resolvePersistedWorkspace(
-               host: host,
-               sessions: sessions,
-               persisted: persisted
-           ) {
+        } else if let persisted = HerdrPersistence.shared
+                    .entries(forHostSession: host.sessionName).first,
+                  let resolved = await Self.resolvePersistedWorkspace(
+                      host: host,
+                      sessions: sessions,
+                      persisted: persisted
+                  ) {
             workspaceId = resolved.workspaceId
             activeTabId = resolved.tabId
             herdrPanelOpenerTrace("workspace: reusing persisted \(workspaceId) tab=\(activeTabId)")
-        } else if HerdrPersistence.shared.entry(forHostSession: host.sessionName) != nil {
+        } else if !HerdrPersistence.shared.entries(forHostSession: host.sessionName).isEmpty {
             HerdrPersistence.shared.clear(host: host)
             herdrPanelOpenerTrace("workspace: cleared stale persisted entry for \(host.sessionName)")
             if let first = sessions.first {
