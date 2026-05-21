@@ -216,10 +216,39 @@ final class HerdrEventPump: ObservableObject {
             }
             // Backoff before retry, but bail if released.
             guard !Task.isCancelled, refCounts[socketPath] != nil else { return }
+            // Daemon shut down (`herdr session stop <name>`): the local
+            // UDS socket file disappears. Tear down all bindings for
+            // this host so the user's stale herdr-backed panels close
+            // instead of sitting unresponsive — same semantics as tmux
+            // where killing the server detaches every client. SSH hosts
+            // can't stat the remote socket, so they keep retrying.
+            if let host = hosts[socketPath],
+               case .localUDS = host.transport,
+               !FileManager.default.fileExists(atPath: socketPath) {
+                cmuxDebugLog(
+                    "herdr.pump: localUDS socket \(socketPath) gone; tearing down host \(host.displayName)"
+                )
+                tearDownHost(host: host)
+                return
+            }
             let delay = Self.backoffSequence[min(attempt, Self.backoffSequence.count - 1)]
             attempt += 1
             try? await Task.sleep(nanoseconds: delay)
         }
+    }
+
+    /// Close every herdr-backed cmux workspace for `host` and drop
+    /// the persistence pointer. Called when the daemon socket has
+    /// definitively gone — e.g. user ran `herdr session stop`.
+    /// Mirrors `applyWorkspaceClosed` per binding.
+    private func tearDownHost(host: HerdrHost) {
+        let bindings = HerdrTabRegistry.shared.allBindings.filter {
+            $0.host.id == host.id
+        }
+        for binding in bindings {
+            HerdrInboundLayoutSync.applyWorkspaceClosed(workspaceId: binding.workspaceId)
+        }
+        HerdrPersistence.shared.clear(host: host)
     }
 
     private func primeAllBindings(socketPath: String) {

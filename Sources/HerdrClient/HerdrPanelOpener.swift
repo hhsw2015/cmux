@@ -339,6 +339,21 @@ enum HerdrPanelOpener {
         let workspace: Workspace = {
             if let existing = reusedWorkspace {
                 tabManager.selectedTabId = existing.id
+                // Restored bonsplit tree has stale panes from the
+                // previous session — each holds a TerminalPanel whose
+                // Ghostty surface is unbound (no PTY, no content).
+                // Collapse to a single root pane so HerdrLayoutExecutor
+                // builds the daemon's tree from scratch on top of one
+                // empty pane, instead of stacking the new tree under
+                // the stale one. preExistingPanelIds cleanup at the
+                // end of openLocalhostWorkspaceImpl handles the final
+                // stub panel.
+                let allIds = existing.bonsplitController.allPaneIds
+                if allIds.count > 1 {
+                    for paneId in allIds.dropFirst() {
+                        existing.bonsplitController.closePane(paneId)
+                    }
+                }
                 return existing
             }
             // Always create a fresh cmux workspace tab for a persistent

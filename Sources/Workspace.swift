@@ -15557,7 +15557,9 @@ extension Workspace: BonsplitDelegate {
         // the divider as it moves. Without this, didChangeGeometry
         // only fires when the bonsplit tree mutates structurally —
         // user has to switch workspaces and back to force a refresh.
-        return HerdrTabRegistry.shared.count > 0
+        // Scoped to this workspace's binding so non-herdr workspaces
+        // don't pay the 50ms-period delegate dispatch.
+        return HerdrTabRegistry.shared.firstBinding(forWorkspaceId: self.id) != nil
     }
 
     func splitTabBar(_ controller: BonsplitController, didChangeGeometry snapshot: LayoutSnapshot) {
