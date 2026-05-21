@@ -67,6 +67,34 @@ extension ContentView {
             )
         )
 
+        for session in HerdrSessionDiscovery.shared.sessions {
+            let name = session.name
+            let runningHint = session.isRunning ? " (running)" : ""
+            contributions.append(
+                CommandPaletteCommandContribution(
+                    commandId: "palette.attachHerdrSession.\(name)",
+                    title: constant(String(
+                        localized: "command.attachHerdrSession.title",
+                        defaultValue: "Attach to herdr session '\(name)'\(runningHint)"
+                    )),
+                    subtitle: herdrSubtitle,
+                    keywords: ["herdr", "attach", "session", "local", name]
+                )
+            )
+        }
+
+        contributions.append(
+            CommandPaletteCommandContribution(
+                commandId: "palette.discoverHerdrSessions",
+                title: constant(String(
+                    localized: "command.discoverHerdrSessions.title",
+                    defaultValue: "Refresh herdr session list"
+                )),
+                subtitle: herdrSubtitle,
+                keywords: ["herdr", "discover", "list", "sessions", "refresh"]
+            )
+        )
+
         contributions.append(
             CommandPaletteCommandContribution(
                 commandId: "palette.refreshAllHerdrHosts",
@@ -114,6 +142,20 @@ extension ContentView {
         registry.register(commandId: "palette.refreshAllHerdrHosts") {
             for host in HostRegistry.shared.hosts {
                 HerdrWorkspaceListStore.shared.refresh(host: host)
+            }
+        }
+        registry.register(commandId: "palette.discoverHerdrSessions") {
+            HerdrSessionDiscovery.shared.refresh()
+        }
+        for session in HerdrSessionDiscovery.shared.sessions {
+            let capturedSession = session
+            registry.register(
+                commandId: "palette.attachHerdrSession.\(session.name)"
+            ) {
+                guard let host = HerdrSessionDiscovery.shared.ensureHost(for: capturedSession) else {
+                    return
+                }
+                HerdrPanelOpener.openWorkspace(host: host)
             }
         }
         registry.register(commandId: "palette.installHerdrCmux") {

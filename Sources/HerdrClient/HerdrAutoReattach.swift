@@ -10,6 +10,11 @@ enum HerdrAutoReattach {
     /// attached something during the launch window (so the menu still
     /// wins if they click it before this fires).
     static func runOnLaunch() {
+        // Populate the session-discovery cache so the command palette
+        // already has "Attach to herdr session 'X'" entries when the
+        // user opens it for the first time. Cheap (one CLI shell-out)
+        // and runs in parallel with the reattach burst.
+        HerdrSessionDiscovery.shared.refresh()
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 3_000_000_000)
 
