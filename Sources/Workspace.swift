@@ -9502,6 +9502,20 @@ final class Workspace: Identifiable, ObservableObject {
         surfaceResumeBindingsByPanelId[panelId]
     }
 
+    /// Mark every bonsplit tab in this workspace as force-closeable.
+    /// Used by HerdrPanelOpener's reuse path: when adopting a cmux
+    /// Workspace restored from disk, every panel inside it is a stale
+    /// stub (PTY gone with the previous cmux process). The
+    /// shouldClosePane confirmation gate uses panelShellActivityStates
+    /// which can still flag activity from saved state, so closePane
+    /// would otherwise refuse. Force-close lets the reuse path tear
+    /// the stubs down cleanly before the herdr-backed panel is wired.
+    func markAllTabsForceCloseable() {
+        for tabId in bonsplitController.allTabIds {
+            forceCloseTabIds.insert(tabId)
+        }
+    }
+
     func panelNeedsConfirmClose(panelId: UUID, fallbackNeedsConfirmClose: Bool) -> Bool {
         Self.resolveCloseConfirmation(
             shellActivityState: panelShellActivityStates[panelId],

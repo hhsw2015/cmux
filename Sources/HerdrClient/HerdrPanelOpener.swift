@@ -365,6 +365,12 @@ enum HerdrPanelOpener {
                 // the stale one. preExistingPanelIds cleanup at the
                 // end of openLocalhostWorkspaceImpl handles the final
                 // stub panel.
+                //
+                // Mark every embedded tab as force-closeable so the
+                // shouldClosePane confirmation gate (which can fire
+                // for restored shell-activity state even when the PTY
+                // is gone) doesn't reject the teardown.
+                existing.markAllTabsForceCloseable()
                 let allIds = existing.bonsplitController.allPaneIds
                 if allIds.count > 1 {
                     for paneId in allIds.dropFirst() {
