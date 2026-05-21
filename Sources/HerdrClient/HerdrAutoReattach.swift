@@ -18,11 +18,6 @@ enum HerdrAutoReattach {
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 3_000_000_000)
 
-            guard HerdrTabRegistry.shared.allBindings.isEmpty else {
-                cmuxDebugLog("herdr.autoReattach: skipping — already attached")
-                return
-            }
-
             for host in HostRegistry.shared.hosts {
                 let persisted = HerdrPersistence.shared
                     .entries(forHostSession: host.sessionName)
@@ -49,6 +44,23 @@ enum HerdrAutoReattach {
                     }
                 }
                 for entry in persisted {
+                    // Skip per-entry if a binding for this exact
+                    // (host, workspace, tab) already exists — covers
+                    // the case where the user manually attached one
+                    // workspace via the menu during the 3 s settle
+                    // window. Other persisted entries should still
+                    // reattach.
+                    let alreadyBound = HerdrTabRegistry.shared.allBindings.contains {
+                        $0.host.id == host.id
+                            && $0.workspaceId == entry.workspaceId
+                            && $0.tabId == entry.tabId
+                    }
+                    if alreadyBound {
+                        cmuxDebugLog(
+                            "herdr.autoReattach: \(host.displayName) → \(entry.workspaceId)/\(entry.tabId) already bound; skipping"
+                        )
+                        continue
+                    }
                     if let cmuxId = entry.cmuxWorkspaceId {
                         cmuxDebugLog(
                             "herdr.autoReattach: rebinding cmux workspace \(cmuxId) for \(host.displayName) → \(entry.workspaceId)/\(entry.tabId)"
