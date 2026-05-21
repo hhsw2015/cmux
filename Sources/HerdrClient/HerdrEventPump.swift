@@ -156,6 +156,7 @@ final class HerdrEventPump: ObservableObject {
                     "workspace.closed",
                     "workspace.focused",
                     "workspace.renamed",
+                    "tab.renamed",
                     "pane.exited",
                     "pane.focused",
                     "pane.agent_status_changed",
@@ -288,6 +289,11 @@ final class HerdrEventPump: ObservableObject {
             // poll. We just invalidate + refresh; the store will
             // re-detect blocked transitions and post the
             // notification at most once per workspace.
+            invalidateWorkspaceList(socketPath: socketPath, reason: event.event)
+        case "tab_renamed", "tab.renamed":
+            // Mirror herdr-side window rename into the sidebar so the
+            // user sees the new label without waiting for the next
+            // poll.
             invalidateWorkspaceList(socketPath: socketPath, reason: event.event)
         case "tab_reordered", "tab.reordered":
             // Tab order changed remotely (Mac B drags tabs); refresh
