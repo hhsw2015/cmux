@@ -739,7 +739,11 @@ enum HerdrPanelOpener {
                     defaultValue: "Dismiss"
                 ))
                 if alert.runModal() == .alertFirstButtonReturn {
-                    openWorkspace(host: host, requestedWorkspaceId: requestedWorkspaceId)
+                    openWorkspace(
+                        host: host,
+                        requestedWorkspaceId: requestedWorkspaceId,
+                        reuseCmuxWorkspaceId: reuseCmuxWorkspaceId
+                    )
                 }
             }
             return
