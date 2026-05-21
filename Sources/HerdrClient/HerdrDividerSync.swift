@@ -1,5 +1,6 @@
 import Bonsplit
 import Foundation
+import os.log
 
 /// Outbound divider-drag sync: when bonsplit reports a geometry
 /// change, find any herdr-backed subtrees, diff their split ratios
@@ -26,8 +27,10 @@ enum HerdrDividerSync {
     /// subtree, and emit `pane.set_split_ratio` RPCs for every divider
     /// whose ratio changed since the previous call.
     static func sync(treeSnapshot: ExternalTreeNode) {
+        os_log("herdr.divider.sync.entry bindings=%{public}d", HerdrTabRegistry.shared.allBindings.count)
         for binding in HerdrTabRegistry.shared.allBindings {
             guard let subtree = findHerdrSubtreeRoot(tree: treeSnapshot, binding: binding) else {
+                os_log("herdr.divider.sync.no_subtree bound=%{public}d", binding.paneBindings.count)
                 // The bonsplit tree no longer contains exactly this
                 // binding's panes (panes were closed, swapped, or
                 // mixed with non-herdr siblings). Skip until the
@@ -36,6 +39,8 @@ enum HerdrDividerSync {
             }
             let current = collectDividers(tree: subtree, prefix: [])
             let previous = lastSeen[binding.rootCmuxPaneId] ?? [:]
+            let changedCount = current.filter { !ratiosEqual(previous[$0.key], $0.value) }.count
+            os_log("herdr.divider.sync.match dividers=%{public}d changed=%{public}d", current.count, changedCount)
             for (path, ratio) in current where !ratiosEqual(previous[path], ratio) {
                 let host = binding.host
                 let workspaceId = binding.workspaceId

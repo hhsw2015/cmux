@@ -3,6 +3,7 @@ import SwiftUI
 import AppKit
 import Bonsplit
 import CMUXSessionDaemon
+import os.log
 import Combine
 import CryptoKit
 import Darwin
@@ -15490,6 +15491,9 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didChangeGeometry snapshot: LayoutSnapshot) {
+        os_log("herdr.bonsplit.didChangeGeometry herdrBindings=%{public}d detaching=%{public}d",
+               HerdrTabRegistry.shared.count,
+               isDetachingCloseTransaction ? 1 : 0)
         tmuxLayoutSnapshot = snapshot
         scheduleTerminalGeometryReconcile()
         publishCmuxSurfaceFrameChanges(layoutSnapshot: snapshot, origin: "bonsplit_geometry")
