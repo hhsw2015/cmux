@@ -9,6 +9,7 @@ struct cmuxApp: App {
     @StateObject private var notificationStore = TerminalNotificationStore.shared
     @StateObject private var sidebarState = SidebarState()
     @StateObject private var keyboardShortcutSettingsObserver = KeyboardShortcutSettingsObserver.shared
+    @StateObject private var herdrSessionDiscovery = HerdrSessionDiscovery.shared
     @AppStorage(AppearanceSettings.appearanceModeKey) private var appearanceMode = AppearanceSettings.defaultMode.rawValue
     @AppStorage("titlebarControlsStyle") private var titlebarControlsStyle = TitlebarControlsStyle.classic.rawValue
     @AppStorage(DevBuildBannerDebugSettings.sidebarBannerVisibleKey)
@@ -760,6 +761,45 @@ struct cmuxApp: App {
         }
     }
 
+    private var herdrSessionsCommands: some Commands {
+        CommandMenu(String(
+            localized: "menu.herdr.title",
+            defaultValue: "Herdr"
+        )) {
+            Button(String(
+                localized: "menu.herdr.refreshSessions",
+                defaultValue: "Refresh sessions"
+            )) {
+                herdrSessionDiscovery.refresh()
+            }
+            Divider()
+            if herdrSessionDiscovery.sessions.isEmpty {
+                Text(String(
+                    localized: "menu.herdr.noSessions",
+                    defaultValue: "No sessions discovered"
+                ))
+                .foregroundStyle(.secondary)
+            } else {
+                ForEach(herdrSessionDiscovery.sessions) { session in
+                    Button {
+                        guard let host = HerdrSessionDiscovery.shared
+                            .ensureHost(for: session) else { return }
+                        HerdrPanelOpener.openWorkspace(host: host)
+                    } label: {
+                        Text(menuLabelForSession(session))
+                    }
+                }
+            }
+        }
+    }
+
+    private func menuLabelForSession(
+        _ session: HerdrSessionDiscovery.Session
+    ) -> String {
+        let prefix = session.isRunning ? "● " : "○ "
+        return prefix + session.name
+    }
+
     @CommandsBuilder
     private var windowAndViewCommands: some Commands {
         CommandGroup(after: .windowArrangement) {
@@ -769,6 +809,7 @@ struct cmuxApp: App {
         }
         helpCommands
         historyCommands
+        herdrSessionsCommands
         CommandGroup(after: .toolbar) {
             splitCommandButton(title: String(localized: "menu.view.toggleLeftSidebar", defaultValue: "Toggle Left Sidebar"), shortcut: menuShortcut(for: .toggleSidebar)) {
                 if AppDelegate.shared?.toggleSidebarInActiveMainWindow() != true {
