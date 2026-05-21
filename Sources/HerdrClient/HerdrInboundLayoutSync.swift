@@ -109,8 +109,9 @@ enum HerdrInboundLayoutSync {
                 spec: spec,
                 isBound: { binding.paneBindings.cmuxPaneId(forHerdrId: $0) != nil }
             ) else {
-                cmuxDebugLog(
-                    "herdr.inbound: stalled multi-add (\(pending.count) unresolved); workspace may be out of sync"
+                os_log(
+                    "herdr.inbound.applyAdditions stalled unresolved=%{public}d",
+                    pending.count
                 )
                 return
             }
@@ -389,9 +390,15 @@ enum HerdrInboundLayoutSync {
                 binding: binding,
                 treeSnapshot: workspace.bonsplitController.treeSnapshot()
             )
-            cmuxDebugLog("herdr.inbound: added pane \(addedHerdrId)")
+            os_log(
+                "herdr.inbound.applyAddition wired pane=%{public}@ cmux=%{public}@",
+                addedHerdrId, newCmuxPaneId.id.uuidString
+            )
         } catch {
-            cmuxDebugLog("herdr.inbound: addition failed for \(addedHerdrId): \(error)")
+            os_log(
+                "herdr.inbound.applyAddition wire_failed pane=%{public}@ err=%{public}@",
+                addedHerdrId, error.localizedDescription
+            )
         }
     }
 

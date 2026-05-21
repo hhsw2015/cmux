@@ -377,6 +377,15 @@ enum HerdrPanelOpener {
                         existing.bonsplitController.closePane(paneId)
                     }
                 }
+                // After collapse, force focus to the surviving root
+                // pane. The previously focused pane may have been one
+                // of the closed siblings; downstream wireHerdrBackedPanel
+                // splits the focused pane to attach the herdr panel,
+                // so leaving focusedPaneId stale would no-op or split
+                // a non-existent pane.
+                if let survivor = existing.bonsplitController.allPaneIds.first {
+                    existing.bonsplitController.focusPane(survivor)
+                }
                 return existing
             }
             // Always create a fresh cmux workspace tab for a persistent
