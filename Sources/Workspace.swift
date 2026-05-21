@@ -15086,6 +15086,19 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, shouldClosePane pane: PaneID) -> Bool {
+        // herdr inbound removal: daemon already killed the PTY, the
+        // pane is gone server-side and confirmation is meaningless.
+        // applyRemoval marks the herdr pane id in suppressNextCloseFor
+        // before invoking closePane; treat that as a force-close
+        // signal so the panel detaches cleanly instead of leaving a
+        // dead stub the user can't interact with.
+        if let binding = HerdrTabRegistry.shared.binding(forCmuxPaneId: pane.id),
+           let herdrPaneId = binding.paneBindings.herdrPaneId(forCmuxId: pane.id),
+           HerdrCloseHandler.suppressNextCloseFor.contains(herdrPaneId) {
+            let tabs = controller.tabs(inPane: pane)
+            pendingPaneClosePanelIds[pane.id] = tabs.compactMap { panelIdFromSurfaceId($0.id) }
+            return true
+        }
         // Check if any panel in this pane needs close confirmation
         let tabs = controller.tabs(inPane: pane)
         for tab in tabs {
