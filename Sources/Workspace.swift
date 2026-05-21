@@ -15084,7 +15084,14 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, shouldSplitPane pane: PaneID, orientation: SplitOrientation) -> Bool {
-        if HerdrTabRegistry.shared.binding(forCmuxPaneId: pane.id) != nil {
+        // Programmatic splits driven by HerdrInboundLayoutSync.applyAddition
+        // (daemon → cmux) must NOT trigger the outbound HerdrSplitDispatcher
+        // path; otherwise cmux echoes the daemon's own split back as a
+        // pane.split RPC, the daemon creates yet another pane, broadcasts
+        // another LayoutChanged, and cmux materializes a third pane —
+        // observed user-side as 'TUI 3 panes / cmux 3 panels but the last
+        // two are stacked as tabs in one bonsplit pane'.
+        if !isProgrammaticSplit && HerdrTabRegistry.shared.binding(forCmuxPaneId: pane.id) != nil {
             pendingHerdrSplitOriginalPane = pane
         }
         return true
