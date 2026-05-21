@@ -161,6 +161,7 @@ final class HerdrEventPump: ObservableObject {
                     "tab.focused",
                     "tab.renamed",
                     "tab.reordered",
+                    "workspace.reordered",
                     "pane.exited",
                     "pane.focused",
                     "pane.agent_status_changed",
@@ -262,9 +263,18 @@ final class HerdrEventPump: ObservableObject {
             }
             HerdrInboundLayoutSync.apply(tree: payload.tree)
         case "workspace_created", "workspace.created",
-             "workspace_focused", "workspace.focused",
              "workspace_renamed", "workspace.renamed":
             invalidateWorkspaceList(socketPath: socketPath, reason: event.event)
+        case "workspace_focused", "workspace.focused":
+            invalidateWorkspaceList(socketPath: socketPath, reason: event.event)
+            // Mirror remote active-workspace into cmux's sidebar selection.
+            guard let host = hosts[socketPath] else { return }
+            if let payload = event.data,
+               let workspaceId = payload["workspace_id"] as? String {
+                HerdrWorkspaceFocusSync.shared.applyRemoteWorkspaceFocus(
+                    host: host, herdrWorkspaceId: workspaceId
+                )
+            }
         case "workspace_closed", "workspace.closed":
             invalidateWorkspaceList(socketPath: socketPath, reason: event.event)
             guard let payload = event.decodeData(HerdrWorkspaceClosedPayload.self) else {
@@ -294,18 +304,33 @@ final class HerdrEventPump: ObservableObject {
             // notification at most once per workspace.
             invalidateWorkspaceList(socketPath: socketPath, reason: event.event)
         case "tab_created", "tab.created",
-             "tab_closed", "tab.closed",
-             "tab_focused", "tab.focused",
              "tab_renamed", "tab.renamed":
-            // Tab-level mutations (TUI rename / new tab / close tab /
-            // active-tab switch) all just need the sidebar's snapshot
-            // refreshed from the daemon. cmux doesn't render the
-            // herdr tab strip directly, so a list refresh is enough.
             invalidateWorkspaceList(socketPath: socketPath, reason: event.event)
+        case "tab_closed", "tab.closed":
+            invalidateWorkspaceList(socketPath: socketPath, reason: event.event)
+            guard let host = hosts[socketPath] else { return }
+            if let payload = event.data,
+               let tabId = payload["tab_id"] as? String {
+                HerdrInboundLayoutSync.applyTabClosed(host: host, tabId: tabId)
+            }
+        case "tab_focused", "tab.focused":
+            invalidateWorkspaceList(socketPath: socketPath, reason: event.event)
+            guard let host = hosts[socketPath] else { return }
+            if let payload = event.data,
+               let tabId = payload["tab_id"] as? String {
+                HerdrWorkspaceFocusSync.shared.applyRemoteTabFocus(
+                    host: host, herdrTabId: tabId
+                )
+            }
         case "tab_reordered", "tab.reordered":
             // Tab order changed remotely (Mac B drags tabs); refresh
             // the workspace list so the sidebar reflects the new
             // ordering.
+            invalidateWorkspaceList(socketPath: socketPath, reason: event.event)
+        case "workspace_reordered", "workspace.reordered":
+            // Workspace order changed remotely (TUI drag-reorder of
+            // sidebar entries). cmux's sidebar order is sourced from
+            // workspace.list; just invalidate to pull the new order.
             invalidateWorkspaceList(socketPath: socketPath, reason: event.event)
         case "pane_focused", "pane.focused":
             // Another client moved focus, or the daemon rotated focus

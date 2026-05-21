@@ -5287,6 +5287,7 @@ class TabManager: ObservableObject {
 
         pendingSelectedTabNotificationDismissContext = notificationDismissalContext
         selectedTabId = tabId
+        HerdrWorkspaceFocusSync.shared.reportLocalSelection(cmuxWorkspaceId: tabId)
     }
 
     private func dismissFocusedPanelNotificationIfActive(

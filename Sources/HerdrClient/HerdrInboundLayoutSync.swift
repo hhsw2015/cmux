@@ -113,6 +113,26 @@ enum HerdrInboundLayoutSync {
         return nil
     }
 
+    /// Remote `tab.closed` event: kill every cmux pane the binding
+    /// for (host, tabId) owns. Same echo-guard pattern as
+    /// `applyWorkspaceClosed`.
+    static func applyTabClosed(host: HerdrHost, tabId: String) {
+        let bindings = HerdrTabRegistry.shared.allBindings.filter {
+            $0.host.id == host.id && $0.tabId == tabId
+        }
+        for binding in bindings {
+            guard let workspace = binding.workspace else { continue }
+            let pairs = binding.paneBindings.pairs
+            for (cmuxPaneId, herdrPaneId) in pairs {
+                HerdrCloseHandler.suppressNextCloseFor.insert(herdrPaneId)
+                workspace.bonsplitController.closePane(PaneID(id: cmuxPaneId))
+            }
+            cmuxDebugLog(
+                "herdr.inbound: tab \(tabId) closed remotely; tore down \(pairs.count) pane(s)"
+            )
+        }
+    }
+
     /// Remote `workspace.closed` event: kill every cmux pane the
     /// matching binding owns. Each close goes through the
     /// `suppressNextCloseFor` echo guard so we don't bounce
