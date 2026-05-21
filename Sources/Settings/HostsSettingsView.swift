@@ -9,6 +9,7 @@ struct HostsSettingsView: View {
     @ObservedObject private var registry: HostRegistry = .shared
     @ObservedObject private var healthStore: HostHealthStore = .shared
     @State private var showingAdd = false
+    @State private var showingAddLocalSession = false
     @State private var editing: HerdrHost?
     @State private var pendingForceRemove: PendingForceRemove?
 
@@ -74,14 +75,31 @@ struct HostsSettingsView: View {
         }
         HStack {
             Spacer()
-            Button {
-                showingAdd = true
+            Menu {
+                Button {
+                    showingAdd = true
+                } label: {
+                    Text(String(
+                        localized: "settings.hosts.add.remote",
+                        defaultValue: "Remote SSH host…"
+                    ))
+                }
+                Button {
+                    showingAddLocalSession = true
+                } label: {
+                    Text(String(
+                        localized: "settings.hosts.add.localSession",
+                        defaultValue: "Local herdr session…"
+                    ))
+                }
             } label: {
                 Label(
                     String(localized: "settings.hosts.add", defaultValue: "Add computer"),
                     systemImage: "plus.circle"
                 )
             }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
         }
         .padding(.top, 8)
         .sheet(isPresented: $showingAdd) {
@@ -92,6 +110,22 @@ struct HostsSettingsView: View {
                 }
                 showingAdd = false
             }, onCancel: { showingAdd = false })
+        }
+        .sheet(isPresented: $showingAddLocalSession) {
+            AddLocalSessionSheet(
+                onSave: { sessionName, displayName in
+                    let host = HerdrHost(
+                        id: UUID(),
+                        displayName: displayName.isEmpty ? sessionName : displayName,
+                        transport: .localUDS,
+                        sessionName: sessionName,
+                        addedAt: Date()
+                    )
+                    registry.add(host)
+                    showingAddLocalSession = false
+                },
+                onCancel: { showingAddLocalSession = false }
+            )
         }
         .sheet(item: $editing) { host in
             AddHostSheet(
@@ -842,3 +876,99 @@ enum AddComputerWindow {
 }
 
 private var windowCloseObserverKey: UInt8 = 0
+
+/// Minimal sheet for adding a non-pinned local-UDS host pointing at a
+/// custom herdr session name. Used when the user has run
+/// `herdr-cmux session start project-a` outside cmux and wants
+/// cmux's sidebar to attach to that session as a separate
+/// computer-row, alongside the pinned localhost (which always points
+/// at the cmux-default session).
+struct AddLocalSessionSheet: View {
+    let onSave: (_ sessionName: String, _ displayName: String) -> Void
+    let onCancel: () -> Void
+
+    @StateObject private var discovery = HerdrSessionDiscovery.shared
+    @State private var sessionName: String = ""
+    @State private var displayName: String = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(String(
+                localized: "settings.hosts.localSession.title",
+                defaultValue: "Add local herdr session"
+            ))
+            .font(.headline)
+
+            if !discovery.sessions.isEmpty {
+                Text(String(
+                    localized: "settings.hosts.localSession.discovered",
+                    defaultValue: "Detected sessions"
+                ))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                ForEach(discovery.sessions) { session in
+                    Button {
+                        sessionName = session.name
+                        if displayName.isEmpty {
+                            displayName = session.name
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: session.isRunning ? "circle.fill" : "circle")
+                                .foregroundStyle(session.isRunning ? .green : .secondary)
+                            Text(session.name)
+                            Spacer()
+                            Text(session.socket)
+                                .font(.caption.monospaced())
+                                .foregroundStyle(.tertiary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                Divider()
+            }
+
+            Form {
+                TextField(
+                    String(localized: "settings.hosts.localSession.sessionName",
+                           defaultValue: "Session name"),
+                    text: $sessionName
+                )
+                TextField(
+                    String(localized: "settings.hosts.localSession.displayName",
+                           defaultValue: "Display name (optional)"),
+                    text: $displayName
+                )
+            }
+
+            HStack {
+                Button(String(
+                    localized: "settings.hosts.localSession.refresh",
+                    defaultValue: "Refresh"
+                )) {
+                    discovery.refresh()
+                }
+                Spacer()
+                Button(String(
+                    localized: "common.cancel",
+                    defaultValue: "Cancel"
+                ), action: onCancel)
+                .keyboardShortcut(.cancelAction)
+                Button(String(
+                    localized: "common.add",
+                    defaultValue: "Add"
+                )) {
+                    let trimmed = sessionName.trimmingCharacters(in: .whitespaces)
+                    guard !trimmed.isEmpty else { return }
+                    onSave(trimmed, displayName.trimmingCharacters(in: .whitespaces))
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(sessionName.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+        .padding(20)
+        .frame(minWidth: 480)
+        .onAppear { discovery.refresh() }
+    }
+}

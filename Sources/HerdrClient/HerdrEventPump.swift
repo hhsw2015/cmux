@@ -162,6 +162,7 @@ final class HerdrEventPump: ObservableObject {
                     "tab.renamed",
                     "tab.reordered",
                     "workspace.reordered",
+                    "pane.zoomed",
                     "pane.exited",
                     "pane.focused",
                     "pane.agent_status_changed",
@@ -356,6 +357,21 @@ final class HerdrEventPump: ObservableObject {
             // the workspace list so the sidebar reflects the new
             // ordering.
             invalidateWorkspaceList(socketPath: socketPath, reason: event.event)
+        case "pane_zoomed", "pane.zoomed":
+            guard let host = hosts[socketPath] else { return }
+            if let payload = event.data,
+               let workspaceId = payload["workspace_id"] as? String,
+               let tabId = payload["tab_id"] as? String,
+               let paneId = payload["pane_id"] as? String,
+               let zoomed = payload["zoomed"] as? Bool {
+                HerdrInboundLayoutSync.applyZoom(
+                    host: host,
+                    workspaceId: workspaceId,
+                    tabId: tabId,
+                    herdrPaneId: paneId,
+                    zoomed: zoomed
+                )
+            }
         case "workspace_reordered", "workspace.reordered":
             // Workspace order changed remotely (TUI drag-reorder of
             // sidebar entries). cmux's sidebar order is sourced from

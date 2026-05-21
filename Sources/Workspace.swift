@@ -12786,7 +12786,12 @@ final class Workspace: Identifiable, ObservableObject {
 
     @discardableResult
     func clearSplitZoom() -> Bool {
-        bonsplitController.clearPaneZoom()
+        let previouslyZoomed = bonsplitController.zoomedPaneId
+        let cleared = bonsplitController.clearPaneZoom()
+        if cleared, let pane = previouslyZoomed {
+            HerdrZoomSync.shared.reportLocalZoom(cmuxPaneId: pane.id, zoomed: false)
+        }
+        return cleared
     }
 
     @discardableResult
@@ -12794,6 +12799,12 @@ final class Workspace: Identifiable, ObservableObject {
         let wasSplitZoomed = bonsplitController.isSplitZoomed
         guard let paneId = paneId(forPanelId: panelId) else { return false }
         guard bonsplitController.togglePaneZoom(inPane: paneId) else { return false }
+        // Broadcast the new zoom state to herdr so any TUI client
+        // attached to the same session mirrors the change. lastSent
+        // inside HerdrZoomSync prevents the daemon's broadcast from
+        // bouncing back through applyZoom.
+        let nowZoomed = bonsplitController.zoomedPaneId == paneId
+        HerdrZoomSync.shared.reportLocalZoom(cmuxPaneId: paneId.id, zoomed: nowZoomed)
         focusPanel(panelId)
         reconcileTerminalPortalVisibilityForCurrentRenderedLayout()
         reconcileBrowserPortalVisibilityForCurrentRenderedLayout(reason: "workspace.toggleSplitZoom")
