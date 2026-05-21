@@ -237,6 +237,14 @@ enum HerdrInboundLayoutSync {
 
             binding.paneBindings.bind(cmuxPaneId: newCmuxPaneId.id, herdrPaneId: addedHerdrId)
 
+            // Honor daemon's focus designation: if the LayoutChanged
+            // tree marks the just-added pane as focused (e.g. user
+            // split via cmux mirror with focus:true, or TUI split key
+            // focuses the new pane), let cmux focus it too. Without
+            // this, mirror-mode user splits land focus on the source
+            // pane while daemon thinks the new pane is focused —
+            // typing goes to the wrong pane.
+            let shouldFocus = (spec.focusedHerdrPaneId == addedHerdrId)
             _ = try await HerdrPanelOpener.wireHerdrBackedPanel(
                 workspace: workspace,
                 cmuxPaneId: newCmuxPaneId,
@@ -245,7 +253,7 @@ enum HerdrInboundLayoutSync {
                 herdrPaneId: addedHerdrId,
                 executablePath: exec,
                 socketPath: socketPath,
-                focus: false
+                focus: shouldFocus
             )
 
             // Re-prime divider lastSeen so the geometry change from
