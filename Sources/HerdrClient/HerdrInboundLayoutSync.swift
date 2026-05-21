@@ -314,6 +314,15 @@ enum HerdrInboundLayoutSync {
         binding: HerdrTabBinding,
         workspace: Workspace
     ) async {
+        // Idempotency guard: a previous apply() Task may have already
+        // bound this pane between its dispatch and ours (two
+        // structural events in flight, second one recomputed `added`
+        // from a still-stale binding snapshot). Without this check
+        // the second Task would split the sibling a second time and
+        // the user would see a duplicate pane.
+        if binding.paneBindings.cmuxPaneId(forHerdrId: addedHerdrId) != nil {
+            return
+        }
         guard let parent = findParentSplit(node: spec.root, target: addedHerdrId) else {
             os_log(
                 "herdr.inbound.applyAddition no_parent_split pane=%{public}@",
