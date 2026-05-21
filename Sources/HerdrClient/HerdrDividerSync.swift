@@ -40,7 +40,13 @@ enum HerdrDividerSync {
             let current = collectDividers(tree: subtree, prefix: [])
             let previous = lastSeen[binding.rootCmuxPaneId] ?? [:]
             let changedCount = current.filter { !ratiosEqual(previous[$0.key], $0.value) }.count
-            os_log("herdr.divider.sync.match dividers=%{public}d changed=%{public}d", current.count, changedCount)
+            // Dump first divider's current vs previous so we can see why
+            // changedCount might be 0 even after a user drag.
+            let first = current.first
+            let curStr = first.map { String(format: "%.4f", $0.value) } ?? "nil"
+            let prevStr = first.flatMap { previous[$0.key] }.map { String(format: "%.4f", $0) } ?? "nil"
+            os_log("herdr.divider.sync.match dividers=%{public}d changed=%{public}d cur=%{public}@ prev=%{public}@",
+                   current.count, changedCount, curStr, prevStr)
             for (path, ratio) in current where !ratiosEqual(previous[path], ratio) {
                 let host = binding.host
                 let workspaceId = binding.workspaceId
