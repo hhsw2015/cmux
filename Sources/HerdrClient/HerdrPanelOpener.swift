@@ -798,9 +798,19 @@ enum HerdrPanelOpener {
             workspaceId = resolved.workspaceId
             activeTabId = resolved.tabId
             herdrPanelOpenerTrace("workspace: reusing persisted \(workspaceId) tab=\(activeTabId)")
-        } else if !HerdrPersistence.shared.entries(forHostSession: host.sessionName).isEmpty {
-            HerdrPersistence.shared.clear(host: host)
-            herdrPanelOpenerTrace("workspace: cleared stale persisted entry for \(host.sessionName)")
+        } else if let stale = HerdrPersistence.shared
+                    .entries(forHostSession: host.sessionName).first {
+            // Only the FIRST persisted entry was stale (couldn't be
+            // resolved against current sessions). Drop just that
+            // entry — other persisted bindings for this host are
+            // still potentially valid and will be picked up by
+            // auto-reattach next launch.
+            HerdrPersistence.shared.clearOne(
+                host: host,
+                workspaceId: stale.workspaceId,
+                tabId: stale.tabId
+            )
+            herdrPanelOpenerTrace("workspace: cleared stale persisted entry \(stale.workspaceId)/\(stale.tabId) for \(host.sessionName)")
             if let first = sessions.first {
                 workspaceId = first.name
                 guard let resp = try? await HerdrOneShotRPC.request(

@@ -60,12 +60,21 @@ enum HerdrCloseHandler {
                     HerdrTabRegistry.shared.remove(key: binding.rootCmuxPaneId)
                     HerdrDividerSync.reset(bindingKey: binding.rootCmuxPaneId)
                     let bindingHost = binding.host
+                    let bindingWorkspaceId = binding.workspaceId
+                    let bindingTabId = binding.tabId
                     Task { await HerdrEventPump.shared.release(host: bindingHost) }
                     // Detach preserves the binding for next-launch reattach;
                     // explicit close drops it so we don't try to reattach
-                    // a workspace the user just killed.
+                    // a workspace the user just killed. Use clearOne so
+                    // closing one bound cmux workspace doesn't nuke the
+                    // persistence rows for the other workspaces still
+                    // attached to the same host.
                     if !effectiveDetach {
-                        HerdrPersistence.shared.clear(host: bindingHost)
+                        HerdrPersistence.shared.clearOne(
+                            host: bindingHost,
+                            workspaceId: bindingWorkspaceId,
+                            tabId: bindingTabId
+                        )
                     }
                 }
             }

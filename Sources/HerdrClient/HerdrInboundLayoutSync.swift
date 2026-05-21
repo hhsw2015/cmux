@@ -148,9 +148,11 @@ enum HerdrInboundLayoutSync {
     /// Remote `pane.zoomed` event: mirror the daemon's zoom state on
     /// the matching cmux Workspace. tmux/herdr semantics: only one
     /// pane per tab is zoomed at a time, so applying this is either
-    /// "zoom this pane" or "clear zoom". Echo guard via
-    /// HerdrZoomSync.lastSent prevents the cmux→daemon round-trip
-    /// from bouncing back.
+    /// "zoom this pane" or "clear zoom". Idempotent: if bonsplit
+    /// already matches, no-op — that's the echo-suppression mechanism
+    /// for cmux→daemon→cmux round-trips. (No explicit lastSent cache:
+    /// it absorbed corrective broadcasts when the user rapid-toggled
+    /// and left cmux desynced from the daemon.)
     static func applyZoom(
         host: HerdrHost,
         workspaceId: String,
@@ -158,11 +160,6 @@ enum HerdrInboundLayoutSync {
         herdrPaneId: String,
         zoomed: Bool
     ) {
-        if HerdrZoomSync.shared.matchesLastSent(
-            host: host, herdrPaneId: herdrPaneId, zoomed: zoomed
-        ) {
-            return
-        }
         guard let binding = HerdrTabRegistry.shared.allBindings.first(where: {
             $0.host.id == host.id
                 && $0.workspaceId == workspaceId
@@ -170,9 +167,8 @@ enum HerdrInboundLayoutSync {
         }) else { return }
         guard let workspace = binding.workspace else { return }
         let controller = workspace.bonsplitController
-        HerdrZoomSync.shared.beginApplyingRemote()
-        defer { HerdrZoomSync.shared.endApplyingRemote() }
         if !zoomed {
+            if controller.zoomedPaneId == nil { return }
             controller.clearPaneZoom()
             return
         }
