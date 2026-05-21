@@ -766,6 +766,12 @@ struct cmuxApp: App {
             localized: "menu.herdr.title",
             defaultValue: "Herdr"
         )) {
+            // First refresh happens at launch via HerdrAutoReattach;
+            // SwiftUI Commands has no onAppear hook so subsequent
+            // refreshes are user-driven via the explicit button. We
+            // can't safely refresh on every body rebuild — refresh()
+            // mutates sessions which would feed back into the
+            // rebuild loop.
             Button(String(
                 localized: "menu.herdr.refreshSessions",
                 defaultValue: "Refresh sessions"

@@ -13,12 +13,18 @@ import Foundation
 final class HerdrZoomSync {
     static let shared = HerdrZoomSync()
 
-    private struct LastSent: Equatable {
-        let paneId: String
-        let zoomed: Bool
+    private struct PaneKey: Hashable {
+        let hostId: UUID
+        let herdrPaneId: String
     }
 
-    private var lastSent: [UUID: LastSent] = [:]
+    /// Per-pane last-sent zoom flag. Earlier code keyed by host alone
+    /// which collapsed concurrent zooms across different cmux
+    /// workspaces sharing one host: a fast toggle on paneA followed
+    /// by paneB would overwrite paneA's lastSent, and the daemon's
+    /// broadcast for paneA's zoom would then mismatch and re-apply
+    /// (echo loop).
+    private var lastSent: [PaneKey: Bool] = [:]
     private(set) var applyingRemote: Bool = false
 
     private init() {}
@@ -37,9 +43,9 @@ final class HerdrZoomSync {
             return
         }
         let host = binding.host
-        let snapshot = LastSent(paneId: herdrPaneId, zoomed: zoomed)
-        if lastSent[host.id] == snapshot { return }
-        lastSent[host.id] = snapshot
+        let key = PaneKey(hostId: host.id, herdrPaneId: herdrPaneId)
+        if lastSent[key] == zoomed { return }
+        lastSent[key] = zoomed
         Task.detached { [host] in
             await HerdrOneShotRPC.send(
                 host: host,
@@ -50,7 +56,7 @@ final class HerdrZoomSync {
     }
 
     func matchesLastSent(host: HerdrHost, herdrPaneId: String, zoomed: Bool) -> Bool {
-        lastSent[host.id] == LastSent(paneId: herdrPaneId, zoomed: zoomed)
+        lastSent[PaneKey(hostId: host.id, herdrPaneId: herdrPaneId)] == zoomed
     }
 
     func beginApplyingRemote() { applyingRemote = true }

@@ -14,7 +14,7 @@ final class HerdrSessionDiscovery: ObservableObject {
     static let shared = HerdrSessionDiscovery()
 
     /// Snapshot of the latest discovery run.
-    struct Session: Equatable, Identifiable {
+    struct Session: Equatable, Identifiable, Sendable {
         let name: String
         let directory: String
         let socket: String
@@ -48,8 +48,32 @@ final class HerdrSessionDiscovery: ObservableObject {
             )
             return
         }
+        // Spawn + wait happens on a detached task so the main
+        // actor isn't pinned for the duration of the subprocess
+        // (typically <100 ms but can spike if the herdr config dir
+        // is on slow storage). The result is a Sendable value type.
+        let result = await Task.detached(priority: .utility) {
+            HerdrSessionDiscovery.spawnAndParse(executablePath: exec)
+        }.value
+
+        switch result {
+        case .success(let parsed):
+            self.sessions = parsed
+            self.lastRefresh = Date()
+            self.lastError = nil
+        case .failure(let message):
+            self.lastError = message
+        }
+    }
+
+    private enum DiscoveryResult: Sendable {
+        case success([Session])
+        case failure(String)
+    }
+
+    private static func spawnAndParse(executablePath: String) -> DiscoveryResult {
         let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: exec)
+        proc.executableURL = URL(fileURLWithPath: executablePath)
         proc.arguments = ["session", "list", "--json"]
         let outPipe = Pipe()
         let errPipe = Pipe()
@@ -58,22 +82,16 @@ final class HerdrSessionDiscovery: ObservableObject {
         do {
             try proc.run()
         } catch {
-            self.lastError = "spawn failed: \(error.localizedDescription)"
-            return
+            return .failure("spawn failed: \(error.localizedDescription)")
         }
-        let outHandle = outPipe.fileHandleForReading
-        let stdoutData: Data = await Task.detached {
-            outHandle.readDataToEndOfFile()
-        }.value
+        let stdoutData = outPipe.fileHandleForReading.readDataToEndOfFile()
         proc.waitUntilExit()
         if proc.terminationStatus != 0 {
-            self.lastError = "exit \(proc.terminationStatus)"
-            return
+            return .failure("exit \(proc.terminationStatus)")
         }
         guard let payload = try? JSONSerialization.jsonObject(with: stdoutData) as? [String: Any],
               let raw = payload["sessions"] as? [[String: Any]] else {
-            self.lastError = "unparseable output"
-            return
+            return .failure("unparseable output")
         }
         let parsed: [Session] = raw.compactMap { item in
             guard let name = item["name"] as? String,
@@ -88,9 +106,7 @@ final class HerdrSessionDiscovery: ObservableObject {
                 isRunning: status.lowercased() == "running"
             )
         }
-        self.sessions = parsed
-        self.lastRefresh = Date()
-        self.lastError = nil
+        return .success(parsed)
     }
 
     /// Resolve a discovered Session to a HerdrHost, registering it if

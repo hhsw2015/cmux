@@ -114,14 +114,26 @@ struct HostsSettingsView: View {
         .sheet(isPresented: $showingAddLocalSession) {
             AddLocalSessionSheet(
                 onSave: { sessionName, displayName in
-                    let host = HerdrHost(
-                        id: UUID(),
-                        displayName: displayName.isEmpty ? sessionName : displayName,
-                        transport: .localUDS,
-                        sessionName: sessionName,
-                        addedAt: Date()
-                    )
-                    registry.add(host)
+                    // Dedup: if a local-UDS host already targets this
+                    // session name, don't create a sibling row that
+                    // would point at the same socket.
+                    let exists = registry.hosts.contains { existing in
+                        if case .localUDS = existing.transport,
+                           existing.sessionName == sessionName {
+                            return true
+                        }
+                        return false
+                    }
+                    if !exists {
+                        let host = HerdrHost(
+                            id: UUID(),
+                            displayName: displayName.isEmpty ? sessionName : displayName,
+                            transport: .localUDS,
+                            sessionName: sessionName,
+                            addedAt: Date()
+                        )
+                        registry.add(host)
+                    }
                     showingAddLocalSession = false
                 },
                 onCancel: { showingAddLocalSession = false }
