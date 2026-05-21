@@ -1,5 +1,6 @@
 import Bonsplit
 import Foundation
+import os.log
 
 /// Applies a remote `layout.changed` event to cmux's bonsplit tree.
 /// Mirror image of `HerdrDividerSync` (which sends outbound). Together
@@ -141,17 +142,28 @@ enum HerdrInboundLayoutSync {
     ) {
         let cmuxTree = workspace.bonsplitController.treeSnapshot()
         guard let cmuxSubtree = findCmuxSubtreeRoot(tree: cmuxTree, binding: binding) else {
+            os_log("herdr.inbound.applyDividers no_subtree_match bound=%{public}d treeLeaves=%{public}d",
+                   binding.paneBindings.count,
+                   collectLeafCmuxIds(tree: cmuxTree).count)
             return
         }
         let newDividers = collectDividers(spec.root, prefix: [])
+        var applied = 0
+        var missed = 0
         for (path, ratio) in newDividers {
-            guard let splitId = findSplitId(in: cmuxSubtree, atPath: path) else { continue }
+            guard let splitId = findSplitId(in: cmuxSubtree, atPath: path) else {
+                missed += 1
+                continue
+            }
             workspace.bonsplitController.setDividerPosition(
                 CGFloat(ratio),
                 forSplit: splitId,
                 fromExternal: true
             )
+            applied += 1
         }
+        os_log("herdr.inbound.applyDividers applied=%{public}d missed=%{public}d dividers=%{public}d",
+               applied, missed, newDividers.count)
         HerdrDividerSync.setLastSeen(bindingKey: binding.rootCmuxPaneId, value: newDividers)
     }
 
