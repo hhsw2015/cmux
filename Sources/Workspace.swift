@@ -10838,6 +10838,29 @@ final class Workspace: Identifiable, ObservableObject {
         }
 
         guard let paneId = sourcePaneId else { return nil }
+
+        // Mirror mode: if the source pane is herdr-backed, do not split
+        // locally. Send pane.split RPC to the daemon; daemon broadcasts
+        // LayoutChanged; HerdrInboundLayoutSync.applyAddition materializes
+        // the new cmux pane. Single creation path = no race.
+        if let binding = HerdrTabRegistry.shared.binding(forCmuxPaneId: paneId.id),
+           let originalHerdrPaneId = binding.paneBindings.herdrPaneId(forCmuxId: paneId.id) {
+            let host = binding.host
+            let direction = orientation == .horizontal ? "right" : "down"
+            Task.detached { [host] in
+                await HerdrOneShotRPC.send(
+                    host: host,
+                    method: "pane.split",
+                    params: [
+                        "target_pane_id": originalHerdrPaneId,
+                        "direction": direction,
+                        "focus": focus,
+                    ]
+                )
+            }
+            return nil
+        }
+
         var inheritedConfig = inheritedTerminalConfig(preferredPanelId: panelId, inPane: paneId)
         let requestedInitialCommand = initialCommand?.trimmingCharacters(in: .whitespacesAndNewlines)
         let explicitInitialCommand = (requestedInitialCommand?.isEmpty == false) ? requestedInitialCommand : nil
