@@ -739,10 +739,15 @@ enum HerdrPanelOpener {
                     defaultValue: "Dismiss"
                 ))
                 if alert.runModal() == .alertFirstButtonReturn {
+                    // Retry path runs from inside openLocalhostWorkspaceImpl
+                    // which doesn't carry the original reuseCmuxWorkspaceId
+                    // hint. Falling back to fresh-attach is acceptable here:
+                    // the reuse codepath collapsed the stale tree before we
+                    // reached the unreachable alert, so nothing to adopt.
                     openWorkspace(
                         host: host,
                         requestedWorkspaceId: requestedWorkspaceId,
-                        reuseCmuxWorkspaceId: reuseCmuxWorkspaceId
+                        reuseCmuxWorkspaceId: nil
                     )
                 }
             }
