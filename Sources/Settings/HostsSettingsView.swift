@@ -887,7 +887,7 @@ struct AddLocalSessionSheet: View {
     let onSave: (_ sessionName: String, _ displayName: String) -> Void
     let onCancel: () -> Void
 
-    @StateObject private var discovery = HerdrSessionDiscovery.shared
+    @ObservedObject private var discovery = HerdrSessionDiscovery.shared
     @State private var sessionName: String = ""
     @State private var displayName: String = ""
 
