@@ -4,6 +4,7 @@ import Foundation
 enum SidebarWorkspaceDetailDefaults {
     static let showBranchDirectoryKey = "sidebarShowBranchDirectory"
     static let showPullRequestsKey = "sidebarShowPullRequest"
+    static let watchGitStatusKey = "sidebarWatchGitStatus"
     static let showSSHKey = "sidebarShowSSH"
     static let showPortsKey = "sidebarShowPorts"
     static let showLogKey = "sidebarShowLog"
@@ -12,6 +13,7 @@ enum SidebarWorkspaceDetailDefaults {
 
     static let showBranchDirectory = true
     static let showPullRequests = true
+    static let watchGitStatus = true
     static let showSSH = true
     static let showPorts = true
     static let showLog = true
@@ -29,6 +31,10 @@ extension SidebarWorkspaceDetailDefaults {
 
     static func showPullRequestsValue(defaults: UserDefaults) -> Bool {
         boolValue(defaults: defaults, key: showPullRequestsKey, defaultValue: showPullRequests)
+    }
+
+    static func watchGitStatusValue(defaults: UserDefaults) -> Bool {
+        boolValue(defaults: defaults, key: watchGitStatusKey, defaultValue: watchGitStatus)
     }
 }
 
@@ -79,6 +85,7 @@ extension CmuxSettingsFileStore {
         "sidebar.showNotificationMessage",
         "sidebar.showBranchDirectory",
         "sidebar.showPullRequests",
+        "sidebar.watchGitStatus",
         "sidebar.makePullRequestsClickable",
         "sidebar.openPullRequestLinksInCmuxBrowser",
         "sidebar.openPortLinksInCmuxBrowser",
