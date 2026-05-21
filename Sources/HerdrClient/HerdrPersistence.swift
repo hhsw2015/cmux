@@ -16,10 +16,19 @@ final class HerdrPersistence {
     struct Entry: Codable, Equatable {
         let workspaceId: String
         let tabId: String
+        /// cmux Workspace UUID this herdr workspace was bound to.
+        /// Persisted so that on next launch HerdrAutoReattach can reuse
+        /// the existing cmux Workspace (now restored from cmux's normal
+        /// state but no longer bound to herdr) instead of creating a
+        /// fresh sibling — which left the user with two visually
+        /// identical sidebar entries every quit/reopen cycle. Optional
+        /// for back-compat with pre-cmux10 entries.
+        let cmuxWorkspaceId: UUID?
 
         enum CodingKeys: String, CodingKey {
             case workspaceId = "workspace_id"
             case tabId = "tab_id"
+            case cmuxWorkspaceId = "cmux_workspace_id"
         }
     }
 
@@ -48,8 +57,12 @@ final class HerdrPersistence {
         cache[session]
     }
 
-    func record(host: HerdrHost, workspaceId: String, tabId: String) {
-        cache[host.sessionName] = Entry(workspaceId: workspaceId, tabId: tabId)
+    func record(host: HerdrHost, workspaceId: String, tabId: String, cmuxWorkspaceId: UUID?) {
+        cache[host.sessionName] = Entry(
+            workspaceId: workspaceId,
+            tabId: tabId,
+            cmuxWorkspaceId: cmuxWorkspaceId
+        )
         saveToDisk()
     }
 

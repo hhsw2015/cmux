@@ -19,8 +19,8 @@ enum HerdrAutoReattach {
             }
 
             for host in HostRegistry.shared.hosts {
-                guard HerdrPersistence.shared
-                    .entry(forHostSession: host.sessionName) != nil
+                guard let persisted = HerdrPersistence.shared
+                    .entry(forHostSession: host.sessionName)
                 else { continue }
                 // Don't passively respawn the daemon just because cmux
                 // remembered a workspace from a previous session. If
@@ -43,8 +43,15 @@ enum HerdrAutoReattach {
                         continue
                     }
                 }
-                cmuxDebugLog("herdr.autoReattach: opening \(host.displayName)")
-                HerdrPanelOpener.openWorkspace(host: host)
+                if let cmuxId = persisted.cmuxWorkspaceId {
+                    cmuxDebugLog(
+                        "herdr.autoReattach: rebinding existing cmux workspace \(cmuxId) for \(host.displayName)"
+                    )
+                    HerdrPanelOpener.openWorkspace(host: host, reuseCmuxWorkspaceId: cmuxId)
+                } else {
+                    cmuxDebugLog("herdr.autoReattach: opening \(host.displayName)")
+                    HerdrPanelOpener.openWorkspace(host: host)
+                }
                 // Yield between hosts so each open's pane.attach +
                 // Ghostty surface mount finishes before the next one
                 // starts splitting the focused pane.

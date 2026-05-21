@@ -264,17 +264,35 @@ enum HerdrPanelOpener {
     /// for any `HerdrHost` — local UDS or SSH stdio — because the
     /// transport factory + opener impl are transport-agnostic.
     static func openWorkspace(host: HerdrHost) {
-        openWorkspace(host: host, requestedWorkspaceId: nil)
+        openWorkspace(host: host, requestedWorkspaceId: nil, reuseCmuxWorkspaceId: nil)
     }
 
     /// Sidebar-driven entry point: open a specific workspace by id.
     /// Skips the auto-select / persisted-fallback / create-if-empty
     /// logic so the user gets exactly the workspace they clicked.
     static func openWorkspace(host: HerdrHost, workspaceId: String) {
-        openWorkspace(host: host, requestedWorkspaceId: workspaceId)
+        openWorkspace(host: host, requestedWorkspaceId: workspaceId, reuseCmuxWorkspaceId: nil)
     }
 
-    private static func openWorkspace(host: HerdrHost, requestedWorkspaceId: String?) {
+    /// Auto-reattach entry point: rebind an existing cmux Workspace
+    /// (one cmux restored from its own state but no longer bound to
+    /// herdr) to the daemon. Without this path every quit/reopen
+    /// cycle leaves the user with a duplicate sidebar entry — the
+    /// stale local stubs cmux restored, plus a fresh herdr-bound
+    /// workspace this opener creates.
+    static func openWorkspace(host: HerdrHost, reuseCmuxWorkspaceId: UUID) {
+        openWorkspace(
+            host: host,
+            requestedWorkspaceId: nil,
+            reuseCmuxWorkspaceId: reuseCmuxWorkspaceId
+        )
+    }
+
+    private static func openWorkspace(
+        host: HerdrHost,
+        requestedWorkspaceId: String?,
+        reuseCmuxWorkspaceId: UUID?
+    ) {
         guard let appDelegate = AppDelegate.shared else {
             herdrPanelOpenerTrace("workspace: no AppDelegate.shared")
             return
@@ -309,24 +327,40 @@ enum HerdrPanelOpener {
             herdrPanelOpenerTrace("workspace: no tabManager")
             return
         }
-        // Always create a fresh cmux workspace tab for a persistent
-        // workspace open. Reusing the focused tab silently rebound the
-        // user's existing workspace into a herdr session and
-        // (erroneously) propagated the daemon's default label back into
-        // its customTitle, overwriting the user-given name.
-        // Workspace.init unconditionally creates an initial local
-        // TerminalPanel; wireHerdrBackedPanel then adds a herdr-backed
-        // panel in the same pane, leaving two tabs side-by-side. After
-        // we wire the herdr panel below, every TerminalPanel that
-        // existed on entry must be closed so the user sees a single
-        // herdr-backed tab matching daemon-side leaf count. eagerLoad
-        // = false skips the background Ghostty surface boot since we'd
-        // tear it down 200ms later anyway.
-        let workspace = tabManager.addWorkspace(
-            title: nil,
-            select: true,
-            eagerLoadTerminal: false
-        )
+        // Reuse path: auto-reattach found a previously-bound cmux
+        // Workspace in this session's tabs. Adopt it instead of
+        // creating a sibling — the stale local panels will be torn
+        // down by preExistingPanelIds cleanup once the herdr panel
+        // is wired in.
+        let reusedWorkspace: Workspace? = {
+            guard let target = reuseCmuxWorkspaceId else { return nil }
+            return tabManager.tabs.first(where: { $0.id == target })
+        }()
+        let workspace: Workspace = {
+            if let existing = reusedWorkspace {
+                tabManager.selectedTabId = existing.id
+                return existing
+            }
+            // Always create a fresh cmux workspace tab for a persistent
+            // workspace open. Reusing the focused tab silently rebound
+            // the user's existing workspace into a herdr session and
+            // (erroneously) propagated the daemon's default label back
+            // into its customTitle, overwriting the user-given name.
+            // Workspace.init unconditionally creates an initial local
+            // TerminalPanel; wireHerdrBackedPanel then adds a
+            // herdr-backed panel in the same pane, leaving two tabs
+            // side-by-side. After we wire the herdr panel below, every
+            // TerminalPanel that existed on entry must be closed so the
+            // user sees a single herdr-backed tab matching daemon-side
+            // leaf count. eagerLoad = false skips the background
+            // Ghostty surface boot since we'd tear it down 200ms later
+            // anyway.
+            return tabManager.addWorkspace(
+                title: nil,
+                select: true,
+                eagerLoadTerminal: false
+            )
+        }()
         let preExistingPanelIds = Set(workspace.panels.keys)
         guard let focusedPane = workspace.bonsplitController.focusedPaneId else {
             herdrPanelOpenerTrace("workspace: no focused pane in newly-created workspace \(workspace.id)")
@@ -860,7 +894,12 @@ enum HerdrPanelOpener {
             treeSnapshot: workspace.bonsplitController.treeSnapshot()
         )
         await HerdrEventPump.shared.acquire(host: host)
-        HerdrPersistence.shared.record(host: host, workspaceId: workspaceId, tabId: activeTabId)
+        HerdrPersistence.shared.record(
+            host: host,
+            workspaceId: workspaceId,
+            tabId: activeTabId,
+            cmuxWorkspaceId: workspace.id
+        )
 
         // Close the local TerminalPanel(s) that Workspace.init created
         // before the herdr binding existed. wireHerdrBackedPanel just
