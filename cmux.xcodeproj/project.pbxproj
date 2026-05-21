@@ -348,7 +348,7 @@
 		C420Z000C420Z000C42WS102 /* HerdrWorkspaceSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42WS101 /* HerdrWorkspaceSync.swift */; };
 		C420Z000C420Z000C42FS102 /* HerdrFocusSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42FS101 /* HerdrFocusSync.swift */; };
 		C420Z000C420Z000C42WF102 /* HerdrWorkspaceFocusSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42WF101 /* HerdrWorkspaceFocusSync.swift */; };
-		C420Z000C420Z000C42SD102 /* HerdrSessionDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42SD101 /* HerdrSessionDiscovery.swift */; };
+		C420Z000C420Z000C42SDV02 /* HerdrSessionDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42SDV01 /* HerdrSessionDiscovery.swift */; };
 		C420Z000C420Z000C42ZS102 /* HerdrZoomSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42ZS101 /* HerdrZoomSync.swift */; };
 		C420Z000C420Z000C42HS102 /* HostsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42HS101 /* HostsSettingsView.swift */; };
 		C420Z000C420Z000C42TR102 /* HerdrTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42TR101 /* HerdrTransport.swift */; };
@@ -993,7 +993,7 @@
 		C420Z000C420Z000C42WS101 /* HerdrWorkspaceSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrWorkspaceSync.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42FS101 /* HerdrFocusSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrFocusSync.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42WF101 /* HerdrWorkspaceFocusSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrWorkspaceFocusSync.swift; sourceTree = "<group>"; };
-		C420Z000C420Z000C42SD101 /* HerdrSessionDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrSessionDiscovery.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42SDV01 /* HerdrSessionDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrSessionDiscovery.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42ZS101 /* HerdrZoomSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrZoomSync.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42SC101 /* HerdrSurfaceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrSurfaceController.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42PR101 /* HerdrPanelRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrPanelRegistry.swift; sourceTree = "<group>"; };
@@ -1553,7 +1553,7 @@
 				C420Z000C420Z000C42WS101 /* HerdrWorkspaceSync.swift */,
 				C420Z000C420Z000C42FS101 /* HerdrFocusSync.swift */,
 				C420Z000C420Z000C42WF101 /* HerdrWorkspaceFocusSync.swift */,
-				C420Z000C420Z000C42SD101 /* HerdrSessionDiscovery.swift */,
+				C420Z000C420Z000C42SDV01 /* HerdrSessionDiscovery.swift */,
 				C420Z000C420Z000C42ZS101 /* HerdrZoomSync.swift */,
 				C420Z000C420Z000C42SC101 /* HerdrSurfaceController.swift */,
 				C420Z000C420Z000C42PR101 /* HerdrPanelRegistry.swift */,
@@ -2400,7 +2400,7 @@
 				C420Z000C420Z000C42WS102 /* HerdrWorkspaceSync.swift in Sources */,
 				C420Z000C420Z000C42FS102 /* HerdrFocusSync.swift in Sources */,
 				C420Z000C420Z000C42WF102 /* HerdrWorkspaceFocusSync.swift in Sources */,
-				C420Z000C420Z000C42SD102 /* HerdrSessionDiscovery.swift in Sources */,
+				C420Z000C420Z000C42SDV02 /* HerdrSessionDiscovery.swift in Sources */,
 				C420Z000C420Z000C42ZS102 /* HerdrZoomSync.swift in Sources */,
 				C420Z000C420Z000C42SC102 /* HerdrSurfaceController.swift in Sources */,
 				C420Z000C420Z000C42PR102 /* HerdrPanelRegistry.swift in Sources */,
