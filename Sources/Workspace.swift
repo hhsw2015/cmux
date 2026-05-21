@@ -15085,34 +15085,43 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, shouldSplitPane pane: PaneID, orientation: SplitOrientation) -> Bool {
-        // Programmatic splits driven by HerdrInboundLayoutSync.applyAddition
-        // (daemon → cmux) must NOT trigger the outbound HerdrSplitDispatcher
-        // path; otherwise cmux echoes the daemon's own split back as a
-        // pane.split RPC, the daemon creates yet another pane, broadcasts
-        // another LayoutChanged, and cmux materializes a third pane —
-        // observed user-side as 'TUI 3 panes / cmux 3 panels but the last
-        // two are stacked as tabs in one bonsplit pane'.
-        if !isProgrammaticSplit && HerdrTabRegistry.shared.binding(forCmuxPaneId: pane.id) != nil {
-            pendingHerdrSplitOriginalPane = pane
+        // Programmatic (inbound from herdr LayoutChanged) → allow.
+        if isProgrammaticSplit {
+            return true
+        }
+        // Mirror-mode for herdr-backed panes: veto the local bonsplit
+        // split, fire pane.split RPC instead, and let HerdrInboundLayoutSync
+        // materialize the new cmux pane when daemon emits LayoutChanged.
+        // Without this, bonsplit creates an empty pane that the dispatcher
+        // then has to reconcile with whatever the daemon assigns — the
+        // race that produced 'cmux pane already created vs herdr pane id
+        // not yet known' bugs.
+        if let binding = HerdrTabRegistry.shared.binding(forCmuxPaneId: pane.id),
+           let originalHerdrPaneId = binding.paneBindings.herdrPaneId(forCmuxId: pane.id) {
+            let host = binding.host
+            let direction = orientation == .horizontal ? "right" : "down"
+            Task.detached { [host] in
+                await HerdrOneShotRPC.send(
+                    host: host,
+                    method: "pane.split",
+                    params: [
+                        "target_pane_id": originalHerdrPaneId,
+                        "direction": direction,
+                        "focus": true,
+                    ]
+                )
+            }
+            return false
         }
         return true
     }
 
     func splitTabBar(_ controller: BonsplitController, didSplitPane originalPane: PaneID, newPane: PaneID, orientation: SplitOrientation) {
-        if let pending = pendingHerdrSplitOriginalPane, pending == originalPane {
-            pendingHerdrSplitOriginalPane = nil
-            cmuxDebugLog(
-                "split.didSplit.herdr original=\(originalPane.id.uuidString.prefix(5)) new=\(newPane.id.uuidString.prefix(5)) orientation=\(orientation)"
-            )
-            scheduleTerminalGeometryReconcile()
-            HerdrSplitDispatcher.dispatch(
-                workspace: self,
-                originalPane: originalPane,
-                newPane: newPane,
-                orientation: orientation
-            )
-            return
-        }
+        // Herdr-backed splits no longer take this path — shouldSplitPane
+        // vetoes them and fires pane.split RPC. The new pane is created
+        // locally only when daemon emits LayoutChanged (inbound applyAddition).
+        // Programmatic splits (from inbound apply) still flow through.
+        pendingHerdrSplitOriginalPane = nil
 #if DEBUG
         let panelKindForTab: (TabID) -> String = { tabId in
             guard let panelId = self.panelIdFromSurfaceId(tabId),
