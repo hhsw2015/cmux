@@ -22,6 +22,27 @@ enum HerdrAutoReattach {
                 guard HerdrPersistence.shared
                     .entry(forHostSession: host.sessionName) != nil
                 else { continue }
+                // Don't passively respawn the daemon just because cmux
+                // remembered a workspace from a previous session. If
+                // the user shut the daemon down (`herdr session stop`
+                // / `delete`) AutoReattach should be a no-op until
+                // they explicitly open a workspace via the menu, not
+                // silently bring the daemon back up + leak a
+                // placeholder tab. SSH hosts skip the stat — their
+                // socket lives on the remote filesystem.
+                if case .localUDS = host.transport {
+                    let socketPath = host.localApiSocketPath
+                    if !FileManager.default.fileExists(atPath: socketPath) {
+                        cmuxDebugLog(
+                            "herdr.autoReattach: skipping \(host.displayName) — no daemon socket at \(socketPath)"
+                        )
+                        // Persistence pointed at a daemon that's gone.
+                        // Drop the stale entry so future launches
+                        // don't keep retrying.
+                        HerdrPersistence.shared.clear(host: host)
+                        continue
+                    }
+                }
                 cmuxDebugLog("herdr.autoReattach: opening \(host.displayName)")
                 HerdrPanelOpener.openWorkspace(host: host)
                 // Yield between hosts so each open's pane.attach +
