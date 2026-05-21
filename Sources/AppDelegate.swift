@@ -1669,10 +1669,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private func teardownAllWorkspacePanelsBeforeAppTeardown() {
         var seenManagers = Set<ObjectIdentifier>()
         let managers = mainWindowContexts.values.map(\.tabManager) + [tabManager].compactMap { $0 }
+
+        // Mark every herdr-backed workspace as detaching so the
+        // teardown's per-panel handlePanelClosed calls treat the
+        // shutdown as tmux-style detach instead of cascading
+        // pane.close RPCs that would destroy daemon-side workspaces
+        // (and their custom_name) on every cmux quit.
+        let herdrWorkspaceIds: Set<UUID> = Set(
+            HerdrTabRegistry.shared.allBindings.compactMap { $0.workspace?.id }
+        )
+        HerdrCloseHandler.detachingWorkspaceIds.formUnion(herdrWorkspaceIds)
+
         for manager in managers {
             guard seenManagers.insert(ObjectIdentifier(manager)).inserted else { continue }
             manager.tabs.forEach { $0.teardownAllPanels() }
         }
+
+        HerdrCloseHandler.detachingWorkspaceIds.subtract(herdrWorkspaceIds)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
