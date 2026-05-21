@@ -14,6 +14,15 @@ import os.log
 /// the user can re-open the workspace to resync.
 @MainActor
 enum HerdrInboundLayoutSync {
+    /// Pending ratio-only specs awaiting coalesced apply (keyed by
+    /// binding root id). TUI mouse drag fires LayoutChanged at 60 Hz
+    /// during a divider drag; applying each one synchronously sends
+    /// 60 PTY resize signals per second, which the user observes as
+    /// choppy redraws and momentary blank cells around the cursor.
+    /// Coalesce ratio-only events to one apply per runloop turn.
+    private static var pendingDividerSpec: [UUID: HerdrLayoutSpec] = [:]
+    private static var dividerApplyScheduled: Set<UUID> = []
+
     static func apply(tree: HerdrLayoutTree) {
         guard let binding = HerdrTabRegistry.shared.allBindings.first(where: {
             $0.workspaceId == tree.workspaceId && $0.tabId == tree.tabId
@@ -29,7 +38,7 @@ enum HerdrInboundLayoutSync {
         let oldPaneIds = Set(binding.paneBindings.pairs.map { $0.herdr })
 
         if newPaneIds == oldPaneIds {
-            applyDividers(spec: spec, binding: binding, workspace: workspace)
+            scheduleDividerApply(spec: spec, binding: binding, workspace: workspace)
             return
         }
 
@@ -154,6 +163,36 @@ enum HerdrInboundLayoutSync {
     }
 
     // MARK: - Divider ratio sync
+
+    /// Coalesce ratio-only LayoutChanged events: stash latest spec
+    /// and run a single applyDividers per runloop turn. Drops stale
+    /// intermediate frames so 60 Hz drag traffic resolves to one
+    /// apply per macOS frame, which is what NSSplitView consumes.
+    private static func scheduleDividerApply(
+        spec: HerdrLayoutSpec,
+        binding: HerdrTabBinding,
+        workspace: Workspace
+    ) {
+        let key = binding.rootCmuxPaneId
+        pendingDividerSpec[key] = spec
+        if dividerApplyScheduled.contains(key) {
+            return
+        }
+        dividerApplyScheduled.insert(key)
+        DispatchQueue.main.async {
+            dividerApplyScheduled.remove(key)
+            guard let latest = pendingDividerSpec.removeValue(forKey: key) else {
+                return
+            }
+            // Re-resolve binding/workspace at apply time — they may
+            // have torn down between schedule and dispatch.
+            guard let liveBinding = HerdrTabRegistry.shared.binding(forKey: key),
+                  let liveWorkspace = liveBinding.workspace else {
+                return
+            }
+            applyDividers(spec: latest, binding: liveBinding, workspace: liveWorkspace)
+        }
+    }
 
     private static func applyDividers(
         spec: HerdrLayoutSpec,

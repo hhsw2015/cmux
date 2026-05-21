@@ -15537,6 +15537,16 @@ extension Workspace: BonsplitDelegate {
         _ = moveBonsplitTab(tab.id, toMoveDestination: destinationId)
     }
 
+    func splitTabBar(_ controller: BonsplitController, shouldNotifyDuringDrag: Bool) -> Bool {
+        // herdr-backed workspaces need ratio updates streamed during
+        // the drag (50ms debounced inside bonsplit) so cmux can fire
+        // pane.set_split_ratio RPCs continuously and the TUI mirrors
+        // the divider as it moves. Without this, didChangeGeometry
+        // only fires when the bonsplit tree mutates structurally —
+        // user has to switch workspaces and back to force a refresh.
+        return HerdrTabRegistry.shared.count > 0
+    }
+
     func splitTabBar(_ controller: BonsplitController, didChangeGeometry snapshot: LayoutSnapshot) {
         os_log("herdr.bonsplit.didChangeGeometry herdrBindings=%{public}d detaching=%{public}d",
                HerdrTabRegistry.shared.count,
