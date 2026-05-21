@@ -156,11 +156,14 @@ final class HerdrEventPump: ObservableObject {
                     "workspace.closed",
                     "workspace.focused",
                     "workspace.renamed",
+                    "tab.created",
+                    "tab.closed",
+                    "tab.focused",
                     "tab.renamed",
+                    "tab.reordered",
                     "pane.exited",
                     "pane.focused",
                     "pane.agent_status_changed",
-                    "tab.reordered",
                 ])
                 clients[socketPath] = client
                 setConnectionState(hostId: host.id, host: host, .connected)
@@ -290,10 +293,14 @@ final class HerdrEventPump: ObservableObject {
             // re-detect blocked transitions and post the
             // notification at most once per workspace.
             invalidateWorkspaceList(socketPath: socketPath, reason: event.event)
-        case "tab_renamed", "tab.renamed":
-            // Mirror herdr-side window rename into the sidebar so the
-            // user sees the new label without waiting for the next
-            // poll.
+        case "tab_created", "tab.created",
+             "tab_closed", "tab.closed",
+             "tab_focused", "tab.focused",
+             "tab_renamed", "tab.renamed":
+            // Tab-level mutations (TUI rename / new tab / close tab /
+            // active-tab switch) all just need the sidebar's snapshot
+            // refreshed from the daemon. cmux doesn't render the
+            // herdr tab strip directly, so a list refresh is enough.
             invalidateWorkspaceList(socketPath: socketPath, reason: event.event)
         case "tab_reordered", "tab.reordered":
             // Tab order changed remotely (Mac B drags tabs); refresh
