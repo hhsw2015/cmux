@@ -50,6 +50,13 @@ final class HerdrEventPump: ObservableObject {
     /// transport on reconnect without holding the original `HerdrHost`.
     private var hosts: [String: HerdrHost] = [:]
 
+    /// Per-host flag tracking whether we've ever successfully
+    /// connected to the daemon. Used to differentiate "daemon hasn't
+    /// started yet" (initial cmux launch race) from "daemon was
+    /// running but stopped" (`herdr session stop`). Only the latter
+    /// should tear down bindings; the former should keep retrying.
+    private var everConnectedByHost: [UUID: Bool] = [:]
+
     /// Per-host pending offline-notification timer. Starts when the
     /// host enters retrying; cancelled when it reconnects or the
     /// notification fires.
@@ -169,6 +176,7 @@ final class HerdrEventPump: ObservableObject {
                 ])
                 clients[socketPath] = client
                 setConnectionState(hostId: host.id, host: host, .connected)
+                everConnectedByHost[host.id] = true
                 os_log("herdr.pump.connected socket=%{public}@ attempt=%{public}d", socketPath, attempt + 1)
                 cmuxDebugLog("herdr.pump: connected on \(socketPath) (attempt=\(attempt + 1))")
 
@@ -223,11 +231,16 @@ final class HerdrEventPump: ObservableObject {
             // instead of sitting unresponsive — same semantics as tmux
             // where killing the server detaches every client. SSH hosts
             // can't stat the remote socket, so they keep retrying.
+            //
+            // Only fires AFTER we successfully connected at least once
+            // so the launch race (cmux up before daemon spawned)
+            // doesn't get misread as a server stop and wipe bindings.
             if let host = hosts[socketPath],
                case .localUDS = host.transport,
+               everConnectedByHost[host.id] == true,
                !FileManager.default.fileExists(atPath: socketPath) {
                 cmuxDebugLog(
-                    "herdr.pump: localUDS socket \(socketPath) gone; tearing down host \(host.displayName)"
+                    "herdr.pump: localUDS socket \(socketPath) gone after prior connection; tearing down host \(host.displayName)"
                 )
                 tearDownHost(host: host)
                 return
@@ -259,6 +272,7 @@ final class HerdrEventPump: ObservableObject {
         connectionStateByHost.removeValue(forKey: host.id)
         offlineNotificationTasks[host.id]?.cancel()
         offlineNotificationTasks.removeValue(forKey: host.id)
+        everConnectedByHost.removeValue(forKey: host.id)
     }
 
     private func primeAllBindings(socketPath: String) {
