@@ -71,7 +71,7 @@ final class HerdrSessionDiscovery: ObservableObject {
         case failure(String)
     }
 
-    private static func spawnAndParse(executablePath: String) -> DiscoveryResult {
+    nonisolated private static func spawnAndParse(executablePath: String) -> DiscoveryResult {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: executablePath)
         proc.arguments = ["session", "list", "--json"]
