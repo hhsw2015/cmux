@@ -250,6 +250,15 @@ final class HerdrEventPump: ObservableObject {
             HerdrInboundLayoutSync.applyWorkspaceClosed(workspaceId: binding.workspaceId)
         }
         HerdrPersistence.shared.clear(host: host)
+        // Drop connection state so the sidebar's "reconnecting"
+        // chrome doesn't linger after the daemon is genuinely gone.
+        // applyWorkspaceClosed normally cascades into release() once
+        // the binding count for this host hits 0, which removes the
+        // host entry; clear the published state too in case a UI
+        // observer picked it up before then.
+        connectionStateByHost.removeValue(forKey: host.id)
+        offlineNotificationTasks[host.id]?.cancel()
+        offlineNotificationTasks.removeValue(forKey: host.id)
     }
 
     private func primeAllBindings(socketPath: String) {
