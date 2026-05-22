@@ -12,6 +12,16 @@ import XCTest
 /// then drives a HerdrPersistentApiClient against a localUDS host
 /// pointing at that socket.
 final class HerdrPersistentApiClientTests: XCTestCase {
+    @MainActor
+    override func setUp() async throws {
+        try await super.setUp()
+        // The registry is a process-wide singleton. Clear it before
+        // every test so state from a previous case (e.g. a cached
+        // client whose mock daemon already exited) can't poison the
+        // current one (review MED-10 of 3c071dac).
+        HerdrPersistentClientRegistry.shared.forgetAll()
+    }
+
 
     // MARK: - mock daemon
 
@@ -112,16 +122,20 @@ final class HerdrPersistentApiClientTests: XCTestCase {
                     let lineRange = buf.startIndex..<nlIndex
                     let line = buf.subdata(in: lineRange)
                     buf.removeSubrange(buf.startIndex...nlIndex)
-                    if let response = makeResponse(for: line) {
-                        var out = response
-                        out.append(0x0A)
-                        out.withUnsafeBytes { ptr in
-                            _ = write(fd, ptr.baseAddress, out.count)
-                        }
-                        if closeAfterFirstResponse {
-                            close(fd)
-                            return
-                        }
+                    // Always write SOMETHING per inbound line so a
+                    // malformed payload doesn't leave the cmux side
+                    // hanging forever on a continuation that never
+                    // resumes (review HIGH-9 of 3c071dac).
+                    let response = makeResponse(for: line)
+                        ?? makeFallbackError(for: line)
+                    var out = response
+                    out.append(0x0A)
+                    out.withUnsafeBytes { ptr in
+                        _ = write(fd, ptr.baseAddress, out.count)
+                    }
+                    if closeAfterFirstResponse {
+                        close(fd)
+                        return
                     }
                 }
             }
@@ -138,6 +152,21 @@ final class HerdrPersistentApiClientTests: XCTestCase {
                 "result": ["type": "echo", "method": method],
             ]
             return try? JSONSerialization.data(withJSONObject: body)
+        }
+
+        /// Visible-error response for malformed payloads. Matches the
+        /// real daemon's `invalid_request` error envelope so cmux
+        /// surfaces it as a HerdrApiError instead of timing out.
+        private func makeFallbackError(for line: Data) -> Data {
+            let id = (try? JSONSerialization.jsonObject(with: line) as? [String: Any])?["id"] as? String ?? ""
+            let body: [String: Any] = [
+                "id": id,
+                "error": [
+                    "code": "invalid_request",
+                    "message": "mock daemon could not parse payload",
+                ],
+            ]
+            return (try? JSONSerialization.data(withJSONObject: body)) ?? Data()
         }
     }
 

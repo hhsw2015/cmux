@@ -16,7 +16,14 @@ actor HerdrPersistentApiClient {
     let host: HerdrHost
 
     private var client: HerdrApiClient?
-    private var connectInFlight: Task<HerdrApiClient, Error>?
+    /// Awaiters waiting on the in-flight connect attempt. While
+    /// `connecting` is true any new ensureConnected call appends here
+    /// instead of spawning its own connect Task. Replaces the prior
+    /// `connectInFlight: Task` design so a failed connect can't
+    /// "leak" past A's catch and let a parallel D-caller spin up a
+    /// second ssh subprocess (review HIGH-4 of 3c071dac).
+    private var awaiters: [CheckedContinuation<HerdrApiClient, Error>] = []
+    private var connecting = false
 
     init(host: HerdrHost) {
         self.host = host
@@ -55,17 +62,19 @@ actor HerdrPersistentApiClient {
     }
 
     /// Drop the cached connection. Future requests reconnect.
-    /// Called from the registry when a host is removed. Awaits any
-    /// in-flight connect Task so we don't leak the ssh subprocess
-    /// it spawned (see review HIGH-5 of 3c071dac).
+    /// Called from the registry when a host is removed. Drains every
+    /// awaiter with `disconnected` so no one is left holding a
+    /// continuation, and closes the cached client.
     func close() async {
-        if let inFlight = connectInFlight {
-            connectInFlight = nil
-            inFlight.cancel()
-            // Wait for the cancelled connect to settle. If it raced
-            // to success despite the cancel, close that api too.
-            if let api = try? await inFlight.value {
-                await api.close()
+        if connecting {
+            connecting = false
+            let pending = awaiters
+            awaiters.removeAll()
+            for cont in pending {
+                cont.resume(throwing: HerdrApiError(
+                    code: "disconnected",
+                    message: "persistent client closed during connect"
+                ))
             }
         }
         if let api = client {
@@ -87,22 +96,32 @@ actor HerdrPersistentApiClient {
             client = nil
             await existing.close()
         }
-        if let inFlight = connectInFlight {
-            return try await inFlight.value
+        if connecting {
+            // A connect is already running; register and wait for it
+            // to settle. The connect path drains every awaiter with
+            // the same Result, so we can't end up with two parallel
+            // ssh subprocesses for what should be one connect.
+            return try await withCheckedThrowingContinuation { cont in
+                awaiters.append(cont)
+            }
         }
-        let task = Task<HerdrApiClient, Error> { [host] in
+        connecting = true
+        do {
             let api = HerdrApiClient(transport: HerdrTransportFactory.make(host: host))
             try await api.start()
-            return api
-        }
-        connectInFlight = task
-        do {
-            let api = try await task.value
-            connectInFlight = nil
             client = api
+            connecting = false
+            // Snapshot awaiters before resuming so a re-entrant call
+            // from a resumed continuation can't trip over our list.
+            let pending = awaiters
+            awaiters.removeAll()
+            for cont in pending { cont.resume(returning: api) }
             return api
         } catch {
-            connectInFlight = nil
+            connecting = false
+            let pending = awaiters
+            awaiters.removeAll()
+            for cont in pending { cont.resume(throwing: error) }
             throw error
         }
     }
