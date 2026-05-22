@@ -225,25 +225,46 @@ final class HerdrEventPump: ObservableObject {
             }
             // Backoff before retry, but bail if released.
             guard !Task.isCancelled, refCounts[socketPath] != nil else { return }
-            // Daemon shut down (`herdr session stop <name>`): the local
-            // UDS socket file disappears. Tear down all bindings for
-            // this host so the user's stale herdr-backed panels close
-            // instead of sitting unresponsive — same semantics as tmux
-            // where killing the server detaches every client. SSH hosts
-            // can't stat the remote socket, so they keep retrying.
+            // Daemon shut down (`herdr session stop <name>` or remote
+            // reboot before user re-runs Set up): tear down all
+            // bindings for this host so stale herdr-backed panels
+            // close instead of sitting unresponsive — same semantics
+            // as tmux where killing the server detaches every client.
             //
-            // Only fires AFTER we successfully connected at least once
-            // so the launch race (cmux up before daemon spawned)
-            // doesn't get misread as a server stop and wipe bindings.
+            // Two detection paths depending on transport:
+            //   localUDS — file existence check is cheap and exact
+            //   sshStdio — no cheap remote stat; once we previously
+            //              connected and now have N consecutive
+            //              reconnect failures, declare the daemon
+            //              gone and let the user re-run Set up
+            //
+            // Both gates require a prior successful connection so the
+            // launch race (cmux up before daemon spawned) doesn't
+            // get misread as a server stop.
             if let host = hosts[socketPath],
-               case .localUDS = host.transport,
-               everConnectedByHost[host.id] == true,
-               !FileManager.default.fileExists(atPath: socketPath) {
-                cmuxDebugLog(
-                    "herdr.pump: localUDS socket \(socketPath) gone after prior connection; tearing down host \(host.displayName)"
-                )
-                tearDownHost(host: host)
-                return
+               everConnectedByHost[host.id] == true {
+                let daemonGone: Bool
+                switch host.transport {
+                case .localUDS:
+                    daemonGone = !FileManager.default.fileExists(atPath: socketPath)
+                case .sshStdio:
+                    // 3 reconnect failures with backoff covers a brief
+                    // network blip without wiping bindings, but means
+                    // an explicit `herdr session stop` resolves to
+                    // tear-down within ~10s.
+                    daemonGone = attempt >= 3
+                }
+                if daemonGone {
+                    let transportTag: String = {
+                        if case .localUDS = host.transport { return "localUDS" }
+                        return "sshStdio"
+                    }()
+                    cmuxDebugLog(
+                        "herdr.pump: \(host.displayName) daemon gone after prior connection (\(transportTag), attempt=\(attempt)); tearing down"
+                    )
+                    tearDownHost(host: host)
+                    return
+                }
             }
             let delay = Self.backoffSequence[min(attempt, Self.backoffSequence.count - 1)]
             attempt += 1

@@ -74,39 +74,21 @@ actor SSHStdioTransport: HerdrTransport {
         }
         status = .connecting
 
-        // Wrap api-bridge in a shell snippet that auto-spawns the
-        // daemon if its socket is missing, so the user doesn't have
-        // to ssh in by hand after a remote reboot or after `herdr
-        // server stop`. Same logic the installer uses, just inline so
-        // every reconnect heals.
-        //
-        // Falls back to bare api-bridge invocation when:
-        //   - the user pinned a custom remote-binary path (we can't
-        //     guess where their daemon lives in that case)
-        //   - the session name has shell-unsafe chars (refusing
-        //     interpolation matches the installer's policy)
-        // In both fallback paths the user retains the manual setup
-        // path; we just don't try to be clever.
+        // Bare api-bridge invocation. We deliberately do NOT auto-
+        // spawn the daemon here: when the user runs `herdr session
+        // stop` on the remote, cmux should let workspaces tear down
+        // (driven by the EOF + tearDownHost path in HerdrEventPump)
+        // rather than silently bring the daemon back up. The
+        // explicit "Set up" path in HerdrRemoteInstaller still
+        // spawns the daemon when the user wants it.
         let remoteBinary = SSHCommandBuilder.remoteBinaryPath(for: host)
-        // Skip auto-spawn for user-pinned binary paths since we can't
-        // safely guess where the daemon's session dir lives.
-        let usesDefaultBinary = SSHCommandBuilder.usesDefaultRemoteBinary(remoteBinary)
         let session = host.sessionName
-        let canAutoSpawn = usesDefaultBinary
-            && !session.isEmpty
-            && SSHStdioTransport.isShellSafeSessionName(session)
-
-        var remoteCommand: [String]
-        if canAutoSpawn {
-            remoteCommand = [Self.autoSpawnShellCommand(session: session)]
-        } else {
-            remoteCommand = [remoteBinary]
-            if !session.isEmpty {
-                remoteCommand.append("--session")
-                remoteCommand.append(session)
-            }
-            remoteCommand.append("api-bridge")
+        var remoteCommand: [String] = [remoteBinary]
+        if !session.isEmpty {
+            remoteCommand.append("--session")
+            remoteCommand.append(session)
         }
+        remoteCommand.append("api-bridge")
 
         guard let invocation = SSHCommandBuilder.build(
             for: host, remoteCommand: remoteCommand
