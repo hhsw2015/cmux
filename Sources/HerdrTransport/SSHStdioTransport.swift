@@ -88,11 +88,11 @@ actor SSHStdioTransport: HerdrTransport {
         // In both fallback paths the user retains the manual setup
         // path; we just don't try to be clever.
         let remoteBinary = SSHCommandBuilder.remoteBinaryPath(for: host)
-        // Default binary path is the installer's standard location.
-        // Anything else means the user pinned a custom path; skip
-        // auto-spawn for those since we can't safely guess where the
-        // daemon's session dir lives.
-        let usesDefaultBinary = remoteBinary == "~/.local/bin/herdr-cmux"
+        // Default returns a shell expression we own; anything else
+        // means the user pinned a custom path. Skip auto-spawn for
+        // overridden paths since we can't safely guess where the
+        // daemon's session dir lives in that case.
+        let usesDefaultBinary = remoteBinary.contains("command -v herdr-cmux")
         let session = host.sessionName
         let canAutoSpawn = usesDefaultBinary
             && !session.isEmpty
