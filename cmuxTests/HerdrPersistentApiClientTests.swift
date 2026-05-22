@@ -18,9 +18,13 @@ final class HerdrPersistentApiClientTests: XCTestCase {
     /// Tiny UDS server. Each accepted connection enters a read-line /
     /// write-response loop until the peer closes — same protocol the
     /// real herdr daemon implements at >= 0.6.0-cmux9. The test
-    /// inspects `connectionCount` to assert reuse.
+    /// inspects `connectionCount` to assert reuse. With
+    /// `closeAfterFirstResponse = true` it mimics legacy daemons that
+    /// shut the socket after the first response so we can verify the
+    /// persistent client transparently reconnects.
     private final class MockDaemon: @unchecked Sendable {
         let socketPath: String
+        let closeAfterFirstResponse: Bool
         private var serverFd: Int32 = -1
         private var loopThread: Thread?
         private let lock = NSLock()
@@ -32,8 +36,9 @@ final class HerdrPersistentApiClientTests: XCTestCase {
             return _connectionCount
         }
 
-        init(socketPath: String) throws {
+        init(socketPath: String, closeAfterFirstResponse: Bool = false) throws {
             self.socketPath = socketPath
+            self.closeAfterFirstResponse = closeAfterFirstResponse
             unlink(socketPath)
             let parent = (socketPath as NSString).deletingLastPathComponent
             try? FileManager.default.createDirectory(
@@ -113,6 +118,10 @@ final class HerdrPersistentApiClientTests: XCTestCase {
                         out.withUnsafeBytes { ptr in
                             _ = write(fd, ptr.baseAddress, out.count)
                         }
+                        if closeAfterFirstResponse {
+                            close(fd)
+                            return
+                        }
                     }
                 }
             }
@@ -159,6 +168,41 @@ final class HerdrPersistentApiClientTests: XCTestCase {
         // not have to re-negotiate per call.
         XCTAssertEqual(daemon.connectionCount, 1,
                        "all three RPCs must share a single connection")
+    }
+
+    @MainActor
+    func testReconnectsAfterDaemonClosesConnectionPostResponse() async throws {
+        // Locks review CRIT-1: HerdrApiClient.pump silently exits when
+        // the peer closes the socket; without isClosed propagation the
+        // PersistentApiClient would hand back a dead client and the
+        // next request() would suspend on a continuation that's never
+        // fulfilled. Mock daemon mimics legacy single-shot behaviour
+        // (close after each response). Two RPCs must both succeed; the
+        // daemon should see two distinct accept()s.
+        let session = "cmux-eof-reconnect-\(UUID().uuidString.prefix(8))"
+        let host = HerdrHost.localhost(sessionName: String(session))
+        let daemon = try MockDaemon(
+            socketPath: host.localApiSocketPath,
+            closeAfterFirstResponse: true
+        )
+        defer { daemon.stop() }
+
+        let persistent = HerdrPersistentApiClient(host: host)
+        defer { Task { await persistent.close() } }
+
+        let r1 = try await persistent.request(method: "ping_a", params: [:])
+        XCTAssertEqual(r1["method"] as? String, "ping_a")
+
+        // Give the post-response close a moment to be observed by
+        // HerdrApiClient.pump on our side; persistent client should
+        // notice via isClosed and reconnect.
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        let r2 = try await persistent.request(method: "ping_b", params: [:])
+        XCTAssertEqual(r2["method"] as? String, "ping_b")
+
+        XCTAssertEqual(daemon.connectionCount, 2,
+                       "post-response close must force a reconnect on the next request")
     }
 
     @MainActor

@@ -33,6 +33,12 @@ actor HerdrPersistentApiClient {
             let api = try await ensureConnected()
             do {
                 return try await api.request(method: method, params: params)
+            } catch is CancellationError {
+                // User-initiated cancellation (Task cancelled, view
+                // teardown, sign-out). Propagate without retrying —
+                // a reconnect here would burn an ssh handshake on a
+                // request the caller no longer wants.
+                throw CancellationError()
             } catch {
                 // Transport-level errors (eof / disconnected) mean the
                 // cached client is dead. Drop it and retry once on a
@@ -49,19 +55,37 @@ actor HerdrPersistentApiClient {
     }
 
     /// Drop the cached connection. Future requests reconnect.
-    /// Called from the registry when a host is removed.
+    /// Called from the registry when a host is removed. Awaits any
+    /// in-flight connect Task so we don't leak the ssh subprocess
+    /// it spawned (see review HIGH-5 of 3c071dac).
     func close() async {
+        if let inFlight = connectInFlight {
+            connectInFlight = nil
+            inFlight.cancel()
+            // Wait for the cancelled connect to settle. If it raced
+            // to success despite the cancel, close that api too.
+            if let api = try? await inFlight.value {
+                await api.close()
+            }
+        }
         if let api = client {
             client = nil
             await api.close()
         }
-        connectInFlight?.cancel()
-        connectInFlight = nil
     }
 
     private func ensureConnected() async throws -> HerdrApiClient {
         if let existing = client {
-            return existing
+            // Pump may have exited silently if the daemon closed the
+            // socket between the previous request and this one (e.g.
+            // legacy daemon, transient ssh blip). Trust isClosed and
+            // proactively reconnect rather than handing back a dead
+            // client whose `request()` would suspend forever — see
+            // review CRIT-1 of 3c071dac.
+            let dead = await existing.isClosed
+            if !dead { return existing }
+            client = nil
+            await existing.close()
         }
         if let inFlight = connectInFlight {
             return try await inFlight.value

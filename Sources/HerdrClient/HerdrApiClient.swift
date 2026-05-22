@@ -78,7 +78,16 @@ actor HerdrApiClient {
         }
         pending.removeAll()
         eventsContinuation.finish()
+        isClosed = true
     }
+
+    /// True once the underlying transport has finished its incoming
+    /// stream — either the daemon closed the connection (single-shot
+    /// pre-cmux9 behaviour) or `close()` was called locally. Set by
+    /// the pump's exit path so callers can detect a dead client and
+    /// reconnect proactively instead of issuing a `request()` that
+    /// would suspend on a continuation no one will ever fulfil.
+    private(set) var isClosed = false
 
     /// Ping the daemon. Returns the server-reported version + protocol.
     func ping() async throws -> (version: String, protocolVersion: Int) {
@@ -92,6 +101,16 @@ actor HerdrApiClient {
     /// dict is the contents of `result` minus the `type` discriminator.
     @discardableResult
     func request(method: String, params: [String: Any]) async throws -> [String: Any] {
+        // Bail synchronously if the pump has already finished (peer
+        // closed the connection or close() was called locally).
+        // Without this guard the continuation below would suspend on
+        // a continuation no one will ever fulfil — pump's exit path
+        // and close() both drain `pending` BEFORE setting isClosed,
+        // so a request issued after that drain would queue with no
+        // hope of resolution.
+        if isClosed {
+            throw HerdrApiError(code: "disconnected", message: "api client closed")
+        }
         let requestId = "cmux_\(nextId)"
         nextId += 1
         let envelope: [String: Any] = [
@@ -139,12 +158,16 @@ actor HerdrApiClient {
                 handleLine(line)
             }
         }
-        // Stream ended (transport closed); release pending callers.
+        // Stream ended (transport closed); release pending callers
+        // and surface a closed flag so future request() callers throw
+        // `disconnected` synchronously instead of suspending on a
+        // continuation that will never be fulfilled.
         for (_, cont) in pending {
             cont.resume(throwing: HerdrApiError(code: "eof", message: "api socket closed"))
         }
         pending.removeAll()
         eventsContinuation.finish()
+        isClosed = true
     }
 
     private func handleLine(_ data: Data) {
