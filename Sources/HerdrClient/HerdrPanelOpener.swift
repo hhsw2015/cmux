@@ -799,7 +799,19 @@ enum HerdrPanelOpener {
                   ) {
             workspaceId = resolved.workspaceId
             activeTabId = resolved.tabId
-            herdrPanelOpenerTrace("workspace: reusing persisted \(workspaceId) tab=\(activeTabId)")
+            // Pull the daemon's current label for the persisted
+            // workspace so the cmux tab title reflects rename done
+            // by another client between sessions.
+            if let labelResp = try? await HerdrOneShotRPC.request(
+                host: host,
+                method: "workspace.get",
+                params: ["workspace_id": workspaceId]
+            ),
+               let labelInfo = labelResp["workspace"] as? [String: Any],
+               let label = labelInfo["label"] as? String {
+                workspaceLabel = label
+            }
+            herdrPanelOpenerTrace("workspace: reusing persisted \(workspaceId) tab=\(activeTabId) label=\(workspaceLabel ?? "(nil)")")
         } else if let stale = HerdrPersistence.shared
                     .entries(forHostSession: host.sessionName).first {
             // Only the FIRST persisted entry was stale (couldn't be
@@ -826,7 +838,8 @@ enum HerdrPanelOpener {
                     throw HerdrPanelOpenerError.noWorkspaceAvailable
                 }
                 activeTabId = firstActiveTabId
-                herdrPanelOpenerTrace("workspace: fallback to first \(workspaceId) tab=\(activeTabId)")
+                workspaceLabel = wsInfo["label"] as? String
+                herdrPanelOpenerTrace("workspace: fallback to first \(workspaceId) tab=\(activeTabId) label=\(workspaceLabel ?? "(nil)")")
             } else {
                 // Persistence pointed at a workspace that no longer
                 // exists on the daemon AND there's nothing else to
@@ -1124,85 +1137,6 @@ enum HerdrPanelOpener {
     }
 }
 
-/// One-shot UDS sender for `pane.resize`. herdr's API socket reads
-/// one line then closes, so each resize tick opens a fresh AF_UNIX
-/// socket. Predates HerdrOneShotRPC + the transport factory; could
-/// be migrated to those for SSH support, but the resize path only
-/// runs for localhost panels (the resize observer feeds it ghostty
-/// surface events) so the direct socket call is fine for now.
-@MainActor
-private enum HerdrPaneResizeRPC {
-    static func sendOneShotPaneResize(
-        socketPath: String,
-        paneId: String,
-        cols: UInt16,
-        rows: UInt16,
-        cellWidthPx: UInt32,
-        cellHeightPx: UInt32
-    ) async {
-        let envelope: [String: Any] = [
-            "id": "cmux_panelresize_\(Int(Date().timeIntervalSince1970 * 1000))",
-            "method": "pane.resize",
-            "params": [
-                "pane_id": paneId,
-                "cols": Int(cols),
-                "rows": Int(rows),
-                "cell_width_px": Int(cellWidthPx),
-                "cell_height_px": Int(cellHeightPx),
-            ],
-        ]
-        guard var line = try? JSONSerialization.data(withJSONObject: envelope) else {
-            await MainActor.run { herdrPanelOpenerTrace("send: JSON encode failed") }
-            return
-        }
-        line.append(0x0A)
-        let fd = Darwin.socket(AF_UNIX, SOCK_STREAM, 0)
-        guard fd >= 0 else {
-            await MainActor.run { herdrPanelOpenerTrace("send: socket() failed errno=\(errno)") }
-            return
-        }
-        defer { _ = Darwin.close(fd) }
-        var addr = sockaddr_un()
-        addr.sun_family = sa_family_t(AF_UNIX)
-        let pathBytes = Array(socketPath.utf8)
-        let maxLen = MemoryLayout.size(ofValue: addr.sun_path)
-        guard pathBytes.count < maxLen else {
-            await MainActor.run { herdrPanelOpenerTrace("send: path too long") }
-            return
-        }
-        withUnsafeMutablePointer(to: &addr.sun_path) { pathPtr in
-            pathPtr.withMemoryRebound(to: CChar.self, capacity: maxLen) { rebound in
-                for i in 0..<pathBytes.count {
-                    rebound[i] = CChar(bitPattern: pathBytes[i])
-                }
-                rebound[pathBytes.count] = 0
-            }
-        }
-        let connectResult = withUnsafePointer(to: &addr) { addrPtr -> Int32 in
-            addrPtr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPtr in
-                Darwin.connect(fd, sockaddrPtr, socklen_t(MemoryLayout<sockaddr_un>.size))
-            }
-        }
-        guard connectResult == 0 else {
-            let err = errno
-            await MainActor.run { herdrPanelOpenerTrace("send: connect failed path=\(socketPath) errno=\(err)") }
-            return
-        }
-        var ok = true
-        line.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
-            guard let base = raw.baseAddress else { ok = false; return }
-            var written = 0
-            while written < raw.count {
-                let n = Darwin.write(fd, base.advanced(by: written), raw.count - written)
-                if n <= 0 { ok = false; return }
-                written += n
-            }
-        }
-        await MainActor.run {
-            herdrPanelOpenerTrace("send: pane.resize \(cols)x\(rows) ok=\(ok)")
-        }
-    }
-}
 
 private func herdrPanelOpenerTrace(_ message: String) {
     let timestamp = ISO8601DateFormatter().string(from: Date())
