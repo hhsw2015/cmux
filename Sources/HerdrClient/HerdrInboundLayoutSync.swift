@@ -306,7 +306,22 @@ enum HerdrInboundLayoutSync {
         }
         os_log("herdr.inbound.applyDividers applied=%{public}d missed=%{public}d dividers=%{public}d",
                applied, missed, newDividers.count)
-        HerdrDividerSync.setLastSeen(bindingKey: binding.rootCmuxPaneId, value: newDividers)
+        // Seed lastSeen from bonsplit's ACTUAL post-apply state, not
+        // from the spec ratios we asked for. setDividerPosition can
+        // round / pixel-align the value it stores, and if we leave
+        // lastSeen pointing at the spec ratio, the next
+        // didChangeGeometry diffs the post-quantize value against the
+        // pre-quantize lastSeen, the difference exceeds the 1e-3
+        // epsilon, HerdrDividerSync.sync fires pane.set_split_ratio
+        // back at the daemon, the daemon re-broadcasts LayoutChanged,
+        // and we ping-pong forever. Locally that loop completes in
+        // microseconds; over SSH each round-trip is ~100ms and the
+        // user observes it as a frozen panel where typed input never
+        // echoes (raw-pty-attach output is starved by the storm).
+        HerdrDividerSync.prime(
+            binding: binding,
+            treeSnapshot: workspace.bonsplitController.treeSnapshot()
+        )
     }
 
     // MARK: - Structural: removal
