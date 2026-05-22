@@ -403,7 +403,7 @@ enum HerdrPanelOpener {
             // Ghostty surface boot since we'd tear it down 200ms later
             // anyway.
             return tabManager.addWorkspace(
-                title: nil,
+                title: workspaceLabel,
                 select: true,
                 eagerLoadTerminal: false
             )
@@ -771,6 +771,7 @@ enum HerdrPanelOpener {
         // second one would EPIPE.
         let workspaceId: String
         let activeTabId: String
+        var workspaceLabel: String? = nil
         if let requested = requestedWorkspaceId {
             // Sidebar / explicit-id path: skip auto-select. We still
             // need active_tab_id, fetched via workspace.get.
@@ -787,7 +788,8 @@ enum HerdrPanelOpener {
             }
             workspaceId = requested
             activeTabId = requestedActiveTabId
-            herdrPanelOpenerTrace("workspace: opening explicit \(workspaceId) tab=\(activeTabId)")
+            workspaceLabel = wsInfo["label"] as? String
+            herdrPanelOpenerTrace("workspace: opening explicit \(workspaceId) tab=\(activeTabId) label=\(workspaceLabel ?? "(nil)")")
         } else if let persisted = HerdrPersistence.shared
                     .entries(forHostSession: host.sessionName).first,
                   let resolved = await Self.resolvePersistedWorkspace(
@@ -851,6 +853,7 @@ enum HerdrPanelOpener {
             }
             workspaceId = first.name
             activeTabId = firstActiveTabId
+            workspaceLabel = wsInfo["label"] as? String
         } else {
             // No existing workspace — create one. Pass cwd so the
             // initial pane spawns in the user's home directory instead
@@ -874,6 +877,7 @@ enum HerdrPanelOpener {
             }
             workspaceId = id
             activeTabId = firstActiveTabId
+            workspaceLabel = ws["label"] as? String
         }
 
         // Map herdr pane id -> terminal id from pane.list, so the
