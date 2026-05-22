@@ -3,6 +3,7 @@ import Bonsplit
 import CMUXSessionDaemon
 import Foundation
 import GhosttyKit
+import os.log
 
 /// Opens a real cmux panel (in the focused workspace) backed by a
 /// herdr-managed PTY. The panel uses cmux's ordinary
@@ -1150,9 +1151,9 @@ enum HerdrPanelOpener {
         )?.rootCmuxPaneId
         if HerdrInboundLayoutSync.shouldSuppressOutboundResize(forBinding: bindingKey) {
             herdrPanelOpenerTrace("forwardPanelSize suppressed (inbound apply active for \(bindingKey?.uuidString ?? "<unresolved>"))")
-            #if DEBUG
-            cmuxDebugLog("herdr.forwardPanelSize suppressed panelId=\(panelId.uuidString.prefix(8)) bindingKey=\(bindingKey?.uuidString.prefix(8) ?? "nil")")
-            #endif
+            os_log("herdr.forwardPanelSize.suppressed panelId=%{public}@ bindingKey=%{public}@",
+                   String(panelId.uuidString.prefix(8)),
+                   String(bindingKey?.uuidString.prefix(8) ?? "nil"))
             // Remember that we held back a real resize so the trailing
             // tick re-fires forwardPanelSize after suppression closes.
             // Closure captures the call args; surface stays valid as
@@ -1192,9 +1193,10 @@ enum HerdrPanelOpener {
             cols: size.columns,
             rows: size.rows
         )
-        #if DEBUG
-        cmuxDebugLog("herdr.forwardPanelSize fired panelId=\(panelId.uuidString.prefix(8)) \(size.columns)x\(size.rows)")
-        #endif
+        os_log("herdr.forwardPanelSize.fired panelId=%{public}@ cols=%{public}d rows=%{public}d",
+               String(panelId.uuidString.prefix(8)),
+               Int(size.columns),
+               Int(size.rows))
         // Route through the host's transport (local UDS or SSH stdio)
         // via HerdrOneShotRPC. The previous direct AF_UNIX socket
         // open hardcoded a local path, which broke for SSH hosts —

@@ -370,9 +370,7 @@ final class HerdrEventPump: ObservableObject {
                 cmuxDebugLog("herdr.pump: layout_changed payload decode failed")
                 return
             }
-            #if DEBUG
-            cmuxDebugLog("herdr.pump: layout_changed received")
-            #endif
+            os_log("herdr.pump.layout_changed.received")
             HerdrInboundLayoutSync.apply(tree: payload.tree)
         case "workspace_created", "workspace.created",
              "workspace_renamed", "workspace.renamed":

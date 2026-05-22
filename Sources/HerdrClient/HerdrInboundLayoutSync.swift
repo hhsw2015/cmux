@@ -466,9 +466,8 @@ enum HerdrInboundLayoutSync {
         // competes with raw-pty-attach output for the SSH master.
         let bindingKey = binding.rootCmuxPaneId
         let applyStart = Date()
-        #if DEBUG
-        cmuxDebugLog("herdr.inbound.applyDividers begin binding=\(bindingKey.uuidString.prefix(8))")
-        #endif
+        os_log("herdr.inbound.applyDividers.begin binding=%{public}@",
+               String(bindingKey.uuidString.prefix(8)))
         inboundApplyActiveByBinding[bindingKey, default: 0] += 1
         inboundApplyActiveCount += 1
         defer {
@@ -484,10 +483,9 @@ enum HerdrInboundLayoutSync {
             )
             inboundApplySuppressUntilByBinding[bindingKey] = until
             inboundApplySuppressUntil = until
-            #if DEBUG
             let durMs = Int(Date().timeIntervalSince(applyStart) * 1000)
-            cmuxDebugLog("herdr.inbound.applyDividers end binding=\(bindingKey.uuidString.prefix(8)) durMs=\(durMs)")
-            #endif
+            os_log("herdr.inbound.applyDividers.end binding=%{public}@ durMs=%{public}d",
+                   String(bindingKey.uuidString.prefix(8)), durMs)
         }
         let cmuxTree = workspace.bonsplitController.treeSnapshot()
         guard let cmuxSubtree = findCmuxSubtreeRoot(tree: cmuxTree, binding: binding) else {
