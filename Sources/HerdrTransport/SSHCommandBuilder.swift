@@ -101,13 +101,6 @@ enum SSHCommandBuilder {
     static let defaultRemoteBinaryShellExpression =
         "\"$(command -v herdr-cmux || echo $HOME/.local/bin/herdr-cmux)\""
 
-    /// True when `path` is the auto-resolution expression we own
-    /// (i.e. the user didn't override). Useful for callers that want
-    /// to gate behavior (auto-spawn, install-on-default) on the
-    /// default vs user-pinned distinction.
-    static func usesDefaultRemoteBinary(_ path: String) -> Bool {
-        path == defaultRemoteBinaryShellExpression
-    }
 
     // MARK: - Helpers
 

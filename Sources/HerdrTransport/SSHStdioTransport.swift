@@ -243,57 +243,6 @@ actor SSHStdioTransport: HerdrTransport {
         }
     }
 
-    /// Allow only `[A-Za-z0-9_.-]` in a session name we're about to
-    /// interpolate into a remote shell snippet. Same policy as the
-    /// installer.
-    static func isShellSafeSessionName(_ s: String) -> Bool {
-        guard !s.isEmpty else { return false }
-        let allowed = CharacterSet(charactersIn:
-            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")
-        return s.unicodeScalars.allSatisfy { allowed.contains($0) }
-    }
-
-    /// One-shot shell snippet that ensures the daemon for `session`
-    /// is alive on the remote, then `exec`s `api-bridge` so the SSH
-    /// stdio attaches directly. The `exec` matters: it replaces the
-    /// shell with herdr-cmux so cmux's stdin/stdout pipes line up.
-    ///
-    /// Resolves the binary by `command -v herdr-cmux` first so a
-    /// system-wide install (e.g. /usr/local/bin) works just like
-    /// the user-local install we ship via the auto-installer.
-    static func autoSpawnShellCommand(session: String) -> String {
-        return """
-        HBIN="$(command -v herdr-cmux 2>/dev/null)"; \
-        [ -z "$HBIN" ] && [ -x "$HOME/.local/bin/herdr-cmux" ] && HBIN="$HOME/.local/bin/herdr-cmux"; \
-        if [ -z "$HBIN" ]; then echo "herdr-cmux not found on remote PATH or ~/.local/bin" >&2; exit 127; fi; \
-        SOCK="$HOME/.config/herdr/sessions/\(session)/herdr.sock"; \
-        if [ -S "$SOCK" ]; then \
-          ALIVE=0; \
-          if command -v pgrep >/dev/null 2>&1; then \
-            pgrep -f "herdr-cmux .*--session \(session)" >/dev/null 2>&1 && ALIVE=1; \
-          elif [ -r /proc/net/unix ]; then \
-            awk -v s="$SOCK" '$NF==s && $6=="01" {f=1} END{exit !f}' /proc/net/unix && ALIVE=1; \
-          else \
-            ALIVE=1; \
-          fi; \
-          [ "$ALIVE" = 0 ] && rm -f "$SOCK"; \
-        fi; \
-        if [ ! -S "$SOCK" ]; then \
-          if command -v setsid >/dev/null 2>&1 && command -v script >/dev/null 2>&1; then \
-            setsid -f script -q -c "$HBIN --session \(session)" /dev/null \
-              < /dev/null > /dev/null 2>&1 & \
-          else \
-            nohup "$HBIN" --session \(session) \
-              > /dev/null 2>&1 < /dev/null & \
-          fi; \
-          for _ in 1 2 3 4 5 6 7 8 9 10; do \
-            sleep 1; \
-            [ -S "$SOCK" ] && break; \
-          done; \
-        fi; \
-        exec "$HBIN" --session \(session) api-bridge
-        """
-    }
 }
 
 private func sshTransportTrace(target: String, message: String) {
