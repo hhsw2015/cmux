@@ -402,8 +402,11 @@ enum HerdrPanelOpener {
             // leaf count. eagerLoad = false skips the background
             // Ghostty surface boot since we'd tear it down 200ms later
             // anyway.
+            // Title left at default until openLocalhostWorkspaceImpl
+            // resolves which daemon workspace this attaches to and
+            // backfills workspace.title with the herdr-side label.
             return tabManager.addWorkspace(
-                title: workspaceLabel,
+                title: nil,
                 select: true,
                 eagerLoadTerminal: false
             )
@@ -891,6 +894,21 @@ enum HerdrPanelOpener {
             workspaceId = id
             activeTabId = firstActiveTabId
             workspaceLabel = ws["label"] as? String
+        }
+
+        // Backfill the placeholder workspace's title with the daemon's
+        // label so the sidebar shows 'test' instead of 'Terminal N'
+        // after openWorkspace creates the tab up front (before this
+        // function knows which daemon workspace it attaches to).
+        // Skip if the user already gave the cmux workspace a custom
+        // title — local rename wins over an automatic daemon-label
+        // backfill.
+        if let label = workspaceLabel?.trimmingCharacters(in: .whitespaces),
+           !label.isEmpty,
+           workspace.customTitle?.trimmingCharacters(in: .whitespaces).isEmpty ?? true {
+            await MainActor.run {
+                workspace.setCustomTitle(label)
+            }
         }
 
         // Map herdr pane id -> terminal id from pane.list, so the
