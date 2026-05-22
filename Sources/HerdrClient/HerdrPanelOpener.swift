@@ -1134,6 +1134,17 @@ enum HerdrPanelOpener {
     ) {
         let size = ghostty_surface_size(surface)
         herdrPanelOpenerTrace("forwardPanelSize panelId=\(panelId) cols=\(size.columns) rows=\(size.rows)")
+        // Skip the round-trip when the resize was caused by us
+        // mirroring a daemon-side layout: the daemon already knows
+        // the right PTY dimensions, and the SSH master is busy
+        // carrying the inbound LayoutChanged + raw-pty-attach output
+        // we actually want to land. Echo'd pane.resize during a TUI
+        // drag was the trigger for the "panel input invisible /
+        // cmux UI stalls" repro on remote hosts.
+        if HerdrInboundLayoutSync.shouldSuppressOutboundResize {
+            herdrPanelOpenerTrace("forwardPanelSize suppressed (inbound apply active)")
+            return
+        }
         // Reject collapsed / not-yet-laid-out frames. Ghostty reports
         // 1x1 (or even 0x0) for views during sheet presentation, drag
         // start, and the brief window between viewDidMoveToWindow and

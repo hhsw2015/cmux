@@ -255,4 +255,48 @@ final class HerdrInboundLayoutSyncTests: XCTestCase {
         )
         XCTAssertEqual(resolved2, "N2")
     }
+
+    // MARK: - outbound resize suppression during inbound apply
+
+    func testShouldSuppressOutboundResizeFalseWhenIdle() {
+        HerdrInboundLayoutSync._resetSuppressionForTesting()
+        XCTAssertFalse(HerdrInboundLayoutSync.shouldSuppressOutboundResize)
+    }
+
+    func testShouldSuppressOutboundResizeTrueWhileApplying() {
+        HerdrInboundLayoutSync._resetSuppressionForTesting()
+        var observedDuringApply: Bool = false
+        HerdrInboundLayoutSync._withInboundApplyActiveForTesting {
+            observedDuringApply = HerdrInboundLayoutSync.shouldSuppressOutboundResize
+        }
+        XCTAssertTrue(observedDuringApply,
+                      "must suppress outbound pane.resize while inbound apply is active")
+    }
+
+    func testShouldSuppressOutboundResizeStaysTrueDuringTrailingWindow() {
+        // Locks the trailing-suppression behaviour: even after the
+        // apply itself ends, we keep suppressing for
+        // inboundApplySuppressTrailingMs so the panel resize
+        // observer's 80ms debounce doesn't fire its outbound RPC just
+        // after the apply finishes.
+        HerdrInboundLayoutSync._resetSuppressionForTesting()
+        HerdrInboundLayoutSync._withInboundApplyActiveForTesting { /* no-op */ }
+        XCTAssertTrue(
+            HerdrInboundLayoutSync.shouldSuppressOutboundResize,
+            "trailing window must keep suppression active right after apply ends"
+        )
+    }
+
+    func testShouldSuppressOutboundResizeReleasesAfterTrailingWindow() async throws {
+        HerdrInboundLayoutSync._resetSuppressionForTesting()
+        HerdrInboundLayoutSync._withInboundApplyActiveForTesting { /* no-op */ }
+        // Sleep slightly longer than the trailing window so the
+        // suppression definitively expires.
+        let waitMs = HerdrInboundLayoutSync.inboundApplySuppressTrailingMs + 100
+        try await Task.sleep(nanoseconds: UInt64(waitMs) * 1_000_000)
+        XCTAssertFalse(
+            HerdrInboundLayoutSync.shouldSuppressOutboundResize,
+            "suppression must expire once the trailing window passes"
+        )
+    }
 }

@@ -23,6 +23,60 @@ enum HerdrInboundLayoutSync {
     private static var pendingDividerSpec: [UUID: HerdrLayoutSpec] = [:]
     private static var dividerApplyScheduled: Set<UUID> = []
 
+    /// Last time we ran applyDividers for a binding. The coalescer
+    /// already drops to one apply per runloop turn, but a remote TUI
+    /// drag delivers LayoutChanged at 60Hz over the events stream,
+    /// and bonsplit's setDividerPosition + the surface-frame /
+    /// geometry-reconcile fan-out it triggers is not free even when
+    /// repeated 60 times per second. Runloop-rate apply is fine on a
+    /// local UDS daemon; over SSH the same workload appears to
+    /// starve the raw-pty-attach channel sharing the master, and the
+    /// user sees the panel "freeze" mid-drag. Cap to 30Hz; the
+    /// pendingDividerSpec map already retains the latest tree so
+    /// the eventual settled apply still uses the final ratios.
+    private static var lastDividerApplyAt: [UUID: Date] = [:]
+    static let dividerApplyMinInterval: TimeInterval = 0.033
+
+    /// While true, outbound pane.resize is suppressed because the
+    /// resize was caused by us mirroring the daemon's own layout. The
+    /// daemon already knows what size the PTY should be (it's the
+    /// origin of the layout_changed event), so echoing pane.resize
+    /// back during inbound apply is pure SSH chatter that competes
+    /// for the master's bandwidth with the raw-pty-attach output we
+    /// actually want to land on screen.
+    private static var inboundApplyActiveCount: Int = 0
+    private static var inboundApplySuppressUntil: Date = .distantPast
+    static let inboundApplySuppressTrailingMs: Int = 250
+
+    /// Tested by HerdrPanelOpener.forwardPanelSize before queuing the
+    /// outbound RPC.
+    static var shouldSuppressOutboundResize: Bool {
+        inboundApplyActiveCount > 0 || Date() < inboundApplySuppressUntil
+    }
+
+    /// Test seam. Pretends an inbound apply is running for `block`'s
+    /// duration so HerdrInboundLayoutSyncTests can assert that
+    /// shouldSuppressOutboundResize flips correctly without having to
+    /// stand up a full Workspace + bonsplit harness.
+    static func _withInboundApplyActiveForTesting<T>(_ block: () -> T) -> T {
+        inboundApplyActiveCount += 1
+        defer {
+            inboundApplyActiveCount -= 1
+            inboundApplySuppressUntil = Date().addingTimeInterval(
+                Double(inboundApplySuppressTrailingMs) / 1000.0
+            )
+        }
+        return block()
+    }
+
+    /// Test seam. Resets the suppression-window state so tests don't
+    /// leak across cases.
+    static func _resetSuppressionForTesting() {
+        inboundApplyActiveCount = 0
+        inboundApplySuppressUntil = .distantPast
+        lastDividerApplyAt.removeAll()
+    }
+
     static func apply(tree: HerdrLayoutTree) {
         let allBindings = HerdrTabRegistry.shared.allBindings
         guard let binding = allBindings.first(where: {
@@ -262,18 +316,30 @@ enum HerdrInboundLayoutSync {
             return
         }
         dividerApplyScheduled.insert(key)
-        DispatchQueue.main.async {
+        // Honour the 30Hz throttle: schedule the dispatch for whenever
+        // the next slot opens (immediate if we haven't applied recently
+        // for this binding, otherwise asyncAfter at the first allowed
+        // moment). pendingDividerSpec retains the latest spec so the
+        // throttled dispatch still uses the final ratios.
+        let last = lastDividerApplyAt[key] ?? .distantPast
+        let elapsed = Date().timeIntervalSince(last)
+        let work: () -> Void = {
             dividerApplyScheduled.remove(key)
             guard let latest = pendingDividerSpec.removeValue(forKey: key) else {
                 return
             }
-            // Re-resolve binding/workspace at apply time — they may
-            // have torn down between schedule and dispatch.
             guard let liveBinding = HerdrTabRegistry.shared.binding(forKey: key),
                   let liveWorkspace = liveBinding.workspace else {
                 return
             }
+            lastDividerApplyAt[key] = Date()
             applyDividers(spec: latest, binding: liveBinding, workspace: liveWorkspace)
+        }
+        if elapsed >= dividerApplyMinInterval {
+            DispatchQueue.main.async(execute: work)
+        } else {
+            let waitMs = Int((dividerApplyMinInterval - elapsed) * 1000)
+            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(max(1, waitMs)), execute: work)
         }
     }
 
@@ -282,6 +348,21 @@ enum HerdrInboundLayoutSync {
         binding: HerdrTabBinding,
         workspace: Workspace
     ) {
+        // Suppress outbound pane.resize for the duration of this apply
+        // and a short trailing window. setDividerPosition triggers
+        // bonsplit's didChangeGeometry, the panel resize observer, and
+        // the 80ms forwardPanelSize debounce; without this guard the
+        // first frame after each inbound LayoutChanged spawns an SSH
+        // pane.resize round-trip that adds nothing (daemon is the one
+        // that just told us the layout) and competes with the
+        // raw-pty-attach output channel for the SSH master.
+        inboundApplyActiveCount += 1
+        defer {
+            inboundApplyActiveCount -= 1
+            inboundApplySuppressUntil = Date().addingTimeInterval(
+                Double(inboundApplySuppressTrailingMs) / 1000.0
+            )
+        }
         let cmuxTree = workspace.bonsplitController.treeSnapshot()
         guard let cmuxSubtree = findCmuxSubtreeRoot(tree: cmuxTree, binding: binding) else {
             os_log("herdr.inbound.applyDividers no_subtree_match bound=%{public}d treeLeaves=%{public}d",
