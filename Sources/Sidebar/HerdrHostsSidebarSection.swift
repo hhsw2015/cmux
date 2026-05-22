@@ -163,6 +163,9 @@ struct HerdrHostsSidebarSection: View {
                         renameDraft = ws.label
                         pendingRename = PendingRename(host: host, workspace: ws)
                     },
+                    onDetachWorkspace: { ws in
+                        detachWorkspace(host: host, workspaceId: ws.workspaceId)
+                    },
                     isWorkspaceAttached: { workspaceId in
                         isAttached(host: host, workspaceId: workspaceId)
                     }
@@ -261,6 +264,27 @@ struct HerdrHostsSidebarSection: View {
         }
     }
 
+    /// Close the local cmux tab bound to this herdr workspace without
+    /// telling the daemon to remove it. The daemon-side workspace stays
+    /// alive (panes keep running) so the user can re-attach later via
+    /// the sidebar's Open. Mirrors tmux's `detach-client`.
+    private func detachWorkspace(host: HerdrHost, workspaceId: String) {
+        let bindings = HerdrTabRegistry.shared.allBindings.filter {
+            $0.host.id == host.id && $0.workspaceId == workspaceId
+        }
+        guard let binding = bindings.first,
+              let workspace = binding.workspace else { return }
+        // Drop persistence pointer so the next launch's auto-reattach
+        // doesn't pull this workspace back in. The user explicitly
+        // asked to walk away from it on this client.
+        HerdrPersistence.shared.clearOne(
+            host: host,
+            workspaceId: workspaceId,
+            tabId: binding.tabId
+        )
+        AppDelegate.shared?.tabManager?.closeWorkspace(workspace, recordHistory: false)
+    }
+
     /// Sort workspaces by agent_status priority so the rows that
     /// most likely need attention float to the top of the host's
     /// list. Stable secondary sort by label so equal-priority
@@ -328,6 +352,7 @@ private struct HerdrHostRow: View {
     let onOpenWorkspace: (String) -> Void
     let onKillWorkspace: (HerdrWorkspaceSummary) -> Void
     let onRenameWorkspace: (HerdrWorkspaceSummary) -> Void
+    let onDetachWorkspace: (HerdrWorkspaceSummary) -> Void
     let isWorkspaceAttached: (String) -> Bool
 
     private var connectionTint: Color {
@@ -480,7 +505,8 @@ private struct HerdrHostRow: View {
                             isAttached: isWorkspaceAttached(ws.workspaceId),
                             onOpen: { onOpenWorkspace(ws.workspaceId) },
                             onKill: { onKillWorkspace(ws) },
-                            onRename: { onRenameWorkspace(ws) }
+                            onRename: { onRenameWorkspace(ws) },
+                            onDetach: { onDetachWorkspace(ws) }
                         )
                     }
                 }
@@ -495,6 +521,7 @@ private struct HerdrWorkspaceRow: View {
     let onOpen: () -> Void
     let onKill: () -> Void
     let onRename: () -> Void
+    let onDetach: () -> Void
 
     var body: some View {
         Button(action: onOpen) {
@@ -533,10 +560,25 @@ private struct HerdrWorkspaceRow: View {
                 localized: "sidebar.herdr.openWorkspace",
                 defaultValue: "Open"
             )) { onOpen() }
+            if isAttached {
+                Button(String(
+                    localized: "sidebar.herdr.detachWorkspace",
+                    defaultValue: "Detach (close cmux tab, keep daemon running)"
+                )) { onDetach() }
+            }
             Button(String(
                 localized: "sidebar.herdr.rename.menu",
                 defaultValue: "Rename…"
             )) { onRename() }
+            Divider()
+            Button(String(
+                localized: "sidebar.herdr.copyId",
+                defaultValue: "Copy workspace ID"
+            )) {
+                let pb = NSPasteboard.general
+                pb.clearContents()
+                pb.setString(workspace.workspaceId, forType: .string)
+            }
             Divider()
             Button(role: .destructive) { onKill() } label: {
                 Text(String(
