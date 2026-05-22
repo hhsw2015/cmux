@@ -242,7 +242,7 @@ enum HerdrPanelOpener {
             hostedView: panel.surface.hostedView,
             surface: ghosttySurface,
             paneId: herdrPaneId,
-            socketPath: socketPath
+            host: host
         )
 
         herdrPanelOpenerTrace("herdr panel wired panelId=\(panel.id) terminalId=\(terminalId)")
@@ -1028,7 +1028,7 @@ enum HerdrPanelOpener {
         hostedView: NSView,
         surface: ghostty_surface_t,
         paneId: String,
-        socketPath: String
+        host: HerdrHost
     ) {
         hostedView.postsFrameChangedNotifications = true
         let observer = NotificationCenter.default.addObserver(
@@ -1041,7 +1041,7 @@ enum HerdrPanelOpener {
                 panelId: panelId,
                 surface: surface,
                 paneId: paneId,
-                socketPath: socketPath
+                host: host
             )
         }
         HerdrPanelRegistry.shared.setResizeObserver(panelId: panelId, observer: observer)
@@ -1054,7 +1054,7 @@ enum HerdrPanelOpener {
                 panelId: panelId,
                 surface: surface,
                 paneId: paneId,
-                socketPath: socketPath
+                host: host
             )
         }
     }
@@ -1063,7 +1063,7 @@ enum HerdrPanelOpener {
         panelId: UUID,
         surface: ghostty_surface_t,
         paneId: String,
-        socketPath: String
+        host: HerdrHost
     ) {
         let debounce = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 80_000_000)
@@ -1071,7 +1071,7 @@ enum HerdrPanelOpener {
                 panelId: panelId,
                 surface: surface,
                 paneId: paneId,
-                socketPath: socketPath
+                host: host
             )
         }
         HerdrPanelRegistry.shared.setResizeDebounceTask(panelId: panelId, task: debounce)
@@ -1081,7 +1081,7 @@ enum HerdrPanelOpener {
         panelId: UUID,
         surface: ghostty_surface_t,
         paneId: String,
-        socketPath: String
+        host: HerdrHost
     ) {
         let size = ghostty_surface_size(surface)
         herdrPanelOpenerTrace("forwardPanelSize panelId=\(panelId) cols=\(size.columns) rows=\(size.rows)")
@@ -1097,15 +1097,25 @@ enum HerdrPanelOpener {
             cols: size.columns,
             rows: size.rows
         )
+        // Route through the host's transport (local UDS or SSH stdio)
+        // via HerdrOneShotRPC. The previous direct AF_UNIX socket
+        // open hardcoded a local path, which broke for SSH hosts —
+        // the daemon's socket lives on the *remote* filesystem.
         Task.detached(priority: .userInitiated) {
-            await HerdrPaneResizeRPC.sendOneShotPaneResize(
-                socketPath: socketPath,
-                paneId: paneId,
-                cols: size.columns,
-                rows: size.rows,
-                cellWidthPx: size.cell_width_px,
-                cellHeightPx: size.cell_height_px
+            await HerdrOneShotRPC.send(
+                host: host,
+                method: "pane.resize",
+                params: [
+                    "pane_id": paneId,
+                    "cols": Int(size.columns),
+                    "rows": Int(size.rows),
+                    "cell_width_px": Int(size.cell_width_px),
+                    "cell_height_px": Int(size.cell_height_px),
+                ]
             )
+            await MainActor.run {
+                herdrPanelOpenerTrace("send: pane.resize \(size.columns)x\(size.rows) via \(host.displayName) ok")
+            }
         }
     }
 }
