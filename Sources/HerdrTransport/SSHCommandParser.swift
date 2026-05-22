@@ -172,8 +172,11 @@ enum SSHCommandParser {
             throw ParseError.unknownExecutable(head)
         }
 
-        // Now walk ssh options. First non-option positional = target;
-        // anything after target = remote command, drop.
+        // Walk ssh options. First non-option positional = target.
+        // After target we keep collecting options (e.g. user pastes
+        // `ssh user@host -i ~/key`) but the second positional ends
+        // the option scan — anything past it is a remote command and
+        // gets dropped (cmux supplies its own).
         var target: String?
         while !tokens.isEmpty {
             let t = tokens.removeFirst()
@@ -206,8 +209,12 @@ enum SSHCommandParser {
                 extraArgs.append(t)
                 continue
             }
-            // First positional = target.
-            target = t
+            // Positional. First one = target; second one = remote
+            // command (drop the rest).
+            if target == nil {
+                target = t
+                continue
+            }
             break
         }
 

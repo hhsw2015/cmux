@@ -91,8 +91,8 @@ enum HerdrRemoteInstaller {
             host: host,
             command: "~/.local/bin/herdr-cmux --version"
         )?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        await MainActor.run {
-            if version.isEmpty {
+        if version.isEmpty {
+            await MainActor.run {
                 herdrInstallerTrace("\(target): verification failed (no --version output)")
                 HostHealthStore.shared.reportOffline(
                     hostId: host.id,
@@ -103,12 +103,59 @@ enum HerdrRemoteInstaller {
                     title: String(localized: "herdr.install.failed.title", defaultValue: "Set up failed"),
                     body: String(localized: "herdr.install.failed.verify", defaultValue: "\(host.displayName): cmux agent didn't respond after install.")
                 )
-            } else {
-                herdrInstallerTrace("\(target): installed \(version) (\(assetName))")
+            }
+            return
+        }
+        herdrInstallerTrace("\(target): installed \(version) (\(assetName))")
+
+        // 4. Start the daemon for the configured session so api-bridge
+        //    has a socket to talk to. The daemon is a TUI; we wrap it
+        //    in `setsid -f script` to give it a pty without a real
+        //    terminal. Idempotent — if it's already running, the
+        //    existing process keeps the socket and the second invocation
+        //    just exits.
+        let session = host.sessionName
+        let startCmd = """
+        if [ ! -S "$HOME/.config/herdr/sessions/\(session)/herdr.sock" ]; then \
+          if command -v setsid >/dev/null 2>&1 && command -v script >/dev/null 2>&1; then \
+            setsid -f script -q -c "$HOME/.local/bin/herdr-cmux --session \(session)" /dev/null \
+              < /dev/null > /dev/null 2>&1 & \
+          else \
+            nohup "$HOME/.local/bin/herdr-cmux" --session \(session) \
+              > /dev/null 2>&1 < /dev/null & \
+          fi; \
+          for _ in 1 2 3 4 5 6 7 8 9 10; do \
+            sleep 1; \
+            [ -S "$HOME/.config/herdr/sessions/\(session)/herdr.sock" ] && break; \
+          done; \
+        fi
+        """
+        if !runSSH(host: host, command: startCmd) {
+            herdrInstallerTrace("\(target): daemon start command failed (may already be running)")
+        }
+        // Probe the api-bridge to confirm the socket is live.
+        let pingResp = captureSSH(
+            host: host,
+            command: "printf '{\"id\":\"setup\",\"method\":\"ping\",\"params\":{}}\\n' | $HOME/.local/bin/herdr-cmux --session \(session) api-bridge 2>/dev/null"
+        )?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        await MainActor.run {
+            if pingResp.contains("\"pong\"") {
+                herdrInstallerTrace("\(target): daemon ready (session=\(session))")
                 HostHealthStore.shared.reportOnline(hostId: host.id)
                 postNotification(
                     title: String(localized: "herdr.install.success.title", defaultValue: "\(host.displayName) is ready"),
                     body: String(localized: "herdr.install.success.body", defaultValue: "Installed \(version).")
+                )
+            } else {
+                herdrInstallerTrace("\(target): installed \(version) but daemon ping failed: \(pingResp.prefix(200))")
+                HostHealthStore.shared.reportOffline(
+                    hostId: host.id,
+                    reason: String(localized: "herdr.err.daemonNotResponding",
+                                   defaultValue: "Installed \(version) but the daemon didn't answer on session \(session).")
+                )
+                postNotification(
+                    title: String(localized: "herdr.install.failed.title", defaultValue: "Set up failed"),
+                    body: String(localized: "herdr.install.failed.daemon", defaultValue: "\(host.displayName): daemon didn't start. Run `~/.local/bin/herdr-cmux --session \(session)` manually in a terminal once.")
                 )
             }
         }
