@@ -1141,8 +1141,31 @@ enum HerdrPanelOpener {
         // we actually want to land. Echo'd pane.resize during a TUI
         // drag was the trigger for the "panel input invisible /
         // cmux UI stalls" repro on remote hosts.
-        if HerdrInboundLayoutSync.shouldSuppressOutboundResize {
-            herdrPanelOpenerTrace("forwardPanelSize suppressed (inbound apply active)")
+        // Resolve the binding root for this panel so suppression is
+        // scoped to the binding undergoing inbound apply, not global
+        // (review #3 of bc76ffea: a drag in workspace A used to
+        // suppress legitimate user-driven resizes in workspace B).
+        let bindingKey = HerdrTabRegistry.shared.binding(
+            forCmuxPaneId: panelId
+        )?.rootCmuxPaneId
+        if HerdrInboundLayoutSync.shouldSuppressOutboundResize(forBinding: bindingKey) {
+            herdrPanelOpenerTrace("forwardPanelSize suppressed (inbound apply active for \(bindingKey?.uuidString ?? "<unresolved>"))")
+            // Remember that we held back a real resize so the trailing
+            // tick re-fires forwardPanelSize after suppression closes.
+            // Closure captures the call args; surface stays valid as
+            // long as the panel/registry entry is alive (the entry
+            // owns the SurfaceController that owns the surface).
+            HerdrInboundLayoutSync.markPendingResize(
+                bindingKey: bindingKey,
+                panelId: panelId
+            ) {
+                forwardPanelSize(
+                    panelId: panelId,
+                    surface: surface,
+                    paneId: paneId,
+                    host: host
+                )
+            }
             return
         }
         // Reject collapsed / not-yet-laid-out frames. Ghostty reports

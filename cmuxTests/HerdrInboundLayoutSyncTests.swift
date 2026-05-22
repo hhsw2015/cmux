@@ -287,6 +287,56 @@ final class HerdrInboundLayoutSyncTests: XCTestCase {
         )
     }
 
+    func testPerBindingSuppressionDoesNotBleedToOtherBindings() {
+        // Locks review #3 of bc76ffea: a TUI drag against binding A
+        // must not suppress outbound resize for binding B.
+        HerdrInboundLayoutSync._resetSuppressionForTesting()
+        let bindingA = UUID()
+        let bindingB = UUID()
+        HerdrInboundLayoutSync._withInboundApplyActiveForTesting(bindingKey: bindingA) {
+            XCTAssertTrue(
+                HerdrInboundLayoutSync.shouldSuppressOutboundResize(forBinding: bindingA)
+            )
+            XCTAssertFalse(
+                HerdrInboundLayoutSync.shouldSuppressOutboundResize(forBinding: bindingB),
+                "binding B should not be suppressed by binding A's apply"
+            )
+        }
+    }
+
+    func testForgetBindingClearsSuppressionState() {
+        HerdrInboundLayoutSync._resetSuppressionForTesting()
+        let key = UUID()
+        HerdrInboundLayoutSync._withInboundApplyActiveForTesting(bindingKey: key) {
+            // pendingResize gets queued so we have something to clear.
+            HerdrInboundLayoutSync.markPendingResize(bindingKey: key, panelId: UUID()) { }
+        }
+        HerdrInboundLayoutSync.forgetBinding(rootCmuxPaneId: key)
+        XCTAssertFalse(HerdrInboundLayoutSync.shouldSuppressOutboundResize(forBinding: key),
+                       "trailing window must be cleared when binding goes away")
+    }
+
+    func testPendingResizeFiresAfterSuppressionReleases() async throws {
+        // Locks review #2 of bc76ffea: a real user-driven resize
+        // suppressed during inbound apply must be re-fired once the
+        // trailing window closes — otherwise the panel's PTY size
+        // diverges from the cmux frame.
+        HerdrInboundLayoutSync._resetSuppressionForTesting()
+        let key = UUID()
+        let panelId = UUID()
+        var fired = 0
+        HerdrInboundLayoutSync._withInboundApplyActiveForTesting(bindingKey: key) {
+            HerdrInboundLayoutSync.markPendingResize(bindingKey: key, panelId: panelId) {
+                fired += 1
+            }
+        }
+        // Wait past the trailing window + the +50ms scheduling pad.
+        let waitMs = HerdrInboundLayoutSync.inboundApplySuppressTrailingMs + 200
+        try await Task.sleep(nanoseconds: UInt64(waitMs) * 1_000_000)
+        XCTAssertEqual(fired, 1,
+                       "the suppressed resize must be re-fired exactly once after release")
+    }
+
     func testShouldSuppressOutboundResizeReleasesAfterTrailingWindow() async throws {
         HerdrInboundLayoutSync._resetSuppressionForTesting()
         HerdrInboundLayoutSync._withInboundApplyActiveForTesting { /* no-op */ }

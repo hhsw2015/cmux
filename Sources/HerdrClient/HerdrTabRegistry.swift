@@ -78,6 +78,16 @@ final class HerdrTabRegistry: ObservableObject {
 
     func remove(key: UUID) {
         guard bindings.removeValue(forKey: key) != nil else { return }
+        // Clear out per-binding state in HerdrInboundLayoutSync so a
+        // future binding that happens to land on the same UUID
+        // doesn't inherit a stale apply-throttle timestamp, a stale
+        // pendingDividerSpec from the previous tree, or a stale
+        // suppression entry. Caught by review #1 of bc76ffea.
+        HerdrInboundLayoutSync.forgetBinding(rootCmuxPaneId: key)
+        // Also drop the divider-sync's lastSeen so a future binding
+        // doesn't diff against ratios from a tree that no longer
+        // exists.
+        HerdrDividerSync.reset(bindingKey: key)
         objectWillChange.send()
         NotificationCenter.default.post(
             name: Self.bindingsChangedNotification, object: nil

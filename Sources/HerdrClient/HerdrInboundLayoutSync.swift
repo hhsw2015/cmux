@@ -37,34 +37,73 @@ enum HerdrInboundLayoutSync {
     private static var lastDividerApplyAt: [UUID: Date] = [:]
     static let dividerApplyMinInterval: TimeInterval = 0.033
 
-    /// While true, outbound pane.resize is suppressed because the
-    /// resize was caused by us mirroring the daemon's own layout. The
-    /// daemon already knows what size the PTY should be (it's the
-    /// origin of the layout_changed event), so echoing pane.resize
-    /// back during inbound apply is pure SSH chatter that competes
-    /// for the master's bandwidth with the raw-pty-attach output we
-    /// actually want to land on screen.
-    private static var inboundApplyActiveCount: Int = 0
-    private static var inboundApplySuppressUntil: Date = .distantPast
+    /// Per-binding suppression state. Key: binding.rootCmuxPaneId.
+    /// While the active counter is > 0, or the deadline is in the
+    /// future, outbound pane.resize for panels in that binding is
+    /// suppressed. Per-binding (not global) so a TUI drag in
+    /// workspace A doesn't suppress legitimate user-driven resizes in
+    /// workspace B — review #3 of bc76ffea caught the global form.
+    private static var inboundApplyActiveByBinding: [UUID: Int] = [:]
+    private static var inboundApplySuppressUntilByBinding: [UUID: Date] = [:]
     static let inboundApplySuppressTrailingMs: Int = 250
 
-    /// Tested by HerdrPanelOpener.forwardPanelSize before queuing the
-    /// outbound RPC.
+    /// Test/back-compat globals so the existing
+    /// `shouldSuppressOutboundResize` getter (no args) still answers
+    /// "is anything suppressing?" — used by tests + as a defensive
+    /// fallback when forwardPanelSize can't resolve a binding key.
+    private static var inboundApplyActiveCount: Int = 0
+    private static var inboundApplySuppressUntil: Date = .distantPast
+
+    /// Returns true while a binding is in inbound apply or its
+    /// trailing window. When `bindingKey` is nil we fall back to the
+    /// global aggregate so callers without a known binding still
+    /// honour the contract.
+    static func shouldSuppressOutboundResize(forBinding bindingKey: UUID?) -> Bool {
+        if let bindingKey {
+            if (inboundApplyActiveByBinding[bindingKey] ?? 0) > 0 { return true }
+            if let until = inboundApplySuppressUntilByBinding[bindingKey],
+               Date() < until {
+                return true
+            }
+            return false
+        }
+        return inboundApplyActiveCount > 0 || Date() < inboundApplySuppressUntil
+    }
+
+    /// Legacy-shape getter retained for the existing tests.
     static var shouldSuppressOutboundResize: Bool {
-        inboundApplyActiveCount > 0 || Date() < inboundApplySuppressUntil
+        shouldSuppressOutboundResize(forBinding: nil)
     }
 
     /// Test seam. Pretends an inbound apply is running for `block`'s
     /// duration so HerdrInboundLayoutSyncTests can assert that
     /// shouldSuppressOutboundResize flips correctly without having to
-    /// stand up a full Workspace + bonsplit harness.
-    static func _withInboundApplyActiveForTesting<T>(_ block: () -> T) -> T {
+    /// stand up a full Workspace + bonsplit harness. Pass a binding
+    /// key when verifying per-binding scoping; nil exercises only the
+    /// global aggregate.
+    static func _withInboundApplyActiveForTesting<T>(
+        bindingKey: UUID? = nil,
+        _ block: () -> T
+    ) -> T {
         inboundApplyActiveCount += 1
+        if let bindingKey {
+            inboundApplyActiveByBinding[bindingKey, default: 0] += 1
+        }
         defer {
-            inboundApplyActiveCount -= 1
-            inboundApplySuppressUntil = Date().addingTimeInterval(
+            inboundApplyActiveCount = max(0, inboundApplyActiveCount - 1)
+            let until = Date().addingTimeInterval(
                 Double(inboundApplySuppressTrailingMs) / 1000.0
             )
+            inboundApplySuppressUntil = until
+            if let bindingKey {
+                let remaining = (inboundApplyActiveByBinding[bindingKey] ?? 1) - 1
+                if remaining <= 0 {
+                    inboundApplyActiveByBinding.removeValue(forKey: bindingKey)
+                } else {
+                    inboundApplyActiveByBinding[bindingKey] = remaining
+                }
+                inboundApplySuppressUntilByBinding[bindingKey] = until
+            }
         }
         return block()
     }
@@ -74,7 +113,76 @@ enum HerdrInboundLayoutSync {
     static func _resetSuppressionForTesting() {
         inboundApplyActiveCount = 0
         inboundApplySuppressUntil = .distantPast
+        inboundApplySuppressUntilByBinding.removeAll()
+        inboundApplyActiveByBinding.removeAll()
         lastDividerApplyAt.removeAll()
+    }
+
+    /// Per-binding queue of "we suppressed this panel's pane.resize;
+    /// re-fire it once the trailing window closes" closures. Keyed
+    /// first by bindingKey, then by panelId so multiple suppressed
+    /// resizes for the same panel collapse to the latest one.
+    /// Review #2 of bc76ffea: legitimate user-driven cmux window
+    /// resizes during a remote TUI drag would otherwise vanish.
+    typealias PendingResizeRetry = @MainActor () -> Void
+    private static var pendingResizeRetries: [UUID: [UUID: PendingResizeRetry]] = [:]
+    private static let unresolvedBindingKey = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
+
+    /// Called by HerdrPanelOpener.forwardPanelSize when a real
+    /// outbound resize was held back due to inbound apply
+    /// suppression. The retry closure must call forwardPanelSize
+    /// again with the same args; flushPendingResizes invokes it
+    /// after the trailing window expires.
+    static func markPendingResize(
+        bindingKey: UUID?,
+        panelId: UUID,
+        retry: @escaping PendingResizeRetry
+    ) {
+        let key = bindingKey ?? unresolvedBindingKey
+        pendingResizeRetries[key, default: [:]][panelId] = retry
+        scheduleFlushPendingResizes(forBinding: key)
+    }
+
+    /// Schedule a flush attempt slightly after the trailing window
+    /// nominally closes. If suppression has been re-armed by another
+    /// apply, the flush no-ops and the *next* apply schedules a new
+    /// flush — pendingResizeRetries retains the latest closure either
+    /// way.
+    private static func scheduleFlushPendingResizes(forBinding key: UUID) {
+        let waitMs = inboundApplySuppressTrailingMs + 50
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(waitMs) * 1_000_000)
+            flushPendingResizes(forBinding: key)
+        }
+    }
+
+    static func flushPendingResizes(forBinding key: UUID) {
+        let bindingForCheck: UUID? = (key == unresolvedBindingKey) ? nil : key
+        if shouldSuppressOutboundResize(forBinding: bindingForCheck) {
+            // Drag still active. Don't drain — the next apply's defer
+            // will schedule another flush attempt.
+            return
+        }
+        guard let retries = pendingResizeRetries.removeValue(forKey: key) else { return }
+        for (_, retry) in retries {
+            retry()
+        }
+    }
+
+    /// Drop every per-binding cache entry for `rootCmuxPaneId`.
+    /// Called from HerdrTabRegistry.remove when a binding goes away
+    /// so that a future binding which happens to reuse the same UUID
+    /// doesn't inherit stale apply-throttle, suppression, or pending-
+    /// spec state. Review finding #1 of bc76ffea identified this as
+    /// the highest-risk issue from the throttle/suppress commit.
+    static func forgetBinding(rootCmuxPaneId: UUID) {
+        let key = rootCmuxPaneId
+        lastDividerApplyAt.removeValue(forKey: key)
+        pendingDividerSpec.removeValue(forKey: key)
+        dividerApplyScheduled.remove(key)
+        inboundApplySuppressUntilByBinding.removeValue(forKey: key)
+        inboundApplyActiveByBinding.removeValue(forKey: key)
+        pendingResizeRetries.removeValue(forKey: key)
     }
 
     static func apply(tree: HerdrLayoutTree) {
@@ -348,20 +456,30 @@ enum HerdrInboundLayoutSync {
         binding: HerdrTabBinding,
         workspace: Workspace
     ) {
-        // Suppress outbound pane.resize for the duration of this apply
-        // and a short trailing window. setDividerPosition triggers
-        // bonsplit's didChangeGeometry, the panel resize observer, and
-        // the 80ms forwardPanelSize debounce; without this guard the
-        // first frame after each inbound LayoutChanged spawns an SSH
-        // pane.resize round-trip that adds nothing (daemon is the one
-        // that just told us the layout) and competes with the
-        // raw-pty-attach output channel for the SSH master.
+        // Suppress outbound pane.resize for THIS binding for the
+        // duration of the apply and a short trailing window.
+        // setDividerPosition triggers bonsplit's didChangeGeometry,
+        // the panel resize observer, and the 80ms forwardPanelSize
+        // debounce; without this guard the first frame after each
+        // inbound LayoutChanged spawns an SSH pane.resize round-trip
+        // that adds nothing (daemon is the origin of the layout) and
+        // competes with raw-pty-attach output for the SSH master.
+        let bindingKey = binding.rootCmuxPaneId
+        inboundApplyActiveByBinding[bindingKey, default: 0] += 1
         inboundApplyActiveCount += 1
         defer {
-            inboundApplyActiveCount -= 1
-            inboundApplySuppressUntil = Date().addingTimeInterval(
+            let remaining = (inboundApplyActiveByBinding[bindingKey] ?? 1) - 1
+            if remaining <= 0 {
+                inboundApplyActiveByBinding.removeValue(forKey: bindingKey)
+            } else {
+                inboundApplyActiveByBinding[bindingKey] = remaining
+            }
+            inboundApplyActiveCount = max(0, inboundApplyActiveCount - 1)
+            let until = Date().addingTimeInterval(
                 Double(inboundApplySuppressTrailingMs) / 1000.0
             )
+            inboundApplySuppressUntilByBinding[bindingKey] = until
+            inboundApplySuppressUntil = until
         }
         let cmuxTree = workspace.bonsplitController.treeSnapshot()
         guard let cmuxSubtree = findCmuxSubtreeRoot(tree: cmuxTree, binding: binding) else {
