@@ -62,13 +62,16 @@ enum HerdrRemoteInstaller {
         }
         herdrInstallerTrace("\(target): detected asset \(assetName)")
 
-        // 2. Skip download when remote already has herdr-cmux installed.
-        //    The user can wipe the binary if they want to force-upgrade;
-        //    re-installing on every "Set up" press is wasteful and trips
-        //    over Text file busy when the daemon is running.
+        // 2. Skip download when remote already has herdr-cmux installed
+        //    anywhere — system-wide (brew/apt) or in ~/.local/bin from
+        //    a previous run. Reuse the same shell expression every other
+        //    caller uses so we never disagree about which binary "exists".
+        //    User wipes the binary or pins a path via Advanced override
+        //    if they want to force-upgrade or pick a specific install.
+        let hbin = SSHCommandBuilder.defaultRemoteBinaryShellExpression
         let preexisting = captureSSH(
             host: host,
-            command: "~/.local/bin/herdr-cmux --version 2>/dev/null"
+            command: "\(hbin) --version 2>/dev/null"
         )?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let skipDownload = preexisting.hasPrefix("herdr ")
         if skipDownload {
@@ -104,10 +107,10 @@ enum HerdrRemoteInstaller {
                 return
             }
         }
-        // 3. Verify with --version.
+        // 3. Verify with --version (resolved binary path).
         let version = captureSSH(
             host: host,
-            command: "~/.local/bin/herdr-cmux --version"
+            command: "\(hbin) --version"
         )?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if version.isEmpty {
             await MainActor.run {
@@ -143,7 +146,13 @@ enum HerdrRemoteInstaller {
             }
             return
         }
+        // Resolve binary location once at the top of the snippet so
+        // both the alive-check pgrep target and the spawn command use
+        // the same one.
         let startCmd = """
+        HBIN="$(command -v herdr-cmux 2>/dev/null)"; \
+        [ -z "$HBIN" ] && [ -x "$HOME/.local/bin/herdr-cmux" ] && HBIN="$HOME/.local/bin/herdr-cmux"; \
+        if [ -z "$HBIN" ]; then echo "herdr-cmux not found on remote PATH or ~/.local/bin" >&2; exit 127; fi; \
         SOCK="$HOME/.config/herdr/sessions/\(session)/herdr.sock"; \
         if [ -S "$SOCK" ]; then \
           ALIVE=0; \
@@ -158,10 +167,10 @@ enum HerdrRemoteInstaller {
         fi; \
         if [ ! -S "$SOCK" ]; then \
           if command -v setsid >/dev/null 2>&1 && command -v script >/dev/null 2>&1; then \
-            setsid -f script -q -c "$HOME/.local/bin/herdr-cmux --session \(session)" /dev/null \
+            setsid -f script -q -c "$HBIN --session \(session)" /dev/null \
               < /dev/null > /dev/null 2>&1 & \
           else \
-            nohup "$HOME/.local/bin/herdr-cmux" --session \(session) \
+            nohup "$HBIN" --session \(session) \
               > /dev/null 2>&1 < /dev/null & \
           fi; \
           for _ in 1 2 3 4 5 6 7 8 9 10; do \
@@ -176,7 +185,7 @@ enum HerdrRemoteInstaller {
         // Probe the api-bridge to confirm the socket is live.
         let pingResp = captureSSH(
             host: host,
-            command: "printf '{\"id\":\"setup\",\"method\":\"ping\",\"params\":{}}\\n' | $HOME/.local/bin/herdr-cmux --session \(session) api-bridge 2>/dev/null"
+            command: "printf '{\"id\":\"setup\",\"method\":\"ping\",\"params\":{}}\\n' | \(hbin) --session \(session) api-bridge 2>/dev/null"
         )?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         await MainActor.run {
             if pingResp.contains("\"pong\"") {

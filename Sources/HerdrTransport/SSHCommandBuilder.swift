@@ -71,21 +71,42 @@ enum SSHCommandBuilder {
 
     /// Resolve the remote `herdr-cmux` binary path for an sshStdio host.
     /// Returns the override when the user supplied one, otherwise a
-    /// shell expression that picks the binary at runtime: prefer
-    /// whatever `command -v` finds on the (non-interactive ssh) PATH,
-    /// fall back to `~/.local/bin/herdr-cmux` when PATH is sparse —
-    /// non-interactive ssh sessions don't load `~/.bashrc` and Ubuntu's
-    /// `~/.profile` only adds `~/.local/bin` to PATH for *login* shells,
-    /// so a bare `herdr-cmux` fails to resolve and raw-pty-attach exits
-    /// silently. The expression is interpolated by the remote shell,
-    /// so users with a system-wide install (e.g. /usr/local/bin via
-    /// brew) get picked up automatically without an Advanced override.
+    /// shell expression that picks the binary at runtime via
+    /// `defaultRemoteBinaryShellExpression`.
     static func remoteBinaryPath(for host: HerdrHost) -> String {
         if case .sshStdio(_, _, _, _, let remoteBin) = host.transport,
            let path = remoteBin, !path.isEmpty {
             return path
         }
-        return "\"$(command -v herdr-cmux || echo $HOME/.local/bin/herdr-cmux)\""
+        return defaultRemoteBinaryShellExpression
+    }
+
+    /// Single source of truth for "where is herdr-cmux on the remote
+    /// when the user hasn't pinned a path". Used by every caller that
+    /// runs a herdr-cmux command over ssh (transport, installer,
+    /// display client) so they all agree on lookup order:
+    ///
+    ///   1. `command -v herdr-cmux` — wins for system-wide installs
+    ///      (brew, apt, /usr/local/bin) AND for login-shell PATHs
+    ///      that already include `~/.local/bin`.
+    ///   2. `$HOME/.local/bin/herdr-cmux` — covers HerdrRemoteInstaller's
+    ///      drop location when PATH is the bare /usr/bin set ssh
+    ///      hands a non-interactive session.
+    ///
+    /// The expression is interpolated verbatim by the remote shell
+    /// (ssh joins remote argv with spaces and execs `sh -c "..."`),
+    /// so the leading/trailing double quotes are part of the output —
+    /// drop them and the inner $HOME stops expanding inside command
+    /// substitution.
+    static let defaultRemoteBinaryShellExpression =
+        "\"$(command -v herdr-cmux || echo $HOME/.local/bin/herdr-cmux)\""
+
+    /// True when `path` is the auto-resolution expression we own
+    /// (i.e. the user didn't override). Useful for callers that want
+    /// to gate behavior (auto-spawn, install-on-default) on the
+    /// default vs user-pinned distinction.
+    static func usesDefaultRemoteBinary(_ path: String) -> Bool {
+        path == defaultRemoteBinaryShellExpression
     }
 
     // MARK: - Helpers
