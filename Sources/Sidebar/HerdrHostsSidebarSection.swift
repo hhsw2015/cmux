@@ -453,13 +453,20 @@ private struct HerdrHostRow: View {
                     localized: "sidebar.herdr.refresh",
                     defaultValue: "Refresh"
                 )) { onRefresh() }
-                Divider()
-                Button(String(
-                    localized: "sidebar.herdr.reconnect",
-                    defaultValue: "Reconnect / Restart daemon"
-                )) {
-                    HerdrRemoteInstaller.installOnHost(host)
+                if case .sshStdio = host.transport {
+                    // Reconnect runs the SSH installer flow which also
+                    // does the daemon-start step. Local daemons auto-
+                    // spawn via HerdrBackend.start on first open, so the
+                    // menu item would be a no-op there — hide it.
+                    Divider()
+                    Button(String(
+                        localized: "sidebar.herdr.reconnect",
+                        defaultValue: "Reconnect / Restart daemon"
+                    )) {
+                        HerdrRemoteInstaller.installOnHost(host)
+                    }
                 }
+                Divider()
                 Button(role: .destructive) {
                     Task.detached {
                         // server.stop closes the daemon's API socket
@@ -467,6 +474,7 @@ private struct HerdrHostRow: View {
                         // its tearDownHost branch then closes every
                         // herdr-backed cmux workspace bound to this
                         // host so the user doesn't see stale panels.
+                        // Works for both local and remote daemons.
                         await HerdrOneShotRPC.send(
                             host: host,
                             method: "server.stop",
