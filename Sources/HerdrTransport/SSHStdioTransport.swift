@@ -74,13 +74,37 @@ actor SSHStdioTransport: HerdrTransport {
         }
         status = .connecting
 
+        // Wrap api-bridge in a shell snippet that auto-spawns the
+        // daemon if its socket is missing, so the user doesn't have
+        // to ssh in by hand after a remote reboot or after `herdr
+        // server stop`. Same logic the installer uses, just inline so
+        // every reconnect heals.
+        //
+        // Falls back to bare api-bridge invocation when:
+        //   - the user pinned a custom remote-binary path (we can't
+        //     guess where their daemon lives in that case)
+        //   - the session name has shell-unsafe chars (refusing
+        //     interpolation matches the installer's policy)
+        // In both fallback paths the user retains the manual setup
+        // path; we just don't try to be clever.
         let remoteBinary = SSHCommandBuilder.remoteBinaryPath(for: host)
-        var remoteCommand: [String] = [remoteBinary]
-        if !host.sessionName.isEmpty {
-            remoteCommand.append("--session")
-            remoteCommand.append(host.sessionName)
+        let usesDefaultBinary = remoteBinary == "herdr-cmux"
+        let session = host.sessionName
+        let canAutoSpawn = usesDefaultBinary
+            && !session.isEmpty
+            && SSHStdioTransport.isShellSafeSessionName(session)
+
+        var remoteCommand: [String]
+        if canAutoSpawn {
+            remoteCommand = [Self.autoSpawnShellCommand(session: session)]
+        } else {
+            remoteCommand = [remoteBinary]
+            if !session.isEmpty {
+                remoteCommand.append("--session")
+                remoteCommand.append(session)
+            }
+            remoteCommand.append("api-bridge")
         }
-        remoteCommand.append("api-bridge")
 
         guard let invocation = SSHCommandBuilder.build(
             for: host, remoteCommand: remoteCommand
@@ -233,6 +257,40 @@ actor SSHStdioTransport: HerdrTransport {
         } else {
             stderrTail = String(combined.suffix(512))
         }
+    }
+
+    /// Allow only `[A-Za-z0-9_.-]` in a session name we're about to
+    /// interpolate into a remote shell snippet. Same policy as the
+    /// installer.
+    static func isShellSafeSessionName(_ s: String) -> Bool {
+        guard !s.isEmpty else { return false }
+        let allowed = CharacterSet(charactersIn:
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")
+        return s.unicodeScalars.allSatisfy { allowed.contains($0) }
+    }
+
+    /// One-shot shell snippet that ensures the daemon for `session`
+    /// is alive on the remote, then `exec`s `api-bridge` so the SSH
+    /// stdio attaches directly. The `exec` matters: it replaces the
+    /// shell with herdr-cmux so cmux's stdin/stdout pipes line up.
+    static func autoSpawnShellCommand(session: String) -> String {
+        return """
+        SOCK="$HOME/.config/herdr/sessions/\(session)/herdr.sock"; \
+        if [ ! -S "$SOCK" ]; then \
+          if command -v setsid >/dev/null 2>&1 && command -v script >/dev/null 2>&1; then \
+            setsid -f script -q -c "$HOME/.local/bin/herdr-cmux --session \(session)" /dev/null \
+              < /dev/null > /dev/null 2>&1 & \
+          else \
+            nohup "$HOME/.local/bin/herdr-cmux" --session \(session) \
+              > /dev/null 2>&1 < /dev/null & \
+          fi; \
+          for _ in 1 2 3 4 5 6 7 8 9 10; do \
+            sleep 1; \
+            [ -S "$SOCK" ] && break; \
+          done; \
+        fi; \
+        exec "$HOME/.local/bin/herdr-cmux" --session \(session) api-bridge
+        """
     }
 }
 
