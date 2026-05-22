@@ -188,9 +188,44 @@ final class HerdrEventPump: ObservableObject {
 
                 attempt = 0  // reset backoff on a successful subscribe
                 let stream = await client.events
+                // Watchdog: herdr's api-bridge keeps the SSH stdio
+                // stream alive even after the local daemon dies (the
+                // daemon's socket close doesn't always propagate
+                // through the bridge). Without this probe a stopped
+                // session leaves cmux holding a phantom-connected
+                // stream forever, so workspace tear-down never fires.
+                // Open a fresh transport every 15s and ping; if that
+                // fails the daemon is gone — force-close the live
+                // client to break out of for-await into the reconnect
+                // path, where the new connect attempt fast-fails and
+                // tearDownHost runs.
+                let watchdogClient = client
+                let watchdogHost: HerdrHost? = hosts[socketPath]
+                let watchdog = Task { [weak self] in
+                    while !Task.isCancelled {
+                        try? await Task.sleep(nanoseconds: 15_000_000_000)
+                        if Task.isCancelled { return }
+                        guard let watchdogHost else { return }
+                        do {
+                            _ = try await HerdrOneShotRPC.request(
+                                host: watchdogHost,
+                                method: "ping",
+                                params: [:]
+                            )
+                        } catch {
+                            cmuxDebugLog(
+                                "herdr.pump.watchdog: ping failed for \(watchdogHost.displayName): \(error); closing client"
+                            )
+                            await watchdogClient.close()
+                            _ = self
+                            return
+                        }
+                    }
+                }
                 for await event in stream {
                     handle(event: event, socketPath: socketPath)
                 }
+                watchdog.cancel()
                 cmuxDebugLog("herdr.pump: stream closed on \(socketPath); will reconnect")
                 // Pull the transport-level reason (ssh stderr tail,
                 // socket errno, etc.) so the host row can display
