@@ -77,12 +77,15 @@ enum HerdrDividerSync {
     /// Seed `lastSeen` for a freshly materialized binding so the first
     /// `didChangeGeometry` after open doesn't fire pane.set_split_ratio
     /// RPCs for ratios herdr already knows about. Uses the binding's
-    /// own pane set + the current bonsplit tree.
-    static func prime(binding: HerdrTabBinding, treeSnapshot: ExternalTreeNode) {
+    /// own pane set + the current bonsplit tree. Returns true when the
+    /// snapshot's shape matched the binding and lastSeen was written.
+    @discardableResult
+    static func prime(binding: HerdrTabBinding, treeSnapshot: ExternalTreeNode) -> Bool {
         guard let subtree = findHerdrSubtreeRoot(tree: treeSnapshot, binding: binding) else {
-            return
+            return false
         }
         lastSeen[binding.rootCmuxPaneId] = collectDividers(tree: subtree, prefix: [])
+        return true
     }
 
     /// Overwrite lastSeen with values inferred from a remote
@@ -93,6 +96,14 @@ enum HerdrDividerSync {
     /// `isExternalUpdateInProgress` 50ms guard).
     static func setLastSeen(bindingKey: UUID, value: [[Bool]: Float]) {
         lastSeen[bindingKey] = value
+    }
+
+    /// Test-only accessor. Returns the cached divider state for a
+    /// binding, or nil when none exists. Production code must keep
+    /// using sync/prime/setLastSeen so we can swap the storage shape
+    /// without touching call sites.
+    static func lastSeenForTesting(bindingKey: UUID) -> [[Bool]: Float]? {
+        lastSeen[bindingKey]
     }
 
     private static func ratiosEqual(_ lhs: Float?, _ rhs: Float) -> Bool {

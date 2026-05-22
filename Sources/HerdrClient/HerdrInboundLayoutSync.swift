@@ -318,10 +318,30 @@ enum HerdrInboundLayoutSync {
         // microseconds; over SSH each round-trip is ~100ms and the
         // user observes it as a frozen panel where typed input never
         // echoes (raw-pty-attach output is starved by the storm).
-        HerdrDividerSync.prime(
+        let primed = HerdrDividerSync.prime(
             binding: binding,
             treeSnapshot: workspace.bonsplitController.treeSnapshot()
         )
+        if !primed {
+            // Post-apply tree shape didn't match this binding (mid-
+            // structural transition: an addition Task is still pending,
+            // a sibling pane was just removed, etc.). prime() no-ops in
+            // that window, which used to leave lastSeen pointing at a
+            // PREVIOUS tree's ratios — the next didChangeGeometry then
+            // diffed the current ratios against ancient values, blew
+            // through the epsilon, and fired pane.set_split_ratio RPCs
+            // forever even though the user wasn't dragging. Fall back
+            // to writing the spec ratios so lastSeen at least reflects
+            // the layout the daemon just told us to draw.
+            os_log(
+                "herdr.inbound.applyDividers prime_skipped fallback_to_spec dividers=%{public}d",
+                newDividers.count
+            )
+            HerdrDividerSync.setLastSeen(
+                bindingKey: binding.rootCmuxPaneId,
+                value: newDividers
+            )
+        }
     }
 
     // MARK: - Structural: removal

@@ -113,6 +113,81 @@ final class HerdrDividerSyncTests: XCTestCase {
         HerdrDividerSync.prime(binding: binding, treeSnapshot: snapshot)
     }
 
+    func testPrimeReturnsTrueWhenShapeMatches() {
+        // Locks the contract that HerdrInboundLayoutSync.applyDividers
+        // relies on: a successful prime returns true so the caller
+        // knows lastSeen was actually written from the bonsplit
+        // snapshot and there's no need to fall back to spec ratios.
+        let panes = [UUID(), UUID(), UUID()]
+        let binding = makeBinding(cmuxPaneIds: panes)
+        HerdrTabRegistry.shared.register(key: binding.rootCmuxPaneId, binding: binding)
+        defer { HerdrTabRegistry.shared.remove(key: binding.rootCmuxPaneId) }
+
+        let snapshot = tree(cmuxPaneIds: panes, dividerRatios: [0.5, 0.6])
+        XCTAssertTrue(HerdrDividerSync.prime(binding: binding, treeSnapshot: snapshot))
+    }
+
+    func testPrimeMissLeavesPreviousLastSeenIntact() {
+        // Documents the reason applyDividers needs the fallback branch:
+        // when prime fails it does NOT clear or invalidate lastSeen, so
+        // an old binding's snapshot from a prior tree remains in place
+        // and the next sync would diff against it. Without the
+        // fallback that's exactly the stale-state bug review #6 found.
+        let panes = [UUID(), UUID(), UUID()]
+        let binding = makeBinding(cmuxPaneIds: panes)
+        HerdrTabRegistry.shared.register(key: binding.rootCmuxPaneId, binding: binding)
+        defer { HerdrTabRegistry.shared.remove(key: binding.rootCmuxPaneId) }
+
+        // Seed lastSeen with one set of values.
+        let original = tree(cmuxPaneIds: panes, dividerRatios: [0.4, 0.55])
+        XCTAssertTrue(HerdrDividerSync.prime(binding: binding, treeSnapshot: original))
+        let originalDividers = HerdrDividerSync.lastSeenForTesting(bindingKey: binding.rootCmuxPaneId)
+        XCTAssertEqual(originalDividers?.count, 2)
+
+        // Prime again with a shape-mismatched tree; lastSeen must not
+        // change, and the call must report failure to the caller.
+        let zero = PixelRect(x: 0, y: 0, width: 0, height: 0)
+        let mismatched = ExternalTreeNode.split(
+            ExternalSplitNode(
+                id: UUID().uuidString,
+                orientation: "horizontal",
+                dividerPosition: 0.99,
+                first: .pane(ExternalPaneNode(id: panes[0].uuidString, frame: zero, tabs: [], selectedTabId: nil)),
+                second: .pane(ExternalPaneNode(id: panes[1].uuidString, frame: zero, tabs: [], selectedTabId: nil))
+            )
+        )
+        XCTAssertFalse(HerdrDividerSync.prime(binding: binding, treeSnapshot: mismatched))
+        XCTAssertEqual(
+            HerdrDividerSync.lastSeenForTesting(bindingKey: binding.rootCmuxPaneId),
+            originalDividers
+        )
+    }
+
+    func testPrimeReturnsFalseWhenShapeDoesntMatch() {
+        // The fallback path in HerdrInboundLayoutSync.applyDividers
+        // only triggers when prime fails. If this contract regresses
+        // (e.g. prime starts always returning true), applyDividers
+        // never falls back to spec ratios, and we re-introduce the
+        // "stale lastSeen on subtree miss" bug from review finding #6.
+        let panes = [UUID(), UUID(), UUID()]
+        let binding = makeBinding(cmuxPaneIds: panes)
+        HerdrTabRegistry.shared.register(key: binding.rootCmuxPaneId, binding: binding)
+        defer { HerdrTabRegistry.shared.remove(key: binding.rootCmuxPaneId) }
+
+        // Snapshot only contains 2 of the 3 panes the binding owns.
+        let zero = PixelRect(x: 0, y: 0, width: 0, height: 0)
+        let truncated = ExternalTreeNode.split(
+            ExternalSplitNode(
+                id: UUID().uuidString,
+                orientation: "horizontal",
+                dividerPosition: 0.5,
+                first: .pane(ExternalPaneNode(id: panes[0].uuidString, frame: zero, tabs: [], selectedTabId: nil)),
+                second: .pane(ExternalPaneNode(id: panes[1].uuidString, frame: zero, tabs: [], selectedTabId: nil))
+            )
+        )
+        XCTAssertFalse(HerdrDividerSync.prime(binding: binding, treeSnapshot: truncated))
+    }
+
     func testSyncSkipsBindingWhenSubtreeShapeChanges() {
         // Binding owns 3 panes, but the bonsplit tree only contains
         // 2 of them (e.g. mid-mutation). sync must not fire RPCs.
