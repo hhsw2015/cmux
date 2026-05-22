@@ -283,6 +283,17 @@ actor SSHStdioTransport: HerdrTransport {
         [ -z "$HBIN" ] && [ -x "$HOME/.local/bin/herdr-cmux" ] && HBIN="$HOME/.local/bin/herdr-cmux"; \
         if [ -z "$HBIN" ]; then echo "herdr-cmux not found on remote PATH or ~/.local/bin" >&2; exit 127; fi; \
         SOCK="$HOME/.config/herdr/sessions/\(session)/herdr.sock"; \
+        if [ -S "$SOCK" ]; then \
+          ALIVE=0; \
+          if command -v pgrep >/dev/null 2>&1; then \
+            pgrep -f "herdr-cmux .*--session \(session)" >/dev/null 2>&1 && ALIVE=1; \
+          elif [ -r /proc/net/unix ]; then \
+            awk -v s="$SOCK" '$NF==s && $6=="01" {f=1} END{exit !f}' /proc/net/unix && ALIVE=1; \
+          else \
+            ALIVE=1; \
+          fi; \
+          [ "$ALIVE" = 0 ] && rm -f "$SOCK"; \
+        fi; \
         if [ ! -S "$SOCK" ]; then \
           if command -v setsid >/dev/null 2>&1 && command -v script >/dev/null 2>&1; then \
             setsid -f script -q -c "$HBIN --session \(session)" /dev/null \

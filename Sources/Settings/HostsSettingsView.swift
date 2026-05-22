@@ -555,6 +555,14 @@ private struct AddHostSheet: View {
                     String(localized: "settings.hosts.session", defaultValue: "Session name"),
                     text: $sessionName
                 )
+                if !Self.sessionNameIsValid(sessionName) {
+                    Text(String(
+                        localized: "settings.hosts.sessionInvalid",
+                        defaultValue: "Session name must use only letters, digits, dashes, underscores, dots."
+                    ))
+                    .font(.caption)
+                    .foregroundColor(.red)
+                }
                 Toggle(String(
                     localized: "settings.hosts.autoInstall",
                     defaultValue: "Install cmux agent on save"
@@ -765,9 +773,23 @@ private struct AddHostSheet: View {
     /// session name fall back to derived defaults if left empty).
     private var canSave: Bool {
         if isLocalhostEdit {
-            return !displayName.trimmingCharacters(in: .whitespaces).isEmpty
+            guard !displayName.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
+            return Self.sessionNameIsValid(sessionName)
         }
-        return !sshCommand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        guard !sshCommand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+        return Self.sessionNameIsValid(sessionName)
+    }
+
+    /// Session names show up as a directory under `~/.config/herdr/sessions`
+    /// and as a literal token in remote shell snippets that auto-spawn the
+    /// daemon, so non-ASCII / shell-special chars break setup. Empty is
+    /// allowed because `save()` falls back to the cmux default.
+    static func sessionNameIsValid(_ s: String) -> Bool {
+        let trimmed = s.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { return true }
+        let allowed = CharacterSet(charactersIn:
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")
+        return trimmed.unicodeScalars.allSatisfy { allowed.contains($0) }
     }
 
     private func save() {
