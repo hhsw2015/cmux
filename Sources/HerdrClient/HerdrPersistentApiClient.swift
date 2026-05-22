@@ -25,6 +25,14 @@ actor HerdrPersistentApiClient {
     private var awaiters: [CheckedContinuation<HerdrApiClient, Error>] = []
     private var connecting = false
 
+    /// Permanent shutdown flag set by `close()`. After this flips,
+    /// every future `request()` rejects synchronously instead of
+    /// quietly resurrecting the connection. The registry replaces
+    /// the instance when a host comes back online, so callers that
+    /// hold a stale reference past `forget(host:)` no longer get a
+    /// silent ssh re-spawn.
+    private var stopped = false
+
     init(host: HerdrHost) {
         self.host = host
     }
@@ -61,11 +69,22 @@ actor HerdrPersistentApiClient {
         }
     }
 
-    /// Drop the cached connection. Future requests reconnect.
-    /// Called from the registry when a host is removed. Drains every
-    /// awaiter with `disconnected` so no one is left holding a
-    /// continuation, and closes the cached client.
+    /// Test seam: returns true once the cached client (if any) has
+    /// reported isClosed. Tests poll this instead of sleeping a fixed
+    /// duration to wait for pump-side EOF observation.
+    func _isCachedClientClosedForTesting() async -> Bool {
+        guard let api = client else { return true }
+        return await api.isClosed
+    }
+
+    /// Permanently shut down. Drains every awaiter with
+    /// `disconnected`, closes the cached client, and flips the
+    /// `stopped` flag so any LATER `request()` against this instance
+    /// rejects synchronously instead of silently re-spawning ssh.
+    /// The registry vends a fresh instance for the host on the next
+    /// `client(for:)`; that's the supported way to "reopen" a host.
     func close() async {
+        stopped = true
         if connecting {
             connecting = false
             let pending = awaiters
@@ -84,28 +103,33 @@ actor HerdrPersistentApiClient {
     }
 
     private func ensureConnected() async throws -> HerdrApiClient {
-        if let existing = client {
-            // Pump may have exited silently if the daemon closed the
-            // socket between the previous request and this one (e.g.
-            // legacy daemon, transient ssh blip). Trust isClosed and
-            // proactively reconnect rather than handing back a dead
-            // client whose `request()` would suspend forever — see
-            // review CRIT-1 of 3c071dac.
-            let dead = await existing.isClosed
-            if !dead { return existing }
-            client = nil
-            await existing.close()
+        if stopped {
+            throw HerdrApiError(code: "disconnected", message: "persistent client closed")
+        }
+        // Snapshot the cached client BEFORE any await. If the pump has
+        // marked it closed silently (legacy daemon, transient ssh
+        // blip) we'll fall through to the connect path. The
+        // dead-client cleanup is handled INSIDE the connect-or-wait
+        // branch using a one-shot `connecting` flag so two concurrent
+        // callers can't both observe the same dead client and both
+        // call close() on it.
+        if let existing = client, !(await existing.isClosed) {
+            return existing
         }
         if connecting {
-            // A connect is already running; register and wait for it
-            // to settle. The connect path drains every awaiter with
-            // the same Result, so we can't end up with two parallel
-            // ssh subprocesses for what should be one connect.
             return try await withCheckedThrowingContinuation { cont in
                 awaiters.append(cont)
             }
         }
         connecting = true
+        // Clear and close the dead client (if any) only here, after
+        // the connecting flag is set, so a racing caller now lands in
+        // the `connecting` branch above instead of duplicating this
+        // close() against the same instance.
+        if let dead = client {
+            client = nil
+            await dead.close()
+        }
         do {
             let api = HerdrApiClient(transport: HerdrTransportFactory.make(host: host))
             try await api.start()
