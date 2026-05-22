@@ -9502,6 +9502,49 @@ final class Workspace: Identifiable, ObservableObject {
         surfaceResumeBindingsByPanelId[panelId]
     }
 
+    /// Detect a workspace that's a dead herdr stub from a previous
+    /// session: every panel is a TerminalPanel whose Ghostty surface
+    /// has process_exited == true, AND no panel is currently in
+    /// HerdrPanelRegistry, AND the workspace has no user-set custom
+    /// name. Used by autoReattach to clean up migration orphans from
+    /// pre-reuse-path builds. Conservative on purpose:
+    ///
+    /// - Native cmux workspaces with user-set names are preserved
+    ///   even if every shell Ctrl-D'd exited (user might have kept
+    ///   them around intentionally).
+    /// - Workspaces with surfaces still initializing (nil surface)
+    ///   are preserved.
+    /// - Workspaces with even one live process are preserved.
+    func isDeadHerdrStub() -> Bool {
+        // Spare any workspace the user explicitly named — they
+        // probably want to keep it around even if every shell exited.
+        if let name = customTitle, !name.trimmingCharacters(in: .whitespaces).isEmpty {
+            return false
+        }
+        let panelIds = Array(panels.keys)
+        guard !panelIds.isEmpty else { return false }
+        for panelId in panelIds {
+            // If any panel is still wired to a live herdr session,
+            // treat the workspace as live.
+            if HerdrPanelRegistry.shared.entry(panelId: panelId) != nil {
+                return false
+            }
+            guard let terminal = panels[panelId] as? TerminalPanel else {
+                // Non-terminal panel (browser, etc.) — not a herdr stub.
+                return false
+            }
+            guard let surface = terminal.surface.surface else {
+                // No surface yet. Could still be initializing on a
+                // native cmux workspace. Don't treat as orphan.
+                return false
+            }
+            if !ghostty_surface_process_exited(surface) {
+                return false
+            }
+        }
+        return true
+    }
+
     /// Mark every bonsplit tab in this workspace as force-closeable.
     /// Used by HerdrPanelOpener's reuse path: when adopting a cmux
     /// Workspace restored from disk, every panel inside it is a stale

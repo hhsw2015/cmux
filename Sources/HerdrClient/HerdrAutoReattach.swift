@@ -85,6 +85,25 @@ enum HerdrAutoReattach {
                     try? await Task.sleep(nanoseconds: 500_000_000)
                 }
             }
+
+            // Orphan cleanup: pre-reuse-path builds added a fresh
+            // herdr-bound sibling on every launch; cmux's normal
+            // workspace persistence kept saving them, so users
+            // upgrading carry a chain of dead-stub workspaces with no
+            // PTY behind them. After auto-reattach has bound the live
+            // ones, close every workspace whose panels are all
+            // process-exited TerminalPanels with no HerdrPanelRegistry
+            // entry — that's the dead-stub signature.
+            guard let tabManager = AppDelegate.shared?.tabManager else { return }
+            let orphans = tabManager.tabs.filter { workspace in
+                workspace.isDeadHerdrStub()
+            }
+            for orphan in orphans {
+                cmuxDebugLog(
+                    "herdr.autoReattach: closing orphan workspace \(orphan.id) — all panels are dead herdr stubs"
+                )
+                tabManager.closeWorkspace(orphan)
+            }
         }
     }
 }
