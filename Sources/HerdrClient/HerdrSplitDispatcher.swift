@@ -24,7 +24,6 @@ enum HerdrSplitDispatcher {
         }
         let host = binding.host
         guard let exec = HerdrLocalBinary.resolve() else { return }
-        let socketPath = host.localApiSocketPath
         // Bonsplit's horizontal = side-by-side (new pane on right);
         // herdr's SplitDirection::Right places the new pane on the
         // right of the target. Vertical → Down.
@@ -32,7 +31,11 @@ enum HerdrSplitDispatcher {
 
         Task { @MainActor in
             do {
-                let api = HerdrApiClient(transport: LocalUDSTransport(socketPath: socketPath))
+                // Route via the host's transport factory so SSH hosts
+                // hit their remote daemon. Hardcoding LocalUDSTransport
+                // sent every cmux→daemon split RPC at the local Mac
+                // socket, which doesn't exist for ssh hosts.
+                let api = HerdrApiClient(transport: HerdrTransportFactory.make(host: host))
                 try await api.start()
                 defer { Task { await api.close() } }
                 let response = try await api.request(
@@ -58,7 +61,7 @@ enum HerdrSplitDispatcher {
                     terminalId: newTerminalId,
                     herdrPaneId: newHerdrPaneId,
                     executablePath: exec,
-                    socketPath: socketPath,
+                    socketPath: "",
                     focus: true
                 )
                 // Re-prime the divider lastSeen so the geometry

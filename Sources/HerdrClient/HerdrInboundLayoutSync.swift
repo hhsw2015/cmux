@@ -367,9 +367,11 @@ enum HerdrInboundLayoutSync {
             )
             return
         }
-        let socketPath = host.localApiSocketPath
-
-        let api = HerdrApiClient(transport: LocalUDSTransport(socketPath: socketPath))
+        // Route through the host's transport factory so SSH hosts hit
+        // their remote daemon over ssh stdio. Hardcoding LocalUDSTransport
+        // here meant inbound TUI splits never resolved their pane.get
+        // for SSH hosts and the cmux mirror stayed flat.
+        let api = HerdrApiClient(transport: HerdrTransportFactory.make(host: host))
         do {
             try await api.start()
             defer { Task { await api.close() } }
@@ -410,7 +412,7 @@ enum HerdrInboundLayoutSync {
                 terminalId: terminalId,
                 herdrPaneId: addedHerdrId,
                 executablePath: exec,
-                socketPath: socketPath,
+                socketPath: "",
                 focus: shouldFocus
             )
 

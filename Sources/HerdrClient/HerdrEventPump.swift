@@ -430,8 +430,21 @@ final class HerdrEventPump: ObservableObject {
     /// different `target`s would collide — but registry validation
     /// already rejects that case at host-add time, so a sessionName-
     /// based key is fine.
+    /// Stable per-host key used as the dict identifier for refCounts /
+    /// hosts / consumers. NOT a real path — just a unique label that
+    /// distinguishes localUDS from sshStdio even when both share the
+    /// same session name. Older revisions used host.localApiSocketPath
+    /// here, which collided when a user had a localhost host AND an
+    /// sshStdio host both with sessionName="cmux": one transport got
+    /// overwritten, layout events from the SSH daemon never reached
+    /// the inbound sync.
     private static func socketPath(for host: HerdrHost) -> String {
-        host.localApiSocketPath
+        switch host.transport {
+        case .localUDS:
+            return "local:\(host.localApiSocketPath)"
+        case .sshStdio(let target, _, _, _, _):
+            return "ssh:\(target):\(host.sessionName)"
+        }
     }
 
     private func postOfflineNotification(for host: HerdrHost, reason: String) {
