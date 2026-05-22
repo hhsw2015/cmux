@@ -65,16 +65,22 @@ enum HerdrRemoteInstaller {
         // 2. Ensure ~/.local/bin exists, then curl the right asset down
         //    on the remote itself. Avoids scp'ing a mac binary to linux.
         let url = "https://github.com/\(releaseRepoOwner)/\(releaseRepoName)/releases/latest/download/\(assetName)"
+        // Stage to a temp file then atomic-rename. Linux rejects writes
+        // to a running executable ("Text file busy"); a rename swaps the
+        // inode without disturbing the in-flight process. The next
+        // daemon start picks up the fresh binary.
         let installCmd = """
         mkdir -p ~/.local/bin && \
+        TMP="$HOME/.local/bin/.herdr-cmux.new.$$" && \
         if command -v curl >/dev/null 2>&1; then \
-          curl -fSL --retry 2 -o ~/.local/bin/herdr-cmux '\(url)'; \
+          curl -fSL --retry 2 -o "$TMP" '\(url)'; \
         elif command -v wget >/dev/null 2>&1; then \
-          wget -q -O ~/.local/bin/herdr-cmux '\(url)'; \
+          wget -q -O "$TMP" '\(url)'; \
         else \
           echo 'no curl or wget on remote' >&2; exit 1; \
         fi && \
-        chmod +x ~/.local/bin/herdr-cmux
+        chmod +x "$TMP" && \
+        mv -f "$TMP" "$HOME/.local/bin/herdr-cmux"
         """
         if !runSSH(host: host, command: installCmd) {
             await MainActor.run {
