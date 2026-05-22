@@ -115,8 +115,19 @@ enum HerdrRemoteInstaller {
         //    existing process keeps the socket and the second invocation
         //    just exits.
         let session = host.sessionName
+        guard isShellSafeSessionName(session) else {
+            await MainActor.run {
+                herdrInstallerTrace("\(target): refusing to start daemon — session name '\(session)' has shell-unsafe chars")
+                postNotification(
+                    title: String(localized: "herdr.install.failed.title", defaultValue: "Set up failed"),
+                    body: String(localized: "herdr.install.failed.unsafeSession", defaultValue: "\(host.displayName): session name has unsupported characters. Use letters, digits, dashes, underscores, dots only.")
+                )
+            }
+            return
+        }
         let startCmd = """
-        if [ ! -S "$HOME/.config/herdr/sessions/\(session)/herdr.sock" ]; then \
+        SOCK="$HOME/.config/herdr/sessions/\(session)/herdr.sock"; \
+        if [ ! -S "$SOCK" ]; then \
           if command -v setsid >/dev/null 2>&1 && command -v script >/dev/null 2>&1; then \
             setsid -f script -q -c "$HOME/.local/bin/herdr-cmux --session \(session)" /dev/null \
               < /dev/null > /dev/null 2>&1 & \
@@ -126,7 +137,7 @@ enum HerdrRemoteInstaller {
           fi; \
           for _ in 1 2 3 4 5 6 7 8 9 10; do \
             sleep 1; \
-            [ -S "$HOME/.config/herdr/sessions/\(session)/herdr.sock" ] && break; \
+            [ -S "$SOCK" ] && break; \
           done; \
         fi
         """
@@ -243,6 +254,15 @@ enum HerdrRemoteInstaller {
         }
     }
 
+    /// Session names that show up in shell scripts must be POSIX-safe
+    /// without any quoting workarounds. Allow letters, digits, and the
+    /// few separators herdr already accepts in session names.
+    static func isShellSafeSessionName(_ s: String) -> Bool {
+        guard !s.isEmpty else { return false }
+        let allowed = CharacterSet(charactersIn:
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")
+        return s.unicodeScalars.allSatisfy { allowed.contains($0) }
+    }
 }
 
 private func herdrInstallerTrace(_ message: String) {
