@@ -10897,6 +10897,7 @@ final class Workspace: Identifiable, ObservableObject {
         workingDirectory: String? = nil,
         initialCommand: String? = nil,
         tmuxStartCommand: String? = nil,
+        startupEnvironment: [String: String] = [:],
         initialDividerPosition: CGFloat? = nil
     ) -> TerminalPanel? {
 #if DEBUG
@@ -10993,7 +10994,10 @@ final class Workspace: Identifiable, ObservableObject {
 #endif
         let remoteInitialWorkingDirectory = remoteTerminalStartupCommand == nil ? nil : splitWorkingDirectory
         let localWorkingDirectory = remoteTerminalStartupCommand == nil ? splitWorkingDirectory : nil
-        let remoteStartupEnvironment = remoteInitialWorkingDirectory.map { ["CMUX_REMOTE_INITIAL_CWD": $0] } ?? [:]
+        var mergedStartupEnvironment = startupEnvironment
+        if let remoteInitialWorkingDirectory {
+            mergedStartupEnvironment["CMUX_REMOTE_INITIAL_CWD"] = remoteInitialWorkingDirectory
+        }
 
         // Create the new terminal panel.
         let newPanel = TerminalPanel(
@@ -11004,7 +11008,7 @@ final class Workspace: Identifiable, ObservableObject {
             portOrdinal: portOrdinal,
             initialCommand: startupCommand,
             tmuxStartCommand: tmuxStartCommand,
-            additionalEnvironment: remoteStartupEnvironment
+            additionalEnvironment: mergedStartupEnvironment
         )
         configureTerminalPanel(newPanel)
         panels[newPanel.id] = newPanel

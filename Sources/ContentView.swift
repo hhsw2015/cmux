@@ -1996,6 +1996,7 @@ struct ContentView: View {
                     debugSource: "titlebar.hiddenNewWorkspace"
                 )
             },
+            observedWindow: observedWindow,
             selection: $sidebarSelectionState.selection,
             selectedTabIds: $selectedTabIds,
             lastSidebarSelectionIndex: $lastSidebarSelectionIndex
@@ -9938,6 +9939,7 @@ struct VerticalTabsSidebar: View {
     let onSendFeedback: () -> Void
     let onToggleSidebar: () -> Void
     let onNewTab: () -> Void
+    let observedWindow: NSWindow?
     @EnvironmentObject var tabManager: TabManager
     @EnvironmentObject var notificationStore: TerminalNotificationStore
     @Binding var selection: SidebarSelection
@@ -9996,6 +9998,13 @@ struct VerticalTabsSidebar: View {
 
     private var isMinimalMode: Bool {
         WorkspacePresentationModeSettings.mode(for: workspacePresentationMode) == .minimal
+    }
+
+    private var minimalModeSidebarTitlebarControlsTopPadding: CGFloat {
+        guard let observedWindow else {
+            return MinimalModeSidebarTitlebarControlsMetrics.topInset
+        }
+        return minimalModeSidebarTitlebarControlsTopInset(in: observedWindow)
     }
 
     private var showsSidebarNotificationMessage: Bool {
@@ -10300,7 +10309,7 @@ struct VerticalTabsSidebar: View {
                             )
                             .padding(
                                 .top,
-                                MinimalModeSidebarTitlebarControlsMetrics.topInset
+                                minimalModeSidebarTitlebarControlsTopPadding
                             )
                     }
                 }
