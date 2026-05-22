@@ -10034,6 +10034,15 @@ final class Workspace: Identifiable, ObservableObject {
     }
 
     var isRestorableInSessionSnapshot: Bool {
+        // Skip herdr-bound workspaces in cmux's normal session snapshot.
+        // HerdrAutoReattach re-creates them at launch from
+        // HerdrPersistence's binding info; saving them here too leaves
+        // an orphan stub on every quit/relaunch because the herdr-side
+        // attach path makes a fresh workspace, and cmux's normal
+        // restore brings back the saved version alongside.
+        if HerdrTabRegistry.shared.firstBinding(forWorkspaceId: id) != nil {
+            return false
+        }
         guard let remoteConfiguration else { return true }
         return remoteConfiguration.sessionSnapshot() != nil
     }

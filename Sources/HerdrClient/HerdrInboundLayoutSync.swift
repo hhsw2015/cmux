@@ -188,15 +188,7 @@ enum HerdrInboundLayoutSync {
             $0.host.id == host.id && $0.tabId == tabId
         }
         for binding in bindings {
-            guard let workspace = binding.workspace else { continue }
-            let pairs = binding.paneBindings.pairs
-            for (cmuxPaneId, herdrPaneId) in pairs {
-                HerdrCloseHandler.suppressNextCloseFor.insert(herdrPaneId)
-                workspace.bonsplitController.closePane(PaneID(id: cmuxPaneId))
-            }
-            cmuxDebugLog(
-                "herdr.inbound: tab \(tabId) closed remotely; tore down \(pairs.count) pane(s)"
-            )
+            tearDownEntireBinding(binding: binding, reason: "tab \(tabId) closed remotely")
         }
     }
 
@@ -208,16 +200,49 @@ enum HerdrInboundLayoutSync {
     static func applyWorkspaceClosed(workspaceId: String) {
         let bindings = HerdrTabRegistry.shared.allBindings.filter { $0.workspaceId == workspaceId }
         for binding in bindings {
-            guard let workspace = binding.workspace else { continue }
-            let pairs = binding.paneBindings.pairs
-            for (cmuxPaneId, herdrPaneId) in pairs {
-                HerdrCloseHandler.suppressNextCloseFor.insert(herdrPaneId)
-                workspace.bonsplitController.closePane(PaneID(id: cmuxPaneId))
-            }
-            cmuxDebugLog(
-                "herdr.inbound: workspace \(workspaceId) closed remotely; tore down \(pairs.count) pane(s)"
-            )
+            tearDownEntireBinding(binding: binding, reason: "workspace \(workspaceId) closed remotely")
         }
+    }
+
+    /// Shared teardown for tab/workspace/host close: close every
+    /// bound cmux pane in the workspace, then close the workspace
+    /// itself. bonsplit refuses to close the last pane (allowCloseLastPane
+    /// is false), so iterating panes leaves a stranded final pane
+    /// with a dead PTY — the user sees a stuck unresponsive panel.
+    /// Closing the workspace at the end via TabManager handles that
+    /// case cleanly: the workspace disappears from the sidebar and
+    /// the remaining bonsplit pane goes with it.
+    private static func tearDownEntireBinding(binding: HerdrTabBinding, reason: String) {
+        guard let workspace = binding.workspace else { return }
+        let pairs = binding.paneBindings.pairs
+        // Pre-mark every herdr pane id so each closePane echo back to
+        // HerdrCloseHandler is suppressed (daemon already destroyed
+        // the panes).
+        for (_, herdrPaneId) in pairs {
+            HerdrCloseHandler.suppressNextCloseFor.insert(herdrPaneId)
+        }
+        // Force-close every bonsplit pane the binding owned. The last
+        // closePane will be refused by bonsplit's "don't close the
+        // last pane" guard; we handle that by closing the workspace
+        // outright below.
+        workspace.markAllTabsForceCloseable()
+        for (cmuxPaneId, _) in pairs {
+            workspace.bonsplitController.closePane(PaneID(id: cmuxPaneId))
+        }
+        os_log(
+            "herdr.inbound.teardown reason=%{public}@ panes=%{public}d",
+            reason, pairs.count
+        )
+        // Close the workspace via TabManager so the surviving last
+        // pane (bonsplit kept one alive) doesn't sit unresponsive.
+        // Detach semantics — preserve persistence in case the user
+        // restarts the daemon and wants reattach to recreate it.
+        guard let tabManager = AppDelegate.shared?.tabManager else { return }
+        let cmuxWorkspaceId = workspace.id
+        guard tabManager.tabs.contains(where: { $0.id == cmuxWorkspaceId }) else { return }
+        HerdrCloseHandler.detachingWorkspaceIds.insert(cmuxWorkspaceId)
+        defer { HerdrCloseHandler.detachingWorkspaceIds.remove(cmuxWorkspaceId) }
+        tabManager.closeWorkspace(workspace, recordHistory: false)
     }
 
     // MARK: - Divider ratio sync

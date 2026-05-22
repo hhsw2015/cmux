@@ -61,7 +61,32 @@ enum HerdrAutoReattach {
                         )
                         continue
                     }
-                    if let cmuxId = entry.cmuxWorkspaceId {
+                    // Resolve which cmux Workspace to adopt.
+                    //
+                    // 1. Persistence has cmuxWorkspaceId AND that
+                    //    workspace exists in tabs → reuse it (fast
+                    //    path).
+                    // 2. Persistence has cmuxWorkspaceId but the
+                    //    workspace is gone (legacy session, manual
+                    //    close, etc.) → look for an unbound
+                    //    untitled workspace in tabs and adopt it
+                    //    instead of creating a sibling. Prevents the
+                    //    legacy migration where every relaunch added
+                    //    a fresh herdr-bound workspace next to the
+                    //    cmux-state-restored stub.
+                    // 3. No usable candidate → fall back to plain
+                    //    attach which creates a fresh cmux workspace.
+                    let adoptCandidate: Workspace? = {
+                        let unbound = AppDelegate.shared?.tabManager?.tabs.filter { ws in
+                            HerdrTabRegistry.shared.firstBinding(forWorkspaceId: ws.id) == nil
+                                && (ws.customTitle?.trimmingCharacters(in: .whitespaces).isEmpty ?? true)
+                        } ?? []
+                        guard unbound.count == 1 else { return nil }
+                        return unbound.first
+                    }()
+
+                    if let cmuxId = entry.cmuxWorkspaceId,
+                       AppDelegate.shared?.tabManager?.tabs.contains(where: { $0.id == cmuxId }) == true {
                         cmuxDebugLog(
                             "herdr.autoReattach: rebinding cmux workspace \(cmuxId) for \(host.displayName) → \(entry.workspaceId)/\(entry.tabId)"
                         )
@@ -70,9 +95,18 @@ enum HerdrAutoReattach {
                             attachExistingHerdrWorkspaceId: entry.workspaceId,
                             reuseCmuxWorkspaceId: cmuxId
                         )
+                    } else if let candidate = adoptCandidate {
+                        cmuxDebugLog(
+                            "herdr.autoReattach: adopting orphan \(candidate.id) for \(host.displayName) → \(entry.workspaceId)/\(entry.tabId)"
+                        )
+                        HerdrPanelOpener.openWorkspace(
+                            host: host,
+                            attachExistingHerdrWorkspaceId: entry.workspaceId,
+                            reuseCmuxWorkspaceId: candidate.id
+                        )
                     } else {
                         cmuxDebugLog(
-                            "herdr.autoReattach: attaching \(host.displayName) → \(entry.workspaceId) (no cmux uuid)"
+                            "herdr.autoReattach: attaching \(host.displayName) → \(entry.workspaceId) (creating fresh)"
                         )
                         HerdrPanelOpener.openWorkspace(
                             host: host,
@@ -86,21 +120,45 @@ enum HerdrAutoReattach {
                 }
             }
 
-            // Orphan cleanup: pre-reuse-path builds added a fresh
-            // herdr-bound sibling on every launch; cmux's normal
-            // workspace persistence kept saving them, so users
-            // upgrading carry a chain of dead-stub workspaces with no
-            // PTY behind them. After auto-reattach has bound the live
-            // ones, close every workspace whose panels are all
-            // process-exited TerminalPanels with no HerdrPanelRegistry
-            // entry — that's the dead-stub signature.
+            // Orphan cleanup. Two paths cover different leftover
+            // shapes from pre-reuse-path builds:
+            //
+            // (a) Dead-stub: a workspace whose panels are all
+            //     process-exited TerminalPanels with no live herdr
+            //     wire. Cmux's normal restore tries to respawn local
+            //     shells; if it didn't (or the user upgraded mid-
+            //     session), the surfaces sit dead. Strict signature.
+            //
+            // (b) Same-name accumulation: pre-fix builds saved every
+            //     herdr-bound workspace into cmux's normal state, so
+            //     users upgrading carry several untitled siblings,
+            //     each with respawned local shells (which fails the
+            //     dead-stub signature). After we've bound the live
+            //     ones via reuse / adopt, any remaining UNTITLED +
+            //     UNBOUND workspace is almost certainly an orphan
+            //     because cmux saves untitled herdr stubs but
+            //     intentional native workspaces normally carry a
+            //     user-set name. We only run (b) if at least one
+            //     herdr binding is live (so a host with zero
+            //     attached workspaces doesn't accidentally close the
+            //     user's native workspaces).
             guard let tabManager = AppDelegate.shared?.tabManager else { return }
-            let orphans = tabManager.tabs.filter { workspace in
-                workspace.isDeadHerdrStub()
+            var orphans = tabManager.tabs.filter { $0.isDeadHerdrStub() }
+            let hasAnyBoundWorkspace = tabManager.tabs.contains { ws in
+                HerdrTabRegistry.shared.firstBinding(forWorkspaceId: ws.id) != nil
+            }
+            if hasAnyBoundWorkspace {
+                let untitledOrphans = tabManager.tabs.filter { ws in
+                    HerdrTabRegistry.shared.firstBinding(forWorkspaceId: ws.id) == nil
+                        && (ws.customTitle?.trimmingCharacters(in: .whitespaces).isEmpty ?? true)
+                }
+                for ws in untitledOrphans where !orphans.contains(where: { $0.id == ws.id }) {
+                    orphans.append(ws)
+                }
             }
             for orphan in orphans {
                 cmuxDebugLog(
-                    "herdr.autoReattach: closing orphan workspace \(orphan.id) — all panels are dead herdr stubs"
+                    "herdr.autoReattach: closing orphan workspace \(orphan.id)"
                 )
                 tabManager.closeWorkspace(orphan)
             }
