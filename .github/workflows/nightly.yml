@@ -26,6 +26,10 @@ env:
 
 jobs:
   decide:
+    # Fork (hhsw2015/cmux) doesn't have the SPARKLE/Apple/notarization
+    # secrets needed for nightly builds. Skip the whole workflow on
+    # forks rather than burn CI minutes on a guaranteed failure.
+    if: github.repository == 'manaflow-ai/cmux'
     runs-on: ubuntu-latest
     outputs:
       should_build: ${{ steps.decide.outputs.should_build }}
