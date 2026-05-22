@@ -70,14 +70,20 @@ enum SSHCommandBuilder {
     }
 
     /// Resolve the remote `herdr-cmux` binary path for an sshStdio host.
-    /// Returns the override when the user supplied one, otherwise the
-    /// bare `herdr-cmux` (which relies on the remote `$PATH`).
+    /// Returns the override when the user supplied one, otherwise an
+    /// absolute path that matches HerdrRemoteInstaller's install
+    /// location (`~/.local/bin/herdr-cmux`). A bare `herdr-cmux`
+    /// would lose because non-interactive ssh sessions don't load
+    /// `~/.bashrc` and Ubuntu's default `~/.profile` only adds
+    /// `~/.local/bin` to PATH for login shells, which a piped ssh
+    /// command isn't. The remote shell expands `~` for us so this
+    /// works without hardcoding the home directory.
     static func remoteBinaryPath(for host: HerdrHost) -> String {
         if case .sshStdio(_, _, _, _, let remoteBin) = host.transport,
            let path = remoteBin, !path.isEmpty {
             return path
         }
-        return "herdr-cmux"
+        return "~/.local/bin/herdr-cmux"
     }
 
     // MARK: - Helpers
