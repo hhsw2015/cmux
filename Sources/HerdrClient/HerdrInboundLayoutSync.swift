@@ -128,6 +128,16 @@ enum HerdrInboundLayoutSync {
     private static var pendingResizeRetries: [UUID: [UUID: PendingResizeRetry]] = [:]
     private static let unresolvedBindingKey = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
 
+    /// At-most-one flush Task per binding. Without this guard,
+    /// markPendingResize spawned a fresh Task every call — a TUI
+    /// drag triggers forwardPanelSize at 60Hz, each one suppressed,
+    /// each one queued a fresh @MainActor sleep+flush. After 10
+    /// seconds the user observed cmux UI choking on hundreds of
+    /// queued flush tasks even though only ONE per binding does
+    /// real work; the rest were no-ops on a drained dict that still
+    /// had to serialize through MainActor's scheduler.
+    private static var flushTaskScheduled: Set<UUID> = []
+
     /// Called by HerdrPanelOpener.forwardPanelSize when a real
     /// outbound resize was held back due to inbound apply
     /// suppression. The retry closure must call forwardPanelSize
@@ -144,14 +154,20 @@ enum HerdrInboundLayoutSync {
     }
 
     /// Schedule a flush attempt slightly after the trailing window
-    /// nominally closes. If suppression has been re-armed by another
-    /// apply, the flush no-ops and the *next* apply schedules a new
-    /// flush — pendingResizeRetries retains the latest closure either
-    /// way.
+    /// nominally closes. Coalesces: at most one Task in flight per
+    /// binding. The single flush attempt uses the LATEST retry
+    /// closures stored in pendingResizeRetries (markPendingResize
+    /// keeps overwriting), so coalescing doesn't drop work.
     private static func scheduleFlushPendingResizes(forBinding key: UUID) {
+        guard !flushTaskScheduled.contains(key) else { return }
+        flushTaskScheduled.insert(key)
         let waitMs = inboundApplySuppressTrailingMs + 50
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: UInt64(waitMs) * 1_000_000)
+            // Don't drop the scheduled flag yet — flushPendingResizes
+            // re-schedules itself if suppression is still active and
+            // we want that re-schedule to actually create a new Task.
+            flushTaskScheduled.remove(key)
             flushPendingResizes(forBinding: key)
         }
     }

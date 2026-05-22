@@ -241,12 +241,30 @@ enum HerdrPanelOpener {
         )
 
         let pump = Task { [displayClient, weak panel] in
+            // Pump-stats: report bytes/sec and chunks/sec at most once
+            // per second so we can see whether the panel pump is even
+            // running during a TUI-drag freeze. If chunkCount stays
+            // flat for >1s while the daemon is broadcasting, the pump
+            // task is starved by something else on the main actor.
+            var bytesAccum: Int = 0
+            var chunkAccum: Int = 0
+            var statsBucketStart: Date = Date()
             for await chunk in displayClient.output {
                 guard let surface = panel?.surface.surface else { break }
                 chunk.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
                     guard let base = raw.baseAddress else { return }
                     let cChars = base.assumingMemoryBound(to: CChar.self)
                     ghostty_surface_process_output(surface, cChars, UInt(raw.count))
+                }
+                bytesAccum += chunk.count
+                chunkAccum += 1
+                if Date().timeIntervalSince(statsBucketStart) >= 1.0 {
+                    os_log("herdr.pump.stats panelId=%{public}@ chunks=%{public}d bytes=%{public}d",
+                           String(panel?.id.uuidString.prefix(8) ?? "nil"),
+                           chunkAccum, bytesAccum)
+                    bytesAccum = 0
+                    chunkAccum = 0
+                    statsBucketStart = Date()
                 }
             }
         }
