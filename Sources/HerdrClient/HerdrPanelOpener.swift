@@ -1133,8 +1133,20 @@ enum HerdrPanelOpener {
         paneId: String,
         host: HerdrHost
     ) {
+        // 400ms debounce. Each per-RPC ssh subprocess spawn + bincode
+        // handshake costs ~700ms over typical SSH; an 80ms debounce
+        // (the original) let a single 10-second cmux divider drag
+        // emit ~30 pane.resize RPCs because each per-panel observer
+        // ticks independently and the 80ms window is shorter than a
+        // typical bursty mouse-motion idle. 30 RPCs × 700ms each
+        // saturated the SSH master and starved the raw-pty-attach
+        // channel multiplexed on top of it. With 400ms drag-bursts
+        // coalesce to one RPC per panel at drag end. Real fix is a
+        // persistent api-bridge (task #247) so each RPC is <50ms;
+        // until then the larger debounce trades a bit of perceived
+        // resize latency for not freezing the panel.
         let debounce = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 80_000_000)
+            try? await Task.sleep(nanoseconds: 400_000_000)
             forwardPanelSize(
                 panelId: panelId,
                 surface: surface,
