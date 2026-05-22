@@ -1120,7 +1120,16 @@ enum HerdrPanelOpener {
     ) {
         let size = ghostty_surface_size(surface)
         herdrPanelOpenerTrace("forwardPanelSize panelId=\(panelId) cols=\(size.columns) rows=\(size.rows)")
-        guard size.columns > 0, size.rows > 0 else { return }
+        // Reject collapsed / not-yet-laid-out frames. Ghostty reports
+        // 1x1 (or even 0x0) for views during sheet presentation, drag
+        // start, and the brief window between viewDidMoveToWindow and
+        // first geometry pass. Pushing those values to the daemon
+        // resizes the remote PTY to 1x1 — cols=1 means every shell
+        // line is wrapped after one character, so any subsequent
+        // output appears as a single character column and the user
+        // sees nothing useful even though bytes are flowing. Wait
+        // for a real-world frame (>= 2x2) before forwarding.
+        guard size.columns >= 2, size.rows >= 2 else { return }
         if let entry = HerdrPanelRegistry.shared.entry(panelId: panelId),
            entry.lastReportedCols == size.columns,
            entry.lastReportedRows == size.rows {
