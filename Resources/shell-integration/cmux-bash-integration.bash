@@ -291,7 +291,6 @@ _cmux_install_context_command_wrapper() {
     esac
     eval "$command_name() { _cmux_with_context $command_name \"\$@\"; }"
 }
-_cmux_install_claude_wrapper
 _cmux_install_context_command_wrapper cmux
 _cmux_install_context_command_wrapper open
 
