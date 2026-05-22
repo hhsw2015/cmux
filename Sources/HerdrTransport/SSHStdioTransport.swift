@@ -273,15 +273,22 @@ actor SSHStdioTransport: HerdrTransport {
     /// is alive on the remote, then `exec`s `api-bridge` so the SSH
     /// stdio attaches directly. The `exec` matters: it replaces the
     /// shell with herdr-cmux so cmux's stdin/stdout pipes line up.
+    ///
+    /// Resolves the binary by `command -v herdr-cmux` first so a
+    /// system-wide install (e.g. /usr/local/bin) works just like
+    /// the user-local install we ship via the auto-installer.
     static func autoSpawnShellCommand(session: String) -> String {
         return """
+        HBIN="$(command -v herdr-cmux 2>/dev/null)"; \
+        [ -z "$HBIN" ] && [ -x "$HOME/.local/bin/herdr-cmux" ] && HBIN="$HOME/.local/bin/herdr-cmux"; \
+        if [ -z "$HBIN" ]; then echo "herdr-cmux not found on remote PATH or ~/.local/bin" >&2; exit 127; fi; \
         SOCK="$HOME/.config/herdr/sessions/\(session)/herdr.sock"; \
         if [ ! -S "$SOCK" ]; then \
           if command -v setsid >/dev/null 2>&1 && command -v script >/dev/null 2>&1; then \
-            setsid -f script -q -c "$HOME/.local/bin/herdr-cmux --session \(session)" /dev/null \
+            setsid -f script -q -c "$HBIN --session \(session)" /dev/null \
               < /dev/null > /dev/null 2>&1 & \
           else \
-            nohup "$HOME/.local/bin/herdr-cmux" --session \(session) \
+            nohup "$HBIN" --session \(session) \
               > /dev/null 2>&1 < /dev/null & \
           fi; \
           for _ in 1 2 3 4 5 6 7 8 9 10; do \
@@ -289,7 +296,7 @@ actor SSHStdioTransport: HerdrTransport {
             [ -S "$SOCK" ] && break; \
           done; \
         fi; \
-        exec "$HOME/.local/bin/herdr-cmux" --session \(session) api-bridge
+        exec "$HBIN" --session \(session) api-bridge
         """
     }
 }
