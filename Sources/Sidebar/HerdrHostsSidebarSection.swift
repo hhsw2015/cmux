@@ -435,6 +435,25 @@ private struct HerdrHostRow: View {
                 )) {
                     HerdrRemoteInstaller.installOnHost(host)
                 }
+                Button(role: .destructive) {
+                    Task.detached {
+                        // server.stop closes the daemon's API socket
+                        // immediately. EventPump's stream will EOF;
+                        // its tearDownHost branch then closes every
+                        // herdr-backed cmux workspace bound to this
+                        // host so the user doesn't see stale panels.
+                        await HerdrOneShotRPC.send(
+                            host: host,
+                            method: "server.stop",
+                            params: [:]
+                        )
+                    }
+                } label: {
+                    Text(String(
+                        localized: "sidebar.herdr.stopDaemon",
+                        defaultValue: "Stop daemon"
+                    ))
+                }
             }
 
             if isExpanded {
