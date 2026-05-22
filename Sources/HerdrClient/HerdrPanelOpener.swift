@@ -19,6 +19,20 @@ enum HerdrPanelOpenerError: Error {
     case noWorkspaceAvailable
 }
 
+/// Default cwd to send to the daemon when creating a new workspace
+/// or splitting a pane. For local hosts the Mac home dir is correct.
+/// For SSH hosts it must be a path that exists on the *remote* fs;
+/// `~` is the only honest default we have without an extra round-trip
+/// to fetch the remote $HOME, and the daemon expands it shell-style.
+func cwdForHost(_ host: HerdrHost) -> String {
+    switch host.transport {
+    case .localUDS:
+        return NSHomeDirectory()
+    case .sshStdio:
+        return "~"
+    }
+}
+
 @MainActor
 enum HerdrPanelOpener {
     /// Open a herdr-backed panel at the focused pane in the focused
@@ -105,7 +119,7 @@ enum HerdrPanelOpener {
                 params: [
                     "focus": false,
                     "label": "cmux-panel",
-                    "cwd": NSHomeDirectory(),
+                    "cwd": cwdForHost(host),
                 ]
             )
             guard let ws = r["workspace"] as? [String: Any],
@@ -881,7 +895,7 @@ enum HerdrPanelOpener {
                 params: [
                     "focus": false,
                     "label": "cmux-workspace",
-                    "cwd": NSHomeDirectory(),
+                    "cwd": cwdForHost(host),
                 ]
             )
             guard let ws = r["workspace"] as? [String: Any],

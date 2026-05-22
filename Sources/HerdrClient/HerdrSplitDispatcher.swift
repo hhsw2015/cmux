@@ -44,6 +44,11 @@ enum HerdrSplitDispatcher {
                         "target_pane_id": originalHerdrPaneId,
                         "direction": direction,
                         "focus": true,
+                        // Daemon errors with 'ghostty error -2' if cwd
+                        // is omitted (it doesn't fall back to $HOME).
+                        // Send a path the remote shell will expand —
+                        // ~ for SSH hosts, mac home for local.
+                        "cwd": cwdForHost(host),
                     ]
                 )
                 guard let pane = response["pane"] as? [String: Any],
