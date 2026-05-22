@@ -133,6 +133,20 @@ actor HerdrPersistentApiClient {
         do {
             let api = HerdrApiClient(transport: HerdrTransportFactory.make(host: host))
             try await api.start()
+            // close() may have flipped `stopped` while we were
+            // awaiting api.start(). Don't publish the freshly-
+            // connected api in that window — close() already drained
+            // awaiters and there's no one else to release this api
+            // (review MED-4 of cmux 0ca26a896). Tear it down right
+            // here.
+            if stopped {
+                connecting = false
+                await api.close()
+                throw HerdrApiError(
+                    code: "disconnected",
+                    message: "persistent client closed during connect"
+                )
+            }
             client = api
             connecting = false
             // Snapshot awaiters before resuming so a re-entrant call

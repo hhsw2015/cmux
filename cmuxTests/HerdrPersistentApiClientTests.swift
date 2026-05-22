@@ -147,6 +147,21 @@ final class HerdrPersistentApiClientTests: XCTestCase {
                 let id = parsed["id"] as? String,
                 let method = parsed["method"] as? String
             else { return nil }
+            // Test hook: any method starting with "force_error_" is
+            // answered with a HerdrApiError-shaped envelope so the
+            // cmux side can verify daemon-side error surfacing
+            // through the real HerdrPersistentApiClient path
+            // (review HIGH-2 of cmux 0ca26a896).
+            if method.hasPrefix("force_error_") {
+                let body: [String: Any] = [
+                    "id": id,
+                    "error": [
+                        "code": "invalid_request",
+                        "message": "forced by mock for \(method)",
+                    ],
+                ]
+                return try? JSONSerialization.data(withJSONObject: body)
+            }
             let body: [String: Any] = [
                 "id": id,
                 "result": ["type": "echo", "method": method],
@@ -243,6 +258,40 @@ final class HerdrPersistentApiClientTests: XCTestCase {
     }
 
     @MainActor
+    func testDaemonErrorEnvelopeSurfacesAsHerdrApiError() async throws {
+        // Locks review HIGH-2 of cmux 0ca26a896: when the daemon
+        // emits a JSON-RPC error envelope, the persistent client must
+        // throw a HerdrApiError carrying the daemon's code/message
+        // INSTEAD of suspending forever or reconnecting (those would
+        // mask real daemon refusals as transport hiccups). Drives a
+        // request through HerdrPersistentApiClient — not the raw
+        // socket — so we exercise the full end-to-end path.
+        let session = "cmux-error-surface-\(UUID().uuidString.prefix(8))"
+        let host = HerdrHost.localhost(sessionName: String(session))
+        let daemon = try MockDaemon(socketPath: host.localApiSocketPath)
+        defer { daemon.stop() }
+
+        let persistent = HerdrPersistentApiClient(host: host)
+        defer { Task { await persistent.close() } }
+
+        do {
+            _ = try await persistent.request(method: "force_error_invalid", params: [:])
+            XCTFail("force_error_* must throw")
+        } catch let err as HerdrApiError {
+            XCTAssertEqual(err.code, "invalid_request")
+        }
+
+        // Connection MUST stay alive after the application error so
+        // a follow-up legitimate request still lands on the same
+        // socket (the whole point of #247 — error envelopes don't
+        // tear down the persistent connection).
+        let resp = try await persistent.request(method: "ping_after_error", params: [:])
+        XCTAssertEqual(resp["method"] as? String, "ping_after_error")
+        XCTAssertEqual(daemon.connectionCount, 1,
+                       "error envelope must not force a reconnect")
+    }
+
+    @MainActor
     func testStoppedClientRejectsLaterRequests() async throws {
         // Locks review HIGH-2 of cmux 7bf29063: after close() the
         // instance must permanently refuse new requests rather than
@@ -295,7 +344,8 @@ final class HerdrPersistentApiClientTests: XCTestCase {
             socketPath: daemon.socketPath,
             payload: "not-json\n"
         )
-        XCTAssertEqual(probe["error"]??["code"] as? String, "invalid_request",
+        let errorBody = probe["error"] as? [String: Any]
+        XCTAssertEqual(errorBody?["code"] as? String, "invalid_request",
                        "mock daemon must emit invalid_request envelope on bad payload")
     }
 
@@ -303,7 +353,7 @@ final class HerdrPersistentApiClientTests: XCTestCase {
         socketPath: String,
         payload: String,
         timeoutSeconds: TimeInterval = 5
-    ) async throws -> [String: Any?] {
+    ) async throws -> [String: Any] {
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
         defer { close(fd) }
         var addr = sockaddr_un()
@@ -331,7 +381,7 @@ final class HerdrPersistentApiClientTests: XCTestCase {
             if collected.contains(0x0A) { break }
         }
         let line = collected.split(separator: 0x0A).first ?? Data()
-        return (try? JSONSerialization.jsonObject(with: line) as? [String: Any?]) ?? [:]
+        return (try? JSONSerialization.jsonObject(with: line) as? [String: Any]) ?? [:]
     }
 
     @MainActor
