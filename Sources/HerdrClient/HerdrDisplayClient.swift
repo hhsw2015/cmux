@@ -21,18 +21,52 @@ enum HerdrDisplayClientError: Error, Equatable {
 /// - subprocess STDOUT  =  raw PTY master bytes (RawPtyChunk payload)
 /// - subprocess STDIN   =  keystroke bytes (sent as ClientMessage::Input)
 ///
-/// PoC scope: no resize signaling. Initial size fixed at the cols/rows
-/// passed at spawn. A follow-up will add a control fd.
+/// Reconnect model: the public `output` AsyncStream is **long-lived**.
+/// When the subprocess exits unexpectedly (network blip, ssh dropped,
+/// daemon transient restart) the supervisor sleeps with backoff and
+/// respawns with `--takeover`. Herdr's `subscribe_raw_pty_with_replay`
+/// prepends the buffered history so the user sees what they missed.
+/// The stream finishes only when the caller invokes `stop()`.
 @MainActor
 final class HerdrDisplayClient {
-    /// AsyncStream of raw PTY bytes from the herdr pane. Consumer feeds
-    /// these into a Ghostty surface.
+    /// Long-lived AsyncStream of raw PTY bytes from the herdr pane.
+    /// Survives subprocess reconnects; finishes only on `stop()`.
     let output: AsyncStream<Data>
+
+    /// Posted to NotificationCenter when reconnect state changes. The
+    /// `userInfo` carries the new state under key `"state"`.
+    static let reconnectStateChanged = Notification.Name("HerdrDisplayClient.reconnectStateChanged")
+
+    enum ConnectionState: Equatable {
+        case connecting
+        case connected
+        case reconnecting(attempt: Int)
+        case stopped
+    }
+
+    private(set) var state: ConnectionState = .connecting {
+        didSet {
+            guard oldValue != state else { return }
+            NotificationCenter.default.post(
+                name: Self.reconnectStateChanged,
+                object: self,
+                userInfo: ["state": state]
+            )
+        }
+    }
 
     private let outputContinuation: AsyncStream<Data>.Continuation
     private var process: Process?
     private var stdinHandle: FileHandle?
     private var stdoutHandle: FileHandle?
+    private var supervisor: Task<Void, Never>?
+    private var stopped = false
+
+    /// Cap on reconnect attempts before we give up and finish the
+    /// output stream. With our 250ms→8s capped backoff, ~20 attempts
+    /// covers ~2 minutes of outage — enough for typical SSH blips and
+    /// daemon restarts but bounded for permanently deleted panes.
+    private static let maxReconnectAttempts = 20
 
     let host: HerdrHost
     let terminalId: String
@@ -53,18 +87,67 @@ final class HerdrDisplayClient {
         self.initialCols = cols
         self.initialRows = rows
         var continuation: AsyncStream<Data>.Continuation!
-        self.output = AsyncStream { c in continuation = c }
+        self.output = AsyncStream(bufferingPolicy: .unbounded) { c in continuation = c }
         self.outputContinuation = continuation
     }
 
-    /// Spawn the subprocess. Throws if the binary isn't executable or
-    /// the spawn itself fails. For .localUDS hosts this runs the local
-    /// `herdr-cmux raw-pty-attach` directly; for .sshStdio hosts it
-    /// runs `/usr/bin/ssh <target> -- herdr-cmux ...` so the same
-    /// stdio bridge pattern works over SSH. Bytes start flowing once
-    /// herdr finishes the handshake server-side (~100 ms locally,
-    /// 1-2 s over typical SSH).
+    /// Spawn the subprocess and start the supervisor. The first attach
+    /// runs synchronously so callers can surface spawn-time errors;
+    /// subsequent reconnects happen in the supervisor task.
     func start(takeover: Bool = false) async throws {
+        try spawnAttach(takeover: takeover)
+        state = .connected
+        let initialPipes = currentPipes()
+        startReader(initialPipes.stdout)
+        observeTermination(stderr: initialPipes.stderr)
+        supervisor = Task { [weak self] in
+            await self?.superviseReconnects()
+        }
+    }
+
+    /// Send keystroke bytes upstream to the pane. Drops bytes silently
+    /// if no subprocess is currently connected (we're between attempts);
+    /// herdr's replay restores screen state but cannot replay user
+    /// input typed during the gap, which matches tmux/screen behavior.
+    func send(_ bytes: Data) {
+        guard let handle = stdinHandle else { return }
+        do {
+            try handle.write(contentsOf: bytes)
+        } catch {
+            NSLog("[HerdrDisplayClient] stdin write failed: %@",
+                  String(describing: error))
+        }
+    }
+
+    /// Tear down for good. Marks stopped so the supervisor exits, kills
+    /// the subprocess, and finishes the output stream.
+    func stop() {
+        stopped = true
+        supervisor?.cancel()
+        supervisor = nil
+        process?.terminate()
+        try? stdinHandle?.close()
+        try? stdoutHandle?.close()
+        outputContinuation.finish()
+        process = nil
+        stdinHandle = nil
+        stdoutHandle = nil
+        state = .stopped
+    }
+
+    // MARK: - private
+
+    /// Fired by the reader task when stdout EOFs. Wakes the supervisor
+    /// loop to attempt reconnect.
+    private var disconnectSignal: AsyncStream<Void>.Continuation?
+    private lazy var disconnectStream: AsyncStream<Void> = {
+        var cont: AsyncStream<Void>.Continuation!
+        let stream = AsyncStream<Void>(bufferingPolicy: .unbounded) { c in cont = c }
+        self.disconnectSignal = cont
+        return stream
+    }()
+
+    private func spawnAttach(takeover: Bool) throws {
         let proc = Process()
         var rawPtyArgs: [String] = ["--session", host.sessionName,
                                      "raw-pty-attach", terminalId,
@@ -99,46 +182,88 @@ final class HerdrDisplayClient {
         process = proc
         stdinHandle = stdinPipe.fileHandleForWriting
         stdoutHandle = stdoutPipe.fileHandleForReading
-
-        startReader(stdoutPipe.fileHandleForReading)
-        observeTermination(stderrPipe.fileHandleForReading)
     }
 
-    /// Send keystroke bytes upstream to the pane. Returns once the
-    /// bytes are queued on the subprocess stdin pipe. Pipe-broken
-    /// errors are logged at NSLog level so a wedged pane is visible
-    /// in Console.app; the output AsyncStream will finish on EOF, so
-    /// callers don't need to poll for failure.
-    func send(_ bytes: Data) {
-        guard let handle = stdinHandle else { return }
-        do {
-            try handle.write(contentsOf: bytes)
-        } catch {
-            NSLog("[HerdrDisplayClient] stdin write failed: %@",
-                  String(describing: error))
+    private func currentPipes() -> (stdout: FileHandle, stderr: FileHandle) {
+        // Force-unwrap is safe immediately after a successful spawn.
+        let stdout = stdoutHandle!
+        let stderr = (process!.standardError as! Pipe).fileHandleForReading
+        return (stdout, stderr)
+    }
+
+    /// Sleeps after disconnect, respawns, replumbs reader. Loops until
+    /// `stop()` flips `stopped` (or the task is cancelled).
+    private func superviseReconnects() async {
+        for await _ in disconnectStream {
+            if stopped { return }
+            // Always reconnect with takeover so we win against any
+            // straggler raw-pty-attach the daemon still has on file.
+            // Cap at maxReconnectAttempts so a permanently deleted pane
+            // doesn't spin a reconnect loop forever (each failed attempt
+            // is a fresh SSH process). On exhaustion we finish the
+            // stream so the panel pump exits and the panel goes inert.
+            var attempt = 0
+            var giveUp = false
+            while !stopped && !Task.isCancelled {
+                attempt += 1
+                state = .reconnecting(attempt: attempt)
+                let delayNs = backoffDelay(attempt: attempt)
+                do {
+                    try await Task.sleep(nanoseconds: delayNs)
+                } catch {
+                    return
+                }
+                if stopped || Task.isCancelled { return }
+                do {
+                    try spawnAttach(takeover: true)
+                    let pipes = currentPipes()
+                    startReader(pipes.stdout)
+                    observeTermination(stderr: pipes.stderr)
+                    state = .connected
+                    break
+                } catch {
+                    NSLog(
+                        "[HerdrDisplayClient] reconnect attempt %d failed: %@",
+                        attempt, String(describing: error)
+                    )
+                    if attempt >= Self.maxReconnectAttempts {
+                        giveUp = true
+                        break
+                    }
+                    continue
+                }
+            }
+            if giveUp {
+                NSLog(
+                    "[HerdrDisplayClient] giving up after %d reconnect attempts for terminal %@",
+                    Self.maxReconnectAttempts, terminalId
+                )
+                outputContinuation.finish()
+                state = .stopped
+                return
+            }
         }
     }
 
-    /// Tear down the subprocess and end the output stream.
-    func stop() {
-        process?.terminate()
-        try? stdinHandle?.close()
-        try? stdoutHandle?.close()
-        outputContinuation.finish()
-        process = nil
-        stdinHandle = nil
-        stdoutHandle = nil
+    private func backoffDelay(attempt: Int) -> UInt64 {
+        // 250ms, 500ms, 1s, 2s, 4s, then cap at 8s.
+        let capped = min(attempt, 6)
+        let baseMs: UInt64 = 250 * (1 << UInt64(max(0, capped - 1)))
+        let cappedMs = min(baseMs, 8000)
+        return cappedMs * 1_000_000
     }
-
-    // MARK: - private
 
     private func startReader(_ handle: FileHandle) {
         let cont = outputContinuation
+        let signal = disconnectSignal
         Task.detached(priority: .userInitiated) {
             while true {
                 let data = handle.availableData
                 if data.isEmpty {
-                    cont.finish()
+                    // EOF on this attach — wake the supervisor to retry.
+                    // Don't finish the public stream here; only stop()
+                    // does that.
+                    signal?.yield(())
                     return
                 }
                 cont.yield(data)
@@ -146,16 +271,16 @@ final class HerdrDisplayClient {
         }
     }
 
-    private func observeTermination(_ stderrHandle: FileHandle) {
+    private func observeTermination(stderr handle: FileHandle) {
         guard let proc = process else { return }
-        let cont = outputContinuation
+        let signal = disconnectSignal
         proc.terminationHandler = { _ in
-            cont.finish()
+            signal?.yield(())
         }
         // Drain stderr so the subprocess never blocks on a full pipe;
         // surface unexpected stderr to the system log for diagnosis.
         Task.detached(priority: .utility) {
-            let data = try? stderrHandle.readToEnd()
+            let data = try? handle.readToEnd()
             if let data, !data.isEmpty,
                let text = String(data: data, encoding: .utf8) {
                 NSLog("[HerdrDisplayClient] stderr: %@", text)
