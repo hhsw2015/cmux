@@ -6,7 +6,13 @@ All notable changes to cmux are documented here.
 
 ### Added
 - zmx integration: track every panel running `zmx attach <name>` so cmux remembers persistent terminal sessions across restarts. Adds the `CMUXSessionDaemon` package, an `applicationDidFinishLaunching` reconcile pass, periodic 30s sweeps, command palette entries (`List orphan zmx sessions`, `Reconcile zmx bindings`), and a settings card. Auto-reattach into the same panel on next launch is staged behind a stable-panelId design note in `docs/zmx-integration.md`.
-- Herdr integration: cross-machine agent workstation backed by the hhsw2015/herdr daemon. Cmux panels mirror herdr's authoritative TileLayout, push events drive sidebar refresh in seconds (workspace lifecycle, agent_status, tab.reordered, pane.exited), SSH transport auto-reconnects with structured error reasons, host-offline notifications fire after 20s of sustained retry, and Settings → Hosts supports drag-reorder. New CI gates: Ubuntu wire-protocol smoke + advisory macOS live integration.
+- Herdr integration: cross-machine agent workstation backed by the hhsw2015/herdr daemon (v0.6.0-cmux6). Cmux panels mirror herdr's authoritative TileLayout, push events drive sidebar refresh in seconds (workspace lifecycle, agent_status, tab.reordered, pane.exited), SSH transport auto-reconnects with structured error reasons, host-offline notifications fire after 20s of sustained retry, and Settings → Hosts supports drag-reorder. New CI gates: Ubuntu wire-protocol smoke + advisory macOS live integration.
+- `cmux-herdr` skill (`skills/cmux-herdr/SKILL.md`) documenting the seven cmux-fork RPCs (`pane.set_zoom`, `pane.set_split_ratio`, `pane.swap`, `pane.focus`, `pane.resize`, `tab.reorder`, `layout.snapshot`) so coding agents inside herdr-attached panes can drive scheduling without reading the daemon's full socket-API docs. Pass-through of the herdr-native `SKILL.md` works automatically because the daemon already injects `HERDR_ENV=1` into every spawned pane.
+- Merged `manaflow-ai/cmux` upstream main (Antigravity CLI integration, native Grok Vault resume, `--window` routing, browser screenshot clipboard, panel-scoped notification attribution, plus 0.64.8 bug fixes).
+
+### Fixed
+- Botched merge from upstream `a21a21c5` (shell wrapper deduplication) left a stale `_cmux_install_claude_wrapper` invocation at line 323 of both shell integration scripts; removed so new shells no longer print `command not found` on startup.
+- `Sources/Workspace.swift` now merges caller-supplied `startupEnvironment` with the fork's `CMUX_REMOTE_INITIAL_CWD` injection instead of overwriting one with the other.
 
 ## [0.64.8] - 2026-05-21
 
