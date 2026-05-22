@@ -194,6 +194,166 @@ final class HerdrDisplayClientTests: XCTestCase {
         XCTAssertEqual(client.state, .connected)
     }
 
+    func testDualSignalCoalescesIntoSingleReconnect() async throws {
+        // Closes the reader-side AND terminates the process, with a
+        // gap longer than the supervisor's first backoff but short
+        // enough that both signals arrive before the inner reconnect
+        // loop completes. .bufferingNewest(1) on disconnectStream is
+        // the contract that keeps these from triggering two reconnect
+        // cycles. Asserts spawn count is exactly 2 (initial + 1
+        // reconnect), not 3.
+        let recorder = SpawnRecorder()
+        let client = makeClient(recorder: recorder)
+        try await client.start()
+        defer { client.stop() }
+        XCTAssertEqual(recorder.records.count, 1)
+
+        // Reader EOF first.
+        try recorder.records[0].stdoutWriter.close()
+        // Wait briefly so the supervisor likely picks up signal #1
+        // and enters its backoff sleep before signal #2 arrives.
+        try await Task.sleep(nanoseconds: 100_000_000)
+        // Now terminate the process; terminationHandler fires signal
+        // #2. With .bufferingNewest(1) this MUST NOT cause a second
+        // reconnect cycle on top of the first.
+        recorder.records[0].process.terminate()
+
+        try await waitUntil(timeoutSeconds: 5.0, predicate: {
+            recorder.records.count >= 2
+        })
+        // Give the supervisor extra time to (incorrectly) double-fire
+        // before we sample.
+        try await Task.sleep(nanoseconds: 1_500_000_000)
+        XCTAssertEqual(recorder.records.count, 2,
+                       "dual disconnect signals must coalesce into one reconnect")
+    }
+
+    func testSendDuringReconnectWindowIsSafe() async throws {
+        // Locks review #2: send() called between subprocess EOF and
+        // a successful reconnect must not crash, must not write to a
+        // dead handle, and must leave stdinHandle nil.
+        let recorder = SpawnRecorder()
+        let client = makeClient(recorder: recorder)
+        try await client.start()
+        defer { client.stop() }
+        XCTAssertEqual(recorder.records.count, 1)
+
+        // Force EOF + terminate so the supervisor enters reconnect.
+        try recorder.records[0].stdoutWriter.close()
+        recorder.records[0].process.terminate()
+
+        // Block any reconnect from completing for a window so the
+        // client stays in the gap state.
+        recorder.failNextN = 5
+
+        // Spam send() repeatedly during the gap. Without the fix
+        // this either crashes (write to closed FD with EXC_BAD_*) or
+        // logs a flood of EPIPE; with the fix it's a quiet no-op
+        // because the supervisor nils stdinHandle on disconnect.
+        try await Task.sleep(nanoseconds: 400_000_000)
+        for _ in 0..<50 {
+            client.send(Data("ignored".utf8))
+        }
+        try await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertNil(client.stdinHandleForTesting, "stdinHandle must be nil during reconnect gap")
+    }
+
+    func testCumulativeCapTripsAfterRepeatedSpawnFailures() async throws {
+        // Locks review #M9: 20 consecutive spawn failures finish the
+        // output stream and drop the client to .stopped. Without
+        // this, the supervisor would loop forever burning ssh
+        // handshakes on a dead daemon.
+        let recorder = SpawnRecorder()
+        let client = makeClient(recorder: recorder)
+        try await client.start()
+        defer { client.stop() }
+
+        // Trigger first disconnect; then make every reconnect spawn
+        // throw forever (much more than the 20-attempt cap).
+        recorder.failNextN = 100
+        try recorder.records[0].stdoutWriter.close()
+        recorder.records[0].process.terminate()
+
+        // Cap at 20 with backoff (~ summed delay 30s). Wait up to 60s.
+        try await waitUntil(timeoutSeconds: 60.0, predicate: {
+            client.state == .stopped
+        })
+        XCTAssertEqual(client.state, .stopped)
+    }
+
+    func testFlapAttemptsCapAcrossSuccessiveQuickDeaths() async throws {
+        // Locks review #H4: even when the spawn closure SUCCEEDS but
+        // the new subprocess immediately dies (uptime < 5s), the
+        // cumulative flap counter trips the cap so we don't burn ssh
+        // handshakes forever. Configures spawn to always succeed but
+        // the spawned subprocess EOFs the moment it's adopted.
+        //
+        // We can't easily make /bin/sleep EOF immediately, so simulate
+        // by closing each spawn's stdout from the test side as soon
+        // as we observe a new spawn.
+        let recorder = SpawnRecorder()
+        let client = makeClient(recorder: recorder)
+        try await client.start()
+        defer { client.stop() }
+
+        // Background watcher: as soon as a new spawn is observed,
+        // close its stdoutWriter so the reader EOFs and the supervisor
+        // wakes up again.
+        let watcher = Task.detached {
+            var lastSeen = 1
+            for _ in 0..<30 {
+                let count = recorder.records.count
+                if count > lastSeen {
+                    for idx in lastSeen..<count {
+                        try? recorder.records[idx].stdoutWriter.close()
+                        recorder.records[idx].process.terminate()
+                    }
+                    lastSeen = count
+                }
+                try? await Task.sleep(nanoseconds: 50_000_000)
+            }
+        }
+        defer { watcher.cancel() }
+
+        // Kick off the flap by killing the first spawn.
+        try recorder.records[0].stdoutWriter.close()
+        recorder.records[0].process.terminate()
+
+        // Cap should trip eventually; bound test at 90s to allow for
+        // backoff escalation.
+        try await waitUntil(timeoutSeconds: 90.0, predicate: {
+            client.state == .stopped
+        })
+        XCTAssertEqual(client.state, .stopped)
+    }
+
+    func testSupervisorExitsWhenClientReleased() async throws {
+        // Locks review #M7 / earlier #4: when the only strong
+        // reference to the displayClient drops, the supervisor must
+        // exit within bounded time instead of spawning ghost
+        // subprocesses against a dead panel.
+        let recorder = SpawnRecorder()
+        weak var weakClient: HerdrDisplayClient?
+        do {
+            let client = makeClient(recorder: recorder)
+            weakClient = client
+            try await client.start()
+            // Trigger a disconnect so the supervisor is mid-reconnect
+            // when we drop the strong reference.
+            try recorder.records[0].stdoutWriter.close()
+            recorder.records[0].process.terminate()
+            // Drop the strong ref. Note: supervisor uses [weak self]
+            // in its detached closure, so it should drop self after
+            // the next await point.
+        }
+        // Poll for dealloc — supervisor's `self?.runSupervisor()`
+        // bails on nil self.
+        try await waitUntil(timeoutSeconds: 5.0, predicate: {
+            weakClient == nil
+        })
+        XCTAssertNil(weakClient, "client must dealloc once supervisor sees self is nil")
+    }
+
     func testBackoffDelayCapsAtEightSeconds() {
         XCTAssertEqual(HerdrDisplayClient.backoffDelay(attempt: 1), 250 * 1_000_000)
         XCTAssertEqual(HerdrDisplayClient.backoffDelay(attempt: 2), 500 * 1_000_000)

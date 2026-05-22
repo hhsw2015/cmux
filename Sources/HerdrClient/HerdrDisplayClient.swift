@@ -103,6 +103,30 @@ final class HerdrDisplayClient {
     /// leaking a freshly-spawned subprocess.
     private var stopped = false
 
+    /// Background queue used to drain stdin writes off the main actor.
+    /// `Pipe.fileHandleForWriting.write` is synchronous and blocks when
+    /// the kernel buffer fills (typical macOS pipe is 16-64 KB) —
+    /// large pastes over slow ssh would otherwise freeze the UI.
+    private static let stdinQueue = DispatchQueue(
+        label: "com.cmux.HerdrDisplayClient.stdin", qos: .userInitiated
+    )
+
+    /// Cumulative spawn-failure budget that survives the
+    /// "successful reconnect that immediately dies again" flap loop.
+    /// `attempt` resets to 0 on every outer disconnect, but
+    /// `flapAttempts` only resets after the new attach has stayed
+    /// connected longer than `minStableUptimeSeconds`.
+    private var flapAttempts = 0
+    private var lastConnectAt: Date?
+    static let minStableUptimeSeconds: TimeInterval = 5
+
+    /// Test-only inspector. Production code never reads stdinHandle
+    /// directly — use `send` and rely on the post-EOF nil-out
+    /// happening through the supervisor's MainActor.run hop. Tests
+    /// look at this to lock the contract that send() during a
+    /// reconnect window leaves the handle nil.
+    var stdinHandleForTesting: FileHandle? { stdinHandle }
+
     /// Designated init. Pass a custom `spawn` closure to swap out the
     /// subprocess for a fake (used by HerdrDisplayClientTests).
     init(
@@ -138,10 +162,16 @@ final class HerdrDisplayClient {
     /// Spawn the first subprocess and start the supervisor. The first
     /// attach awaits inline so callers can surface spawn-time errors;
     /// subsequent reconnects happen in the supervisor task.
+    /// Idempotent guard: calling start() twice is a programming error
+    /// (would race two supervisors on one displayClient); we trap it
+    /// in DEBUG and no-op in release.
     func start(takeover: Bool = false) async throws {
+        assert(supervisor == nil, "HerdrDisplayClient.start() called twice")
+        guard supervisor == nil else { return }
         let handle = try await spawn(takeover)
         adopt(handle: handle)
         state = .connected
+        lastConnectAt = Date()
         supervisor = Task.detached(priority: .userInitiated) { [weak self] in
             await self?.runSupervisor()
         }
@@ -152,16 +182,29 @@ final class HerdrDisplayClient {
     /// EPIPE and we'd just log noise. Herdr's replay restores the
     /// screen on reconnect; user input typed during the gap is lost,
     /// matching tmux/screen behavior on detach.
+    ///
+    /// The actual `handle.write` runs on a background queue. Pipe
+    /// writes are synchronous and block when the kernel pipe buffer
+    /// (16-64 KB typical) is full and the consumer is slow — pasting a
+    /// few hundred KB into a wedged ssh would otherwise freeze the
+    /// main thread.
     func send(_ bytes: Data) {
         guard let handle = stdinHandle else { return }
-        do {
-            try handle.write(contentsOf: bytes)
-        } catch {
-            // Pipe broken — null the handle so subsequent send()s
-            // exit early instead of writing to a corpse.
-            stdinHandle = nil
-            NSLog("[HerdrDisplayClient] stdin write failed: %@",
-                  String(describing: error))
+        Self.stdinQueue.async { [weak self] in
+            do {
+                try handle.write(contentsOf: bytes)
+            } catch {
+                NSLog("[HerdrDisplayClient] stdin write failed: %@",
+                      String(describing: error))
+                Task { @MainActor in
+                    // Pipe broken — null the handle so subsequent
+                    // send()s exit early instead of dispatching writes
+                    // to a corpse.
+                    if self?.stdinHandle === handle {
+                        self?.stdinHandle = nil
+                    }
+                }
+            }
         }
     }
 
@@ -171,6 +214,11 @@ final class HerdrDisplayClient {
         stopped = true
         supervisor?.cancel()
         supervisor = nil
+        // Detach terminationHandler BEFORE terminate() so the closure
+        // doesn't fire after stop() finishes and yield a stale
+        // disconnect signal that a future start() (if anyone adds one)
+        // would consume by spawning a phantom subprocess.
+        process?.terminationHandler = nil
         process?.terminate()
         try? stdinHandle?.close()
         try? stdoutHandle?.close()
@@ -230,21 +278,50 @@ final class HerdrDisplayClient {
 
     private func runSupervisor() async {
         for await _ in disconnectStream {
-            let alreadyStopped = await MainActor.run { self.stopped }
-            if alreadyStopped { return }
-            await MainActor.run {
-                // Old subprocess is dead; null the handles so any
-                // racing send() doesn't write to a corpse.
+            // Single hop: read stopped, decide flap budget, clear
+            // handles atomically. Splitting these reads into separate
+            // hops opens an interleaving window where stop() and the
+            // supervisor partially trample each other's state.
+            let pre: (stopped: Bool, flapped: Bool) = await MainActor.run {
+                let wasFlap: Bool
+                if let last = self.lastConnectAt,
+                   Date().timeIntervalSince(last) < Self.minStableUptimeSeconds {
+                    self.flapAttempts += 1
+                    wasFlap = true
+                } else {
+                    self.flapAttempts = 0
+                    wasFlap = false
+                }
+                // Clear handles so a racing send() doesn't write to a
+                // corpse before we've spawned the replacement.
                 self.stdinHandle = nil
                 self.process = nil
+                return (self.stopped, wasFlap)
             }
+            if pre.stopped { return }
+
             var attempt = 0
             var giveUp = false
             while !Task.isCancelled {
                 attempt += 1
-                let nowStopped = await MainActor.run { self.stopped }
-                if nowStopped { return }
-                await MainActor.run { self.state = .reconnecting(attempt: attempt) }
+                // Same single-hop pattern: read stopped + bump state.
+                let stoppedNow: Bool = await MainActor.run {
+                    if self.stopped { return true }
+                    self.state = .reconnecting(attempt: attempt)
+                    return false
+                }
+                if stoppedNow { return }
+
+                // Cumulative cap: if we're flapping (lots of fast
+                // disconnects), trip the cap on flapAttempts instead
+                // of letting per-disconnect attempt resets perpetually
+                // dodge it.
+                let totalAttempts = await MainActor.run { self.flapAttempts + attempt }
+                if totalAttempts > Self.maxReconnectAttempts {
+                    giveUp = true
+                    break
+                }
+
                 do {
                     try await Task.sleep(nanoseconds: Self.backoffDelay(attempt: attempt))
                 } catch {
@@ -256,28 +333,29 @@ final class HerdrDisplayClient {
                     // Stop racing in: if the user closed the panel
                     // while we were spawning, terminate the just-born
                     // process and exit.
-                    let raceStop = await MainActor.run { self.stopped }
-                    if raceStop {
+                    let aborted: Bool = await MainActor.run {
+                        if self.stopped { return true }
+                        self.adopt(handle: handle)
+                        self.state = .connected
+                        self.lastConnectAt = Date()
+                        return false
+                    }
+                    if aborted {
                         handle.process.terminate()
                         return
                     }
-                    await MainActor.run {
-                        self.adopt(handle: handle)
-                        self.state = .connected
-                    }
                     break
                 } catch {
-                    NSLog("[HerdrDisplayClient] reconnect attempt %d failed: %@",
-                          attempt, String(describing: error))
-                    if attempt >= Self.maxReconnectAttempts {
+                    NSLog("[HerdrDisplayClient] reconnect attempt %d (cumulative %d) failed: %@",
+                          attempt, totalAttempts, String(describing: error))
+                    if totalAttempts >= Self.maxReconnectAttempts {
                         giveUp = true
                         break
                     }
                 }
             }
             if giveUp {
-                NSLog("[HerdrDisplayClient] giving up after %d reconnect attempts for terminal %@",
-                      Self.maxReconnectAttempts, terminalId)
+                NSLog("[HerdrDisplayClient] giving up after cap reached for terminal %@", terminalId)
                 await MainActor.run {
                     self.outputContinuation.finish()
                     self.state = .stopped
