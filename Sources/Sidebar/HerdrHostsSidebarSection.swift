@@ -428,6 +428,13 @@ private struct HerdrHostRow: View {
                     localized: "sidebar.herdr.refresh",
                     defaultValue: "Refresh"
                 )) { onRefresh() }
+                Divider()
+                Button(String(
+                    localized: "sidebar.herdr.reconnect",
+                    defaultValue: "Reconnect / Restart daemon"
+                )) {
+                    HerdrRemoteInstaller.installOnHost(host)
+                }
             }
 
             if isExpanded {
