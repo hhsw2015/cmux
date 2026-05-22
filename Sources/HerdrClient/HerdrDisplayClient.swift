@@ -86,9 +86,19 @@ final class HerdrDisplayClient {
         self.executablePath = executablePath
         self.initialCols = cols
         self.initialRows = rows
-        var continuation: AsyncStream<Data>.Continuation!
-        self.output = AsyncStream(bufferingPolicy: .unbounded) { c in continuation = c }
-        self.outputContinuation = continuation
+        var outCont: AsyncStream<Data>.Continuation!
+        self.output = AsyncStream(bufferingPolicy: .unbounded) { c in outCont = c }
+        self.outputContinuation = outCont
+        // Eagerly initialize the disconnect signal/stream pair. A
+        // previous version used a `lazy var` for `disconnectStream`,
+        // which only fired its closure on first access — and the
+        // supervisor task accesses it AFTER startReader/observeTermination
+        // have already captured `disconnectSignal` (still nil at that
+        // point). Result: subprocess EOF tried to yield through a nil
+        // continuation, supervisor slept forever, no reconnect.
+        var sigCont: AsyncStream<Void>.Continuation!
+        self.disconnectStream = AsyncStream<Void>(bufferingPolicy: .unbounded) { c in sigCont = c }
+        self.disconnectSignal = sigCont
     }
 
     /// Spawn the subprocess and start the supervisor. The first attach
@@ -138,14 +148,11 @@ final class HerdrDisplayClient {
     // MARK: - private
 
     /// Fired by the reader task when stdout EOFs. Wakes the supervisor
-    /// loop to attempt reconnect.
-    private var disconnectSignal: AsyncStream<Void>.Continuation?
-    private lazy var disconnectStream: AsyncStream<Void> = {
-        var cont: AsyncStream<Void>.Continuation!
-        let stream = AsyncStream<Void>(bufferingPolicy: .unbounded) { c in cont = c }
-        self.disconnectSignal = cont
-        return stream
-    }()
+    /// loop to attempt reconnect. Initialized eagerly in `init` so the
+    /// reader/termination handlers capture a live continuation rather
+    /// than nil (see init for the bug history).
+    private let disconnectStream: AsyncStream<Void>
+    private let disconnectSignal: AsyncStream<Void>.Continuation
 
     private func spawnAttach(takeover: Bool) throws {
         let proc = Process()
@@ -263,7 +270,7 @@ final class HerdrDisplayClient {
                     // EOF on this attach — wake the supervisor to retry.
                     // Don't finish the public stream here; only stop()
                     // does that.
-                    signal?.yield(())
+                    signal.yield(())
                     return
                 }
                 cont.yield(data)
@@ -275,7 +282,7 @@ final class HerdrDisplayClient {
         guard let proc = process else { return }
         let signal = disconnectSignal
         proc.terminationHandler = { _ in
-            signal?.yield(())
+            signal.yield(())
         }
         // Drain stderr so the subprocess never blocks on a full pipe;
         // surface unexpected stderr to the system log for diagnosis.
