@@ -62,35 +62,47 @@ enum HerdrRemoteInstaller {
         }
         herdrInstallerTrace("\(target): detected asset \(assetName)")
 
-        // 2. Ensure ~/.local/bin exists, then curl the right asset down
-        //    on the remote itself. Avoids scp'ing a mac binary to linux.
-        let url = "https://github.com/\(releaseRepoOwner)/\(releaseRepoName)/releases/latest/download/\(assetName)"
-        // Stage to a temp file then atomic-rename. Linux rejects writes
-        // to a running executable ("Text file busy"); a rename swaps the
-        // inode without disturbing the in-flight process. The next
-        // daemon start picks up the fresh binary.
-        let installCmd = """
-        mkdir -p ~/.local/bin && \
-        TMP="$HOME/.local/bin/.herdr-cmux.new.$$" && \
-        if command -v curl >/dev/null 2>&1; then \
-          curl -fSL --retry 2 -o "$TMP" '\(url)'; \
-        elif command -v wget >/dev/null 2>&1; then \
-          wget -q -O "$TMP" '\(url)'; \
-        else \
-          echo 'no curl or wget on remote' >&2; exit 1; \
-        fi && \
-        chmod +x "$TMP" && \
-        mv -f "$TMP" "$HOME/.local/bin/herdr-cmux"
-        """
-        if !runSSH(host: host, command: installCmd) {
-            await MainActor.run {
-                herdrInstallerTrace("\(target): download failed")
-                postNotification(
-                    title: String(localized: "herdr.install.failed.title", defaultValue: "Set up failed"),
-                    body: String(localized: "herdr.install.failed.download", defaultValue: "\(target): could not download \(assetName) from latest release")
-                )
+        // 2. Skip download when remote already has herdr-cmux installed.
+        //    The user can wipe the binary if they want to force-upgrade;
+        //    re-installing on every "Set up" press is wasteful and trips
+        //    over Text file busy when the daemon is running.
+        let preexisting = captureSSH(
+            host: host,
+            command: "~/.local/bin/herdr-cmux --version 2>/dev/null"
+        )?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let skipDownload = preexisting.hasPrefix("herdr ")
+        if skipDownload {
+            herdrInstallerTrace("\(target): reusing existing \(preexisting)")
+        } else {
+            // Stage to a temp file then atomic-rename. Linux rejects writes
+            // to a running executable ("Text file busy"); a rename swaps
+            // the inode without disturbing any in-flight process. Only
+            // taken when no working binary is on disk; reinstalls keep the
+            // fast path above.
+            let url = "https://github.com/\(releaseRepoOwner)/\(releaseRepoName)/releases/latest/download/\(assetName)"
+            let installCmd = """
+            mkdir -p ~/.local/bin && \
+            TMP="$HOME/.local/bin/.herdr-cmux.new.$$" && \
+            if command -v curl >/dev/null 2>&1; then \
+              curl -fSL --retry 2 -o "$TMP" '\(url)'; \
+            elif command -v wget >/dev/null 2>&1; then \
+              wget -q -O "$TMP" '\(url)'; \
+            else \
+              echo 'no curl or wget on remote' >&2; exit 1; \
+            fi && \
+            chmod +x "$TMP" && \
+            mv -f "$TMP" "$HOME/.local/bin/herdr-cmux"
+            """
+            if !runSSH(host: host, command: installCmd) {
+                await MainActor.run {
+                    herdrInstallerTrace("\(target): download failed")
+                    postNotification(
+                        title: String(localized: "herdr.install.failed.title", defaultValue: "Set up failed"),
+                        body: String(localized: "herdr.install.failed.download", defaultValue: "\(target): could not download \(assetName) from latest release")
+                    )
+                }
+                return
             }
-            return
         }
         // 3. Verify with --version.
         let version = captureSSH(
