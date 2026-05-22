@@ -1150,6 +1150,9 @@ enum HerdrPanelOpener {
         )?.rootCmuxPaneId
         if HerdrInboundLayoutSync.shouldSuppressOutboundResize(forBinding: bindingKey) {
             herdrPanelOpenerTrace("forwardPanelSize suppressed (inbound apply active for \(bindingKey?.uuidString ?? "<unresolved>"))")
+            #if DEBUG
+            cmuxDebugLog("herdr.forwardPanelSize suppressed panelId=\(panelId.uuidString.prefix(8)) bindingKey=\(bindingKey?.uuidString.prefix(8) ?? "nil")")
+            #endif
             // Remember that we held back a real resize so the trailing
             // tick re-fires forwardPanelSize after suppression closes.
             // Closure captures the call args; surface stays valid as
@@ -1189,6 +1192,9 @@ enum HerdrPanelOpener {
             cols: size.columns,
             rows: size.rows
         )
+        #if DEBUG
+        cmuxDebugLog("herdr.forwardPanelSize fired panelId=\(panelId.uuidString.prefix(8)) \(size.columns)x\(size.rows)")
+        #endif
         // Route through the host's transport (local UDS or SSH stdio)
         // via HerdrOneShotRPC. The previous direct AF_UNIX socket
         // open hardcoded a local path, which broke for SSH hosts —

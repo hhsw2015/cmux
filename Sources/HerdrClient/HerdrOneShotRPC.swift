@@ -21,12 +21,20 @@ enum HerdrOneShotRPC {
         method: String,
         params: [String: Any]
     ) async {
+        let startedAt = Date()
         do {
             _ = try await request(host: host, method: method, params: params)
-            os_log("herdr.oneshot.ok method=%{public}@ session=%{public}@", method, host.sessionName)
+            let durMs = Int(Date().timeIntervalSince(startedAt) * 1000)
+            os_log("herdr.oneshot.ok method=%{public}@ session=%{public}@ durMs=%{public}d",
+                   method, host.sessionName, durMs)
+            #if DEBUG
+            cmuxDebugLog("herdr.oneshot ok method=\(method) session=\(host.sessionName) durMs=\(durMs)")
+            #endif
         } catch {
-            os_log("herdr.oneshot.fail method=%{public}@ session=%{public}@ error=%{public}@", method, host.sessionName, String(describing: error))
-            cmuxDebugLog("herdr.oneshot \(method) on \(host.sessionName) failed: \(error)")
+            let durMs = Int(Date().timeIntervalSince(startedAt) * 1000)
+            os_log("herdr.oneshot.fail method=%{public}@ session=%{public}@ durMs=%{public}d error=%{public}@",
+                   method, host.sessionName, durMs, String(describing: error))
+            cmuxDebugLog("herdr.oneshot \(method) on \(host.sessionName) failed after \(durMs)ms: \(error)")
         }
     }
 
