@@ -35,6 +35,7 @@
 		C420Z000C420Z000C42WLT2 /* HerdrWorkspaceListStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42WLT1 /* HerdrWorkspaceListStoreTests.swift */; };
 		C420Z000C420Z000C42IB102 /* HerdrInboundLayoutSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42IB101 /* HerdrInboundLayoutSyncTests.swift */; };
 		C420Z000C420Z000C42HDT2 /* HerdrDisplayClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42HDT1 /* HerdrDisplayClientTests.swift */; };
+		C420Z000C420Z000C42HPT2 /* HerdrPersistentApiClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42HPT1 /* HerdrPersistentApiClientTests.swift */; };
 		3865A0013865A0013865A001 /* SearchIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3865B0013865B0013865B001 /* SearchIndex.swift */; };
 		3865A0023865A0023865A002 /* GlobalSearchCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3865B0023865B0023865B002 /* GlobalSearchCoordinator.swift */; };
 		3865A0033865A0033865A003 /* MenubarSearchPopover.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3865B0033865B0033865B003 /* MenubarSearchPopover.swift */; };
@@ -380,6 +381,7 @@
 		C420Z000C420Z000C42EPDW102 /* HerdrEventPumpDebugWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42EPDW101 /* HerdrEventPumpDebugWindow.swift */; };
 		C420Z000C420Z000C42LB102 /* HerdrLocalBinary.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42LB101 /* HerdrLocalBinary.swift */; };
 		C420Z000C420Z000C42OR102 /* HerdrOneShotRPC.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42OR101 /* HerdrOneShotRPC.swift */; };
+		C420Z000C420Z000C42PA2 /* HerdrPersistentApiClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42PA1 /* HerdrPersistentApiClient.swift */; };
 		C420Z000C420Z000C42RI102 /* HerdrRemoteInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42RI101 /* HerdrRemoteInstaller.swift */; };
 		C420Z000C420Z000C42DC102 /* HerdrDisplayClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42DC101 /* HerdrDisplayClient.swift */; };
 		C420Z000C420Z000C42BB102 /* HerdrBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42BB101 /* HerdrBackend.swift */; };
@@ -1025,6 +1027,7 @@
 		C420Z000C420Z000C42EPDW101 /* HerdrEventPumpDebugWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrEventPumpDebugWindow.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42LB101 /* HerdrLocalBinary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrLocalBinary.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42OR101 /* HerdrOneShotRPC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrOneShotRPC.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42PA1 /* HerdrPersistentApiClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrPersistentApiClient.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42RI101 /* HerdrRemoteInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrRemoteInstaller.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42LU101 /* HerdrLayoutTypesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrLayoutTypesTests.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42LV101 /* HerdrLayoutSpecTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrLayoutSpecTests.swift; sourceTree = "<group>"; };
@@ -1036,6 +1039,7 @@
 		C420Z000C420Z000C42WLT1 /* HerdrWorkspaceListStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrWorkspaceListStoreTests.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42IB101 /* HerdrInboundLayoutSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrInboundLayoutSyncTests.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42HDT1 /* HerdrDisplayClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrDisplayClientTests.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42HPT1 /* HerdrPersistentApiClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrPersistentApiClientTests.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42FF101 /* SessionPersistenceFeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPersistenceFeatureFlags.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42DL101 /* SessionPersistenceDebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPersistenceDebugLog.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42CR101 /* ClosePanelReason.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClosePanelReason.swift; sourceTree = "<group>"; };
@@ -1555,6 +1559,7 @@
 				C420Z000C420Z000C42EPDW101 /* HerdrEventPumpDebugWindow.swift */,
 				C420Z000C420Z000C42LB101 /* HerdrLocalBinary.swift */,
 				C420Z000C420Z000C42OR101 /* HerdrOneShotRPC.swift */,
+				C420Z000C420Z000C42PA1 /* HerdrPersistentApiClient.swift */,
 				C420Z000C420Z000C42RI101 /* HerdrRemoteInstaller.swift */,
 				C420Z000C420Z000C42DC101 /* HerdrDisplayClient.swift */,
 				C420Z000C420Z000C42BB101 /* HerdrBackend.swift */,
@@ -1902,6 +1907,7 @@
 				C420Z000C420Z000C42WLT1 /* HerdrWorkspaceListStoreTests.swift */,
 				C420Z000C420Z000C42IB101 /* HerdrInboundLayoutSyncTests.swift */,
 				C420Z000C420Z000C42HDT1 /* HerdrDisplayClientTests.swift */,
+				C420Z000C420Z000C42HPT1 /* HerdrPersistentApiClientTests.swift */,
 				C1A2B3C4D5E6F70800000002 /* CmuxConfigTests.swift */,
 				C0DEF0A40000000000000002 /* CmuxConfigContextMenuTests.swift */,
 				E30750000000000000000005 /* CmuxConfigNamedColorTests.swift */,
@@ -2407,6 +2413,7 @@
 				C420Z000C420Z000C42EPDW102 /* HerdrEventPumpDebugWindow.swift in Sources */,
 				C420Z000C420Z000C42LB102 /* HerdrLocalBinary.swift in Sources */,
 				C420Z000C420Z000C42OR102 /* HerdrOneShotRPC.swift in Sources */,
+				C420Z000C420Z000C42PA2 /* HerdrPersistentApiClient.swift in Sources */,
 				C420Z000C420Z000C42RI102 /* HerdrRemoteInstaller.swift in Sources */,
 				C420Z000C420Z000C42DC102 /* HerdrDisplayClient.swift in Sources */,
 				C420Z000C420Z000C42BB102 /* HerdrBackend.swift in Sources */,
@@ -2796,6 +2803,7 @@
 				C420Z000C420Z000C42WLT2 /* HerdrWorkspaceListStoreTests.swift in Sources */,
 				C420Z000C420Z000C42IB102 /* HerdrInboundLayoutSyncTests.swift in Sources */,
 				C420Z000C420Z000C42HDT2 /* HerdrDisplayClientTests.swift in Sources */,
+				C420Z000C420Z000C42HPT2 /* HerdrPersistentApiClientTests.swift in Sources */,
 				C1A2B3C4D5E6F70800000001 /* CmuxConfigTests.swift in Sources */,
 				C0DEF0A40000000000000001 /* CmuxConfigContextMenuTests.swift in Sources */,
 				E30750000000000000000006 /* CmuxConfigNamedColorTests.swift in Sources */,

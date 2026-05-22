@@ -329,6 +329,10 @@ final class HerdrEventPump: ObservableObject {
         offlineNotificationTasks[host.id]?.cancel()
         offlineNotificationTasks.removeValue(forKey: host.id)
         everConnectedByHost.removeValue(forKey: host.id)
+        // Drop the cached persistent api-bridge connection for this
+        // host so we don't leak its ssh subprocess + remote
+        // api-bridge after the daemon is genuinely gone.
+        HerdrPersistentClientRegistry.shared.forget(host: host)
     }
 
     private func primeAllBindings(socketPath: String) {

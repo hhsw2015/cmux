@@ -1,18 +1,21 @@
 import Foundation
 import os.log
 
-/// One-shot RPC helper. Opens a fresh transport for the host (LocalUDS
-/// or SSH stdio via `HerdrTransportFactory`), sends one method call,
-/// reads exactly one response, tears the transport down.
+/// One-shot RPC facade. Routes every call through the per-host
+/// HerdrPersistentApiClient cache so multiple sequential RPCs share
+/// ONE ssh subprocess + ONE remote api-bridge instead of paying a
+/// fresh ~700ms ssh+bincode handshake per call.
 ///
-/// This is the canonical RPC path for the herdr daemon. The daemon's
-/// API socket reads ONE line per connection then closes (see
-/// herdr/src/api/mod.rs handle_connection), so any caller that tries
-/// to multiplex two requests on the same HerdrApiClient gets EPIPE
-/// on the second send. Always go through this helper for non-subscribe
-/// RPCs; only HerdrEventPump's `events.subscribe` flow keeps a
-/// connection long-lived (the daemon transitions that connection into
-/// streaming mode).
+/// Daemon protocol: herdr >= 0.6.0-cmux9 keeps the API socket open
+/// after each non-streaming response. Older daemons close after one
+/// response; the persistent client treats that as a transparent
+/// transport disconnect and lazy-reconnects on the next call, so we
+/// degrade to roughly the old behaviour automatically without the
+/// caller noticing.
+///
+/// Streaming methods (`events.subscribe`, `pane.wait_for_output`)
+/// still own their own connection — see HerdrEventPump and the
+/// `wait` helper for those paths.
 enum HerdrOneShotRPC {
     /// Fire-and-forget. Used when the broadcast event will reconcile
     /// the resulting state, so we don't care about the response body.
@@ -45,9 +48,7 @@ enum HerdrOneShotRPC {
         method: String,
         params: [String: Any]
     ) async throws -> [String: Any] {
-        let api = HerdrApiClient(transport: HerdrTransportFactory.make(host: host))
-        try await api.start()
-        defer { Task { await api.close() } }
-        return try await api.request(method: method, params: params)
+        let client = await HerdrPersistentClientRegistry.shared.client(for: host)
+        return try await client.request(method: method, params: params)
     }
 }
