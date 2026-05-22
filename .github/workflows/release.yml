@@ -148,17 +148,20 @@ jobs:
           cache-dependency-path: daemon/remote/go.sum
 
       - name: Derive Sparkle public key from private key
+        id: derive_sparkle
         if: steps.guard_release_assets.outputs.skip_all != 'true'
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
           if [ -z "$SPARKLE_PRIVATE_KEY" ]; then
-            echo "Missing SPARKLE_PRIVATE_KEY secret" >&2
-            exit 1
+            echo "::warning::SPARKLE_PRIVATE_KEY missing; skipping Sparkle/sign/notarize on this build."
+            echo "have_sparkle=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
           DERIVED_PUBLIC_KEY=$(swift scripts/derive_sparkle_public_key.swift "$SPARKLE_PRIVATE_KEY")
           echo "Derived Sparkle public key: $DERIVED_PUBLIC_KEY"
           echo "SPARKLE_PUBLIC_KEY=$DERIVED_PUBLIC_KEY" >> "$GITHUB_ENV"
+          echo "have_sparkle=true" >> "$GITHUB_OUTPUT"
 
       - name: Build universal app (Release)
         if: steps.guard_release_assets.outputs.skip_all != 'true'
@@ -218,7 +221,7 @@ jobs:
           [ -x "$HELPER_BINARY" ] || { echo "Ghostty theme picker helper not found at $HELPER_BINARY" >&2; exit 1; }
 
       - name: Inject Sparkle keys into Info.plist
-        if: steps.guard_release_assets.outputs.skip_all != 'true'
+        if: steps.guard_release_assets.outputs.skip_all != 'true' && steps.derive_sparkle.outputs.have_sparkle == 'true'
         run: |
           APP_PLIST="build-universal/Build/Products/Release/cmux.app/Contents/Info.plist"
           /usr/libexec/PlistBuddy -c "Delete :SUPublicEDKey" "$APP_PLIST" >/dev/null 2>&1 || true
@@ -232,7 +235,7 @@ jobs:
           /usr/libexec/PlistBuddy -c "Print :SUFeedURL" "$APP_PLIST"
 
       - name: Import signing cert
-        if: steps.guard_release_assets.outputs.skip_all != 'true'
+        if: steps.guard_release_assets.outputs.skip_all != 'true' && steps.derive_sparkle.outputs.have_sparkle == 'true'
         env:
           APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -256,7 +259,7 @@ jobs:
           security list-keychains -d user -s build.keychain
 
       - name: Embed release provisioning profile
-        if: steps.guard_release_assets.outputs.skip_all != 'true'
+        if: steps.guard_release_assets.outputs.skip_all != 'true' && steps.derive_sparkle.outputs.have_sparkle == 'true'
         env:
           APPLE_RELEASE_PROVISIONING_PROFILE_BASE64: ${{ secrets.APPLE_RELEASE_PROVISIONING_PROFILE_BASE64 }}
         run: |
@@ -289,7 +292,7 @@ jobs:
           cp "$TMP_PROFILE" "$PROFILE_PATH"
 
       - name: Codesign app
-        if: steps.guard_release_assets.outputs.skip_all != 'true'
+        if: steps.guard_release_assets.outputs.skip_all != 'true' && steps.derive_sparkle.outputs.have_sparkle == 'true'
         env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: |
@@ -304,7 +307,7 @@ jobs:
             "$APPLE_SIGNING_IDENTITY"
 
       - name: Notarize app
-        if: steps.guard_release_assets.outputs.skip_all != 'true'
+        if: steps.guard_release_assets.outputs.skip_all != 'true' && steps.derive_sparkle.outputs.have_sparkle == 'true'
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
@@ -351,7 +354,7 @@ jobs:
           xcrun stapler validate "$DMG_RELEASE"
 
       - name: Upload dSYMs to Sentry
-        if: steps.guard_release_assets.outputs.skip_all != 'true'
+        if: steps.guard_release_assets.outputs.skip_all != 'true' && steps.derive_sparkle.outputs.have_sparkle == 'true'
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: manaflow
@@ -365,7 +368,7 @@ jobs:
           sentry-cli debug-files upload --include-sources build-universal/Build/Products/Release/
 
       - name: Generate Sparkle appcast
-        if: steps.guard_release_assets.outputs.skip_all != 'true'
+        if: steps.guard_release_assets.outputs.skip_all != 'true' && steps.derive_sparkle.outputs.have_sparkle == 'true'
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
@@ -376,7 +379,7 @@ jobs:
           ./scripts/sparkle_generate_appcast.sh cmux-macos.dmg "$GITHUB_REF_NAME" appcast.xml
 
       - name: Attest remote daemon release assets
-        if: steps.guard_release_assets.outputs.skip_all != 'true'
+        if: steps.guard_release_assets.outputs.skip_all != 'true' && steps.derive_sparkle.outputs.have_sparkle == 'true'
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
         with:
           subject-path: |
@@ -399,7 +402,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload release asset
-        if: steps.guard_release_assets.outputs.skip_upload != 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        if: steps.guard_release_assets.outputs.skip_upload != 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && steps.derive_sparkle.outputs.have_sparkle == 'true'
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           files: |
