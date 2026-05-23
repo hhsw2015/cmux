@@ -245,26 +245,31 @@ enum HerdrPanelOpener {
         // mounted Ghostty surface; running the for-await + the
         // synchronous ghostty_surface_process_output call on the main
         // actor previously deadlocked the UI for the duration of the
-        // replay (sample showed main thread blocked in libghostty-vt's
-        // internal Zig Thread.Futex while the io-reader thread was
-        // also blocked — AB-BA on the surface input queue lock). The
-        // surface API is documented as thread-safe; an off-main pump
-        // lets AppKit events, RPC continuations, and the divider sync
-        // keep flowing while Ghostty consumes the replay.
+        // replay (sampled main was blocked in libghostty-vt's Zig
+        // futex while the io-reader thread was also blocked).
+        // ghostty_surface_process_output is internally protected by
+        // Ghostty's renderer_state mutex (see termio/Termio.zig
+        // processOutput: lock → parse → unlock) so calls from a
+        // background thread are safe. The surface pointer is fetched
+        // through HerdrSurfaceController.processOutput which holds an
+        // OSAllocatedUnfairLock around the call so a concurrent
+        // detach() can't surrender the pointer to ghostty_surface_free
+        // while we're mid-call (review CRIT-1 of 8bf30e4 caught the
+        // earlier raw-pointer version's use-after-free window).
         let panelIdHint = panel?.id.uuidString.prefix(8) ?? "nil"
-        let pump = Task.detached(priority: .userInitiated) { [displayClient, weak panel] in
+        let pump = Task.detached(priority: .userInitiated) { [displayClient, controller] in
             var bytesAccum: Int = 0
             var chunkAccum: Int = 0
             var statsBucketStart: Date = Date()
+            var sawLargeChunk = false
             for await chunk in displayClient.output {
                 if Task.isCancelled { return }
-                let surface = await MainActor.run { panel?.surface.surface }
-                guard let surface else { break }
-                chunk.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
-                    guard let base = raw.baseAddress else { return }
-                    let cChars = base.assumingMemoryBound(to: CChar.self)
-                    ghostty_surface_process_output(surface, cChars, UInt(raw.count))
+                if !sawLargeChunk, chunk.count > 64 * 1024 {
+                    os_log("herdr.pump.large_chunk panelId=%{public}@ bytes=%{public}d",
+                           String(panelIdHint), chunk.count)
+                    sawLargeChunk = true
                 }
+                if !controller.processOutput(chunk) { return }
                 bytesAccum += chunk.count
                 chunkAccum += 1
                 if Date().timeIntervalSince(statsBucketStart) >= 1.0 {
