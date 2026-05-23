@@ -997,7 +997,21 @@ enum HerdrPanelOpener {
         let result = HerdrLayoutExecutor.execute(
             plan: plan,
             rootCmuxPaneId: rootPaneId.id,
-            controller: workspace.bonsplitController
+            controller: workspace.bonsplitController,
+            splitFn: { target, orientation, ratio in
+                // Route through workspace.herdrInboundSplit so the
+                // didSplitPane delegate sees isProgrammaticSplit=true
+                // and skips its auto-create-local-terminal branch.
+                // Otherwise the freshly-split pane gets a local
+                // TerminalPanel that wireHerdrBackedPanel then adds
+                // a herdr panel alongside, surfacing as "two tabs in
+                // the second panel after restore".
+                workspace.herdrInboundSplit(
+                    paneId: target,
+                    orientation: orientation,
+                    initialDividerPosition: ratio
+                )
+            }
         ) { cmuxPaneId, herdrPaneId in
             leaves.append((cmuxPaneId: cmuxPaneId, herdrPaneId: herdrPaneId))
         }

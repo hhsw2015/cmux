@@ -285,10 +285,19 @@ enum HerdrLayoutExecutor {
     ///     herdr pane id to populate it with.
     /// - Returns: the slot→cmux pane id table plus a registry that
     ///   maps every herdr pane id to the cmux pane that backs it.
+    /// Caller supplies `splitFn` so the executor can drive the right
+    /// flavour of split. cmux's workspace-attach path passes
+    /// `workspace.herdrInboundSplit(...)` which sets
+    /// `isProgrammaticSplit = true` for the duration of the call —
+    /// without that, bonsplit's didSplitPane delegate auto-creates a
+    /// local TerminalPanel in the new pane, and then
+    /// wireHerdrBackedPanel adds the herdr panel on top, leaving the
+    /// user with two tabs in the second pane after restore.
     static func execute(
         plan: HerdrLayoutApplyPlan,
         rootCmuxPaneId: UUID,
         controller: BonsplitController,
+        splitFn: (_ target: PaneID, _ orientation: SplitOrientation, _ ratio: CGFloat) -> PaneID?,
         paneFactory: (UUID, String) -> Void
     ) -> HerdrLayoutApplyResult {
         var slotPaneIds: [UUID] = Array(repeating: UUID(), count: plan.slotCount)
@@ -299,12 +308,7 @@ enum HerdrLayoutExecutor {
             switch step {
             case .split(let targetSlot, let orientation, let ratio, let newSlot):
                 let targetPaneId = PaneID(id: slotPaneIds[targetSlot])
-                guard let newPaneId = controller.splitPane(
-                    targetPaneId,
-                    orientation: orientation,
-                    withTab: nil,
-                    initialDividerPosition: ratio
-                ) else {
+                guard let newPaneId = splitFn(targetPaneId, orientation, ratio) else {
                     // splitPane failed (vetoed by delegate or splits
                     // disabled). Bail out — caller decides whether to
                     // retry or fall back. We still return whatever was

@@ -194,7 +194,15 @@ final class HerdrLayoutSpecTests: XCTestCase {
         let result = HerdrLayoutExecutor.execute(
             plan: plan,
             rootCmuxPaneId: rootPaneId,
-            controller: controller
+            controller: controller,
+            splitFn: { target, orientation, ratio in
+                controller.splitPane(
+                    target,
+                    orientation: orientation,
+                    withTab: nil,
+                    initialDividerPosition: ratio
+                )
+            }
         ) { paneId, herdrId in
             factoryCalls.append((paneId, herdrId))
         }
@@ -218,7 +226,15 @@ final class HerdrLayoutSpecTests: XCTestCase {
         let result = HerdrLayoutExecutor.execute(
             plan: plan,
             rootCmuxPaneId: rootPaneId,
-            controller: controller
+            controller: controller,
+            splitFn: { target, orientation, ratio in
+                controller.splitPane(
+                    target,
+                    orientation: orientation,
+                    withTab: nil,
+                    initialDividerPosition: ratio
+                )
+            }
         ) { _, herdrId in
             orderedHerdrIds.append(herdrId)
         }
