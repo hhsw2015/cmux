@@ -256,7 +256,7 @@ enum HerdrPanelOpener {
         // detach() can't surrender the pointer to ghostty_surface_free
         // while we're mid-call (review CRIT-1 of 8bf30e4 caught the
         // earlier raw-pointer version's use-after-free window).
-        let panelIdHint = panel?.id.uuidString.prefix(8) ?? "nil"
+        let panelIdHint = String(panel.id.uuidString.prefix(8))
         let pump = Task.detached(priority: .userInitiated) { [displayClient, controller] in
             var bytesAccum: Int = 0
             var chunkAccum: Int = 0
@@ -266,7 +266,7 @@ enum HerdrPanelOpener {
                 if Task.isCancelled { return }
                 if !sawLargeChunk, chunk.count > 64 * 1024 {
                     os_log("herdr.pump.large_chunk panelId=%{public}@ bytes=%{public}d",
-                           String(panelIdHint), chunk.count)
+                           panelIdHint, chunk.count)
                     sawLargeChunk = true
                 }
                 if !controller.processOutput(chunk) { return }
@@ -274,7 +274,7 @@ enum HerdrPanelOpener {
                 chunkAccum += 1
                 if Date().timeIntervalSince(statsBucketStart) >= 1.0 {
                     os_log("herdr.pump.stats panelId=%{public}@ chunks=%{public}d bytes=%{public}d",
-                           String(panelIdHint), chunkAccum, bytesAccum)
+                           panelIdHint, chunkAccum, bytesAccum)
                     bytesAccum = 0
                     chunkAccum = 0
                     statsBucketStart = Date()
