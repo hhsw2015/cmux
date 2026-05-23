@@ -128,4 +128,28 @@ mod tests {
             ]
         );
     }
+
+    // R5: pane.resize emits absolute -x/-y. tmux is integer-cell;
+    // any rational ratio comes pre-quantized from the caller. The
+    // shim never tries to interpret fractional sizes here.
+    #[test]
+    fn pane_resize_translates_to_resize_pane() {
+        use super::translate::{translate_request, TranslateOutcome};
+
+        let request_json = r#"{
+            "id": "5",
+            "method": "pane.resize",
+            "params": { "target_pane_id": "%9", "cols": 80, "rows": 24 }
+        }"#;
+
+        let argv = match translate_request(request_json).expect("pane.resize translates") {
+            TranslateOutcome::RunTmux(a) => a,
+            other => panic!("expected RunTmux, got {other:?}"),
+        };
+
+        assert_eq!(
+            argv,
+            vec!["resize-pane", "-t", "%9", "-x", "80", "-y", "24"]
+        );
+    }
 }
