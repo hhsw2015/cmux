@@ -52,4 +52,25 @@ mod tests {
 
         assert_eq!(argv, vec!["split-window", "-v", "-t", "%7"]);
     }
+
+    // R2: ping has no tmux equivalent. The shim must answer it
+    // locally with `{"result":"pong"}` and never spawn tmux. This
+    // forces a `TranslateOutcome` enum so downstream I/O code can
+    // distinguish "go run tmux" from "send this response now".
+    #[test]
+    fn ping_translates_to_no_tmux_call() {
+        use super::translate::{translate_request, TranslateOutcome};
+
+        let request_json = r#"{"id":"42","method":"ping","params":{}}"#;
+
+        let outcome = translate_request(request_json).expect("ping translates");
+
+        match outcome {
+            TranslateOutcome::ImmediateResponse(resp) => {
+                assert_eq!(resp.id, serde_json::json!("42"));
+                assert_eq!(resp.result, serde_json::json!("pong"));
+            }
+            other => panic!("expected ImmediateResponse, got {other:?}"),
+        }
+    }
 }

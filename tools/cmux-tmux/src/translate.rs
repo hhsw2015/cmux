@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fmt;
 
@@ -31,18 +31,46 @@ impl From<serde_json::Error> for TranslateError {
 
 #[derive(Debug, Deserialize)]
 struct Request {
-    #[allow(dead_code)]
     id: Value,
     method: String,
     #[serde(default)]
     params: Value,
 }
 
-pub fn request_json_to_tmux_argv(json: &str) -> Result<Vec<String>, TranslateError> {
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ResultResponse {
+    pub id: Value,
+    pub result: Value,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TranslateOutcome {
+    RunTmux(Vec<String>),
+    ImmediateResponse(ResultResponse),
+    RunMulti(Vec<Vec<String>>),
+}
+
+pub fn translate_request(json: &str) -> Result<TranslateOutcome, TranslateError> {
     let req: Request = serde_json::from_str(json)?;
     match req.method.as_str() {
-        "pane.split" => translate_pane_split(&req.params),
+        "ping" => Ok(TranslateOutcome::ImmediateResponse(ResultResponse {
+            id: req.id,
+            result: Value::String("pong".into()),
+        })),
+        "pane.split" => translate_pane_split(&req.params).map(TranslateOutcome::RunTmux),
         other => Err(TranslateError::UnsupportedMethod(other.to_string())),
+    }
+}
+
+pub fn request_json_to_tmux_argv(json: &str) -> Result<Vec<String>, TranslateError> {
+    match translate_request(json)? {
+        TranslateOutcome::RunTmux(argv) => Ok(argv),
+        TranslateOutcome::RunMulti(_) => Err(TranslateError::UnsupportedMethod(
+            "multi-step request".into(),
+        )),
+        TranslateOutcome::ImmediateResponse(_) => Err(TranslateError::UnsupportedMethod(
+            "immediate-response request has no tmux argv".into(),
+        )),
     }
 }
 
