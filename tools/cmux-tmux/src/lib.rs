@@ -71,7 +71,12 @@ mod tests {
         match outcome {
             TranslateOutcome::ImmediateResponse(resp) => {
                 assert_eq!(resp.id, serde_json::json!("42"));
-                assert_eq!(resp.result, serde_json::json!("pong"));
+                // Match cmux's HerdrApiClient.ping() which reads
+                // result["version"] (String) and result["protocol"]
+                // (Int). The shape — not the values — is the
+                // contract; version comes from CARGO_PKG_VERSION.
+                assert_eq!(resp.result["protocol"], serde_json::json!(1));
+                assert!(resp.result["version"].is_string());
             }
             other => panic!("expected ImmediateResponse, got {other:?}"),
         }

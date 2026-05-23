@@ -90,7 +90,10 @@ pub fn translate_request_in_context(
     match req.method.as_str() {
         "ping" => Ok(TranslateOutcome::ImmediateResponse(ResultResponse {
             id: req.id,
-            result: Value::String("pong".into()),
+            result: serde_json::json!({
+                "version": env!("CARGO_PKG_VERSION"),
+                "protocol": 1,
+            }),
         })),
         "events.subscribe" => Ok(TranslateOutcome::ImmediateResponse(ResultResponse {
             id: req.id,

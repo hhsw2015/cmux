@@ -48,5 +48,6 @@ fn serve_responds_to_ping_with_pong() {
     let resp: serde_json::Value =
         serde_json::from_str(line.trim()).expect("response is valid JSON");
     assert_eq!(resp["id"], serde_json::json!("1"));
-    assert_eq!(resp["result"], serde_json::json!("pong"));
+    assert_eq!(resp["result"]["protocol"], serde_json::json!(1));
+    assert!(resp["result"]["version"].is_string());
 }
