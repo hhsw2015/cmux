@@ -135,7 +135,7 @@ fn attach_rename_close_lifecycle() {
             "method": "workspace.rename",
             "params": { "workspace_id": workspace_id, "name": "ws-it-renamed" }
         }));
-        assert_eq!(rename["result"], serde_json::json!(true));
+        assert_eq!(rename["result"], serde_json::json!({}));
 
         let list = shim.call(serde_json::json!({
             "id": "4",
@@ -159,7 +159,7 @@ fn attach_rename_close_lifecycle() {
             "method": "workspace.close",
             "params": { "workspace_id": workspace_id }
         }));
-        assert_eq!(close["result"], serde_json::json!(true));
+        assert_eq!(close["result"], serde_json::json!({}));
 
         // After close, list-sessions either errors (no server)
         // or returns an empty list. Both are fine.

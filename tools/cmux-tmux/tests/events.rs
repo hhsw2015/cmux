@@ -186,15 +186,15 @@ fn subscribe_then_split_emits_layout_changed() {
         let deadline = std::time::Instant::now() + Duration::from_secs(3);
         while std::time::Instant::now() < deadline {
             if let Some(ev) = shim.next_event(Duration::from_millis(200)) {
-                if ev["event"] == serde_json::json!("layout_changed") {
+                if ev["event"] == serde_json::json!("layout.changed") {
                     found = Some(ev);
                     break;
                 }
             }
         }
-        let ev = found.expect("layout_changed event within 3s");
-        assert!(ev["window_id"].is_string());
-        assert!(ev["layout_string"].is_string());
+        let ev = found.expect("layout.changed event within 3s");
+        assert!(ev["data"]["window_id"].is_string());
+        assert!(ev["data"]["layout_string"].is_string());
     }));
 
     kill_tmux_server(&tmpdir);

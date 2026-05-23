@@ -46,7 +46,10 @@ pub struct ResultResponse {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ErrorObject {
-    pub code: i32,
+    /// herdr-side error codes are strings ("tab_not_found",
+    /// "workspace_not_found", "method_not_found", ...). cmux's
+    /// HerdrApiError.code is `String`; we mirror that exactly.
+    pub code: String,
     pub message: String,
 }
 
@@ -56,8 +59,16 @@ pub struct ErrorResponse {
     pub error: ErrorObject,
 }
 
-/// JSON-RPC 2.0 error code for method-not-found.
-pub const METHOD_NOT_FOUND: i32 = -32601;
+/// herdr error code strings (subset). cmux's `HerdrBackend.probe`
+/// switches on `tab_not_found` / `workspace_not_found` to mark a
+/// daemon as compatible.
+pub const METHOD_NOT_FOUND: &str = "method_not_found";
+pub const INVALID_REQUEST: &str = "invalid_request";
+pub const TAB_NOT_FOUND: &str = "tab_not_found";
+pub const WORKSPACE_NOT_FOUND: &str = "workspace_not_found";
+pub const PANE_NOT_FOUND: &str = "pane_not_found";
+pub const TMUX_FAILED: &str = "tmux_failed";
+pub const INTERNAL_ERROR: &str = "internal_error";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TranslateOutcome {
@@ -125,7 +136,7 @@ pub fn translate_request_in_context(
         other => Ok(TranslateOutcome::ImmediateError(ErrorResponse {
             id: req.id,
             error: ErrorObject {
-                code: METHOD_NOT_FOUND,
+                code: METHOD_NOT_FOUND.to_string(),
                 message: format!("Method not found: {other}"),
             },
         })),

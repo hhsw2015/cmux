@@ -203,9 +203,11 @@ mod tests {
         assert_eq!(
             v,
             serde_json::json!({
-                "event": "layout_changed",
-                "window_id": "@0",
-                "layout_string": "abcd,80x24,0,0,1",
+                "event": "layout.changed",
+                "data": {
+                    "window_id": "@0",
+                    "layout_string": "abcd,80x24,0,0,1",
+                },
             })
         );
         assert!(v.get("id").is_none());
@@ -220,13 +222,13 @@ mod tests {
             event_to_json(&CppEvent::PaneExited {
                 pane_id: "%4".into()
             }),
-            serde_json::json!({"event": "pane_exited", "pane_id": "%4"})
+            serde_json::json!({"event": "pane.exited", "data": {"pane_id": "%4"}})
         );
         assert_eq!(
             event_to_json(&CppEvent::WorkspaceClosed {
                 workspace_id: "$5".into()
             }),
-            serde_json::json!({"event": "workspace_closed", "workspace_id": "$5"})
+            serde_json::json!({"event": "workspace.closed", "data": {"workspace_id": "$5"}})
         );
     }
 
@@ -308,13 +310,14 @@ mod tests {
     }
 
     // For methods with no useful output, shape_response returns
-    // {result: true}.
+    // {result: {}} — cmux drops non-dict results silently, so an
+    // empty object is the void-return shape.
     #[test]
-    fn shape_pane_focus_response_is_true() {
+    fn shape_pane_focus_response_is_empty_object() {
         use super::tmux_response::shape_response;
 
         let resp = shape_response("pane.focus", serde_json::json!("14"), "").expect("shape ok");
-        assert_eq!(resp.result, serde_json::json!(true));
+        assert_eq!(resp.result, serde_json::json!({}));
     }
 
     // L1a: a single-pane tmux layout converts to a Pane leaf.

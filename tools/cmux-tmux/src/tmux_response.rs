@@ -22,26 +22,32 @@ impl std::fmt::Display for ShapeError {
 impl std::error::Error for ShapeError {}
 
 /// Encode a parsed [`CppEvent`] as the JSON notification line
-/// the bin writes to stdout. Notifications carry no `id`, so
-/// clients can distinguish them from RPC responses by absence
-/// of that field.
+/// the bin writes to stdout. The wire shape is `{event, data}`;
+/// cmux's `HerdrApiClient.handleData` keys on those exact
+/// fields. Notifications carry no `id` so clients can
+/// distinguish them from RPC responses.
+///
+/// Event names mirror herdr's: dotted (`layout.changed`,
+/// `pane.exited`, `workspace.closed`, `tab.reordered`).
 pub fn event_to_json(ev: &CppEvent) -> Value {
     match ev {
         CppEvent::LayoutChanged {
             window_id,
             layout_string,
         } => serde_json::json!({
-            "event": "layout_changed",
-            "window_id": window_id,
-            "layout_string": layout_string,
+            "event": "layout.changed",
+            "data": {
+                "window_id": window_id,
+                "layout_string": layout_string,
+            },
         }),
         CppEvent::PaneExited { pane_id } => serde_json::json!({
-            "event": "pane_exited",
-            "pane_id": pane_id,
+            "event": "pane.exited",
+            "data": { "pane_id": pane_id },
         }),
         CppEvent::WorkspaceClosed { workspace_id } => serde_json::json!({
-            "event": "workspace_closed",
-            "workspace_id": workspace_id,
+            "event": "workspace.closed",
+            "data": { "workspace_id": workspace_id },
         }),
     }
 }
@@ -119,7 +125,11 @@ pub fn shape_response_with_params(
             .into_iter()
             .collect(),
         ),
-        _ => Value::Bool(true),
+        // cmux's HerdrApiClient.handleData reads `result as?
+        // [String: Any]`; non-dict results are dropped silently.
+        // For methods with no useful payload we return an empty
+        // object — same effect as a "void return" RPC.
+        _ => Value::Object(serde_json::Map::new()),
     };
     Ok(ResultResponse { id, result })
 }

@@ -19,12 +19,8 @@ use cmux_tmux::parse::Session;
 use cmux_tmux::pty::{bytes_to_send_keys_argv, decode_output_event};
 use cmux_tmux::tmux_response::{capture_args_for, event_to_json, shape_response_with_params};
 use cmux_tmux::translate::{
-    translate_request, ErrorObject, ErrorResponse, TranslateError, TranslateOutcome,
+    self, translate_request, ErrorObject, ErrorResponse, TranslateError, TranslateOutcome,
 };
-
-const INTERNAL_ERROR: i32 = -32603;
-const PARSE_ERROR: i32 = -32700;
-const TMUX_ERROR: i32 = -32000;
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -181,7 +177,7 @@ fn serve() -> i32 {
             Err(e) => {
                 let _ = writer.send(error_envelope(
                     serde_json::Value::Null,
-                    INTERNAL_ERROR,
+                    translate::INTERNAL_ERROR,
                     &e.to_string(),
                 ));
                 return 1;
@@ -210,22 +206,22 @@ fn handle_line(line: &str, control: &Arc<Mutex<Option<Child>>>, writer: &Sender<
     match translate_request(line) {
         Ok(TranslateOutcome::ImmediateResponse(r)) => {
             serde_json::to_string(&r).unwrap_or_else(|e| {
-                error_envelope(serde_json::Value::Null, INTERNAL_ERROR, &e.to_string())
+                error_envelope(serde_json::Value::Null, translate::INTERNAL_ERROR, &e.to_string())
             })
         }
         Ok(TranslateOutcome::ImmediateError(e)) => {
             serde_json::to_string(&e).unwrap_or_else(|err| {
-                error_envelope(serde_json::Value::Null, INTERNAL_ERROR, &err.to_string())
+                error_envelope(serde_json::Value::Null, translate::INTERNAL_ERROR, &err.to_string())
             })
         }
         Ok(TranslateOutcome::RunTmux(argv)) => run_tmux_and_shape(id, &method, argv, line),
         Ok(TranslateOutcome::RunMulti(_)) => {
-            error_envelope(id, INTERNAL_ERROR, "multi-step requests not yet wired")
+            error_envelope(id, translate::INTERNAL_ERROR, "multi-step requests not yet wired")
         }
         Err(TranslateError::InvalidJson(e)) => {
-            error_envelope(serde_json::Value::Null, PARSE_ERROR, &e.to_string())
+            error_envelope(serde_json::Value::Null, translate::INVALID_REQUEST, &e.to_string())
         }
-        Err(other) => error_envelope(id, INTERNAL_ERROR, &other.to_string()),
+        Err(other) => error_envelope(id, translate::INTERNAL_ERROR, &other.to_string()),
     }
 }
 
@@ -243,7 +239,7 @@ fn subscribe_events(
                 .and_then(|w| w.as_str().map(str::to_string))
         });
     let Some(workspace_id) = workspace_id else {
-        return error_envelope(id, INTERNAL_ERROR, "events.subscribe requires workspace_id");
+        return error_envelope(id, translate::INTERNAL_ERROR, "events.subscribe requires workspace_id");
     };
 
     let mut guard = control.lock().expect("control mutex");
@@ -254,7 +250,7 @@ fn subscribe_events(
 
     let child = match spawn_control_client(&workspace_id, writer.clone()) {
         Ok(c) => c,
-        Err(e) => return error_envelope(id, TMUX_ERROR, &format!("spawn tmux -C: {e}")),
+        Err(e) => return error_envelope(id, translate::TMUX_FAILED, &format!("spawn tmux -C: {e}")),
     };
     *guard = Some(child);
     success_envelope(&id, &serde_json::json!({"subscribed": true}))
@@ -316,13 +312,13 @@ fn run_tmux_and_shape(
     }
     let output = match Command::new("tmux").args(&argv).output() {
         Ok(o) => o,
-        Err(e) => return error_envelope(id, TMUX_ERROR, &format!("spawn tmux: {e}")),
+        Err(e) => return error_envelope(id, translate::TMUX_FAILED, &format!("spawn tmux: {e}")),
     };
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return error_envelope(
             id,
-            TMUX_ERROR,
+            translate::TMUX_FAILED,
             &format!("tmux exited {}: {}", output.status, stderr.trim()),
         );
     }
@@ -333,25 +329,25 @@ fn run_tmux_and_shape(
         .unwrap_or(serde_json::Value::Null);
     match shape_response_with_params(method, id.clone(), &stdout, &params) {
         Ok(resp) => serde_json::to_string(&resp)
-            .unwrap_or_else(|e| error_envelope(id, INTERNAL_ERROR, &e.to_string())),
-        Err(e) => error_envelope(id, INTERNAL_ERROR, &e.to_string()),
+            .unwrap_or_else(|e| error_envelope(id, translate::INTERNAL_ERROR, &e.to_string())),
+        Err(e) => error_envelope(id, translate::INTERNAL_ERROR, &e.to_string()),
     }
 }
 
 fn success_envelope(id: &serde_json::Value, result: &serde_json::Value) -> String {
     serde_json::to_string(&serde_json::json!({"id": id, "result": result}))
-        .unwrap_or_else(|e| error_envelope(id.clone(), INTERNAL_ERROR, &e.to_string()))
+        .unwrap_or_else(|e| error_envelope(id.clone(), translate::INTERNAL_ERROR, &e.to_string()))
 }
 
-fn error_envelope(id: serde_json::Value, code: i32, message: &str) -> String {
+fn error_envelope(id: serde_json::Value, code: &str, message: &str) -> String {
     let resp = ErrorResponse {
         id,
         error: ErrorObject {
-            code,
+            code: code.to_string(),
             message: message.to_string(),
         },
     };
     serde_json::to_string(&resp).unwrap_or_else(|_| {
-        format!("{{\"id\":null,\"error\":{{\"code\":{code},\"message\":\"serialize error\"}}}}")
+        format!("{{\"id\":null,\"error\":{{\"code\":\"{code}\",\"message\":\"serialize error\"}}}}")
     })
 }
