@@ -11,6 +11,8 @@ enum HerdrTransportFactory {
             return LocalUDSTransport(socketPath: host.localApiSocketPath)
         case .sshStdio:
             return SSHStdioTransport(host: host)
+        case .cmuxTmuxLocal, .cmuxTmuxSSH:
+            return CmuxTmuxStdioTransport(host: host)
         }
     }
 }

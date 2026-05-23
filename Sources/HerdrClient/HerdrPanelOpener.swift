@@ -27,9 +27,9 @@ enum HerdrPanelOpenerError: Error {
 /// to fetch the remote $HOME, and the daemon expands it shell-style.
 func cwdForHost(_ host: HerdrHost) -> String {
     switch host.transport {
-    case .localUDS:
+    case .localUDS, .cmuxTmuxLocal:
         return NSHomeDirectory()
-    case .sshStdio:
+    case .sshStdio, .cmuxTmuxSSH:
         return "~"
     }
 }

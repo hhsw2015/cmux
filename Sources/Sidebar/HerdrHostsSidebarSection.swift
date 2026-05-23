@@ -370,8 +370,12 @@ private struct HerdrHostRow: View {
         switch host.transport {
         case .localUDS:
             return "\(host.displayName) · localhost · \(host.sessionName)"
-        case .sshStdio(let target):
+        case .sshStdio(let target, _, _, _, _):
             return "\(host.displayName) · ssh \(target) · \(host.sessionName)"
+        case .cmuxTmuxLocal:
+            return "\(host.displayName) · cmux-tmux (local) · \(host.sessionName)"
+        case .cmuxTmuxSSH(let target, _, _, _, _):
+            return "\(host.displayName) · cmux-tmux ssh \(target) · \(host.sessionName)"
         }
     }
 

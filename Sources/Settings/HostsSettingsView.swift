@@ -292,6 +292,11 @@ private struct HostRow: View, Equatable {
         case .sshStdio(let target, _, _, let sshExe, _):
             let prefix = (sshExe.map { (($0 as NSString).lastPathComponent == "sshpass") ? "sshpass " : "" } ?? "")
             return "\(prefix)ssh: \(target) · session: \(host.sessionName)"
+        case .cmuxTmuxLocal:
+            return "cmux-tmux (local) · session: \(host.sessionName)"
+        case .cmuxTmuxSSH(let target, _, _, let sshExe, _):
+            let prefix = (sshExe.map { (($0 as NSString).lastPathComponent == "sshpass") ? "sshpass " : "" } ?? "")
+            return "\(prefix)cmux-tmux ssh: \(target) · session: \(host.sessionName)"
         }
     }
 
@@ -398,9 +403,16 @@ private struct AddHostSheet: View {
     /// same fields, so a round-trip Save+Edit is a no-op for the model.
     static func renderCommand(_ transport: HerdrHost.Transport?) -> String {
         guard let transport else { return "" }
-        guard case .sshStdio(let target, let extraArgs, _, let sshExe, _) = transport else {
-            return ""
+        // Both ssh-shaped variants render to the same UI string.
+        let extracted: (String, [String], String?)?
+        switch transport {
+        case .sshStdio(let target, let extraArgs, _, let sshExe, _),
+             .cmuxTmuxSSH(let target, let extraArgs, _, let sshExe, _):
+            extracted = (target, extraArgs, sshExe)
+        case .localUDS, .cmuxTmuxLocal:
+            extracted = nil
         }
+        guard let (target, extraArgs, sshExe) = extracted else { return "" }
         var parts: [String] = []
         if let exe = sshExe, !exe.isEmpty {
             parts.append(shellQuote(exe))

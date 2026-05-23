@@ -27,6 +27,26 @@ struct HerdrHost: Identifiable, Codable, Equatable, Hashable, Sendable {
         return false
     }
 
+    /// Whether this host's daemon is a `cmux-tmux serve` subprocess
+    /// (drives an existing tmux server) rather than a herdr daemon.
+    /// Used by display-spawn / event-pump call sites that need to
+    /// pick the right binary subcommand layout.
+    var isCmuxTmuxBacked: Bool {
+        switch transport {
+        case .cmuxTmuxLocal, .cmuxTmuxSSH: return true
+        case .localUDS, .sshStdio: return false
+        }
+    }
+
+    /// Whether the daemon is reached via SSH (regardless of which
+    /// daemon flavour). Wraps the two SSH-shaped cases.
+    var isRemoteSSH: Bool {
+        switch transport {
+        case .sshStdio, .cmuxTmuxSSH: return true
+        case .localUDS, .cmuxTmuxLocal: return false
+        }
+    }
+
     enum Transport: Equatable, Hashable, Sendable {
         /// Unix domain socket on the same machine. The session name is
         /// resolved via herdr's standard path lookup (`~/.config/herdr/...`).
@@ -46,6 +66,22 @@ struct HerdrHost: Identifiable, Codable, Equatable, Hashable, Sendable {
         /// - `remoteBinaryPath`: override the remote `herdr-cmux` binary
         ///   path. Default `nil` = use `herdr-cmux` from the remote `$PATH`.
         case sshStdio(
+            target: String,
+            extraArgs: [String] = [],
+            skipDefaultOptions: Bool = false,
+            sshExecutable: String? = nil,
+            remoteBinaryPath: String? = nil
+        )
+        /// Local `cmux-tmux serve` subprocess. The binary drives an
+        /// already-running tmux server (via tmux's control mode) and
+        /// presents the cmux pane protocol on stdin/stdout. Use this
+        /// against a tmux you already have on your Mac. `binaryPath`
+        /// = nil falls back to `cmux-tmux` from `$PATH`.
+        case cmuxTmuxLocal(binaryPath: String? = nil)
+        /// Remote `cmux-tmux serve` over SSH. Same wire as
+        /// `cmuxTmuxLocal`; the SSH plumbing mirrors `sshStdio`. Use
+        /// this against a tmux you already have on a remote box.
+        case cmuxTmuxSSH(
             target: String,
             extraArgs: [String] = [],
             skipDefaultOptions: Bool = false,
@@ -95,6 +131,12 @@ extension HerdrHost.Transport: Codable {
     private enum CodingKeys: String, CodingKey {
         case localUDS
         case sshStdio
+        case cmuxTmuxLocal
+        case cmuxTmuxSSH
+    }
+
+    private struct CmuxTmuxLocalPayload: Codable {
+        var binaryPath: String?
     }
 
     private struct SSHStdioPayload: Codable {
@@ -167,6 +209,23 @@ extension HerdrHost.Transport: Codable {
             )
             return
         }
+        if c.contains(.cmuxTmuxLocal) {
+            let payload = try c.decode(CmuxTmuxLocalPayload.self, forKey: .cmuxTmuxLocal)
+            self = .cmuxTmuxLocal(binaryPath: payload.binaryPath)
+            return
+        }
+        if c.contains(.cmuxTmuxSSH) {
+            // Reuse the SSHStdioPayload struct — same field set.
+            let payload = try c.decode(SSHStdioPayload.self, forKey: .cmuxTmuxSSH)
+            self = .cmuxTmuxSSH(
+                target: payload.target,
+                extraArgs: payload.extraArgs ?? [],
+                skipDefaultOptions: payload.skipDefaultOptions ?? false,
+                sshExecutable: payload.sshExecutable,
+                remoteBinaryPath: payload.remoteBinaryPath
+            )
+            return
+        }
         throw DecodingError.dataCorruptedError(
             forKey: .localUDS, in: c,
             debugDescription: "Unknown HerdrHost.Transport variant"
@@ -188,6 +247,22 @@ extension HerdrHost.Transport: Codable {
                     remoteBinaryPath: remoteBin
                 ),
                 forKey: .sshStdio
+            )
+        case .cmuxTmuxLocal(let binaryPath):
+            try c.encode(
+                CmuxTmuxLocalPayload(binaryPath: binaryPath),
+                forKey: .cmuxTmuxLocal
+            )
+        case .cmuxTmuxSSH(let target, let extraArgs, let skipDefault, let sshExe, let remoteBin):
+            try c.encode(
+                SSHStdioPayload(
+                    target: target,
+                    extraArgs: extraArgs,
+                    skipDefaultOptions: skipDefault,
+                    sshExecutable: sshExe,
+                    remoteBinaryPath: remoteBin
+                ),
+                forKey: .cmuxTmuxSSH
             )
         }
     }

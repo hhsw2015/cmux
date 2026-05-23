@@ -282,7 +282,14 @@ final class HerdrEventPump: ObservableObject {
                 switch host.transport {
                 case .localUDS:
                     daemonGone = !FileManager.default.fileExists(atPath: socketPath)
-                case .sshStdio:
+                case .cmuxTmuxLocal:
+                    // No persistent daemon socket to stat; fall
+                    // back to the same multi-attempt heuristic as
+                    // SSH. A locally-spawned cmux-tmux dies on
+                    // EOF, so we only conclude "gone" after the
+                    // pump fails to relaunch a few times.
+                    daemonGone = attempt >= 3
+                case .sshStdio, .cmuxTmuxSSH:
                     // 3 reconnect failures with backoff covers a brief
                     // network blip without wiping bindings, but means
                     // an explicit `herdr session stop` resolves to
@@ -505,6 +512,10 @@ final class HerdrEventPump: ObservableObject {
             return "local:\(host.localApiSocketPath)"
         case .sshStdio(let target, _, _, _, _):
             return "ssh:\(target):\(host.sessionName)"
+        case .cmuxTmuxLocal:
+            return "cmuxTmuxLocal:\(host.id):\(host.sessionName)"
+        case .cmuxTmuxSSH(let target, _, _, _, _):
+            return "cmuxTmuxSSH:\(target):\(host.sessionName)"
         }
     }
 

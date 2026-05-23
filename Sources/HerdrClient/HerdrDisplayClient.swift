@@ -403,6 +403,23 @@ final class HerdrDisplayClient {
                 }
                 proc.executableURL = URL(fileURLWithPath: invocation.executable)
                 proc.arguments = invocation.args
+            case .cmuxTmuxLocal, .cmuxTmuxSSH:
+                // cmux-tmux uses a slimmer raw-pty-attach argv:
+                //   raw-pty-attach --pane <tmux_pane_id>
+                // No --cols / --rows (tmux drives sizing via
+                // pane.resize) and no --takeover (cmux-tmux holds
+                // a single global control client per serve
+                // process; reattach is a no-op there). The
+                // session label still goes via the pre-subcommand
+                // --session NAME flag.
+                let subArgs: [String] = ["raw-pty-attach", "--pane", terminalId]
+                guard let invocation = CmuxTmuxCommandBuilder.build(
+                    for: host, subArgs: subArgs
+                ) else {
+                    throw HerdrDisplayClientError.spawnFailed("invalid cmuxTmux host")
+                }
+                proc.executableURL = URL(fileURLWithPath: invocation.executable)
+                proc.arguments = invocation.args
             }
 
             let stdinPipe = Pipe()
