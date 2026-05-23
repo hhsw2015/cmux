@@ -105,4 +105,27 @@ mod tests {
             ]
         );
     }
+
+    // R4: workspace.list -> `tmux list-sessions -F <fmt>`. No
+    // params; format covers id, name and attach state.
+    #[test]
+    fn workspace_list_translates_to_list_sessions() {
+        use super::translate::{translate_request, TranslateOutcome};
+
+        let request_json = r#"{"id":"4","method":"workspace.list","params":{}}"#;
+
+        let argv = match translate_request(request_json).expect("workspace.list translates") {
+            TranslateOutcome::RunTmux(a) => a,
+            other => panic!("expected RunTmux, got {other:?}"),
+        };
+
+        assert_eq!(
+            argv,
+            vec![
+                "list-sessions",
+                "-F",
+                "#{session_id}\t#{session_name}\t#{session_attached}",
+            ]
+        );
+    }
 }

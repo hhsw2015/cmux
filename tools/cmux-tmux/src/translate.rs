@@ -59,6 +59,7 @@ pub fn translate_request(json: &str) -> Result<TranslateOutcome, TranslateError>
         })),
         "pane.split" => translate_pane_split(&req.params).map(TranslateOutcome::RunTmux),
         "panes.list" => translate_panes_list(&req.params).map(TranslateOutcome::RunTmux),
+        "workspace.list" => Ok(TranslateOutcome::RunTmux(translate_workspace_list())),
         other => Err(TranslateError::UnsupportedMethod(other.to_string())),
     }
 }
@@ -76,6 +77,11 @@ pub fn request_json_to_tmux_argv(json: &str) -> Result<Vec<String>, TranslateErr
 }
 
 const PANE_FORMAT: &str = "#{pane_id}\t#{pane_active}\t#{pane_width}\t#{pane_height}";
+const SESSION_FORMAT: &str = "#{session_id}\t#{session_name}\t#{session_attached}";
+
+fn translate_workspace_list() -> Vec<String> {
+    vec!["list-sessions".into(), "-F".into(), SESSION_FORMAT.into()]
+}
 
 fn translate_panes_list(params: &Value) -> Result<Vec<String>, TranslateError> {
     let workspace_id = params
