@@ -1,6 +1,7 @@
 // Public surface grows test-by-test. Each `pub mod` line is added the
 // moment a failing test in this crate forces it.
 
+pub mod bsp;
 pub mod parse;
 pub mod pty;
 pub mod tmux_response;
@@ -314,6 +315,163 @@ mod tests {
 
         let resp = shape_response("pane.focus", serde_json::json!("14"), "").expect("shape ok");
         assert_eq!(resp.result, serde_json::json!(true));
+    }
+
+    // L1a: a single-pane tmux layout converts to a Pane leaf.
+    // The herdr wire shape is `{kind: "pane", pane_id}`.
+    #[test]
+    fn bsp_converter_leaf() {
+        use super::bsp::{tmux_to_bsp, BspNode};
+        use super::parse::parse_layout;
+
+        let tree = parse_layout("1234,80x24,0,0,1").unwrap();
+        let bsp = tmux_to_bsp(&tree);
+        match bsp {
+            BspNode::Pane { pane_id } => assert_eq!(pane_id, "%1"),
+            other => panic!("expected Pane, got {other:?}"),
+        }
+    }
+
+    // L1b: tmux's `{}` (LeftRight, side-by-side) becomes herdr's
+    // `horizontal` direction. ratio = first.width / total_width.
+    #[test]
+    fn bsp_converter_h_split_two_children() {
+        use super::bsp::{tmux_to_bsp, BspNode, BspSplitDirection};
+        use super::parse::parse_layout;
+
+        // 80x24 split into 40 / 39 — divider is at 40, so first
+        // gets 40 cells; total along x = 40 + 39 = 79 (the
+        // divider takes 1 cell so it's not 80).
+        let tree = parse_layout("abcd,80x24,0,0{40x24,0,0,1,39x24,41,0,2}").unwrap();
+        let bsp = tmux_to_bsp(&tree);
+        match bsp {
+            BspNode::Split {
+                direction,
+                ratio,
+                first,
+                second,
+            } => {
+                assert_eq!(direction, BspSplitDirection::Horizontal);
+                let expected = 40.0 / 79.0;
+                assert!(
+                    (ratio - expected).abs() < 1e-4,
+                    "ratio {ratio} not near {expected}"
+                );
+                match (*first, *second) {
+                    (BspNode::Pane { pane_id: p1 }, BspNode::Pane { pane_id: p2 }) => {
+                        assert_eq!(p1, "%1");
+                        assert_eq!(p2, "%2");
+                    }
+                    other => panic!("expected two pane leaves, got {other:?}"),
+                }
+            }
+            other => panic!("expected Split, got {other:?}"),
+        }
+    }
+
+    // L1c: tmux's `[]` (TopBottom, stacked) becomes herdr
+    // `vertical`. Ratio uses heights along y.
+    #[test]
+    fn bsp_converter_v_split_two_children() {
+        use super::bsp::{tmux_to_bsp, BspNode, BspSplitDirection};
+        use super::parse::parse_layout;
+
+        // 80x24 stacked into 12/11.
+        let tree = parse_layout("ef01,80x24,0,0[80x12,0,0,1,80x11,0,13,2]").unwrap();
+        let bsp = tmux_to_bsp(&tree);
+        match bsp {
+            BspNode::Split {
+                direction, ratio, ..
+            } => {
+                assert_eq!(direction, BspSplitDirection::Vertical);
+                let expected = 12.0 / 23.0;
+                assert!((ratio - expected).abs() < 1e-4);
+            }
+            other => panic!("expected Split, got {other:?}"),
+        }
+    }
+
+    // L1d: a 3-child tmux split becomes a right-leaning binary
+    // chain. tmux `{a,b,c}` → split(a, split(b, c)) where the
+    // outer ratio is a.size / total and the inner ratio is
+    // b.size / (b.size + c.size).
+    #[test]
+    fn bsp_converter_h_split_three_children_right_leaning() {
+        use super::bsp::{tmux_to_bsp, BspNode, BspSplitDirection};
+        use super::parse::parse_layout;
+
+        // 80 wide, three columns: 26 / 27 / 26 (with two
+        // divider cells eaten between them; sums to 79 along x).
+        let tree = parse_layout("1111,80x24,0,0{26x24,0,0,1,26x24,27,0,2,26x24,54,0,3}").unwrap();
+        let bsp = tmux_to_bsp(&tree);
+        let (first, second) = match bsp {
+            BspNode::Split {
+                direction,
+                ratio,
+                first,
+                second,
+            } => {
+                assert_eq!(direction, BspSplitDirection::Horizontal);
+                // outer ratio = 26 / (26 + 26 + 26) = 1/3
+                assert!((ratio - 1.0 / 3.0).abs() < 1e-3);
+                (*first, *second)
+            }
+            other => panic!("expected outer Split, got {other:?}"),
+        };
+        match first {
+            BspNode::Pane { pane_id } => assert_eq!(pane_id, "%1"),
+            other => panic!("expected outer first to be Pane, got {other:?}"),
+        }
+        match second {
+            BspNode::Split {
+                direction,
+                ratio,
+                first,
+                second,
+            } => {
+                assert_eq!(direction, BspSplitDirection::Horizontal);
+                // inner ratio = 26 / (26 + 26) = 1/2
+                assert!((ratio - 0.5).abs() < 1e-3);
+                match (*first, *second) {
+                    (BspNode::Pane { pane_id: p2 }, BspNode::Pane { pane_id: p3 }) => {
+                        assert_eq!(p2, "%2");
+                        assert_eq!(p3, "%3");
+                    }
+                    other => panic!("inner children: {other:?}"),
+                }
+            }
+            other => panic!("expected inner Split, got {other:?}"),
+        }
+    }
+
+    // L1e: nested splits round-trip directions correctly.
+    #[test]
+    fn bsp_converter_nested_mixed_orientations() {
+        use super::bsp::{tmux_to_bsp, BspNode, BspSplitDirection};
+        use super::parse::parse_layout;
+
+        // 80x24 split horizontally into a 40-wide column and a
+        // 39-wide column; the right column itself is split top/
+        // bottom into 40x12 / 40x11.
+        let tree =
+            parse_layout("2222,80x24,0,0{40x24,0,0,1,39x24,41,0[39x12,41,0,2,39x11,41,13,3]}")
+                .unwrap();
+        let bsp = tmux_to_bsp(&tree);
+        let second = match bsp {
+            BspNode::Split {
+                direction, second, ..
+            } => {
+                assert_eq!(direction, BspSplitDirection::Horizontal);
+                *second
+            }
+            other => panic!("outer: {other:?}"),
+        };
+        match second {
+            BspNode::Split { direction, .. } => {
+                assert_eq!(direction, BspSplitDirection::Vertical);
+            }
+            other => panic!("inner expected Vertical Split, got {other:?}"),
+        }
     }
 
     // W2a: workspace.close kills the tmux session.
