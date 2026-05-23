@@ -15,7 +15,8 @@ use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 
-use cmux_tmux::parse::Session;
+use cmux_tmux::bsp::{walk_split_path, BspSplitDirection};
+use cmux_tmux::parse::{parse_layout, Session};
 use cmux_tmux::pty::{bytes_to_send_keys_argv, decode_output_event};
 use cmux_tmux::tmux_response::{capture_args_for, event_to_json, shape_response_with_params};
 use cmux_tmux::translate::{
@@ -202,6 +203,9 @@ fn handle_line(line: &str, control: &Arc<Mutex<Option<Child>>>, writer: &Sender<
     if method == "events.subscribe" {
         return subscribe_events(line, id, control, writer);
     }
+    if method == "pane.set_split_ratio" {
+        return apply_set_split_ratio(line, id);
+    }
 
     match translate_request(line) {
         Ok(TranslateOutcome::ImmediateResponse(r)) => {
@@ -316,6 +320,135 @@ fn parse_method(line: &str) -> String {
         .ok()
         .and_then(|v| v.get("method").and_then(|m| m.as_str().map(str::to_string)))
         .unwrap_or_default()
+}
+
+/// `pane.set_split_ratio({workspace_id, tab_id, path, ratio})`.
+///
+/// cmux's HerdrDividerSync fires this on every divider drag,
+/// addressing splits by a `[Bool]` path through the BSP
+/// projection of the tab layout. tmux can only resize a
+/// concrete pane, so we:
+///   1. read the live tmux layout via `display-message`;
+///   2. parse it and walk the path on the BSP view to recover
+///      the split's first-child leftmost pane id + the total
+///      cell dimension along the split axis;
+///   3. issue `tmux resize-pane -t <pane> -x|-y <ratio*total>`.
+fn apply_set_split_ratio(request_line: &str, id: serde_json::Value) -> String {
+    let parsed: serde_json::Value = match serde_json::from_str(request_line) {
+        Ok(v) => v,
+        Err(e) => {
+            return error_envelope(id, translate::INVALID_REQUEST, &e.to_string());
+        }
+    };
+    let params = &parsed["params"];
+    let tab_id = params
+        .get("tab_id")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("")
+        .to_string();
+    let ratio = match params.get("ratio").and_then(serde_json::Value::as_f64) {
+        Some(r) if (0.0..=1.0).contains(&r) && r.is_finite() => r,
+        Some(r) => {
+            return error_envelope(
+                id,
+                translate::INVALID_REQUEST,
+                &format!("ratio out of range: {r}"),
+            );
+        }
+        None => {
+            return error_envelope(id, translate::INVALID_REQUEST, "missing ratio");
+        }
+    };
+    let path: Vec<bool> = params
+        .get("path")
+        .and_then(serde_json::Value::as_array)
+        .map(|arr| arr.iter().filter_map(|v| v.as_bool()).collect())
+        .unwrap_or_default();
+    if tab_id.is_empty() {
+        return error_envelope(id, translate::INVALID_REQUEST, "missing tab_id");
+    }
+
+    // Step 1: read live layout.
+    let snapshot = Command::new("tmux")
+        .args(["display-message", "-t", &tab_id, "-p", "#{window_layout}"])
+        .output();
+    let snapshot = match snapshot {
+        Ok(o) => o,
+        Err(e) => {
+            return error_envelope(id, translate::TMUX_FAILED, &format!("spawn tmux: {e}"));
+        }
+    };
+    if !snapshot.status.success() {
+        let stderr = String::from_utf8_lossy(&snapshot.stderr);
+        let code = classify_tmux_error("layout.snapshot", &stderr);
+        return error_envelope(
+            id,
+            code,
+            &format!(
+                "display-message exited {}: {}",
+                snapshot.status,
+                stderr.trim()
+            ),
+        );
+    }
+    let layout_str = String::from_utf8_lossy(&snapshot.stdout).trim().to_string();
+    if layout_str.is_empty() {
+        return error_envelope(
+            id,
+            translate::TAB_NOT_FOUND,
+            "tab not found (empty display-message output)",
+        );
+    }
+
+    // Step 2: walk path.
+    let tree = match parse_layout(&layout_str) {
+        Ok(t) => t,
+        Err(e) => {
+            return error_envelope(
+                id,
+                translate::INTERNAL_ERROR,
+                &format!("parse layout {layout_str:?}: {e}"),
+            );
+        }
+    };
+    let Some(target) = walk_split_path(&tree, &path) else {
+        return error_envelope(
+            id,
+            translate::INVALID_REQUEST,
+            &format!("path {path:?} doesn't resolve to a split in {layout_str:?}"),
+        );
+    };
+
+    // Step 3: resize-pane.
+    let cells = (ratio * target.total_dim as f64)
+        .round()
+        .clamp(1.0, u32::MAX as f64) as u32;
+    let axis_flag = match target.direction {
+        BspSplitDirection::Horizontal => "-x",
+        BspSplitDirection::Vertical => "-y",
+    };
+    let resize = Command::new("tmux")
+        .args([
+            "resize-pane",
+            "-t",
+            &target.leftmost_first_pane_id,
+            axis_flag,
+            &cells.to_string(),
+        ])
+        .output();
+    match resize {
+        Ok(o) if o.status.success() => success_envelope(&id, &serde_json::json!({})),
+        Ok(o) => {
+            let stderr = String::from_utf8_lossy(&o.stderr);
+            let code = classify_tmux_error("pane.set_split_ratio", &stderr);
+            error_envelope(
+                id,
+                code,
+                &format!("resize-pane exited {}: {}", o.status, stderr.trim()),
+            )
+        }
+        Err(e) => error_envelope(id, translate::TMUX_FAILED, &format!("spawn tmux: {e}")),
+    }
 }
 
 /// Heuristically map tmux stderr fragments to herdr error

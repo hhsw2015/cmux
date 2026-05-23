@@ -21,7 +21,7 @@
 
 use serde::Serialize;
 
-use crate::parse::{LayoutNode, Orientation};
+use crate::parse::{Geometry, LayoutNode, Orientation};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -76,6 +76,128 @@ pub fn tmux_to_bsp(node: &LayoutNode) -> BspNode {
             children,
             ..
         } => bsp_from_n_children(*orientation, children),
+    }
+}
+
+/// Information about the BSP split node that a path resolves
+/// to. The bin uses this to translate `pane.set_split_ratio`
+/// into a `tmux resize-pane` call: pin down the first child's
+/// leftmost pane, multiply the target ratio by `total_dim`
+/// along the split axis, and tell tmux to make that pane that
+/// many cells wide / tall.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SplitTarget {
+    pub direction: BspSplitDirection,
+    pub leftmost_first_pane_id: String,
+    pub total_dim: u32,
+}
+
+/// Walk `path` (false = first, true = second) over the BSP
+/// projection of `tree` and return information about the split
+/// the path lands on. Returns `None` if the path leaves the
+/// tree, lands on a leaf, or otherwise can't be resolved.
+pub fn walk_split_path(tree: &LayoutNode, path: &[bool]) -> Option<SplitTarget> {
+    walk_view(SplitView::from(tree), path)
+}
+
+/// Internal view of an N-ary tmux split treated as a
+/// right-leaning binary split. `Single` is a leaf; `Many` keeps
+/// the orientation + the rest of the children for further
+/// `second`-side recursion.
+enum SplitView<'a> {
+    Single,
+    Many {
+        orientation: Orientation,
+        children: &'a [LayoutNode],
+    },
+}
+
+impl<'a> From<&'a LayoutNode> for SplitView<'a> {
+    fn from(n: &'a LayoutNode) -> Self {
+        match n {
+            LayoutNode::Leaf { .. } => SplitView::Single,
+            LayoutNode::Split {
+                orientation,
+                children,
+                ..
+            } => SplitView::Many {
+                orientation: *orientation,
+                children,
+            },
+        }
+    }
+}
+
+fn walk_view<'a>(view: SplitView<'a>, path: &[bool]) -> Option<SplitTarget> {
+    if let Some((step, rest)) = path.split_first() {
+        match view {
+            SplitView::Single => None,
+            SplitView::Many {
+                orientation,
+                children,
+            } => {
+                if children.len() < 2 {
+                    return None;
+                }
+                if !*step {
+                    walk_view(SplitView::from(&children[0]), rest)
+                } else {
+                    let tail = &children[1..];
+                    if tail.len() == 1 {
+                        walk_view(SplitView::from(&tail[0]), rest)
+                    } else {
+                        walk_view(
+                            SplitView::Many {
+                                orientation,
+                                children: tail,
+                            },
+                            rest,
+                        )
+                    }
+                }
+            }
+        }
+    } else {
+        // Path consumed; the current view must be a Split.
+        match view {
+            SplitView::Single => None,
+            SplitView::Many {
+                orientation,
+                children,
+            } => {
+                if children.len() < 2 {
+                    return None;
+                }
+                let direction = match orientation {
+                    Orientation::LeftRight => BspSplitDirection::Horizontal,
+                    Orientation::TopBottom => BspSplitDirection::Vertical,
+                };
+                let total: u32 = children.iter().map(|c| dim(c, orientation)).sum();
+                let leftmost = leftmost_pane_id(&children[0])?;
+                Some(SplitTarget {
+                    direction,
+                    leftmost_first_pane_id: leftmost,
+                    total_dim: total,
+                })
+            }
+        }
+    }
+}
+
+fn dim(node: &LayoutNode, orientation: Orientation) -> u32 {
+    let g: Geometry = match node {
+        LayoutNode::Leaf { geometry, .. } | LayoutNode::Split { geometry, .. } => *geometry,
+    };
+    match orientation {
+        Orientation::LeftRight => g.w,
+        Orientation::TopBottom => g.h,
+    }
+}
+
+fn leftmost_pane_id(node: &LayoutNode) -> Option<String> {
+    match node {
+        LayoutNode::Leaf { pane_id, .. } => Some(pane_id.clone()),
+        LayoutNode::Split { children, .. } => children.first().and_then(leftmost_pane_id),
     }
 }
 

@@ -193,6 +193,93 @@ fn layout_snapshot_returns_bsp_tree_after_split() {
 }
 
 #[test]
+fn pane_set_split_ratio_resizes_via_path_addressing() {
+    if !tmux_available() {
+        eprintln!("skip: tmux not on PATH");
+        return;
+    }
+
+    let tmpdir = unique_tmpdir();
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let mut shim = Shim::spawn(&tmpdir);
+
+        let create = shim.call(serde_json::json!({
+            "id": "1",
+            "method": "workspace.create",
+            "params": { "name": "ssr" }
+        }));
+        let workspace_id = create["result"]["workspace_id"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let tab_id = first_window_id(&tmpdir, "ssr");
+
+        // Split horizontally so we have a 2-child split (path
+        // is empty == root split).
+        let panes = shim.call(serde_json::json!({
+            "id": "2",
+            "method": "panes.list",
+            "params": { "workspace_id": workspace_id }
+        }));
+        let target = panes["result"]["panes"][0]["pane_id"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let _ = shim.call(serde_json::json!({
+            "id": "3",
+            "method": "pane.split",
+            "params": { "target_pane_id": target, "direction": "right" }
+        }));
+
+        let snap_pre = shim.call(serde_json::json!({
+            "id": "4",
+            "method": "layout.snapshot",
+            "params": { "workspace_id": workspace_id, "tab_id": tab_id }
+        }));
+        let pre_ratio = snap_pre["result"]["tree"]["root"]["ratio"]
+            .as_f64()
+            .expect("pre ratio");
+
+        // Drag the divider: target ratio 0.25 (small first pane).
+        let resp = shim.call(serde_json::json!({
+            "id": "5",
+            "method": "pane.set_split_ratio",
+            "params": {
+                "workspace_id": workspace_id,
+                "tab_id": tab_id,
+                "path": [],
+                "ratio": 0.25,
+            }
+        }));
+        assert!(resp.get("error").is_none(), "got error: {resp}");
+
+        let snap_post = shim.call(serde_json::json!({
+            "id": "6",
+            "method": "layout.snapshot",
+            "params": { "workspace_id": workspace_id, "tab_id": tab_id }
+        }));
+        let post_ratio = snap_post["result"]["tree"]["root"]["ratio"]
+            .as_f64()
+            .expect("post ratio");
+
+        // Ratio should be visibly closer to 0.25 than to the
+        // pre-drag value (which started near 0.5).
+        let pre_err = (pre_ratio - 0.25).abs();
+        let post_err = (post_ratio - 0.25).abs();
+        assert!(
+            post_err < pre_err,
+            "post_ratio {post_ratio} (err {post_err}) should be closer to 0.25 than pre {pre_ratio} (err {pre_err})"
+        );
+    }));
+
+    kill_tmux_server(&tmpdir);
+    let _ = std::fs::remove_dir_all(&tmpdir);
+    if let Err(e) = result {
+        std::panic::resume_unwind(e);
+    }
+}
+
+#[test]
 fn layout_snapshot_unknown_tab_returns_tab_not_found() {
     if !tmux_available() {
         eprintln!("skip: tmux not on PATH");

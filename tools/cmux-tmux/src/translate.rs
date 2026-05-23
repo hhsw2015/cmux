@@ -95,7 +95,7 @@ pub fn translate_request(json: &str) -> Result<TranslateOutcome, TranslateError>
 
 pub fn translate_request_in_context(
     json: &str,
-    ctx: &TranslateContext,
+    _ctx: &TranslateContext,
 ) -> Result<TranslateOutcome, TranslateError> {
     let req: Request = serde_json::from_str(json)?;
     match req.method.as_str() {
@@ -131,9 +131,9 @@ pub fn translate_request_in_context(
         "pane.close" => {
             translate_single_pane_target("kill-pane", &req.params).map(TranslateOutcome::RunTmux)
         }
-        "pane.set_split_ratio" => {
-            translate_set_split_ratio(&req.params, ctx).map(TranslateOutcome::RunTmux)
-        }
+        // pane.set_split_ratio is special-cased in the bin: it
+        // needs a multi-step orchestration (read layout, walk
+        // path, issue resize-pane). Translate doesn't see it.
         other => Ok(TranslateOutcome::ImmediateError(ErrorResponse {
             id: req.id,
             error: ErrorObject {
@@ -240,46 +240,16 @@ fn translate_panes_list(params: &Value) -> Result<Vec<String>, TranslateError> {
     ])
 }
 
-fn translate_set_split_ratio(
-    params: &Value,
-    ctx: &TranslateContext,
-) -> Result<Vec<String>, TranslateError> {
-    let target = params
-        .get("target_pane_id")
-        .and_then(Value::as_str)
-        .ok_or(TranslateError::MissingField("target_pane_id"))?;
-    let ratio = params
-        .get("ratio")
-        .and_then(Value::as_f64)
-        .ok_or(TranslateError::MissingField("ratio"))?;
-    if !ratio.is_finite() || !(0.0..=1.0).contains(&ratio) {
-        return Err(TranslateError::InvalidField("ratio", ratio.to_string()));
-    }
-    let (axis, total) = ctx
-        .split_geometry
-        .get(target)
-        .copied()
-        .ok_or(TranslateError::MissingField("split_geometry"))?;
-    let cells = (ratio * total as f64).round() as u32;
-    let axis_flag = match axis {
-        'h' => "-x",
-        'v' => "-y",
-        other => return Err(TranslateError::InvalidField("axis", other.to_string())),
-    };
-    Ok(vec![
-        "resize-pane".into(),
-        "-t".into(),
-        target.into(),
-        axis_flag.into(),
-        cells.to_string(),
-    ])
-}
-
 fn translate_single_pane_target(verb: &str, params: &Value) -> Result<Vec<String>, TranslateError> {
+    // cmux/herdr field name is `pane_id`. We accept the legacy
+    // `target_pane_id` as a fallback to keep the older internal
+    // tests + any pre-rename callers working through the
+    // transition.
     let target = params
-        .get("target_pane_id")
+        .get("pane_id")
+        .or_else(|| params.get("target_pane_id"))
         .and_then(Value::as_str)
-        .ok_or(TranslateError::MissingField("target_pane_id"))?;
+        .ok_or(TranslateError::MissingField("pane_id"))?;
     Ok(vec![verb.into(), "-t".into(), target.into()])
 }
 

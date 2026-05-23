@@ -601,55 +601,49 @@ mod tests {
         assert_eq!(bare_argv, vec!["new-session", "-d"]);
     }
 
-    // R8: pane.set_split_ratio is the first request that needs
-    // workspace context. cmux side speaks ratios (0.0..=1.0); tmux
-    // wants integer cells. The shim quantizes using the parent
-    // split's known length on its split axis. The mapping from
-    // pane-id to (axis, total_cells) is supplied in a snapshot
-    // by the caller — translate is still pure.
+    // L3a: walk_split_path navigates the BSP projection of a
+    // tmux layout. Empty path on a 2-child h-split returns the
+    // root split's info: horizontal direction, total dim along
+    // x, leftmost-pane = first child's pane id.
     #[test]
-    fn set_split_ratio_translates_with_ratio_to_cells_conversion() {
-        use super::translate::{translate_request_in_context, TranslateContext, TranslateOutcome};
+    fn walk_split_path_root_h_split() {
+        use super::bsp::{walk_split_path, BspSplitDirection};
+        use super::parse::parse_layout;
 
-        let mut ctx = TranslateContext::default();
-        ctx.split_geometry.insert("%2".into(), ('h', 100));
-
-        let request_json = r#"{
-            "id": "8",
-            "method": "pane.set_split_ratio",
-            "params": { "target_pane_id": "%2", "ratio": 0.6 }
-        }"#;
-
-        let argv = match translate_request_in_context(request_json, &ctx)
-            .expect("set_split_ratio translates")
-        {
-            TranslateOutcome::RunTmux(a) => a,
-            other => panic!("expected RunTmux, got {other:?}"),
-        };
-
-        assert_eq!(argv, vec!["resize-pane", "-t", "%2", "-x", "60"]);
+        let tree = parse_layout("abcd,80x24,0,0{40x24,0,0,1,39x24,41,0,2}").unwrap();
+        let target = walk_split_path(&tree, &[]).expect("path resolves");
+        assert_eq!(target.direction, BspSplitDirection::Horizontal);
+        assert_eq!(target.leftmost_first_pane_id, "%1");
+        assert_eq!(target.total_dim, 79); // 40 + 39
     }
 
-    // R8b: vertical split uses -y instead of -x.
+    // L3b: a path leading into the right subtree of a 3-child
+    // h-split lands on the inner binary split spanning child[1]
+    // and child[2]. Direction is preserved; total_dim covers
+    // the two remaining children.
     #[test]
-    fn set_split_ratio_vertical_uses_y_flag() {
-        use super::translate::{translate_request_in_context, TranslateContext, TranslateOutcome};
+    fn walk_split_path_into_right_chain() {
+        use super::bsp::{walk_split_path, BspSplitDirection};
+        use super::parse::parse_layout;
 
-        let mut ctx = TranslateContext::default();
-        ctx.split_geometry.insert("%6".into(), ('v', 50));
+        // 3 columns: 26 / 26 / 26 (with two divider cells).
+        let tree = parse_layout("1111,80x24,0,0{26x24,0,0,1,26x24,27,0,2,26x24,54,0,3}").unwrap();
+        let target = walk_split_path(&tree, &[true]).expect("right path resolves");
+        assert_eq!(target.direction, BspSplitDirection::Horizontal);
+        assert_eq!(target.leftmost_first_pane_id, "%2");
+        assert_eq!(target.total_dim, 52); // 26 + 26
+    }
 
-        let request_json = r#"{
-            "id": "9",
-            "method": "pane.set_split_ratio",
-            "params": { "target_pane_id": "%6", "ratio": 0.5 }
-        }"#;
+    // L3c: walking past the tree returns None.
+    #[test]
+    fn walk_split_path_off_tree_returns_none() {
+        use super::bsp::walk_split_path;
+        use super::parse::parse_layout;
 
-        let argv = match translate_request_in_context(request_json, &ctx).unwrap() {
-            TranslateOutcome::RunTmux(a) => a,
-            other => panic!("expected RunTmux, got {other:?}"),
-        };
-
-        assert_eq!(argv, vec!["resize-pane", "-t", "%6", "-y", "25"]);
+        let tree = parse_layout("0000,80x24,0,0,1").unwrap();
+        // Single-pane tree has no splits.
+        assert!(walk_split_path(&tree, &[]).is_none());
+        assert!(walk_split_path(&tree, &[false]).is_none());
     }
 
     // R9: unknown method must round-trip back to the client as a
