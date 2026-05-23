@@ -22,6 +22,43 @@ use cmux_tmux::tmux_response::{capture_args_for, event_to_json, shape_response_w
 use cmux_tmux::translate::{
     self, translate_request, ErrorObject, ErrorResponse, TranslateError, TranslateOutcome,
 };
+use std::path::PathBuf;
+use std::sync::OnceLock;
+
+/// Resolve the tmux executable. cmux.app is launched via Finder /
+/// LaunchServices, which uses Apple's GUI launchd PATH:
+/// `/usr/bin:/bin:/usr/sbin:/sbin`. Homebrew's tmux at
+/// `/opt/homebrew/bin/tmux` (Apple Silicon) or `/usr/local/bin/tmux`
+/// (Intel) is invisible to a bare `Command::new("tmux")` from a
+/// child process inheriting that env. Probe the common locations
+/// once at startup; users can override with `CMUX_TMUX_BIN`.
+fn tmux_executable() -> &'static str {
+    static RESOLVED: OnceLock<String> = OnceLock::new();
+    RESOLVED
+        .get_or_init(|| {
+            if let Ok(p) = std::env::var("CMUX_TMUX_BIN") {
+                if !p.is_empty() && PathBuf::from(&p).is_file() {
+                    return p;
+                }
+            }
+            for candidate in [
+                "/opt/homebrew/bin/tmux",
+                "/usr/local/bin/tmux",
+                "/opt/local/bin/tmux", // MacPorts
+                "/usr/bin/tmux",
+                "/bin/tmux",
+            ] {
+                if PathBuf::from(candidate).is_file() {
+                    return candidate.to_string();
+                }
+            }
+            // Fall back to plain "tmux" so PATH-based dev
+            // invocations (cargo test, terminal-launched cmux)
+            // still work.
+            "tmux".to_string()
+        })
+        .as_str()
+}
 
 fn main() {
     let raw: Vec<String> = std::env::args().skip(1).collect();
@@ -91,7 +128,7 @@ fn raw_pty_attach(args: &[String]) -> i32 {
     // is the closest thing tmux has to herdr's raw_pty_history;
     // it returns rendered text + escapes, not the raw byte
     // history (see PLAN.md known-loss list).
-    if let Ok(out) = Command::new("tmux")
+    if let Ok(out) = Command::new(tmux_executable())
         .args(["capture-pane", "-e", "-p", "-t", &pane])
         .output()
     {
@@ -103,7 +140,7 @@ fn raw_pty_attach(args: &[String]) -> i32 {
         }
     }
 
-    let mut control = match Command::new("tmux")
+    let mut control = match Command::new(tmux_executable())
         .args(["-C", "attach", "-d"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -158,7 +195,7 @@ fn raw_pty_attach(args: &[String]) -> i32 {
         if argv.is_empty() {
             continue;
         }
-        let status = Command::new("tmux").args(&argv).status();
+        let status = Command::new(tmux_executable()).args(&argv).status();
         if status.map(|s| !s.success()).unwrap_or(true) {
             break;
         }
@@ -228,6 +265,14 @@ fn handle_line(line: &str, control: &Arc<Mutex<Option<Child>>>, writer: &Sender<
     if method == "events.subscribe" {
         return subscribe_events(line, id, control, writer);
     }
+    // Lazy spawn of the tmux -C control client: the first RPC
+    // that names a workspace_id (workspace.attach is the canonical
+    // one in cmux's flow). Restrict to workspace.attach so we
+    // don't spawn during transient probes (panes.list, snapshots)
+    // that would race with concurrent tmux command invocations.
+    if method == "workspace.attach" {
+        maybe_spawn_control(line, control, writer);
+    }
     if method == "pane.set_split_ratio" {
         return apply_set_split_ratio(line, id);
     }
@@ -272,6 +317,29 @@ fn subscribe_events(
     control: &Arc<Mutex<Option<Child>>>,
     writer: &Sender<String>,
 ) -> String {
+    // cmux's HerdrApiClient.subscribe sends only
+    // {subscriptions: [{type: ...}]} — no workspace_id, so the
+    // control client gets spawned lazily by workspace.attach.
+    //
+    // Older callers (and the in-tree integration test) pass
+    // {workspace_id: ...} directly; honour that shape too so
+    // they still get event push immediately.
+    maybe_spawn_control(line, control, writer);
+    success_envelope(&id, &serde_json::json!({"subscribed": true}))
+}
+
+/// Best-effort lazy spawn of the tmux -C control client. Called
+/// before each non-events.subscribe RPC dispatch. If the request
+/// carries a `workspace_id` and we don't yet have a control
+/// child, spawn one. Failures are swallowed — the RPC itself
+/// still runs normally; only event push is affected.
+fn maybe_spawn_control(line: &str, control: &Arc<Mutex<Option<Child>>>, writer: &Sender<String>) {
+    let Ok(mut guard) = control.lock() else {
+        return;
+    };
+    if guard.is_some() {
+        return;
+    }
     let workspace_id = serde_json::from_str::<serde_json::Value>(line)
         .ok()
         .and_then(|v| {
@@ -280,31 +348,15 @@ fn subscribe_events(
                 .and_then(|w| w.as_str().map(str::to_string))
         });
     let Some(workspace_id) = workspace_id else {
-        return error_envelope(
-            id,
-            translate::INTERNAL_ERROR,
-            "events.subscribe requires workspace_id",
-        );
+        return;
     };
-
-    let mut guard = control.lock().expect("control mutex");
-    if guard.is_some() {
-        // Already subscribed; idempotent ack.
-        return success_envelope(&id, &serde_json::json!({"subscribed": true}));
+    if let Ok(child) = spawn_control_client(&workspace_id, writer.clone()) {
+        *guard = Some(child);
     }
-
-    let child = match spawn_control_client(&workspace_id, writer.clone()) {
-        Ok(c) => c,
-        Err(e) => {
-            return error_envelope(id, translate::TMUX_FAILED, &format!("spawn tmux -C: {e}"))
-        }
-    };
-    *guard = Some(child);
-    success_envelope(&id, &serde_json::json!({"subscribed": true}))
 }
 
 fn spawn_control_client(workspace_id: &str, writer: Sender<String>) -> io::Result<Child> {
-    let mut child = Command::new("tmux")
+    let mut child = Command::new(tmux_executable())
         .args(["-C", "attach", "-d", "-t", workspace_id])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -395,7 +447,7 @@ fn apply_set_split_ratio(request_line: &str, id: serde_json::Value) -> String {
     }
 
     // Step 1: read live layout.
-    let snapshot = Command::new("tmux")
+    let snapshot = Command::new(tmux_executable())
         .args(["display-message", "-t", &tab_id, "-p", "#{window_layout}"])
         .output();
     let snapshot = match snapshot {
@@ -453,7 +505,7 @@ fn apply_set_split_ratio(request_line: &str, id: serde_json::Value) -> String {
         BspSplitDirection::Horizontal => "-x",
         BspSplitDirection::Vertical => "-y",
     };
-    let resize = Command::new("tmux")
+    let resize = Command::new(tmux_executable())
         .args([
             "resize-pane",
             "-t",
@@ -528,7 +580,7 @@ fn run_tmux_and_shape(
     if let Some(extra) = capture_args_for(method) {
         argv.extend(extra);
     }
-    let output = match Command::new("tmux").args(&argv).output() {
+    let output = match Command::new(tmux_executable()).args(&argv).output() {
         Ok(o) => o,
         Err(e) => return error_envelope(id, translate::TMUX_FAILED, &format!("spawn tmux: {e}")),
     };
