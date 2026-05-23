@@ -268,12 +268,16 @@ mod tests {
 
         let event = tmux_line("%layout-change @0 6c93,80x24,0,0,1").expect("layout-change parses");
 
-        let CppEvent::LayoutChanged {
-            window_id,
-            layout_string,
-        } = event;
-        assert_eq!(window_id, "@0");
-        assert_eq!(layout_string, "6c93,80x24,0,0,1");
+        match event {
+            CppEvent::LayoutChanged {
+                window_id,
+                layout_string,
+            } => {
+                assert_eq!(window_id, "@0");
+                assert_eq!(layout_string, "6c93,80x24,0,0,1");
+            }
+            other => panic!("expected LayoutChanged, got {other:?}"),
+        }
     }
 
     // P0b: extra trailing fields (visible-layout, flags) are
@@ -286,12 +290,48 @@ mod tests {
         let event = tmux_line("%layout-change @1 abcd,80x24,0,0{40x24,0,0,1,40x24,40,0,2} * @1")
             .expect("layout-change with trailing parses");
 
-        let CppEvent::LayoutChanged {
-            window_id,
-            layout_string,
-        } = event;
-        assert_eq!(window_id, "@1");
-        assert_eq!(layout_string, "abcd,80x24,0,0{40x24,0,0,1,40x24,40,0,2}");
+        match event {
+            CppEvent::LayoutChanged {
+                window_id,
+                layout_string,
+            } => {
+                assert_eq!(window_id, "@1");
+                assert_eq!(layout_string, "abcd,80x24,0,0{40x24,0,0,1,40x24,40,0,2}");
+            }
+            other => panic!("expected LayoutChanged, got {other:?}"),
+        }
+    }
+
+    // P1: tmux's `%window-close <win>` doesn't enumerate the panes
+    // that died with the window — the shim has to remember pane->
+    // window ownership. So parsing grows a stateful accumulator
+    // (`parse::Session`). After a window closes, the accumulator
+    // emits one `PaneExited` per pane that lived in it.
+    #[test]
+    fn parse_window_close_emits_pane_exited_for_each_owned_pane() {
+        use super::parse::{CppEvent, Session};
+
+        let mut session = Session::default();
+        session.record_pane("@5", "%10");
+        session.record_pane("@5", "%11");
+        // a pane in another window should NOT show up in @5's close.
+        session.record_pane("@6", "%99");
+
+        let events = session.feed("%window-close @5");
+
+        let mut exited: Vec<String> = events
+            .into_iter()
+            .map(|e| match e {
+                CppEvent::PaneExited { pane_id } => pane_id,
+                other => panic!("expected PaneExited, got {other:?}"),
+            })
+            .collect();
+        exited.sort();
+        assert_eq!(exited, vec!["%10".to_string(), "%11".to_string()]);
+
+        // The window's pane set is gone after the close; a second
+        // close for the same window emits nothing.
+        assert!(session.feed("%window-close @5").is_empty());
     }
 }
 
