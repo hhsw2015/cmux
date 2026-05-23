@@ -240,51 +240,36 @@ enum HerdrPanelOpener {
             )
         )
 
-        let pump = Task { [displayClient, weak panel] in
-            // Workspace restore replays per-pane history (up to 10MB
-            // each) as one or a few large chunks. Calling
-            // ghostty_surface_process_output synchronously with that
-            // entire blob blocks the main actor for many seconds —
-            // cmux UI freezes mid-restore until the call returns.
-            // Slice each chunk into PUMP_PROCESS_SLICE bytes and
-            // `await Task.yield()` between slices so other
-            // main-actor work (AppKit events, divider sync, RPC
-            // continuations) gets a turn. Live keystroke output on
-            // an attached pane is well below the slice size so
-            // there's no overhead in the hot path.
-            let sliceSize = 8 * 1024
+        // Pump runs DETACHED off the main actor. Workspace restore
+        // replays per-pane history (up to 10MB each) into the freshly-
+        // mounted Ghostty surface; running the for-await + the
+        // synchronous ghostty_surface_process_output call on the main
+        // actor previously deadlocked the UI for the duration of the
+        // replay (sample showed main thread blocked in libghostty-vt's
+        // internal Zig Thread.Futex while the io-reader thread was
+        // also blocked — AB-BA on the surface input queue lock). The
+        // surface API is documented as thread-safe; an off-main pump
+        // lets AppKit events, RPC continuations, and the divider sync
+        // keep flowing while Ghostty consumes the replay.
+        let panelIdHint = panel?.id.uuidString.prefix(8) ?? "nil"
+        let pump = Task.detached(priority: .userInitiated) { [displayClient, weak panel] in
             var bytesAccum: Int = 0
             var chunkAccum: Int = 0
             var statsBucketStart: Date = Date()
             for await chunk in displayClient.output {
-                guard let surface = panel?.surface.surface else { break }
-                if chunk.count > sliceSize {
-                    os_log("herdr.pump.large_chunk panelId=%{public}@ bytes=%{public}d",
-                           String(panel?.id.uuidString.prefix(8) ?? "nil"),
-                           chunk.count)
-                }
-                var offset = 0
-                while offset < chunk.count {
-                    let end = min(offset + sliceSize, chunk.count)
-                    let slice = chunk.subdata(in: offset..<end)
-                    slice.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
-                        guard let base = raw.baseAddress else { return }
-                        let cChars = base.assumingMemoryBound(to: CChar.self)
-                        ghostty_surface_process_output(surface, cChars, UInt(slice.count))
-                    }
-                    offset = end
-                    if offset < chunk.count {
-                        await Task.yield()
-                        if Task.isCancelled { return }
-                        guard panel?.surface.surface != nil else { return }
-                    }
+                if Task.isCancelled { return }
+                let surface = await MainActor.run { panel?.surface.surface }
+                guard let surface else { break }
+                chunk.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
+                    guard let base = raw.baseAddress else { return }
+                    let cChars = base.assumingMemoryBound(to: CChar.self)
+                    ghostty_surface_process_output(surface, cChars, UInt(raw.count))
                 }
                 bytesAccum += chunk.count
                 chunkAccum += 1
                 if Date().timeIntervalSince(statsBucketStart) >= 1.0 {
                     os_log("herdr.pump.stats panelId=%{public}@ chunks=%{public}d bytes=%{public}d",
-                           String(panel?.id.uuidString.prefix(8) ?? "nil"),
-                           chunkAccum, bytesAccum)
+                           String(panelIdHint), chunkAccum, bytesAccum)
                     bytesAccum = 0
                     chunkAccum = 0
                     statsBucketStart = Date()
