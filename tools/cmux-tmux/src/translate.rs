@@ -102,6 +102,13 @@ pub fn translate_request_in_context(
         "workspace.create" => {
             translate_workspace_create(&req.params).map(TranslateOutcome::RunTmux)
         }
+        "workspace.attach" => translate_panes_list(&req.params).map(TranslateOutcome::RunTmux),
+        "workspace.close" => {
+            translate_workspace_target("kill-session", &req.params).map(TranslateOutcome::RunTmux)
+        }
+        "workspace.rename" => {
+            translate_workspace_rename(&req.params).map(TranslateOutcome::RunTmux)
+        }
         "pane.resize" => translate_pane_resize(&req.params).map(TranslateOutcome::RunTmux),
         "pane.focus" => {
             translate_single_pane_target("select-pane", &req.params).map(TranslateOutcome::RunTmux)
@@ -142,6 +149,31 @@ const SESSION_FORMAT: &str = "#{session_id}\t#{session_name}\t#{session_attached
 
 fn translate_workspace_list() -> Vec<String> {
     vec!["list-sessions".into(), "-F".into(), SESSION_FORMAT.into()]
+}
+
+fn translate_workspace_target(verb: &str, params: &Value) -> Result<Vec<String>, TranslateError> {
+    let workspace_id = params
+        .get("workspace_id")
+        .and_then(Value::as_str)
+        .ok_or(TranslateError::MissingField("workspace_id"))?;
+    Ok(vec![verb.into(), "-t".into(), workspace_id.into()])
+}
+
+fn translate_workspace_rename(params: &Value) -> Result<Vec<String>, TranslateError> {
+    let workspace_id = params
+        .get("workspace_id")
+        .and_then(Value::as_str)
+        .ok_or(TranslateError::MissingField("workspace_id"))?;
+    let name = params
+        .get("name")
+        .and_then(Value::as_str)
+        .ok_or(TranslateError::MissingField("name"))?;
+    Ok(vec![
+        "rename-session".into(),
+        "-t".into(),
+        workspace_id.into(),
+        name.into(),
+    ])
 }
 
 fn translate_workspace_create(params: &Value) -> Result<Vec<String>, TranslateError> {

@@ -311,6 +311,97 @@ mod tests {
         assert_eq!(resp.result, serde_json::json!(true));
     }
 
+    // W2a: workspace.close kills the tmux session.
+    #[test]
+    fn workspace_close_translates_to_kill_session() {
+        use super::translate::{translate_request, TranslateOutcome};
+
+        let request_json =
+            r#"{"id":"30","method":"workspace.close","params":{"workspace_id":"$2"}}"#;
+        let argv = match translate_request(request_json).expect("close translates") {
+            TranslateOutcome::RunTmux(a) => a,
+            other => panic!("expected RunTmux, got {other:?}"),
+        };
+        assert_eq!(argv, vec!["kill-session", "-t", "$2"]);
+    }
+
+    // W2b: workspace.rename targets the session and supplies a
+    // new name.
+    #[test]
+    fn workspace_rename_translates_to_rename_session() {
+        use super::translate::{translate_request, TranslateOutcome};
+
+        let request_json = r#"{
+            "id": "31",
+            "method": "workspace.rename",
+            "params": { "workspace_id": "$4", "name": "renamed" }
+        }"#;
+        let argv = match translate_request(request_json).expect("rename translates") {
+            TranslateOutcome::RunTmux(a) => a,
+            other => panic!("expected RunTmux, got {other:?}"),
+        };
+        assert_eq!(argv, vec!["rename-session", "-t", "$4", "renamed"]);
+    }
+
+    // W1a: workspace.attach reuses list-panes — tmux has no
+    // separate "attach" notion at the data-shape level. The
+    // shim wraps the panes array with workspace_id so the
+    // client can use a single response envelope on first open.
+    #[test]
+    fn workspace_attach_translates_to_list_panes() {
+        use super::translate::{translate_request, TranslateOutcome};
+
+        let request_json = r#"{
+            "id": "20",
+            "method": "workspace.attach",
+            "params": { "workspace_id": "$3" }
+        }"#;
+
+        let argv = match translate_request(request_json).expect("attach translates") {
+            TranslateOutcome::RunTmux(a) => a,
+            other => panic!("expected RunTmux, got {other:?}"),
+        };
+        assert_eq!(
+            argv,
+            vec![
+                "list-panes",
+                "-t",
+                "$3",
+                "-F",
+                "#{pane_id}\t#{pane_active}\t#{pane_width}\t#{pane_height}",
+            ]
+        );
+    }
+
+    // W1b: shape_response_with_params for workspace.attach
+    // wraps panes inside {workspace_id, panes}. The id comes
+    // from the request params, not tmux stdout.
+    #[test]
+    fn shape_workspace_attach_response_wraps_panes() {
+        use super::tmux_response::shape_response_with_params;
+
+        let stdout = "%1\t1\t80\t24\n%2\t0\t40\t24\n";
+        let params = serde_json::json!({"workspace_id": "$3"});
+        let resp = shape_response_with_params(
+            "workspace.attach",
+            serde_json::json!("20"),
+            stdout,
+            &params,
+        )
+        .expect("shape ok");
+
+        assert_eq!(
+            resp.result,
+            serde_json::json!({
+                "workspace_id": "$3",
+                "panes": [
+                    {"pane_id": "%1", "active": true, "cols": 80, "rows": 24},
+                    {"pane_id": "%2", "active": false, "cols": 40, "rows": 24},
+                ]
+            })
+        );
+    }
+
     // I1a: workspace.create -> new-session -d [-s NAME] [-c CWD].
     // -d keeps the new session detached so we don't need a tty.
     // The bin appends `-P -F '#{session_id}'` at exec time so the

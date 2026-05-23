@@ -17,7 +17,7 @@ use std::sync::{Arc, Mutex};
 
 use cmux_tmux::parse::Session;
 use cmux_tmux::pty::{bytes_to_send_keys_argv, decode_output_event};
-use cmux_tmux::tmux_response::{capture_args_for, event_to_json, shape_response};
+use cmux_tmux::tmux_response::{capture_args_for, event_to_json, shape_response_with_params};
 use cmux_tmux::translate::{
     translate_request, ErrorObject, ErrorResponse, TranslateError, TranslateOutcome,
 };
@@ -218,7 +218,7 @@ fn handle_line(line: &str, control: &Arc<Mutex<Option<Child>>>, writer: &Sender<
                 error_envelope(serde_json::Value::Null, INTERNAL_ERROR, &err.to_string())
             })
         }
-        Ok(TranslateOutcome::RunTmux(argv)) => run_tmux_and_shape(id, &method, argv),
+        Ok(TranslateOutcome::RunTmux(argv)) => run_tmux_and_shape(id, &method, argv, line),
         Ok(TranslateOutcome::RunMulti(_)) => {
             error_envelope(id, INTERNAL_ERROR, "multi-step requests not yet wired")
         }
@@ -304,7 +304,12 @@ fn parse_method(line: &str) -> String {
         .unwrap_or_default()
 }
 
-fn run_tmux_and_shape(id: serde_json::Value, method: &str, base_argv: Vec<String>) -> String {
+fn run_tmux_and_shape(
+    id: serde_json::Value,
+    method: &str,
+    base_argv: Vec<String>,
+    request_line: &str,
+) -> String {
     let mut argv = base_argv;
     if let Some(extra) = capture_args_for(method) {
         argv.extend(extra);
@@ -322,7 +327,11 @@ fn run_tmux_and_shape(id: serde_json::Value, method: &str, base_argv: Vec<String
         );
     }
     let stdout = String::from_utf8_lossy(&output.stdout);
-    match shape_response(method, id.clone(), &stdout) {
+    let params = serde_json::from_str::<serde_json::Value>(request_line)
+        .ok()
+        .and_then(|v| v.get("params").cloned())
+        .unwrap_or(serde_json::Value::Null);
+    match shape_response_with_params(method, id.clone(), &stdout, &params) {
         Ok(resp) => serde_json::to_string(&resp)
             .unwrap_or_else(|e| error_envelope(id, INTERNAL_ERROR, &e.to_string())),
         Err(e) => error_envelope(id, INTERNAL_ERROR, &e.to_string()),

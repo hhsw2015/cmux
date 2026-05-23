@@ -58,9 +58,36 @@ pub fn capture_args_for(method: &str) -> Option<Vec<String>> {
 }
 
 /// Build a CPP result envelope from a tmux command's stdout.
+/// Convenience wrapper for methods that don't need request
+/// params; defers to [`shape_response_with_params`].
 pub fn shape_response(method: &str, id: Value, stdout: &str) -> Result<ResultResponse, ShapeError> {
+    shape_response_with_params(method, id, stdout, &Value::Null)
+}
+
+/// Like [`shape_response`] but the shaper can also see the
+/// original request params. Needed by methods whose response
+/// echoes a request-side value (e.g. `workspace.attach` puts
+/// `workspace_id` from params next to the panes from stdout).
+pub fn shape_response_with_params(
+    method: &str,
+    id: Value,
+    stdout: &str,
+    params: &Value,
+) -> Result<ResultResponse, ShapeError> {
     let trimmed = stdout.trim_end_matches(['\r', '\n']);
     let result = match method {
+        "workspace.attach" => {
+            let workspace_id = params
+                .get("workspace_id")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
+            let panes = parse_pane_lines(trimmed)?;
+            serde_json::json!({
+                "workspace_id": workspace_id,
+                "panes": panes,
+            })
+        }
         "workspace.create" => {
             let session_id = trimmed.trim();
             if session_id.is_empty() {
