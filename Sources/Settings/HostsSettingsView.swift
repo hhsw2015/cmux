@@ -349,11 +349,27 @@ private struct AddHostSheet: View {
 
         var id: String { rawValue }
 
+        /// Short label for the segmented picker. Long descriptions
+        /// crammed into 3 segments wrap badly; the help line below
+        /// the picker explains what each one means.
         var label: String {
             switch self {
-            case .sshHerdr:      return "SSH (herdr daemon)"
-            case .sshCmuxTmux:   return "SSH (cmux-tmux → tmux)"
-            case .localCmuxTmux: return "Local (cmux-tmux → tmux)"
+            case .sshHerdr:      return "SSH herdr"
+            case .sshCmuxTmux:   return "SSH tmux"
+            case .localCmuxTmux: return "Local tmux"
+            }
+        }
+
+        /// Help text shown below the picker for the selected
+        /// flavor.
+        var hint: String {
+            switch self {
+            case .sshHerdr:
+                return "ssh to a remote box running the herdr-cmux daemon (the original cmux remote-host flow)."
+            case .sshCmuxTmux:
+                return "ssh to a remote box and drive its existing tmux server through cmux-tmux."
+            case .localCmuxTmux:
+                return "drive your local tmux server through cmux-tmux. No ssh."
             }
         }
     }
@@ -539,29 +555,66 @@ private struct AddHostSheet: View {
     /// having to know any of that exists.
     @ViewBuilder
     private var sshAddBody: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
             Text(initial == nil
                  ? String(localized: "settings.hosts.addRemote", defaultValue: "Add a computer")
                  : String(localized: "settings.hosts.editRemote", defaultValue: "Edit computer"))
                 .font(.headline)
+                .padding(.bottom, 8)
 
-            Picker(
-                String(localized: "settings.hosts.flavor", defaultValue: "Backend"),
-                selection: $flavor
-            ) {
-                ForEach(Flavor.allCases) { f in
-                    Text(f.label).tag(f)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    sshAddBodyContent
                 }
+                .padding(.bottom, 12)
             }
-            .pickerStyle(.segmented)
+            .frame(maxHeight: 520)
 
-            switch flavor {
-            case .sshHerdr, .sshCmuxTmux:
-                sshFieldsBody
-            case .localCmuxTmux:
-                localCmuxTmuxFieldsBody
+            HStack {
+                Spacer()
+                Button(String(localized: "settings.hosts.cancel", defaultValue: "Cancel"), action: onCancel)
+                    .keyboardShortcut(.cancelAction)
+                Button(String(localized: "settings.hosts.save", defaultValue: "Save")) { save() }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(!canSaveAddBody)
             }
+            .padding(.top, 8)
+        }
+        .padding(20)
+        .frame(minWidth: 480)
+    }
 
+    /// Scrollable content of the SSH/local add body. Pulled out so
+    /// the Save/Cancel row stays pinned at the bottom regardless of
+    /// expanded Advanced disclosure.
+    @ViewBuilder
+    private var sshAddBodyContent: some View {
+        Picker(
+            String(localized: "settings.hosts.flavor", defaultValue: "Backend"),
+            selection: $flavor
+        ) {
+            ForEach(Flavor.allCases) { f in
+                Text(f.label).tag(f)
+            }
+        }
+        .pickerStyle(.segmented)
+
+        Text(flavor.hint)
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+        switch flavor {
+        case .sshHerdr, .sshCmuxTmux:
+            sshFieldsBody
+        case .localCmuxTmux:
+            localCmuxTmuxFieldsBody
+        }
+
+        // Advanced overrides apply to all flavors that have an
+        // ssh-shaped transport. For Local cmux-tmux the section
+        // collapses to its label only — nothing to override.
+        if flavor != .localCmuxTmux {
             DisclosureGroup(
                 isExpanded: $showAdvanced,
                 content: { advancedSection },
@@ -574,18 +627,7 @@ private struct AddHostSheet: View {
                 }
             )
             .padding(.top, 4)
-
-            HStack {
-                Spacer()
-                Button(String(localized: "settings.hosts.cancel", defaultValue: "Cancel"), action: onCancel)
-                    .keyboardShortcut(.cancelAction)
-                Button(String(localized: "settings.hosts.save", defaultValue: "Save")) { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(!canSaveAddBody)
-            }
         }
-        .padding(20)
-        .frame(minWidth: 440)
     }
 
     /// Save-button gate for the SSH add body. SSH variants need a
