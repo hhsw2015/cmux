@@ -73,4 +73,36 @@ mod tests {
             other => panic!("expected ImmediateResponse, got {other:?}"),
         }
     }
+
+    // R3: panes.list -> `tmux list-panes -t <SID> -F <fmt>`. The
+    // format string is the parser contract: parse.rs (later) will
+    // split each line by `\t`. Pinning the exact format here keeps
+    // both sides of the parser/translator boundary in lock-step.
+    #[test]
+    fn panes_list_translates_to_list_panes() {
+        use super::translate::{translate_request, TranslateOutcome};
+
+        let request_json = r#"{
+            "id": "3",
+            "method": "panes.list",
+            "params": { "workspace_id": "$0" }
+        }"#;
+
+        let outcome = translate_request(request_json).expect("panes.list translates");
+        let argv = match outcome {
+            TranslateOutcome::RunTmux(a) => a,
+            other => panic!("expected RunTmux, got {other:?}"),
+        };
+
+        assert_eq!(
+            argv,
+            vec![
+                "list-panes",
+                "-t",
+                "$0",
+                "-F",
+                "#{pane_id}\t#{pane_active}\t#{pane_width}\t#{pane_height}",
+            ]
+        );
+    }
 }

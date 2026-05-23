@@ -58,6 +58,7 @@ pub fn translate_request(json: &str) -> Result<TranslateOutcome, TranslateError>
             result: Value::String("pong".into()),
         })),
         "pane.split" => translate_pane_split(&req.params).map(TranslateOutcome::RunTmux),
+        "panes.list" => translate_panes_list(&req.params).map(TranslateOutcome::RunTmux),
         other => Err(TranslateError::UnsupportedMethod(other.to_string())),
     }
 }
@@ -72,6 +73,22 @@ pub fn request_json_to_tmux_argv(json: &str) -> Result<Vec<String>, TranslateErr
             "immediate-response request has no tmux argv".into(),
         )),
     }
+}
+
+const PANE_FORMAT: &str = "#{pane_id}\t#{pane_active}\t#{pane_width}\t#{pane_height}";
+
+fn translate_panes_list(params: &Value) -> Result<Vec<String>, TranslateError> {
+    let workspace_id = params
+        .get("workspace_id")
+        .and_then(Value::as_str)
+        .ok_or(TranslateError::MissingField("workspace_id"))?;
+    Ok(vec![
+        "list-panes".into(),
+        "-t".into(),
+        workspace_id.into(),
+        "-F".into(),
+        PANE_FORMAT.into(),
+    ])
 }
 
 fn translate_pane_split(params: &Value) -> Result<Vec<String>, TranslateError> {
