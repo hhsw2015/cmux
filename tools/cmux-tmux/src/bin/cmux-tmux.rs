@@ -64,6 +64,23 @@ fn raw_pty_attach(args: &[String]) -> i32 {
         return 2;
     };
 
+    // Replay the pane's current rendered contents on attach so
+    // the caller sees what's already there. tmux's capture-pane
+    // is the closest thing tmux has to herdr's raw_pty_history;
+    // it returns rendered text + escapes, not the raw byte
+    // history (see PLAN.md known-loss list).
+    if let Ok(out) = Command::new("tmux")
+        .args(["capture-pane", "-e", "-p", "-t", &pane])
+        .output()
+    {
+        if out.status.success() {
+            let stdout = io::stdout();
+            let mut lock = stdout.lock();
+            let _ = lock.write_all(&out.stdout);
+            let _ = lock.flush();
+        }
+    }
+
     let mut control = match Command::new("tmux")
         .args(["-C", "attach", "-d"])
         .stdin(Stdio::piped())
