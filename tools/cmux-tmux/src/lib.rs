@@ -152,4 +152,17 @@ mod tests {
             vec!["resize-pane", "-t", "%9", "-x", "80", "-y", "24"]
         );
     }
+
+    // R6: pane.focus -> select-pane -t TID. Trivial.
+    #[test]
+    fn pane_focus_translates_to_select_pane() {
+        use super::translate::{translate_request, TranslateOutcome};
+
+        let request_json = r#"{"id":"6","method":"pane.focus","params":{"target_pane_id":"%4"}}"#;
+        let argv = match translate_request(request_json).expect("pane.focus translates") {
+            TranslateOutcome::RunTmux(a) => a,
+            other => panic!("expected RunTmux, got {other:?}"),
+        };
+        assert_eq!(argv, vec!["select-pane", "-t", "%4"]);
+    }
 }

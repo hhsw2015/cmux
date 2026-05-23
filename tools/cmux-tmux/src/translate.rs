@@ -61,6 +61,9 @@ pub fn translate_request(json: &str) -> Result<TranslateOutcome, TranslateError>
         "panes.list" => translate_panes_list(&req.params).map(TranslateOutcome::RunTmux),
         "workspace.list" => Ok(TranslateOutcome::RunTmux(translate_workspace_list())),
         "pane.resize" => translate_pane_resize(&req.params).map(TranslateOutcome::RunTmux),
+        "pane.focus" => {
+            translate_single_pane_target("select-pane", &req.params).map(TranslateOutcome::RunTmux)
+        }
         other => Err(TranslateError::UnsupportedMethod(other.to_string())),
     }
 }
@@ -96,6 +99,14 @@ fn translate_panes_list(params: &Value) -> Result<Vec<String>, TranslateError> {
         "-F".into(),
         PANE_FORMAT.into(),
     ])
+}
+
+fn translate_single_pane_target(verb: &str, params: &Value) -> Result<Vec<String>, TranslateError> {
+    let target = params
+        .get("target_pane_id")
+        .and_then(Value::as_str)
+        .ok_or(TranslateError::MissingField("target_pane_id"))?;
+    Ok(vec![verb.into(), "-t".into(), target.into()])
 }
 
 fn translate_pane_resize(params: &Value) -> Result<Vec<String>, TranslateError> {
