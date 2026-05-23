@@ -206,21 +206,33 @@ fn handle_line(line: &str, control: &Arc<Mutex<Option<Child>>>, writer: &Sender<
     match translate_request(line) {
         Ok(TranslateOutcome::ImmediateResponse(r)) => {
             serde_json::to_string(&r).unwrap_or_else(|e| {
-                error_envelope(serde_json::Value::Null, translate::INTERNAL_ERROR, &e.to_string())
+                error_envelope(
+                    serde_json::Value::Null,
+                    translate::INTERNAL_ERROR,
+                    &e.to_string(),
+                )
             })
         }
         Ok(TranslateOutcome::ImmediateError(e)) => {
             serde_json::to_string(&e).unwrap_or_else(|err| {
-                error_envelope(serde_json::Value::Null, translate::INTERNAL_ERROR, &err.to_string())
+                error_envelope(
+                    serde_json::Value::Null,
+                    translate::INTERNAL_ERROR,
+                    &err.to_string(),
+                )
             })
         }
         Ok(TranslateOutcome::RunTmux(argv)) => run_tmux_and_shape(id, &method, argv, line),
-        Ok(TranslateOutcome::RunMulti(_)) => {
-            error_envelope(id, translate::INTERNAL_ERROR, "multi-step requests not yet wired")
-        }
-        Err(TranslateError::InvalidJson(e)) => {
-            error_envelope(serde_json::Value::Null, translate::INVALID_REQUEST, &e.to_string())
-        }
+        Ok(TranslateOutcome::RunMulti(_)) => error_envelope(
+            id,
+            translate::INTERNAL_ERROR,
+            "multi-step requests not yet wired",
+        ),
+        Err(TranslateError::InvalidJson(e)) => error_envelope(
+            serde_json::Value::Null,
+            translate::INVALID_REQUEST,
+            &e.to_string(),
+        ),
         Err(other) => error_envelope(id, translate::INTERNAL_ERROR, &other.to_string()),
     }
 }
@@ -239,7 +251,11 @@ fn subscribe_events(
                 .and_then(|w| w.as_str().map(str::to_string))
         });
     let Some(workspace_id) = workspace_id else {
-        return error_envelope(id, translate::INTERNAL_ERROR, "events.subscribe requires workspace_id");
+        return error_envelope(
+            id,
+            translate::INTERNAL_ERROR,
+            "events.subscribe requires workspace_id",
+        );
     };
 
     let mut guard = control.lock().expect("control mutex");
@@ -250,7 +266,9 @@ fn subscribe_events(
 
     let child = match spawn_control_client(&workspace_id, writer.clone()) {
         Ok(c) => c,
-        Err(e) => return error_envelope(id, translate::TMUX_FAILED, &format!("spawn tmux -C: {e}")),
+        Err(e) => {
+            return error_envelope(id, translate::TMUX_FAILED, &format!("spawn tmux -C: {e}"))
+        }
     };
     *guard = Some(child);
     success_envelope(&id, &serde_json::json!({"subscribed": true}))
@@ -300,6 +318,47 @@ fn parse_method(line: &str) -> String {
         .unwrap_or_default()
 }
 
+/// Heuristically map tmux stderr fragments to herdr error
+/// codes. `can't find session` -> workspace_not_found, `can't
+/// find window/pane` -> tab_not_found / pane_not_found. Falls
+/// back to `tmux_failed` for anything else.
+fn classify_tmux_error(method: &str, stderr: &str) -> &'static str {
+    let s = stderr.to_ascii_lowercase();
+    if s.contains("can't find session") || s.contains("no such session") {
+        return translate::WORKSPACE_NOT_FOUND;
+    }
+    if s.contains("can't find window") || s.contains("no such window") {
+        return translate::TAB_NOT_FOUND;
+    }
+    if s.contains("can't find pane") || s.contains("no such pane") {
+        return translate::PANE_NOT_FOUND;
+    }
+    // No tmux server running: every workspace/tab/pane is by
+    // definition absent. Probe-time RPCs against an empty
+    // host land here, and cmux's probeCapabilities wants to
+    // see tab_not_found / workspace_not_found.
+    if s.contains("error connecting") || s.contains("no server running") {
+        return match method {
+            "layout.snapshot" => translate::TAB_NOT_FOUND,
+            m if m.starts_with("workspace.") => translate::WORKSPACE_NOT_FOUND,
+            m if m.starts_with("pane.") || m.starts_with("panes.") => translate::PANE_NOT_FOUND,
+            _ => translate::WORKSPACE_NOT_FOUND,
+        };
+    }
+    // For methods that target specific entities, a generic
+    // "can't find" likely means the entity doesn't exist;
+    // narrow the code based on what the method targets.
+    if s.contains("can't find") {
+        return match method {
+            m if m.starts_with("workspace.") => translate::WORKSPACE_NOT_FOUND,
+            "layout.snapshot" | "tab.reorder" => translate::TAB_NOT_FOUND,
+            m if m.starts_with("pane.") || m.starts_with("panes.") => translate::PANE_NOT_FOUND,
+            _ => translate::TMUX_FAILED,
+        };
+    }
+    translate::TMUX_FAILED
+}
+
 fn run_tmux_and_shape(
     id: serde_json::Value,
     method: &str,
@@ -316,13 +375,25 @@ fn run_tmux_and_shape(
     };
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
+        let code = classify_tmux_error(method, &stderr);
         return error_envelope(
             id,
-            translate::TMUX_FAILED,
+            code,
             &format!("tmux exited {}: {}", output.status, stderr.trim()),
         );
     }
     let stdout = String::from_utf8_lossy(&output.stdout);
+    // tmux's display-message returns exit 0 with empty stdout
+    // when the target window/session doesn't exist. For
+    // layout.snapshot specifically, that's how cmux's
+    // probeCapabilities expects to detect compatibility.
+    if method == "layout.snapshot" && stdout.trim().is_empty() {
+        return error_envelope(
+            id,
+            translate::TAB_NOT_FOUND,
+            "tmux display-message returned empty: target window not found",
+        );
+    }
     let params = serde_json::from_str::<serde_json::Value>(request_line)
         .ok()
         .and_then(|v| v.get("params").cloned())

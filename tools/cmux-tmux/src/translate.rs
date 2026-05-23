@@ -123,6 +123,7 @@ pub fn translate_request_in_context(
         "workspace.rename" => {
             translate_workspace_rename(&req.params).map(TranslateOutcome::RunTmux)
         }
+        "layout.snapshot" => translate_layout_snapshot(&req.params).map(TranslateOutcome::RunTmux),
         "pane.resize" => translate_pane_resize(&req.params).map(TranslateOutcome::RunTmux),
         "pane.focus" => {
             translate_single_pane_target("select-pane", &req.params).map(TranslateOutcome::RunTmux)
@@ -163,6 +164,28 @@ const SESSION_FORMAT: &str = "#{session_id}\t#{session_name}\t#{session_attached
 
 fn translate_workspace_list() -> Vec<String> {
     vec!["list-sessions".into(), "-F".into(), SESSION_FORMAT.into()]
+}
+
+/// `layout.snapshot` reads `#{window_layout}` plus the active
+/// pane id of the targeted window. The bin parses the result.
+/// `tab_id` is the tmux window id (e.g. `@0`); a non-existent
+/// target returns empty stdout, which the bin maps to a
+/// `tab_not_found` error envelope.
+fn translate_layout_snapshot(params: &Value) -> Result<Vec<String>, TranslateError> {
+    let tab_id = params
+        .get("tab_id")
+        .and_then(Value::as_str)
+        .ok_or(TranslateError::MissingField("tab_id"))?;
+    Ok(vec![
+        "display-message".into(),
+        "-t".into(),
+        tab_id.into(),
+        "-p".into(),
+        // Tab is a literal 0x09 in the format string; tmux
+        // forwards it verbatim. Single-format string keeps the
+        // shaper's split logic simple.
+        "#{window_layout}\t#{pane_id}".into(),
+    ])
 }
 
 fn translate_workspace_target(verb: &str, params: &Value) -> Result<Vec<String>, TranslateError> {

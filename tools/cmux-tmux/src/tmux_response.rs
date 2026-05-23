@@ -5,7 +5,8 @@
 
 use serde_json::Value;
 
-use crate::parse::CppEvent;
+use crate::bsp::tmux_to_bsp;
+use crate::parse::{parse_layout, CppEvent};
 use crate::translate::ResultResponse;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -82,6 +83,42 @@ pub fn shape_response_with_params(
 ) -> Result<ResultResponse, ShapeError> {
     let trimmed = stdout.trim_end_matches(['\r', '\n']);
     let result = match method {
+        "layout.snapshot" => {
+            let workspace_id = param_str(params, "workspace_id");
+            let tab_id = param_str(params, "tab_id");
+            // tmux's display-message returns empty stdout when
+            // the target window doesn't exist. The bin
+            // translates that to a `tab_not_found` error before
+            // we ever get here, so reaching this branch with an
+            // empty `trimmed` would mean tmux gave us a real
+            // window that somehow has no layout — treat that as
+            // an internal error.
+            if trimmed.is_empty() {
+                return Err(ShapeError {
+                    message: "layout.snapshot: empty stdout from a present window".into(),
+                });
+            }
+            let mut parts = trimmed.splitn(2, '\t');
+            let layout_str = parts.next().unwrap_or("");
+            let focused_pane = parts.next().unwrap_or("").trim();
+            let parsed = parse_layout(layout_str).map_err(|e| ShapeError {
+                message: format!("layout parse: {e}"),
+            })?;
+            let bsp_root = tmux_to_bsp(&parsed);
+            let focused = if focused_pane.is_empty() {
+                Value::Null
+            } else {
+                Value::String(focused_pane.to_string())
+            };
+            serde_json::json!({
+                "tree": {
+                    "workspace_id": workspace_id,
+                    "tab_id": tab_id,
+                    "root": bsp_root,
+                    "focused_pane_id": focused,
+                }
+            })
+        }
         "workspace.attach" => {
             let workspace_id = params
                 .get("workspace_id")
@@ -132,6 +169,14 @@ pub fn shape_response_with_params(
         _ => Value::Object(serde_json::Map::new()),
     };
     Ok(ResultResponse { id, result })
+}
+
+fn param_str(params: &Value, key: &str) -> String {
+    params
+        .get(key)
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string()
 }
 
 fn parse_pane_lines(stdout: &str) -> Result<Vec<Value>, ShapeError> {
