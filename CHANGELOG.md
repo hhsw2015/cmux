@@ -5,15 +5,53 @@ All notable changes to cmux are documented here.
 ## Unreleased
 
 ### Added
-- cmux-tmux backend: cmux can drive an existing tmux server through the new `cmux-tmux serve` Rust shim (in `tools/cmux-tmux/`). New `HerdrHost.Transport.cmuxTmuxLocal` / `.cmuxTmuxSSH` cases plus a Settings → Computers picker (`SSH herdr` / `SSH tmux` / `Local tmux`) make it choosable per host. Shim implements ping/workspace.* /panes.list/pane.split/resize/focus/close/swap/set_split_ratio/layout.snapshot/tab.list/focus + raw-pty-attach against tmux's control mode + `send-keys -H`.
+- cmux-tmux backend: cmux can drive an existing tmux server through the new `cmux-tmux serve` Rust shim (in `tools/cmux-tmux/`). New `HerdrHost.Transport.cmuxTmuxLocal` / `.cmuxTmuxSSH` cases plus a Settings → Computers picker (`SSH herdr` / `SSH tmux` / `Local tmux`) make it choosable per host. Shim implements ping/workspace.* /panes.list/pane.split/resize/focus/close/swap/set_split_ratio/layout.snapshot/tab.list/focus + raw-pty-attach against tmux's control mode + `send-keys -H`. Bundled into cmux.app for local backend; SSH backend auto-installs via `CmuxTmuxRemoteInstaller` curling release binaries (`cmux-tmux-{linux,macos}-{x86_64,aarch64}`) onto the remote on first connect.
 - zmx integration: track every panel running `zmx attach <name>` so cmux remembers persistent terminal sessions across restarts. Adds the `CMUXSessionDaemon` package, an `applicationDidFinishLaunching` reconcile pass, periodic 30s sweeps, command palette entries (`List orphan zmx sessions`, `Reconcile zmx bindings`), and a settings card. Auto-reattach into the same panel on next launch is staged behind a stable-panelId design note in `docs/zmx-integration.md`.
 - Herdr integration: cross-machine agent workstation backed by the hhsw2015/herdr daemon (v0.6.0-cmux6). Cmux panels mirror herdr's authoritative TileLayout, push events drive sidebar refresh in seconds (workspace lifecycle, agent_status, tab.reordered, pane.exited), SSH transport auto-reconnects with structured error reasons, host-offline notifications fire after 20s of sustained retry, and Settings → Hosts supports drag-reorder. New CI gates: Ubuntu wire-protocol smoke + advisory macOS live integration.
 - `cmux-herdr` skill (`skills/cmux-herdr/SKILL.md`) documenting the seven cmux-fork RPCs (`pane.set_zoom`, `pane.set_split_ratio`, `pane.swap`, `pane.focus`, `pane.resize`, `tab.reorder`, `layout.snapshot`) so coding agents inside herdr-attached panes can drive scheduling without reading the daemon's full socket-API docs. Pass-through of the herdr-native `SKILL.md` works automatically because the daemon already injects `HERDR_ENV=1` into every spawned pane.
-- Merged `manaflow-ai/cmux` upstream main (Antigravity CLI integration, native Grok Vault resume, `--window` routing, browser screenshot clipboard, panel-scoped notification attribution, plus 0.64.8 / 0.64.9 bug fixes).
+- Merged `manaflow-ai/cmux` upstream main (Antigravity CLI integration, native Grok Vault resume, `--window` routing, browser screenshot clipboard, panel-scoped notification attribution, plus 0.64.8 / 0.64.9 / 0.64.10 bug fixes).
 
 ### Fixed
 - Botched merge from upstream `a21a21c5` (shell wrapper deduplication) left a stale `_cmux_install_claude_wrapper` invocation at line 323 of both shell integration scripts; removed so new shells no longer print `command not found` on startup.
 - `Sources/Workspace.swift` now merges caller-supplied `startupEnvironment` with the fork's `CMUX_REMOTE_INITIAL_CWD` injection instead of overwriting one with the other.
+
+## [0.64.10] - 2026-05-23
+
+### Added
+- Copy on Select setting copies the active terminal selection to the clipboard as soon as the mouse is released ([#4011](https://github.com/manaflow-ai/cmux/pull/4011)) -- thanks @kallioaleksi for the report!
+- CmuxExtensionKit sidebar prototypes showcase the upcoming extension API for custom workspace sidebars ([#4309](https://github.com/manaflow-ai/cmux/pull/4309))
+- Ghostty Settings command palette action opens the embedded Ghostty configuration directly ([#4654](https://github.com/manaflow-ai/cmux/pull/4654))
+- Warn before, or hide, the tab close button to prevent stray accidental closes ([#4632](https://github.com/manaflow-ai/cmux/pull/4632))
+- Skip the quit-confirm dialog on DEV builds and honor `app.confirmQuit` on stable/nightly ([db267718](https://github.com/manaflow-ai/cmux/commit/db26771847df84b44f585d352d1b3bd709cb9715))
+- Keep Codex notifications after interrupted turns so the badge survives a ctrl-c mid-stream ([#4583](https://github.com/manaflow-ai/cmux/pull/4583))
+- Move resume command approvals into `cmux.json` so per-repo configuration can preapprove agent resume invocations ([#4538](https://github.com/manaflow-ai/cmux/pull/4538))
+- `cmux reorder-workspaces` accepts batch input, supports `--dry-run`, and emits reorder events ([#4507](https://github.com/manaflow-ai/cmux/pull/4507))
+
+### Changed
+- Move the browser loading spinner onto Core Animation so it stays smooth during heavy rendering ([#4600](https://github.com/manaflow-ai/cmux/pull/4600))
+- Harden remote websocket PTY sessions against connection churn ([#4323](https://github.com/manaflow-ai/cmux/pull/4323))
+
+### Fixed
+- Fix the TaskManager snapshot-boundary violation that caused the 0.64.8 memory leak by keeping pane store references out of the lazy list subtree ([#4555](https://github.com/manaflow-ai/cmux/pull/4555))
+- Fix the `runProcess` pipe teardown crash hit when a process exits during stdout drain ([#4568](https://github.com/manaflow-ai/cmux/pull/4568))
+- Fix key repeat rendering lag in the terminal under sustained input ([#3986](https://github.com/manaflow-ai/cmux/pull/3986))
+- Fix asymmetric equalize splits so a 3+ pane row distributes evenly even when one pane started larger ([#4381](https://github.com/manaflow-ai/cmux/pull/4381))
+- Fix `cmux.json` split ratios so persisted ratios apply to restored splits ([#3980](https://github.com/manaflow-ai/cmux/pull/3980))
+- Fix browser URL bar stealing focus on tab switch ([#4623](https://github.com/manaflow-ai/cmux/pull/4623))
+- Forward Cmd+Up / Cmd+Down to the browser pane so Google Docs and other web apps can jump to top/bottom ([#4637](https://github.com/manaflow-ai/cmux/pull/4637))
+- Fix close shortcuts targeting the original window when the user has moved focus to a different one ([#4615](https://github.com/manaflow-ai/cmux/pull/4615))
+- Fix Ghostty split theme appearance resolution so a freshly split pane inherits the active theme ([#4567](https://github.com/manaflow-ai/cmux/pull/4567))
+- Fix theme picker chrome preview sync so the swatch matches the applied chrome ([#4652](https://github.com/manaflow-ai/cmux/pull/4652))
+- Fix sidebar edge fade background so the gradient blends with the active surface ([#4610](https://github.com/manaflow-ai/cmux/pull/4610))
+- Fix markdown remote SVG image loading inside the markdown viewer ([#4533](https://github.com/manaflow-ai/cmux/pull/4533))
+- Fix restored panel unread sidebar badges so badge state survives session restore ([6f1ecc9f](https://github.com/manaflow-ai/cmux/commit/6f1ecc9fbfdbe2a3e1bb29e3ec1c018459629e59))
+- Prevent DEV builds from stealing the stable CLI socket when both run side-by-side ([5ab642a3](https://github.com/manaflow-ai/cmux/commit/5ab642a3e9f8878f76e8d525a8d0ccc8c359a69b))
+
+### Thanks to 3 contributors!
+
+- [@austinywang](https://github.com/austinywang)
+- [@kallioaleksi](https://github.com/kallioaleksi)
+- [@lawrencecchen](https://github.com/lawrencecchen)
 
 ## [0.64.9] - 2026-05-21
 

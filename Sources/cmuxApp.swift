@@ -5419,6 +5419,8 @@ struct SettingsView: View {
     private var paneFirstClickFocusEnabled = PaneFirstClickFocusSettings.defaultEnabled
     @AppStorage(TerminalScrollBarSettings.showScrollBarKey)
     private var showTerminalScrollBar = TerminalScrollBarSettings.defaultShowScrollBar
+    @AppStorage(TerminalTextBoxInputSettings.maxLinesKey)
+    private var textBoxMaxLines = TerminalTextBoxInputSettings.defaultMaxLines
     @AppStorage(TerminalCopyOnSelectSettings.copyOnSelectKey)
     private var terminalCopyOnSelect = TerminalCopyOnSelectSettings.defaultCopyOnSelect
     @AppStorage(FileDropBehaviorSettings.defaultBehaviorKey)
@@ -5647,6 +5649,17 @@ struct SettingsView: View {
 
     private var selectedFileDropDefaultBehavior: FileDropDefaultBehavior {
         FileDropBehaviorSettings.behavior(for: fileDropDefaultBehavior)
+    }
+
+    private var resolvedTextBoxMaxLines: Int {
+        TerminalTextBoxInputSettings.resolvedMaxLines(textBoxMaxLines)
+    }
+
+    private var textBoxMaxLinesBinding: Binding<Int> {
+        Binding(
+            get: { resolvedTextBoxMaxLines },
+            set: { textBoxMaxLines = TerminalTextBoxInputSettings.resolvedMaxLines($0) }
+        )
     }
 
     private var fileDropDefaultBehaviorSelection: Binding<String> {
@@ -6833,6 +6846,29 @@ struct SettingsView: View {
                         SettingsCardDivider()
 
                         SettingsCardRow(
+                            configurationReview: .json("terminal.textBoxMaxLines"),
+                            String(localized: "settings.terminal.textBoxMaxLines", defaultValue: "TextBox Max Lines"),
+                            subtitle: String(localized: "settings.terminal.textBoxMaxLines.subtitle", defaultValue: "Limits how tall the rich terminal input can grow before it scrolls."),
+                            controlWidth: pickerColumnWidth
+                        ) {
+                            Stepper(
+                                value: textBoxMaxLinesBinding,
+                                in: TerminalTextBoxInputSettings.minimumMaxLines...TerminalTextBoxInputSettings.maximumMaxLines
+                            ) {
+                                Text(verbatim: "\(resolvedTextBoxMaxLines)")
+                                    .monospacedDigit()
+                                    .frame(width: 28, alignment: .trailing)
+                            }
+                            .controlSize(.small)
+                            .accessibilityIdentifier("SettingsTerminalTextBoxMaxLinesStepper")
+                            .accessibilityLabel(
+                                String(localized: "settings.terminal.textBoxMaxLines", defaultValue: "TextBox Max Lines")
+                            )
+                        }
+
+                        SettingsCardDivider()
+
+                        SettingsCardRow(
                             configurationReview: .json("terminal.copyOnSelect"),
                             String(localized: "settings.terminal.copyOnSelect", defaultValue: "Copy on Selection"),
                             subtitle: terminalCopyOnSelect
@@ -6843,9 +6879,9 @@ struct SettingsView: View {
                                 .labelsHidden()
                                 .controlSize(.small)
                                 .accessibilityIdentifier("SettingsTerminalCopyOnSelectToggle")
-                                .accessibilityLabel(
-                                    String(localized: "settings.terminal.copyOnSelect", defaultValue: "Copy on Selection")
-                                )
+                            .accessibilityLabel(
+                                String(localized: "settings.terminal.copyOnSelect", defaultValue: "Copy on Selection")
+                            )
                         }
 
                         SettingsCardDivider()
@@ -8090,6 +8126,8 @@ struct SettingsView: View {
         if previousShowTerminalScrollBar != showTerminalScrollBar {
             TerminalScrollBarSettings.notifyDidChange()
         }
+        textBoxMaxLines = TerminalTextBoxInputSettings.defaultMaxLines
+        textBoxMaxLines = TerminalTextBoxInputSettings.defaultMaxLines
         let previousTerminalCopyOnSelect = terminalCopyOnSelect
         terminalCopyOnSelect = TerminalCopyOnSelectSettings.defaultCopyOnSelect
         if previousTerminalCopyOnSelect != terminalCopyOnSelect {
