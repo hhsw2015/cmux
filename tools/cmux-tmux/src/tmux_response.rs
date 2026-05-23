@@ -5,6 +5,7 @@
 
 use serde_json::Value;
 
+use crate::parse::CppEvent;
 use crate::translate::ResultResponse;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -19,6 +20,31 @@ impl std::fmt::Display for ShapeError {
 }
 
 impl std::error::Error for ShapeError {}
+
+/// Encode a parsed [`CppEvent`] as the JSON notification line
+/// the bin writes to stdout. Notifications carry no `id`, so
+/// clients can distinguish them from RPC responses by absence
+/// of that field.
+pub fn event_to_json(ev: &CppEvent) -> Value {
+    match ev {
+        CppEvent::LayoutChanged {
+            window_id,
+            layout_string,
+        } => serde_json::json!({
+            "event": "layout_changed",
+            "window_id": window_id,
+            "layout_string": layout_string,
+        }),
+        CppEvent::PaneExited { pane_id } => serde_json::json!({
+            "event": "pane_exited",
+            "pane_id": pane_id,
+        }),
+        CppEvent::WorkspaceClosed { workspace_id } => serde_json::json!({
+            "event": "workspace_closed",
+            "workspace_id": workspace_id,
+        }),
+    }
+}
 
 /// Extra argv suffix to append to the translate-emitted argv for
 /// methods whose response carries a freshly-created id. Returns

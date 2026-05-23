@@ -92,6 +92,10 @@ pub fn translate_request_in_context(
             id: req.id,
             result: Value::String("pong".into()),
         })),
+        "events.subscribe" => Ok(TranslateOutcome::ImmediateResponse(ResultResponse {
+            id: req.id,
+            result: serde_json::json!({ "subscribed": true }),
+        })),
         "pane.split" => translate_pane_split(&req.params).map(TranslateOutcome::RunTmux),
         "panes.list" => translate_panes_list(&req.params).map(TranslateOutcome::RunTmux),
         "workspace.list" => Ok(TranslateOutcome::RunTmux(translate_workspace_list())),

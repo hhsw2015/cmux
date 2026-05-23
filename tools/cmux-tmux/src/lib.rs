@@ -182,6 +182,48 @@ mod tests {
         assert_eq!(argv, vec!["kill-pane", "-t", "%5"]);
     }
 
+    // I2a: event_to_json shapes parsed CppEvents into JSON
+    // notifications. Notifications have no `id` field so the
+    // client can distinguish them from RPC responses.
+    #[test]
+    fn event_to_json_shapes_layout_changed() {
+        use super::parse::CppEvent;
+        use super::tmux_response::event_to_json;
+
+        let v = event_to_json(&CppEvent::LayoutChanged {
+            window_id: "@0".into(),
+            layout_string: "abcd,80x24,0,0,1".into(),
+        });
+        assert_eq!(
+            v,
+            serde_json::json!({
+                "event": "layout_changed",
+                "window_id": "@0",
+                "layout_string": "abcd,80x24,0,0,1",
+            })
+        );
+        assert!(v.get("id").is_none());
+    }
+
+    #[test]
+    fn event_to_json_shapes_pane_exited_and_workspace_closed() {
+        use super::parse::CppEvent;
+        use super::tmux_response::event_to_json;
+
+        assert_eq!(
+            event_to_json(&CppEvent::PaneExited {
+                pane_id: "%4".into()
+            }),
+            serde_json::json!({"event": "pane_exited", "pane_id": "%4"})
+        );
+        assert_eq!(
+            event_to_json(&CppEvent::WorkspaceClosed {
+                workspace_id: "$5".into()
+            }),
+            serde_json::json!({"event": "workspace_closed", "workspace_id": "$5"})
+        );
+    }
+
     // I1b: tmux capture-args helper. The bin appends these to the
     // base argv from translate so commands that "create" a thing
     // (workspace.create, pane.split) can return its id.

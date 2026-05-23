@@ -4,15 +4,19 @@
 //! Subcommands:
 //!
 //! * `serve` — line-delimited JSON-RPC on stdin/stdout. Used as
-//!   the cmux pane protocol (CPP) endpoint. Today only methods
-//!   with an `ImmediateResponse` translation (e.g. `ping`) work
-//!   end to end; tmux-backed methods will land in I1+.
+//!   the cmux pane protocol (CPP) endpoint. Responses are written
+//!   in the order requests arrive on stdin; events from a
+//!   subscribed `tmux -C` control session interleave on stdout
+//!   as JSON notifications (objects without an `id` field).
 //! * `raw-pty-attach` — to be implemented in stage 4.
 
-use std::io::{self, BufRead, Write};
-use std::process::Command;
+use std::io::{self, BufRead, BufReader, Write};
+use std::process::{Child, Command, Stdio};
+use std::sync::mpsc::{self, Sender};
+use std::sync::{Arc, Mutex};
 
-use cmux_tmux::tmux_response::{capture_args_for, shape_response};
+use cmux_tmux::parse::Session;
+use cmux_tmux::tmux_response::{capture_args_for, event_to_json, shape_response};
 use cmux_tmux::translate::{
     translate_request, ErrorObject, ErrorResponse, TranslateError, TranslateOutcome,
 };
@@ -37,20 +41,42 @@ fn main() {
     std::process::exit(exit);
 }
 
+/// Worker thread sink: every line written to stdout goes through
+/// this channel so request-reply and event notifications don't
+/// interleave inside a single line.
+fn spawn_writer() -> Sender<String> {
+    let (tx, rx) = mpsc::channel::<String>();
+    std::thread::spawn(move || {
+        let stdout = io::stdout();
+        let mut out = stdout.lock();
+        while let Ok(line) = rx.recv() {
+            if writeln!(out, "{line}").is_err() {
+                break;
+            }
+            if out.flush().is_err() {
+                break;
+            }
+        }
+    });
+    tx
+}
+
 fn serve() -> i32 {
+    let writer = spawn_writer();
+    // Subscribed control clients are kept alive for the lifetime
+    // of the serve loop; killing them on Drop is enough cleanup.
+    let control: Arc<Mutex<Option<Child>>> = Arc::new(Mutex::new(None));
+
     let stdin = io::stdin();
-    let stdout = io::stdout();
-    let mut out = stdout.lock();
     for line in stdin.lock().lines() {
         let line = match line {
             Ok(l) => l,
             Err(e) => {
-                let _ = writeln!(
-                    out,
-                    "{}",
-                    error_envelope(serde_json::Value::Null, INTERNAL_ERROR, &e.to_string())
-                );
-                let _ = out.flush();
+                let _ = writer.send(error_envelope(
+                    serde_json::Value::Null,
+                    INTERNAL_ERROR,
+                    &e.to_string(),
+                ));
                 return 1;
             }
         };
@@ -58,18 +84,22 @@ fn serve() -> i32 {
             continue;
         }
 
-        let response = handle_line(&line);
-        if writeln!(out, "{response}").is_err() {
-            return 1;
-        }
-        if out.flush().is_err() {
+        let response = handle_line(&line, &control, &writer);
+        if writer.send(response).is_err() {
             return 1;
         }
     }
     0
 }
 
-fn handle_line(line: &str) -> String {
+fn handle_line(line: &str, control: &Arc<Mutex<Option<Child>>>, writer: &Sender<String>) -> String {
+    let id = parse_id(line);
+    let method = parse_method(line);
+
+    if method == "events.subscribe" {
+        return subscribe_events(line, id, control, writer);
+    }
+
     match translate_request(line) {
         Ok(TranslateOutcome::ImmediateResponse(r)) => {
             serde_json::to_string(&r).unwrap_or_else(|e| {
@@ -81,23 +111,76 @@ fn handle_line(line: &str) -> String {
                 error_envelope(serde_json::Value::Null, INTERNAL_ERROR, &err.to_string())
             })
         }
-        Ok(TranslateOutcome::RunTmux(argv)) => {
-            let id = parse_id(line);
-            let method = parse_method(line);
-            run_tmux_and_shape(id, &method, argv)
-        }
+        Ok(TranslateOutcome::RunTmux(argv)) => run_tmux_and_shape(id, &method, argv),
         Ok(TranslateOutcome::RunMulti(_)) => {
-            let id = parse_id(line);
             error_envelope(id, INTERNAL_ERROR, "multi-step requests not yet wired")
         }
         Err(TranslateError::InvalidJson(e)) => {
             error_envelope(serde_json::Value::Null, PARSE_ERROR, &e.to_string())
         }
-        Err(other) => {
-            let id = parse_id(line);
-            error_envelope(id, INTERNAL_ERROR, &other.to_string())
-        }
+        Err(other) => error_envelope(id, INTERNAL_ERROR, &other.to_string()),
     }
+}
+
+fn subscribe_events(
+    line: &str,
+    id: serde_json::Value,
+    control: &Arc<Mutex<Option<Child>>>,
+    writer: &Sender<String>,
+) -> String {
+    let workspace_id = serde_json::from_str::<serde_json::Value>(line)
+        .ok()
+        .and_then(|v| {
+            v.get("params")
+                .and_then(|p| p.get("workspace_id"))
+                .and_then(|w| w.as_str().map(str::to_string))
+        });
+    let Some(workspace_id) = workspace_id else {
+        return error_envelope(id, INTERNAL_ERROR, "events.subscribe requires workspace_id");
+    };
+
+    let mut guard = control.lock().expect("control mutex");
+    if guard.is_some() {
+        // Already subscribed; idempotent ack.
+        return success_envelope(&id, &serde_json::json!({"subscribed": true}));
+    }
+
+    let child = match spawn_control_client(&workspace_id, writer.clone()) {
+        Ok(c) => c,
+        Err(e) => return error_envelope(id, TMUX_ERROR, &format!("spawn tmux -C: {e}")),
+    };
+    *guard = Some(child);
+    success_envelope(&id, &serde_json::json!({"subscribed": true}))
+}
+
+fn spawn_control_client(workspace_id: &str, writer: Sender<String>) -> io::Result<Child> {
+    let mut child = Command::new("tmux")
+        .args(["-C", "attach", "-d", "-t", workspace_id])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()?;
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| io::Error::other("tmux -C produced no stdout pipe"))?;
+    std::thread::spawn(move || {
+        let mut session = Session::default();
+        let reader = BufReader::new(stdout);
+        for line in reader.lines() {
+            let Ok(line) = line else {
+                break;
+            };
+            for ev in session.feed(&line) {
+                let json = event_to_json(&ev);
+                let s = serde_json::to_string(&json).unwrap_or_default();
+                if writer.send(s).is_err() {
+                    return;
+                }
+            }
+        }
+    });
+    Ok(child)
 }
 
 fn parse_id(line: &str) -> serde_json::Value {
@@ -137,6 +220,11 @@ fn run_tmux_and_shape(id: serde_json::Value, method: &str, base_argv: Vec<String
             .unwrap_or_else(|e| error_envelope(id, INTERNAL_ERROR, &e.to_string())),
         Err(e) => error_envelope(id, INTERNAL_ERROR, &e.to_string()),
     }
+}
+
+fn success_envelope(id: &serde_json::Value, result: &serde_json::Value) -> String {
+    serde_json::to_string(&serde_json::json!({"id": id, "result": result}))
+        .unwrap_or_else(|e| error_envelope(id.clone(), INTERNAL_ERROR, &e.to_string()))
 }
 
 fn error_envelope(id: serde_json::Value, code: i32, message: &str) -> String {
