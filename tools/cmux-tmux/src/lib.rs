@@ -361,6 +361,85 @@ mod tests {
         // After the close, no current session — re-emit guards.
         assert!(session.feed("%session-changed  ").is_empty());
     }
+
+    // P3a: parse a leaf layout string into a Leaf node. Layout
+    // grammar: `<checksum>,WxH,X,Y,paneN`. tmux stores pane ids as
+    // bare integers; the shim normalises to the cmux pane id form
+    // `%N` so downstream code never has to special-case.
+    #[test]
+    fn parse_layout_string_to_herdr_tree_leaf() {
+        use super::parse::{parse_layout, Geometry, LayoutNode};
+
+        let tree = parse_layout("1234,80x24,0,0,1").expect("leaf layout parses");
+
+        match tree {
+            LayoutNode::Leaf { geometry, pane_id } => {
+                assert_eq!(
+                    geometry,
+                    Geometry {
+                        w: 80,
+                        h: 24,
+                        x: 0,
+                        y: 0
+                    }
+                );
+                assert_eq!(pane_id, "%1");
+            }
+            other => panic!("expected Leaf, got {other:?}"),
+        }
+    }
+
+    // P3b: tmux's left-right split syntax `{...}` becomes a
+    // LeftRight node with each comma-separated child parsed
+    // recursively.
+    #[test]
+    fn parse_layout_string_to_herdr_tree_left_right() {
+        use super::parse::{parse_layout, LayoutNode, Orientation};
+
+        let tree = parse_layout("abcd,80x24,0,0{40x24,0,0,1,40x24,40,0,2}")
+            .expect("left-right layout parses");
+
+        match tree {
+            LayoutNode::Split {
+                orientation,
+                children,
+                ..
+            } => {
+                assert_eq!(orientation, Orientation::LeftRight);
+                assert_eq!(children.len(), 2);
+                let leaves: Vec<&str> = children
+                    .iter()
+                    .map(|c| match c {
+                        LayoutNode::Leaf { pane_id, .. } => pane_id.as_str(),
+                        _ => panic!("expected Leaf child"),
+                    })
+                    .collect();
+                assert_eq!(leaves, vec!["%1", "%2"]);
+            }
+            other => panic!("expected Split, got {other:?}"),
+        }
+    }
+
+    // P3c: top-bottom syntax `[...]`.
+    #[test]
+    fn parse_layout_string_to_herdr_tree_top_bottom() {
+        use super::parse::{parse_layout, LayoutNode, Orientation};
+
+        let tree = parse_layout("ef01,80x24,0,0[80x12,0,0,1,80x12,0,12,2]")
+            .expect("top-bottom layout parses");
+
+        match tree {
+            LayoutNode::Split {
+                orientation,
+                children,
+                ..
+            } => {
+                assert_eq!(orientation, Orientation::TopBottom);
+                assert_eq!(children.len(), 2);
+            }
+            other => panic!("expected Split, got {other:?}"),
+        }
+    }
 }
 
 #[cfg(test)]
