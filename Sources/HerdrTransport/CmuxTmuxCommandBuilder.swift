@@ -86,10 +86,22 @@ enum CmuxTmuxCommandBuilder {
         return defaultRemoteBinaryShellExpression
     }
 
-    /// Local fallback when the user hasn't pinned a binary path:
-    /// `cmux-tmux` from the launching shell's `$PATH`.
+    /// Local fallback when the user hasn't pinned a binary path.
+    /// Prefers the bundled binary at `cmux.app/Contents/Resources/
+    /// bin/cmux-tmux` (dropped in by `scripts/bundle-cmux-tmux.sh`
+    /// at build time) so users don't have to install anything to
+    /// use the "Local tmux" backend. Falls back to a bare
+    /// `cmux-tmux` lookup on `$PATH` so dev builds without the
+    /// bundled binary still work if the user installed manually.
     static func defaultLocalBinary() -> String {
-        "cmux-tmux"
+        if let bundled = Bundle.main.url(
+            forResource: "cmux-tmux",
+            withExtension: nil,
+            subdirectory: "bin"
+        ), FileManager.default.isExecutableFile(atPath: bundled.path) {
+            return bundled.path
+        }
+        return "cmux-tmux"
     }
 
     /// Same lookup heuristic as herdr-cmux but for the cmux-tmux

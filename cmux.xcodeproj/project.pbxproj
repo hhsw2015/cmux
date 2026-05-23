@@ -1963,6 +1963,7 @@
 				C0DEFF100000000000000003 /* Build Command Palette Nucleo FFI */,
 				A5001300A1B2C3D4E5F60719 /* ShellScript */,
 				C420Z000C420Z000C42HBN01 /* Bundle herdr-cmux */,
+				C420Z000C420Z000C42MTN01 /* Bundle cmux-tmux */,
 			);
 			buildRules = (
 			);
@@ -2239,6 +2240,26 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${SRCROOT}/scripts/bundle-herdr-cmux.sh\"\n";
+		};
+		C420Z000C420Z000C42MTN01 /* Bundle cmux-tmux */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/scripts/bundle-cmux-tmux.sh",
+			);
+			name = "Bundle cmux-tmux";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/scripts/bundle-cmux-tmux.sh\"\n";
 		};
 		C0DEFF100000000000000003 /* Build Command Palette Nucleo FFI */ = {
 			isa = PBXShellScriptBuildPhase;

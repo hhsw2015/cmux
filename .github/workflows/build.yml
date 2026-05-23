@@ -35,6 +35,25 @@ jobs:
       - name: Download pre-built GhosttyKit
         run: ./scripts/download-prebuilt-ghosttykit.sh
 
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo (cmux-tmux)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            tools/cmux-tmux/target
+          key: ${{ runner.os }}-cargo-cmux-tmux-${{ hashFiles('tools/cmux-tmux/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-cmux-tmux-
+
+      - name: Build cmux-tmux (release)
+        run: |
+          cd tools/cmux-tmux
+          cargo build --release
+
       - name: Cache Swift packages
         uses: actions/cache@v4
         with:

@@ -809,6 +809,24 @@ if [[ -x "$CMUXD_SRC" ]]; then
   cp "$CMUXD_SRC" "$BIN_DIR/cmuxd"
   chmod +x "$BIN_DIR/cmuxd"
 fi
+# Build cmux-tmux (Rust shim that lets cmux drive an existing tmux
+# server) and bundle it next to cmuxd. Skipped only when the source
+# tree isn't checked out (sparse clone). Failure here doesn't fail
+# the reload — the bundle-cmux-tmux.sh build phase will warn and
+# users can still pin a binary path manually in Settings.
+if [[ -d "$PWD/tools/cmux-tmux" ]] && command -v cargo >/dev/null 2>&1; then
+  if (cd "$PWD/tools/cmux-tmux" && cargo build --release); then
+    CMUX_TMUX_SRC="$PWD/tools/cmux-tmux/target/release/cmux-tmux"
+    if [[ -x "$CMUX_TMUX_SRC" ]]; then
+      BIN_DIR="$APP_PATH/Contents/Resources/bin"
+      mkdir -p "$BIN_DIR"
+      cp "$CMUX_TMUX_SRC" "$BIN_DIR/cmux-tmux"
+      chmod +x "$BIN_DIR/cmux-tmux"
+    fi
+  else
+    echo "warning: cargo build of tools/cmux-tmux failed; Local tmux backend will need a PATH-installed binary" >&2
+  fi
+fi
 if command -v xattr >/dev/null 2>&1; then
   xattr -cr "$APP_PATH" || true
 fi
