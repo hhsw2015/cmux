@@ -742,7 +742,10 @@ struct TitlebarControlsView: View {
                 cmuxDebugLog("titlebar.toggleSidebar")
                 #endif
                 onToggleSidebar()
-            }) {
+            },
+                rightClickAction: { anchorView, event in
+                    CmuxExtensionSidebarSelection.showMenu(anchorView: anchorView, event: event)
+                }) {
                 sidebarIconLabel(config: config)
             }
             .safeHelp(KeyboardShortcutSettings.Action.toggleSidebar.tooltip(String(localized: "titlebar.sidebar.tooltip", defaultValue: "Show or hide the sidebar")))
