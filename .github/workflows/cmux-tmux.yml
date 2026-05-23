@@ -1,0 +1,54 @@
+name: cmux-tmux
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tools/cmux-tmux/**"
+      - ".github/workflows/cmux-tmux.yml"
+  pull_request:
+    paths:
+      - "tools/cmux-tmux/**"
+      - ".github/workflows/cmux-tmux.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: cargo test (linux + tmux)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/cmux-tmux
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tmux
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tmux
+          tmux -V
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            tools/cmux-tmux/target
+          key: ${{ runner.os }}-cargo-cmux-tmux-${{ hashFiles('tools/cmux-tmux/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-cmux-tmux-
+
+      - name: cargo fmt --check
+        run: cargo fmt --check
+
+      - name: cargo clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: cargo test
+        run: cargo test --all-targets
+        env:
+          RUST_BACKTRACE: "1"

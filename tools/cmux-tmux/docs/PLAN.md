@@ -243,19 +243,26 @@ myself.
 
 ## Current repo state (resume hint for next session)
 
-- `Cargo.toml`: minimal, no dev-deps yet (proptest gets added at R10).
-- `src/lib.rs`: contains exactly **one failing test** for R0 referring
-  to `super::translate::request_json_to_tmux_argv`. The function
-  doesn't exist yet, so `cargo test` will fail to compile. That's the
-  RED state for R0.
-- No `src/main.rs`, no `src/translate.rs`, no `src/parse.rs`. Stage 1
-  builds them up test-by-test.
-- `tests/`, `docs/` exist but only this `PLAN.md` is in `docs/`.
+Stages 1-4 complete; M1, M2, M3 all hit.
 
-To resume:
-```sh
-cd /Users/wowdd1/Dev/cmux/tools/cmux-tmux
-cargo test            # confirm RED at R0 (compile error: no `translate` module)
-# implement translate.rs minimum to make R0 pass, see GREEN, commit
-# then move to R1 per the TDD roadmap above
-```
+- `src/translate.rs`: full method dispatch (ping, events.subscribe,
+  pane.split/resize/focus/close, panes.list, workspace.list/create/
+  attach/close/rename, pane.set_split_ratio).
+- `src/parse.rs`: `tmux_line` + `Session` accumulator + layout
+  string parser/renderer round-trip.
+- `src/pty.rs`: `bytes_to_send_keys_argv` + `decode_output_event` +
+  `encode_for_tmux_output`, all proptest round-trip covered.
+- `src/tmux_response.rs`: `shape_response_with_params` per method,
+  `capture_args_for` for create-style methods, `event_to_json`.
+- `src/bin/cmux-tmux.rs`: subcommands `serve` (JSON-RPC stdio +
+  tmux -C event pump) and `raw-pty-attach --pane %N` (capture-pane
+  replay + bidirectional bytes).
+- `tests/`: 9 integration suites against real tmux, total ~6s.
+- `.github/workflows/cmux-tmux.yml`: cargo fmt + clippy + test on
+  Ubuntu with apt-get tmux.
+
+What's left is M4: cmux-side Swift integration. Per the architectural
+rule it's tiny — a new `HerdrHost.Transport` variant pointing at
+`cmux-tmux serve` (control plane) and `cmux-tmux raw-pty-attach
+--pane %N` (data plane). The CPP wire is already byte-compatible
+with herdr's subset.
