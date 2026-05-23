@@ -241,20 +241,43 @@ enum HerdrPanelOpener {
         )
 
         let pump = Task { [displayClient, weak panel] in
-            // Pump-stats: report bytes/sec and chunks/sec at most once
-            // per second so we can see whether the panel pump is even
-            // running during a TUI-drag freeze. If chunkCount stays
-            // flat for >1s while the daemon is broadcasting, the pump
-            // task is starved by something else on the main actor.
+            // Workspace restore replays per-pane history (up to 10MB
+            // each) as one or a few large chunks. Calling
+            // ghostty_surface_process_output synchronously with that
+            // entire blob blocks the main actor for many seconds —
+            // cmux UI freezes mid-restore until the call returns.
+            // Slice each chunk into PUMP_PROCESS_SLICE bytes and
+            // `await Task.yield()` between slices so other
+            // main-actor work (AppKit events, divider sync, RPC
+            // continuations) gets a turn. Live keystroke output on
+            // an attached pane is well below the slice size so
+            // there's no overhead in the hot path.
+            let sliceSize = 8 * 1024
             var bytesAccum: Int = 0
             var chunkAccum: Int = 0
             var statsBucketStart: Date = Date()
             for await chunk in displayClient.output {
                 guard let surface = panel?.surface.surface else { break }
-                chunk.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
-                    guard let base = raw.baseAddress else { return }
-                    let cChars = base.assumingMemoryBound(to: CChar.self)
-                    ghostty_surface_process_output(surface, cChars, UInt(raw.count))
+                if chunk.count > sliceSize {
+                    os_log("herdr.pump.large_chunk panelId=%{public}@ bytes=%{public}d",
+                           String(panel?.id.uuidString.prefix(8) ?? "nil"),
+                           chunk.count)
+                }
+                var offset = 0
+                while offset < chunk.count {
+                    let end = min(offset + sliceSize, chunk.count)
+                    let slice = chunk.subdata(in: offset..<end)
+                    slice.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
+                        guard let base = raw.baseAddress else { return }
+                        let cChars = base.assumingMemoryBound(to: CChar.self)
+                        ghostty_surface_process_output(surface, cChars, UInt(slice.count))
+                    }
+                    offset = end
+                    if offset < chunk.count {
+                        await Task.yield()
+                        if Task.isCancelled { return }
+                        guard panel?.surface.surface != nil else { return }
+                    }
                 }
                 bytesAccum += chunk.count
                 chunkAccum += 1
