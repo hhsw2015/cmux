@@ -289,6 +289,7 @@ fn spawn_control_client(workspace_id: &str, writer: Sender<String>) -> io::Resul
         .stdout
         .take()
         .ok_or_else(|| io::Error::other("tmux -C produced no stdout pipe"))?;
+    let workspace_id = workspace_id.to_string();
     std::thread::spawn(move || {
         let mut session = Session::default();
         let reader = BufReader::new(stdout);
@@ -297,7 +298,7 @@ fn spawn_control_client(workspace_id: &str, writer: Sender<String>) -> io::Resul
                 break;
             };
             for ev in session.feed(&line) {
-                let json = event_to_json(&ev);
+                let json = event_to_json(&ev, &workspace_id);
                 let s = serde_json::to_string(&json).unwrap_or_default();
                 if writer.send(s).is_err() {
                     return;

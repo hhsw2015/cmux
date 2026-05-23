@@ -29,26 +29,60 @@ impl std::error::Error for ShapeError {}
 /// distinguish them from RPC responses.
 ///
 /// Event names mirror herdr's: dotted (`layout.changed`,
-/// `pane.exited`, `workspace.closed`, `tab.reordered`).
-pub fn event_to_json(ev: &CppEvent) -> Value {
+/// `pane.exited`, `workspace.closed`).
+///
+/// `workspace_id` is the subscribed workspace, supplied by the
+/// caller (the bin's `events.subscribe` handler). cmux's event
+/// payload shapes carry it explicitly; we don't get it from
+/// the tmux wire so the caller has to thread it in.
+pub fn event_to_json(ev: &CppEvent, workspace_id: &str) -> Value {
     match ev {
         CppEvent::LayoutChanged {
             window_id,
             layout_string,
-        } => serde_json::json!({
-            "event": "layout.changed",
-            "data": {
-                "window_id": window_id,
-                "layout_string": layout_string,
-            },
-        }),
+        } => {
+            // Convert tmux's layout string into the BSP tree
+            // cmux expects on its layout.changed event.
+            // focused_pane_id isn't carried by the wire here —
+            // cmux's HerdrLayoutTree.focused_pane_id is
+            // optional, so null is a fine default. Real focus
+            // updates come via pane.focused.
+            let tree = match crate::parse::parse_layout(layout_string) {
+                Ok(t) => crate::bsp::tmux_to_bsp(&t),
+                Err(_) => {
+                    return serde_json::json!({
+                        "event": "layout.changed",
+                        "data": {
+                            "window_id": window_id,
+                            "layout_string": layout_string,
+                        },
+                    });
+                }
+            };
+            serde_json::json!({
+                "event": "layout.changed",
+                "data": {
+                    "tree": {
+                        "workspace_id": workspace_id,
+                        "tab_id": window_id,
+                        "root": tree,
+                        "focused_pane_id": Value::Null,
+                    }
+                },
+            })
+        }
         CppEvent::PaneExited { pane_id } => serde_json::json!({
             "event": "pane.exited",
-            "data": { "pane_id": pane_id },
+            "data": {
+                "pane_id": pane_id,
+                "workspace_id": workspace_id,
+            },
         }),
-        CppEvent::WorkspaceClosed { workspace_id } => serde_json::json!({
+        CppEvent::WorkspaceClosed {
+            workspace_id: closed,
+        } => serde_json::json!({
             "event": "workspace.closed",
-            "data": { "workspace_id": workspace_id },
+            "data": { "workspace_id": closed },
         }),
     }
 }

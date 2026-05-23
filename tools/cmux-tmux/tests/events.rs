@@ -193,8 +193,12 @@ fn subscribe_then_split_emits_layout_changed() {
             }
         }
         let ev = found.expect("layout.changed event within 3s");
-        assert!(ev["data"]["window_id"].is_string());
-        assert!(ev["data"]["layout_string"].is_string());
+        // Payload now matches herdr's HerdrLayoutChangedPayload:
+        // {tree: HerdrLayoutTree}.
+        let tree = &ev["data"]["tree"];
+        assert_eq!(tree["workspace_id"], serde_json::json!(workspace_id));
+        assert!(tree["tab_id"].as_str().unwrap().starts_with('@'));
+        assert!(tree["root"].is_object());
     }));
 
     kill_tmux_server(&tmpdir);

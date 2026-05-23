@@ -196,20 +196,21 @@ mod tests {
         use super::parse::CppEvent;
         use super::tmux_response::event_to_json;
 
-        let v = event_to_json(&CppEvent::LayoutChanged {
-            window_id: "@0".into(),
-            layout_string: "abcd,80x24,0,0,1".into(),
-        });
-        assert_eq!(
-            v,
-            serde_json::json!({
-                "event": "layout.changed",
-                "data": {
-                    "window_id": "@0",
-                    "layout_string": "abcd,80x24,0,0,1",
-                },
-            })
+        let v = event_to_json(
+            &CppEvent::LayoutChanged {
+                window_id: "@0".into(),
+                layout_string: "abcd,80x24,0,0,1".into(),
+            },
+            "$3",
         );
+        // layout.changed payload follows herdr's
+        // HerdrLayoutChangedPayload: data.tree = HerdrLayoutTree.
+        assert_eq!(v["event"], serde_json::json!("layout.changed"));
+        let tree = &v["data"]["tree"];
+        assert_eq!(tree["workspace_id"], serde_json::json!("$3"));
+        assert_eq!(tree["tab_id"], serde_json::json!("@0"));
+        assert_eq!(tree["root"]["kind"], serde_json::json!("pane"));
+        assert_eq!(tree["root"]["pane_id"], serde_json::json!("%1"));
         assert!(v.get("id").is_none());
     }
 
@@ -219,15 +220,24 @@ mod tests {
         use super::tmux_response::event_to_json;
 
         assert_eq!(
-            event_to_json(&CppEvent::PaneExited {
-                pane_id: "%4".into()
-            }),
-            serde_json::json!({"event": "pane.exited", "data": {"pane_id": "%4"}})
+            event_to_json(
+                &CppEvent::PaneExited {
+                    pane_id: "%4".into()
+                },
+                "$5"
+            ),
+            serde_json::json!({
+                "event": "pane.exited",
+                "data": {"pane_id": "%4", "workspace_id": "$5"}
+            })
         );
         assert_eq!(
-            event_to_json(&CppEvent::WorkspaceClosed {
-                workspace_id: "$5".into()
-            }),
+            event_to_json(
+                &CppEvent::WorkspaceClosed {
+                    workspace_id: "$5".into()
+                },
+                "$5"
+            ),
             serde_json::json!({"event": "workspace.closed", "data": {"workspace_id": "$5"}})
         );
     }
