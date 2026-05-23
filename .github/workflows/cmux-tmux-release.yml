@@ -12,7 +12,7 @@ name: cmux-tmux release
 on:
   push:
     tags:
-      - "v*"
+      - "cmux-tmux-v*"
   workflow_dispatch:
     inputs:
       tag:
