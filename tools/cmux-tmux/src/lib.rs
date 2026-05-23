@@ -1,6 +1,7 @@
 // Public surface grows test-by-test. Each `pub mod` line is added the
 // moment a failing test in this crate forces it.
 
+pub mod parse;
 pub mod translate;
 
 #[cfg(test)]
@@ -254,6 +255,43 @@ mod tests {
             }
             other => panic!("expected ImmediateError, got {other:?}"),
         }
+    }
+
+    // P0: tmux control mode emits `%layout-change <win> <layout>
+    // [<visible>] [<flags>]`. The shim translates that to a CPP
+    // `layout_changed` event keyed on the tmux window id and
+    // carrying the raw layout string. Layout-string parsing is
+    // P3; for now we just round-trip the string verbatim.
+    #[test]
+    fn parse_layout_change_event_emits_cpp_layout_changed() {
+        use super::parse::{tmux_line, CppEvent};
+
+        let event = tmux_line("%layout-change @0 6c93,80x24,0,0,1").expect("layout-change parses");
+
+        let CppEvent::LayoutChanged {
+            window_id,
+            layout_string,
+        } = event;
+        assert_eq!(window_id, "@0");
+        assert_eq!(layout_string, "6c93,80x24,0,0,1");
+    }
+
+    // P0b: extra trailing fields (visible-layout, flags) are
+    // tolerated. tmux >=3.2 adds them; we parse the first two
+    // tokens after the verb and ignore the rest.
+    #[test]
+    fn parse_layout_change_with_trailing_tokens_still_extracts_first_two() {
+        use super::parse::{tmux_line, CppEvent};
+
+        let event = tmux_line("%layout-change @1 abcd,80x24,0,0{40x24,0,0,1,40x24,40,0,2} * @1")
+            .expect("layout-change with trailing parses");
+
+        let CppEvent::LayoutChanged {
+            window_id,
+            layout_string,
+        } = event;
+        assert_eq!(window_id, "@1");
+        assert_eq!(layout_string, "abcd,80x24,0,0{40x24,0,0,1,40x24,40,0,2}");
     }
 }
 
