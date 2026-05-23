@@ -333,12 +333,41 @@ private struct AddHostSheet: View {
     let onSave: (HerdrHost, Bool) -> Void
     let onCancel: () -> Void
 
+    /// Which daemon flavor backs this host. cmux's Transport enum
+    /// already encodes this, but the Add sheet needs a single
+    /// picker-friendly value to drive conditional fields.
+    enum Flavor: String, CaseIterable, Identifiable {
+        /// SSH to a herdr-cmux daemon (the original "remote host"
+        /// experience).
+        case sshHerdr
+        /// SSH to a `cmux-tmux serve` subprocess (drives a tmux
+        /// the user already has on the remote box).
+        case sshCmuxTmux
+        /// Local `cmux-tmux serve` (drives the local tmux). Useful
+        /// for development; ssh round-trip is the real product.
+        case localCmuxTmux
+
+        var id: String { rawValue }
+
+        var label: String {
+            switch self {
+            case .sshHerdr:      return "SSH (herdr daemon)"
+            case .sshCmuxTmux:   return "SSH (cmux-tmux → tmux)"
+            case .localCmuxTmux: return "Local (cmux-tmux → tmux)"
+            }
+        }
+    }
+
     @State private var displayName: String
     @State private var sshCommand: String
     @State private var sessionName: String
     @State private var autoInstall: Bool
     @State private var probeResult: ProbeResult = .idle
     @State private var parseError: String?
+    @State private var flavor: Flavor
+    /// Optional pinned `cmux-tmux` binary path for `.cmuxTmuxLocal`.
+    /// Empty means "look up `cmux-tmux` in $PATH".
+    @State private var cmuxTmuxLocalBinaryPath: String
 
     // Advanced override fields. Empty / false means "use parser /
     // sensible default". Non-empty / true means the user typed a
@@ -366,6 +395,24 @@ private struct AddHostSheet: View {
         _displayName = State(initialValue: initial?.displayName ?? "")
         _sessionName = State(initialValue: initial?.sessionName ?? HerdrHost.defaultLocalSessionName())
         _sshCommand = State(initialValue: AddHostSheet.renderCommand(initial?.transport))
+
+        // Derive the flavor from the existing transport when editing.
+        // New hosts default to SSH herdr — that's been the canonical
+        // remote-host experience and we don't want to surprise users.
+        let detected: Flavor = {
+            switch initial?.transport {
+            case .sshStdio: return .sshHerdr
+            case .cmuxTmuxSSH: return .sshCmuxTmux
+            case .cmuxTmuxLocal: return .localCmuxTmux
+            case .localUDS, .none: return .sshHerdr
+            }
+        }()
+        _flavor = State(initialValue: detected)
+        var localBinaryPath = ""
+        if case .cmuxTmuxLocal(let pinned) = initial?.transport {
+            localBinaryPath = pinned ?? ""
+        }
+        _cmuxTmuxLocalBinaryPath = State(initialValue: localBinaryPath)
         // Default the install checkbox on for fresh remote hosts; off
         // when editing (the binary is presumably already deployed).
         _autoInstall = State(initialValue: initial == nil)
@@ -377,6 +424,11 @@ private struct AddHostSheet: View {
         var remoteBin = ""
         var skipDefault = false
         if case .sshStdio(_, _, let skip, let exe, let bin) = initial?.transport {
+            sshExe = exe ?? ""
+            remoteBin = bin ?? ""
+            skipDefault = skip
+        }
+        if case .cmuxTmuxSSH(_, _, let skip, let exe, let bin) = initial?.transport {
             sshExe = exe ?? ""
             remoteBin = bin ?? ""
             skipDefault = skip
@@ -493,33 +545,21 @@ private struct AddHostSheet: View {
                  : String(localized: "settings.hosts.editRemote", defaultValue: "Edit computer"))
                 .font(.headline)
 
-            Text(String(
-                localized: "settings.hosts.sshCommand.label",
-                defaultValue: "Paste your ssh command"
-            ))
-            .font(.caption)
-            .foregroundStyle(.secondary)
-
-            TextEditor(text: $sshCommand)
-                .font(.system(.body, design: .monospaced))
-                .frame(minHeight: 80, maxHeight: 160)
-                .overlay(RoundedRectangle(cornerRadius: 6)
-                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1))
-                .onChange(of: sshCommand) { _, _ in parseError = nil; probeResult = .idle }
-
-            Text(String(
-                localized: "settings.hosts.sshCommand.hintShort",
-                defaultValue: "e.g.  ssh user@host -i ~/.ssh/id_ed25519"
-            ))
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-
-            if let parseError {
-                Text(parseError).font(.caption).foregroundStyle(.red)
+            Picker(
+                String(localized: "settings.hosts.flavor", defaultValue: "Backend"),
+                selection: $flavor
+            ) {
+                ForEach(Flavor.allCases) { f in
+                    Text(f.label).tag(f)
+                }
             }
+            .pickerStyle(.segmented)
 
-            if let preview = parsedPreview() {
-                parsedPreviewRow(preview)
+            switch flavor {
+            case .sshHerdr, .sshCmuxTmux:
+                sshFieldsBody
+            case .localCmuxTmux:
+                localCmuxTmuxFieldsBody
             }
 
             DisclosureGroup(
@@ -541,11 +581,84 @@ private struct AddHostSheet: View {
                     .keyboardShortcut(.cancelAction)
                 Button(String(localized: "settings.hosts.save", defaultValue: "Save")) { save() }
                     .keyboardShortcut(.defaultAction)
-                    .disabled(sshCommand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(!canSaveAddBody)
             }
         }
         .padding(20)
         .frame(minWidth: 440)
+    }
+
+    /// Save-button gate for the SSH add body. SSH variants need a
+    /// non-empty paste box; local cmux-tmux just needs a non-empty
+    /// display name (the binary path is optional — empty means
+    /// "look up `cmux-tmux` on $PATH").
+    private var canSaveAddBody: Bool {
+        switch flavor {
+        case .sshHerdr, .sshCmuxTmux:
+            return !sshCommand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .localCmuxTmux:
+            return !displayName.trimmingCharacters(in: .whitespaces).isEmpty
+        }
+    }
+
+    /// SSH paste box + parsed preview. Shared by sshHerdr and
+    /// sshCmuxTmux — the parsing is identical (cmux just plugs the
+    /// resulting target/extraArgs/etc. into a different transport
+    /// case at save time).
+    @ViewBuilder
+    private var sshFieldsBody: some View {
+        Text(String(
+            localized: "settings.hosts.sshCommand.label",
+            defaultValue: "Paste your ssh command"
+        ))
+        .font(.caption)
+        .foregroundStyle(.secondary)
+
+        TextEditor(text: $sshCommand)
+            .font(.system(.body, design: .monospaced))
+            .frame(minHeight: 80, maxHeight: 160)
+            .overlay(RoundedRectangle(cornerRadius: 6)
+                .stroke(Color.secondary.opacity(0.3), lineWidth: 1))
+            .onChange(of: sshCommand) { _, _ in parseError = nil; probeResult = .idle }
+
+        Text(String(
+            localized: "settings.hosts.sshCommand.hintShort",
+            defaultValue: "e.g.  ssh user@host -i ~/.ssh/id_ed25519"
+        ))
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+
+        if let parseError {
+            Text(parseError).font(.caption).foregroundStyle(.red)
+        }
+
+        if let preview = parsedPreview() {
+            parsedPreviewRow(preview)
+        }
+    }
+
+    /// Local `cmux-tmux` config: a name + an optional binary path.
+    /// No SSH plumbing involved — cmux spawns the binary directly.
+    @ViewBuilder
+    private var localCmuxTmuxFieldsBody: some View {
+        Form {
+            TextField(
+                String(localized: "settings.hosts.name", defaultValue: "Name"),
+                text: $displayName
+            )
+            TextField(
+                String(localized: "settings.hosts.localBinary",
+                       defaultValue: "cmux-tmux binary path (optional)"),
+                text: $cmuxTmuxLocalBinaryPath
+            )
+            .font(.system(.body, design: .monospaced))
+        }
+        Text(String(
+            localized: "settings.hosts.localBinary.hint",
+            defaultValue: "Empty = look up `cmux-tmux` on $PATH. Drives the user's local tmux server."
+        ))
+        .font(.caption2)
+        .foregroundStyle(.secondary)
     }
 
     /// Power-user fields. Empty text/false toggle means "use the
@@ -788,7 +901,7 @@ private struct AddHostSheet: View {
             guard !displayName.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
             return Self.sessionNameIsValid(sessionName)
         }
-        guard !sshCommand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+        guard canSaveAddBody else { return false }
         return Self.sessionNameIsValid(sessionName)
     }
 
@@ -820,33 +933,67 @@ private struct AddHostSheet: View {
                 ? HerdrHost.defaultLocalSessionName()
                 : trimmedSession
         } else {
-            do {
-                let parsed = try SSHCommandParser.parse(
-                    sshCommand.trimmingCharacters(in: .whitespacesAndNewlines)
-                )
-                // Power-user overrides: empty fields fall back to the
-                // parser; non-empty wins over both parser and defaults.
-                let trimmedExe = overrideSshExecutable.trimmingCharacters(in: .whitespaces)
-                let trimmedBin = overrideRemoteBinaryPath.trimmingCharacters(in: .whitespaces)
-                let resolvedExe = trimmedExe.isEmpty ? parsed.sshExecutable : trimmedExe
-                let resolvedBin = trimmedBin.isEmpty ? parsed.remoteBinaryPath : trimmedBin
-                let resolvedSkip = parsed.skipDefaultOptions || overrideSkipDefaultOptions
-                transport = .sshStdio(
-                    target: parsed.target,
-                    extraArgs: parsed.extraArgs,
-                    skipDefaultOptions: resolvedSkip,
-                    sshExecutable: resolvedExe,
-                    remoteBinaryPath: resolvedBin
+            switch flavor {
+            case .localCmuxTmux:
+                let trimmedBinary = cmuxTmuxLocalBinaryPath
+                    .trimmingCharacters(in: .whitespaces)
+                transport = .cmuxTmuxLocal(
+                    binaryPath: trimmedBinary.isEmpty ? nil : trimmedBinary
                 )
                 let trimmedName = displayName.trimmingCharacters(in: .whitespaces)
-                derivedDisplayName = trimmedName.isEmpty ? parsed.target : trimmedName
+                // Local cmux-tmux has no parser-derived target name to
+                // fall back on, so require a non-empty display name
+                // (gated by canSaveAddBody).
+                derivedDisplayName = trimmedName.isEmpty
+                    ? "cmux-tmux"
+                    : trimmedName
                 let trimmedSession = sessionName.trimmingCharacters(in: .whitespaces)
                 derivedSessionName = trimmedSession.isEmpty
                     ? HerdrHost.defaultLocalSessionName()
                     : trimmedSession
-            } catch {
-                parseError = error.localizedDescription
-                return
+            case .sshHerdr, .sshCmuxTmux:
+                do {
+                    let parsed = try SSHCommandParser.parse(
+                        sshCommand.trimmingCharacters(in: .whitespacesAndNewlines)
+                    )
+                    // Power-user overrides: empty fields fall back to the
+                    // parser; non-empty wins over both parser and defaults.
+                    let trimmedExe = overrideSshExecutable.trimmingCharacters(in: .whitespaces)
+                    let trimmedBin = overrideRemoteBinaryPath.trimmingCharacters(in: .whitespaces)
+                    let resolvedExe = trimmedExe.isEmpty ? parsed.sshExecutable : trimmedExe
+                    let resolvedBin = trimmedBin.isEmpty ? parsed.remoteBinaryPath : trimmedBin
+                    let resolvedSkip = parsed.skipDefaultOptions || overrideSkipDefaultOptions
+                    switch flavor {
+                    case .sshHerdr:
+                        transport = .sshStdio(
+                            target: parsed.target,
+                            extraArgs: parsed.extraArgs,
+                            skipDefaultOptions: resolvedSkip,
+                            sshExecutable: resolvedExe,
+                            remoteBinaryPath: resolvedBin
+                        )
+                    case .sshCmuxTmux:
+                        transport = .cmuxTmuxSSH(
+                            target: parsed.target,
+                            extraArgs: parsed.extraArgs,
+                            skipDefaultOptions: resolvedSkip,
+                            sshExecutable: resolvedExe,
+                            remoteBinaryPath: resolvedBin
+                        )
+                    case .localCmuxTmux:
+                        // Unreachable — outer switch handles this.
+                        return
+                    }
+                    let trimmedName = displayName.trimmingCharacters(in: .whitespaces)
+                    derivedDisplayName = trimmedName.isEmpty ? parsed.target : trimmedName
+                    let trimmedSession = sessionName.trimmingCharacters(in: .whitespaces)
+                    derivedSessionName = trimmedSession.isEmpty
+                        ? HerdrHost.defaultLocalSessionName()
+                        : trimmedSession
+                } catch {
+                    parseError = error.localizedDescription
+                    return
+                }
             }
         }
         let host = HerdrHost(
