@@ -555,45 +555,60 @@ private struct AddHostSheet: View {
     /// having to know any of that exists.
     @ViewBuilder
     private var sshAddBody: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
             Text(initial == nil
                  ? String(localized: "settings.hosts.addRemote", defaultValue: "Add a computer")
                  : String(localized: "settings.hosts.editRemote", defaultValue: "Edit computer"))
                 .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, 12)
 
-            Picker(
-                String(localized: "settings.hosts.flavor", defaultValue: "Backend"),
-                selection: $flavor
-            ) {
-                ForEach(Flavor.allCases) { f in
-                    Text(f.label).tag(f)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-
-            Text(flavor.hint)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if flavor == .localCmuxTmux {
-                localCmuxTmuxFieldsBody
-            } else {
-                sshFieldsBody
-                DisclosureGroup(
-                    isExpanded: $showAdvanced,
-                    content: { advancedSection },
-                    label: {
-                        Text(String(
-                            localized: "settings.hosts.advanced",
-                            defaultValue: "Advanced"
-                        ))
-                        .font(.caption)
+            // Scrollable middle so expanding Advanced or pasting a
+            // long ssh command doesn't push the action buttons off
+            // the bottom of the sheet. Both bounds are explicit so
+            // SwiftUI gives the ScrollView a definite track height.
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Picker(
+                        String(localized: "settings.hosts.flavor", defaultValue: "Backend"),
+                        selection: $flavor
+                    ) {
+                        ForEach(Flavor.allCases) { f in
+                            Text(f.label).tag(f)
+                        }
                     }
-                )
-                .padding(.top, 4)
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+
+                    Text(flavor.hint)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if flavor == .localCmuxTmux {
+                        localCmuxTmuxFieldsBody
+                    } else {
+                        sshFieldsBody
+                        DisclosureGroup(
+                            isExpanded: $showAdvanced,
+                            content: { advancedSection },
+                            label: {
+                                Text(String(
+                                    localized: "settings.hosts.advanced",
+                                    defaultValue: "Advanced"
+                                ))
+                                .font(.caption)
+                            }
+                        )
+                        .padding(.top, 4)
+                    }
+                }
+                .padding(.trailing, 4)
             }
+            .frame(minHeight: 320, maxHeight: 560)
+
+            Divider()
+                .padding(.vertical, 12)
 
             HStack {
                 Spacer()
@@ -605,7 +620,7 @@ private struct AddHostSheet: View {
             }
         }
         .padding(20)
-        .frame(minWidth: 480)
+        .frame(minWidth: 520)
     }
 
     /// Save-button gate for the SSH add body. SSH variants need a
