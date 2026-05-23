@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 use std::fmt;
 
 #[derive(Debug)]
@@ -50,7 +51,25 @@ pub enum TranslateOutcome {
     RunMulti(Vec<Vec<String>>),
 }
 
+/// Pane-keyed snapshot of the data translate needs from the
+/// current workspace. Today only `split_geometry` is populated:
+/// for each pane we know its parent split's axis (`'h'` or `'v'`)
+/// and the total cell length along that axis. Future fields
+/// (cwd, command, etc.) get added when their first test demands
+/// them.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TranslateContext {
+    pub split_geometry: HashMap<String, (char, u32)>,
+}
+
 pub fn translate_request(json: &str) -> Result<TranslateOutcome, TranslateError> {
+    translate_request_in_context(json, &TranslateContext::default())
+}
+
+pub fn translate_request_in_context(
+    json: &str,
+    ctx: &TranslateContext,
+) -> Result<TranslateOutcome, TranslateError> {
     let req: Request = serde_json::from_str(json)?;
     match req.method.as_str() {
         "ping" => Ok(TranslateOutcome::ImmediateResponse(ResultResponse {
@@ -66,6 +85,9 @@ pub fn translate_request(json: &str) -> Result<TranslateOutcome, TranslateError>
         }
         "pane.close" => {
             translate_single_pane_target("kill-pane", &req.params).map(TranslateOutcome::RunTmux)
+        }
+        "pane.set_split_ratio" => {
+            translate_set_split_ratio(&req.params, ctx).map(TranslateOutcome::RunTmux)
         }
         other => Err(TranslateError::UnsupportedMethod(other.to_string())),
     }
@@ -101,6 +123,41 @@ fn translate_panes_list(params: &Value) -> Result<Vec<String>, TranslateError> {
         workspace_id.into(),
         "-F".into(),
         PANE_FORMAT.into(),
+    ])
+}
+
+fn translate_set_split_ratio(
+    params: &Value,
+    ctx: &TranslateContext,
+) -> Result<Vec<String>, TranslateError> {
+    let target = params
+        .get("target_pane_id")
+        .and_then(Value::as_str)
+        .ok_or(TranslateError::MissingField("target_pane_id"))?;
+    let ratio = params
+        .get("ratio")
+        .and_then(Value::as_f64)
+        .ok_or(TranslateError::MissingField("ratio"))?;
+    if !ratio.is_finite() || !(0.0..=1.0).contains(&ratio) {
+        return Err(TranslateError::InvalidField("ratio", ratio.to_string()));
+    }
+    let (axis, total) = ctx
+        .split_geometry
+        .get(target)
+        .copied()
+        .ok_or(TranslateError::MissingField("split_geometry"))?;
+    let cells = (ratio * total as f64).round() as u32;
+    let axis_flag = match axis {
+        'h' => "-x",
+        'v' => "-y",
+        other => return Err(TranslateError::InvalidField("axis", other.to_string())),
+    };
+    Ok(vec![
+        "resize-pane".into(),
+        "-t".into(),
+        target.into(),
+        axis_flag.into(),
+        cells.to_string(),
     ])
 }
 

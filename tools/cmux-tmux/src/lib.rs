@@ -178,4 +178,55 @@ mod tests {
         };
         assert_eq!(argv, vec!["kill-pane", "-t", "%5"]);
     }
+
+    // R8: pane.set_split_ratio is the first request that needs
+    // workspace context. cmux side speaks ratios (0.0..=1.0); tmux
+    // wants integer cells. The shim quantizes using the parent
+    // split's known length on its split axis. The mapping from
+    // pane-id to (axis, total_cells) is supplied in a snapshot
+    // by the caller — translate is still pure.
+    #[test]
+    fn set_split_ratio_translates_with_ratio_to_cells_conversion() {
+        use super::translate::{translate_request_in_context, TranslateContext, TranslateOutcome};
+
+        let mut ctx = TranslateContext::default();
+        ctx.split_geometry.insert("%2".into(), ('h', 100));
+
+        let request_json = r#"{
+            "id": "8",
+            "method": "pane.set_split_ratio",
+            "params": { "target_pane_id": "%2", "ratio": 0.6 }
+        }"#;
+
+        let argv = match translate_request_in_context(request_json, &ctx)
+            .expect("set_split_ratio translates")
+        {
+            TranslateOutcome::RunTmux(a) => a,
+            other => panic!("expected RunTmux, got {other:?}"),
+        };
+
+        assert_eq!(argv, vec!["resize-pane", "-t", "%2", "-x", "60"]);
+    }
+
+    // R8b: vertical split uses -y instead of -x.
+    #[test]
+    fn set_split_ratio_vertical_uses_y_flag() {
+        use super::translate::{translate_request_in_context, TranslateContext, TranslateOutcome};
+
+        let mut ctx = TranslateContext::default();
+        ctx.split_geometry.insert("%6".into(), ('v', 50));
+
+        let request_json = r#"{
+            "id": "9",
+            "method": "pane.set_split_ratio",
+            "params": { "target_pane_id": "%6", "ratio": 0.5 }
+        }"#;
+
+        let argv = match translate_request_in_context(request_json, &ctx).unwrap() {
+            TranslateOutcome::RunTmux(a) => a,
+            other => panic!("expected RunTmux, got {other:?}"),
+        };
+
+        assert_eq!(argv, vec!["resize-pane", "-t", "%6", "-y", "25"]);
+    }
 }
