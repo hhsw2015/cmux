@@ -241,6 +241,19 @@ pub fn render_layout(node: &LayoutNode) -> String {
     format!("0000,{}", render_layout_body(node))
 }
 
+fn collect_pane_ids(node: &LayoutNode, out: &mut BTreeSet<String>) {
+    match node {
+        LayoutNode::Leaf { pane_id, .. } => {
+            out.insert(pane_id.clone());
+        }
+        LayoutNode::Split { children, .. } => {
+            for c in children {
+                collect_pane_ids(c, out);
+            }
+        }
+    }
+}
+
 fn render_into(node: &LayoutNode, out: &mut String) {
     use std::fmt::Write;
     match node {
@@ -325,6 +338,23 @@ impl Session {
             return Vec::new();
         };
         match verb {
+            "%layout-change" => {
+                let Some(window_id) = tokens.next() else {
+                    return Vec::new();
+                };
+                let Some(layout_string) = tokens.next() else {
+                    return Vec::new();
+                };
+                if let Ok(tree) = parse_layout(layout_string) {
+                    let mut panes = BTreeSet::new();
+                    collect_pane_ids(&tree, &mut panes);
+                    self.panes_by_window.insert(window_id.to_string(), panes);
+                }
+                vec![CppEvent::LayoutChanged {
+                    window_id: window_id.to_string(),
+                    layout_string: layout_string.to_string(),
+                }]
+            }
             "%window-close" => {
                 let Some(window_id) = tokens.next() else {
                     return Vec::new();
