@@ -10,12 +10,13 @@
 //!   as JSON notifications (objects without an `id` field).
 //! * `raw-pty-attach` — to be implemented in stage 4.
 
-use std::io::{self, BufRead, BufReader, Write};
+use std::io::{self, BufRead, BufReader, Read, Write};
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 
 use cmux_tmux::parse::Session;
+use cmux_tmux::pty::{bytes_to_send_keys_argv, decode_output_event};
 use cmux_tmux::tmux_response::{capture_args_for, event_to_json, shape_response};
 use cmux_tmux::translate::{
     translate_request, ErrorObject, ErrorResponse, TranslateError, TranslateOutcome,
@@ -29,16 +30,105 @@ fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let exit = match args.first().map(String::as_str) {
         Some("serve") => serve(),
+        Some("raw-pty-attach") => raw_pty_attach(&args[1..]),
         Some(other) => {
             eprintln!("unknown subcommand: {other}");
             2
         }
         None => {
-            eprintln!("usage: cmux-tmux serve");
+            eprintln!("usage: cmux-tmux serve | cmux-tmux raw-pty-attach --pane %N");
             2
         }
     };
     std::process::exit(exit);
+}
+
+/// `raw-pty-attach --pane %N`: bidirectional byte stream between
+/// the caller's stdio and a tmux pane. stdin -> `tmux send-keys
+/// -H ...`; tmux's `%output` events for the target pane decode
+/// back to bytes on stdout. Runs until either side closes.
+fn raw_pty_attach(args: &[String]) -> i32 {
+    let mut pane: Option<String> = None;
+    let mut iter = args.iter();
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--pane" => pane = iter.next().cloned(),
+            other => {
+                eprintln!("raw-pty-attach: unknown arg {other}");
+                return 2;
+            }
+        }
+    }
+    let Some(pane) = pane else {
+        eprintln!("raw-pty-attach: --pane <id> is required");
+        return 2;
+    };
+
+    let mut control = match Command::new("tmux")
+        .args(["-C", "attach", "-d"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+    {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("raw-pty-attach: spawn tmux -C: {e}");
+            return 1;
+        }
+    };
+
+    let control_stdout = control.stdout.take().expect("tmux -C stdout");
+    let target_pane = pane.clone();
+
+    // tmux -> client.
+    let reader = std::thread::spawn(move || {
+        let stdout = io::stdout();
+        let mut out = stdout.lock();
+        let reader = BufReader::new(control_stdout);
+        for line in reader.lines() {
+            let Ok(line) = line else {
+                break;
+            };
+            if let Some((p, bytes)) = decode_output_event(&line) {
+                if p == target_pane {
+                    if out.write_all(&bytes).is_err() {
+                        break;
+                    }
+                    if out.flush().is_err() {
+                        break;
+                    }
+                }
+            }
+        }
+    });
+
+    // Client -> tmux. We block the main thread on stdin so
+    // closing it (the natural EOF signal) tears the whole thing
+    // down.
+    let mut buf = [0u8; 4096];
+    let stdin = io::stdin();
+    let mut stdin_lock = stdin.lock();
+    loop {
+        let n = match stdin_lock.read(&mut buf) {
+            Ok(0) => break,
+            Ok(n) => n,
+            Err(_) => break,
+        };
+        let argv = bytes_to_send_keys_argv(&pane, &buf[..n]);
+        if argv.is_empty() {
+            continue;
+        }
+        let status = Command::new("tmux").args(&argv).status();
+        if status.map(|s| !s.success()).unwrap_or(true) {
+            break;
+        }
+    }
+
+    let _ = control.kill();
+    let _ = control.wait();
+    let _ = reader.join();
+    0
 }
 
 /// Worker thread sink: every line written to stdout goes through
