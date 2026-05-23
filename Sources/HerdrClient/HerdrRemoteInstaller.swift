@@ -33,12 +33,19 @@ enum HerdrRemoteInstaller {
     static let releaseRepoName = "herdr"
 
     static func installOnHost(_ host: HerdrHost) {
-        guard case .sshStdio = host.transport else {
+        switch host.transport {
+        case .sshStdio:
+            Task.detached {
+                await install(host: host)
+            }
+        case .cmuxTmuxSSH:
+            // cmux-tmux backend has its own remote binary +
+            // GitHub release feed. Delegate to the dedicated
+            // installer so the dispatch lives in one place
+            // (every Settings/Sidebar call site funnels here).
+            CmuxTmuxRemoteInstaller.installOnHost(host)
+        case .localUDS, .cmuxTmuxLocal:
             herdrInstallerTrace("\(host.displayName): nothing to install for local transport")
-            return
-        }
-        Task.detached {
-            await install(host: host)
         }
     }
 

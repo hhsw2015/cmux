@@ -1,0 +1,114 @@
+name: cmux-tmux release
+
+# Cross-platform binary build for the cmux-tmux Rust shim. Output
+# assets are uploaded to the cmux GitHub Release matching the tag
+# that triggered this workflow, so cmux's CmuxTmuxRemoteInstaller
+# can curl them onto SSH hosts at first connect.
+#
+# Triggered by:
+#   * tag push matching v* (production)
+#   * workflow_dispatch (ad-hoc, attaches to "latest" prerelease)
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to attach assets to (e.g. cmux-tmux-v0.0.1)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            asset: cmux-tmux-linux-x86_64
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            asset: cmux-tmux-linux-aarch64
+            cross_compile: true
+          - os: macos-15
+            target: aarch64-apple-darwin
+            asset: cmux-tmux-macos-aarch64
+          - os: macos-15
+            target: x86_64-apple-darwin
+            asset: cmux-tmux-macos-x86_64
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: tools/cmux-tmux
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compile linker (Linux aarch64 only)
+        if: matrix.cross_compile == true
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          mkdir -p .cargo
+          cat >> .cargo/config.toml <<'EOF'
+          [target.aarch64-unknown-linux-gnu]
+          linker = "aarch64-linux-gnu-gcc"
+          EOF
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            tools/cmux-tmux/target
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-cmux-tmux-${{ hashFiles('tools/cmux-tmux/Cargo.lock') }}
+
+      - name: cargo build --release --target
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Stage asset
+        run: |
+          mkdir -p out
+          cp "target/${{ matrix.target }}/release/cmux-tmux" "out/${{ matrix.asset }}"
+          chmod +x "out/${{ matrix.asset }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: tools/cmux-tmux/out/${{ matrix.asset }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Resolve release tag
+        id: tag
+        run: |
+          if [ -n "${{ inputs.tag }}" ]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload assets to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          files: artifacts/**/*
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

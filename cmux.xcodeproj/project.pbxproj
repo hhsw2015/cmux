@@ -370,6 +370,7 @@
 		C420Z000C420Z000C42CB102 /* SSHCommandBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42CB101 /* SSHCommandBuilder.swift */; };
 		C420Z000C420Z000C42MX102 /* CmuxTmuxStdioTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42MX101 /* CmuxTmuxStdioTransport.swift */; };
 		C420Z000C420Z000C42MB102 /* CmuxTmuxCommandBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42MB101 /* CmuxTmuxCommandBuilder.swift */; };
+		C420Z000C420Z000C42MR102 /* CmuxTmuxRemoteInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42MR101 /* CmuxTmuxRemoteInstaller.swift */; };
 		C420Z000C420Z000C42AC102 /* HerdrApiClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42AC101 /* HerdrApiClient.swift */; };
 		C420Z000C420Z000C42LT102 /* HerdrLayoutTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42LT101 /* HerdrLayoutTypes.swift */; };
 		C420Z000C420Z000C42LS102 /* HerdrLayoutSpec.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42LS101 /* HerdrLayoutSpec.swift */; };
@@ -1013,6 +1014,7 @@
 		C420Z000C420Z000C42CB101 /* SSHCommandBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrTransport/SSHCommandBuilder.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42MX101 /* CmuxTmuxStdioTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrTransport/CmuxTmuxStdioTransport.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42MB101 /* CmuxTmuxCommandBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrTransport/CmuxTmuxCommandBuilder.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42MR101 /* CmuxTmuxRemoteInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/CmuxTmuxRemoteInstaller.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42AC101 /* HerdrApiClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrApiClient.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42DC101 /* HerdrDisplayClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrDisplayClient.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42BB101 /* HerdrBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrBackend.swift; sourceTree = "<group>"; };
@@ -1586,6 +1588,7 @@
 				C420Z000C420Z000C42OR101 /* HerdrOneShotRPC.swift */,
 				C420Z000C420Z000C42PA1 /* HerdrPersistentApiClient.swift */,
 				C420Z000C420Z000C42RI101 /* HerdrRemoteInstaller.swift */,
+				C420Z000C420Z000C42MR101 /* CmuxTmuxRemoteInstaller.swift */,
 				C420Z000C420Z000C42DC101 /* HerdrDisplayClient.swift */,
 				C420Z000C420Z000C42BB101 /* HerdrBackend.swift */,
 				C420Z000C420Z000C42DSC101 /* DaemonSpawnCoordinator.swift */,
@@ -2473,6 +2476,7 @@
 				C420Z000C420Z000C42OR102 /* HerdrOneShotRPC.swift in Sources */,
 				C420Z000C420Z000C42PA2 /* HerdrPersistentApiClient.swift in Sources */,
 				C420Z000C420Z000C42RI102 /* HerdrRemoteInstaller.swift in Sources */,
+				C420Z000C420Z000C42MR102 /* CmuxTmuxRemoteInstaller.swift in Sources */,
 				C420Z000C420Z000C42DC102 /* HerdrDisplayClient.swift in Sources */,
 				C420Z000C420Z000C42BB102 /* HerdrBackend.swift in Sources */,
 				C420Z000C420Z000C42DSC102 /* DaemonSpawnCoordinator.swift in Sources */,
