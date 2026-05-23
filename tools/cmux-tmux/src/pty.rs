@@ -42,6 +42,56 @@ impl fmt::Display for ArgvDecodeError {
 
 impl std::error::Error for ArgvDecodeError {}
 
+/// Decode a `%output %<pane> <octal-escaped-text>` line into the
+/// pane id and the raw bytes. Returns `None` if the line is not
+/// an `%output` event or is malformed.
+///
+/// tmux escapes any byte that is not printable ASCII (and the
+/// literal backslash) as a three-digit octal sequence `\NNN`.
+/// Other bytes pass through unchanged.
+pub fn decode_output_event(line: &str) -> Option<(String, Vec<u8>)> {
+    let line = line.trim_end_matches(['\r', '\n']);
+    let rest = line.strip_prefix("%output ")?;
+    let (pane, payload) = rest.split_once(' ').unwrap_or((rest, ""));
+    let bytes = unescape_octal(payload).ok()?;
+    Some((pane.to_string(), bytes))
+}
+
+fn unescape_octal(s: &str) -> Result<Vec<u8>, ArgvDecodeError> {
+    let bytes = s.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'\\' {
+            if i + 3 >= bytes.len() {
+                return Err(ArgvDecodeError {
+                    message: format!("dangling escape at offset {i}"),
+                });
+            }
+            let triplet = &bytes[i + 1..i + 4];
+            if !triplet.iter().all(|b| (b'0'..=b'7').contains(b)) {
+                return Err(ArgvDecodeError {
+                    message: format!("non-octal escape at offset {i}"),
+                });
+            }
+            let v = ((triplet[0] - b'0') as u32) * 64
+                + ((triplet[1] - b'0') as u32) * 8
+                + ((triplet[2] - b'0') as u32);
+            if v > 0xff {
+                return Err(ArgvDecodeError {
+                    message: format!("octal value > 0xff at offset {i}: {v}"),
+                });
+            }
+            out.push(v as u8);
+            i += 4;
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
+    Ok(out)
+}
+
 /// Inverse of [`bytes_to_send_keys_argv`]: parse the hex tail of
 /// a `send-keys -H ...` argv back to raw bytes.
 pub fn send_keys_argv_to_bytes(argv: &[String]) -> Result<Vec<u8>, ArgvDecodeError> {

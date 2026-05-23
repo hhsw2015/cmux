@@ -386,6 +386,32 @@ mod tests {
         assert_eq!(argv, vec!["send-keys", "-t", "%3", "-H", "41", "42", "1b"]);
     }
 
+    // B1: tmux ships pane output via `%output %<pane> <text>`
+    // where bytes outside printable ASCII (and the backslash
+    // itself) are octal-escaped as `\NNN`. The shim decodes that
+    // back to raw bytes for the `raw-pty-attach` byte stream.
+    #[test]
+    fn tmux_output_event_decodes_and_forwards_bytes() {
+        use super::pty::decode_output_event;
+
+        let (pane, bytes) = decode_output_event("%output %3 hello\\012world").expect("decodes");
+        assert_eq!(pane, "%3");
+        assert_eq!(bytes, b"hello\nworld");
+
+        // ESC + CSI sequence: `\033[A` is up-arrow.
+        let (pane, bytes) = decode_output_event("%output %7 \\033[A").expect("decodes");
+        assert_eq!(pane, "%7");
+        assert_eq!(bytes, b"\x1b[A");
+
+        // Literal backslash escapes as `\134` (octal for 0x5C).
+        let (pane, bytes) = decode_output_event("%output %1 a\\134b").expect("decodes");
+        assert_eq!(pane, "%1");
+        assert_eq!(bytes, b"a\\b");
+
+        // Lines that aren't %output return None.
+        assert!(decode_output_event("%layout-change @0 1234,80x24,0,0,1").is_none());
+    }
+
     // P3a: parse a leaf layout string into a Leaf node. Layout
     // grammar: `<checksum>,WxH,X,Y,paneN`. tmux stores pane ids as
     // bare integers; the shim normalises to the cmux pane id form
