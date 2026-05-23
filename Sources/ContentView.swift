@@ -10544,7 +10544,13 @@ struct VerticalTabsSidebar: View {
                                 anchorView: anchorView
                             )
                         },
-                        onNewTab: onNewTab
+                        onNewTab: onNewTab,
+                        onFocusHistoryBack: {
+                            tabManager.navigateBack()
+                        },
+                        onFocusHistoryForward: {
+                            tabManager.navigateForward()
+                        }
                     )
                     .padding(
                         .leading,
