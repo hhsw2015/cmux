@@ -444,8 +444,40 @@ mod tests {
 
 #[cfg(test)]
 mod proptests {
+    use super::parse::{Geometry, LayoutNode, Orientation};
     use super::translate::{translate_request, translate_request_in_context, TranslateContext};
     use proptest::prelude::*;
+    use proptest::test_runner::TestCaseError;
+
+    fn arb_geometry() -> impl Strategy<Value = Geometry> {
+        (1u32..1_000, 1u32..1_000, 0u32..1_000, 0u32..1_000).prop_map(|(w, h, x, y)| Geometry {
+            w,
+            h,
+            x,
+            y,
+        })
+    }
+
+    fn arb_pane_id() -> impl Strategy<Value = String> {
+        (1u32..10_000).prop_map(|n| format!("%{n}"))
+    }
+
+    fn arb_layout_node(max_depth: u32) -> impl Strategy<Value = LayoutNode> {
+        let leaf = (arb_geometry(), arb_pane_id())
+            .prop_map(|(geometry, pane_id)| LayoutNode::Leaf { geometry, pane_id });
+        leaf.prop_recursive(max_depth, 16, 4, |inner| {
+            (
+                arb_geometry(),
+                prop_oneof![Just(Orientation::LeftRight), Just(Orientation::TopBottom)],
+                proptest::collection::vec(inner, 2..4),
+            )
+                .prop_map(|(geometry, orientation, children)| LayoutNode::Split {
+                    geometry,
+                    orientation,
+                    children,
+                })
+        })
+    }
 
     // R10: translate_request must be panic-free for any input.
     // Garbage strings, partial JSON, exotic numbers — all should
@@ -456,6 +488,19 @@ mod proptests {
         #[test]
         fn arbitrary_strings_never_panic(s in "\\PC{0,256}") {
             let _ = translate_request(&s);
+        }
+
+        // P4: serialize then parse must be the identity for any
+        // structurally valid LayoutNode tree. Geometric validity
+        // (children sum to parent) is *not* enforced — tmux
+        // itself doesn't reject non-summing trees on input, and
+        // we round-trip the bits we receive.
+        #[test]
+        fn layout_strings_round_trip_through_tree(node in arb_layout_node(3)) {
+            let s = super::parse::render_layout(&node);
+            let parsed = super::parse::parse_layout(&s)
+                .map_err(|e| TestCaseError::fail(format!("parse failed: {e} on {s:?}")))?;
+            prop_assert_eq!(parsed, node);
         }
 
         #[test]

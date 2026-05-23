@@ -225,6 +225,58 @@ fn take_while_digits(c: &mut Cursor<'_>) -> Result<u32, LayoutParseError> {
         })
 }
 
+/// Render a [`LayoutNode`] back into the body of a tmux layout
+/// string (i.e. without the leading 4-hex-digit checksum). The
+/// inverse of [`parse_layout`] modulo the checksum prefix; tests
+/// add `"0000,"` to round-trip through the parser.
+pub fn render_layout_body(node: &LayoutNode) -> String {
+    let mut out = String::new();
+    render_into(node, &mut out);
+    out
+}
+
+/// Convenience wrapper that emits a fixed-zero checksum prefix
+/// so the output is directly parseable by [`parse_layout`].
+pub fn render_layout(node: &LayoutNode) -> String {
+    format!("0000,{}", render_layout_body(node))
+}
+
+fn render_into(node: &LayoutNode, out: &mut String) {
+    use std::fmt::Write;
+    match node {
+        LayoutNode::Leaf { geometry, pane_id } => {
+            let n = pane_id.strip_prefix('%').unwrap_or(pane_id);
+            let _ = write!(
+                out,
+                "{}x{},{},{},{}",
+                geometry.w, geometry.h, geometry.x, geometry.y, n
+            );
+        }
+        LayoutNode::Split {
+            geometry,
+            orientation,
+            children,
+        } => {
+            let (open, close) = match orientation {
+                Orientation::LeftRight => ('{', '}'),
+                Orientation::TopBottom => ('[', ']'),
+            };
+            let _ = write!(
+                out,
+                "{}x{},{},{}{}",
+                geometry.w, geometry.h, geometry.x, geometry.y, open
+            );
+            for (i, child) in children.iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                render_into(child, out);
+            }
+            out.push(close);
+        }
+    }
+}
+
 /// Stateless single-line parser for events that don't need
 /// session context (currently only `%layout-change`). Stateful
 /// events go through [`Session::feed`].
