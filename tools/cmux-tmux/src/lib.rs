@@ -229,4 +229,30 @@ mod tests {
 
         assert_eq!(argv, vec!["resize-pane", "-t", "%6", "-y", "25"]);
     }
+
+    // R9: unknown method must round-trip back to the client as a
+    // JSON-RPC error envelope (code -32601), not as a Rust error.
+    // The bin's I/O layer cannot do anything useful with a Rust
+    // panic; it needs a serializable response to put on the wire.
+    #[test]
+    fn unknown_method_returns_method_not_found() {
+        use super::translate::{translate_request, TranslateOutcome, METHOD_NOT_FOUND};
+
+        let request_json = r#"{"id":"99","method":"frobnicate","params":{}}"#;
+
+        let outcome = translate_request(request_json).expect("unknown method translates");
+
+        match outcome {
+            TranslateOutcome::ImmediateError(err) => {
+                assert_eq!(err.id, serde_json::json!("99"));
+                assert_eq!(err.error.code, METHOD_NOT_FOUND);
+                assert!(
+                    err.error.message.contains("frobnicate"),
+                    "message should mention the bad method, got {:?}",
+                    err.error.message
+                );
+            }
+            other => panic!("expected ImmediateError, got {other:?}"),
+        }
+    }
 }

@@ -44,10 +44,26 @@ pub struct ResultResponse {
     pub result: Value,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ErrorObject {
+    pub code: i32,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ErrorResponse {
+    pub id: Value,
+    pub error: ErrorObject,
+}
+
+/// JSON-RPC 2.0 error code for method-not-found.
+pub const METHOD_NOT_FOUND: i32 = -32601;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TranslateOutcome {
     RunTmux(Vec<String>),
     ImmediateResponse(ResultResponse),
+    ImmediateError(ErrorResponse),
     RunMulti(Vec<Vec<String>>),
 }
 
@@ -89,7 +105,13 @@ pub fn translate_request_in_context(
         "pane.set_split_ratio" => {
             translate_set_split_ratio(&req.params, ctx).map(TranslateOutcome::RunTmux)
         }
-        other => Err(TranslateError::UnsupportedMethod(other.to_string())),
+        other => Ok(TranslateOutcome::ImmediateError(ErrorResponse {
+            id: req.id,
+            error: ErrorObject {
+                code: METHOD_NOT_FOUND,
+                message: format!("Method not found: {other}"),
+            },
+        })),
     }
 }
 
@@ -102,6 +124,9 @@ pub fn request_json_to_tmux_argv(json: &str) -> Result<Vec<String>, TranslateErr
         TranslateOutcome::ImmediateResponse(_) => Err(TranslateError::UnsupportedMethod(
             "immediate-response request has no tmux argv".into(),
         )),
+        TranslateOutcome::ImmediateError(err) => {
+            Err(TranslateError::UnsupportedMethod(err.error.message))
+        }
     }
 }
 
