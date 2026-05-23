@@ -64,6 +64,9 @@ pub fn translate_request(json: &str) -> Result<TranslateOutcome, TranslateError>
         "pane.focus" => {
             translate_single_pane_target("select-pane", &req.params).map(TranslateOutcome::RunTmux)
         }
+        "pane.close" => {
+            translate_single_pane_target("kill-pane", &req.params).map(TranslateOutcome::RunTmux)
+        }
         other => Err(TranslateError::UnsupportedMethod(other.to_string())),
     }
 }

@@ -165,4 +165,17 @@ mod tests {
         };
         assert_eq!(argv, vec!["select-pane", "-t", "%4"]);
     }
+
+    // R7: pane.close -> kill-pane -t TID. Trivial.
+    #[test]
+    fn pane_close_translates_to_kill_pane() {
+        use super::translate::{translate_request, TranslateOutcome};
+
+        let request_json = r#"{"id":"7","method":"pane.close","params":{"target_pane_id":"%5"}}"#;
+        let argv = match translate_request(request_json).expect("pane.close translates") {
+            TranslateOutcome::RunTmux(a) => a,
+            other => panic!("expected RunTmux, got {other:?}"),
+        };
+        assert_eq!(argv, vec!["kill-pane", "-t", "%5"]);
+    }
 }
