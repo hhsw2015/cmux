@@ -583,6 +583,37 @@ mod proptests {
             let _ = translate_request(&s);
         }
 
+        // B3a: any byte sequence survives the send-keys argv
+        // boundary intact.
+        #[test]
+        fn arbitrary_bytes_round_trip_send_keys(
+            bytes in proptest::collection::vec(any::<u8>(), 0..256),
+        ) {
+            use super::pty::{bytes_to_send_keys_argv, send_keys_argv_to_bytes};
+            let argv = bytes_to_send_keys_argv("%2", &bytes);
+            if bytes.is_empty() {
+                prop_assert!(argv.is_empty());
+            } else {
+                let recovered = send_keys_argv_to_bytes(&argv)
+                    .map_err(|e| TestCaseError::fail(format!("decode failed: {e}")))?;
+                prop_assert_eq!(recovered, bytes);
+            }
+        }
+
+        // B3b: any byte sequence survives tmux's %output octal
+        // escape boundary intact.
+        #[test]
+        fn arbitrary_bytes_round_trip_output_event(
+            bytes in proptest::collection::vec(any::<u8>(), 0..256),
+        ) {
+            use super::pty::{decode_output_event, encode_for_tmux_output};
+            let line = format!("%output %5 {}", encode_for_tmux_output(&bytes));
+            let (pane, recovered) = decode_output_event(&line)
+                .ok_or_else(|| TestCaseError::fail(format!("decode None for {line:?}")))?;
+            prop_assert_eq!(pane, "%5");
+            prop_assert_eq!(recovered, bytes);
+        }
+
         // P4: serialize then parse must be the identity for any
         // structurally valid LayoutNode tree. Geometric validity
         // (children sum to parent) is *not* enforced — tmux

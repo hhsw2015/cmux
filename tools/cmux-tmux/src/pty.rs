@@ -42,6 +42,22 @@ impl fmt::Display for ArgvDecodeError {
 
 impl std::error::Error for ArgvDecodeError {}
 
+/// Encode raw bytes the way tmux's control mode encodes them
+/// for `%output`: printable ASCII (0x20..=0x7E except `\`) pass
+/// through, everything else becomes a three-digit `\NNN` octal
+/// escape. Inverse of [`decode_output_event`]'s payload section.
+pub fn encode_for_tmux_output(bytes: &[u8]) -> String {
+    let mut out = String::with_capacity(bytes.len());
+    for &b in bytes {
+        if (0x20..=0x7e).contains(&b) && b != b'\\' {
+            out.push(b as char);
+        } else {
+            let _ = std::fmt::Write::write_fmt(&mut out, format_args!("\\{b:03o}"));
+        }
+    }
+    out
+}
+
 /// Decode a `%output %<pane> <octal-escaped-text>` line into the
 /// pane id and the raw bytes. Returns `None` if the line is not
 /// an `%output` event or is malformed.
