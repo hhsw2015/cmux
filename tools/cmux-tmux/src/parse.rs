@@ -11,6 +11,9 @@ pub enum CppEvent {
     PaneExited {
         pane_id: String,
     },
+    WorkspaceClosed {
+        workspace_id: String,
+    },
 }
 
 /// Stateless single-line parser for events that don't need
@@ -40,6 +43,7 @@ pub fn tmux_line(line: &str) -> Option<CppEvent> {
 #[derive(Debug, Default, Clone)]
 pub struct Session {
     panes_by_window: HashMap<String, BTreeSet<String>>,
+    current_session: Option<String>,
 }
 
 impl Session {
@@ -71,6 +75,17 @@ impl Session {
                     .into_iter()
                     .map(|pane_id| CppEvent::PaneExited { pane_id })
                     .collect()
+            }
+            "%session-changed" => {
+                let new_id = tokens.next().unwrap_or("");
+                if new_id.is_empty() {
+                    if let Some(prev) = self.current_session.take() {
+                        return vec![CppEvent::WorkspaceClosed { workspace_id: prev }];
+                    }
+                    return Vec::new();
+                }
+                self.current_session = Some(new_id.to_string());
+                Vec::new()
             }
             _ => match tmux_line(line) {
                 Some(ev) => vec![ev],

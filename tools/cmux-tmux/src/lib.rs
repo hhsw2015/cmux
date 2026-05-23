@@ -333,6 +333,34 @@ mod tests {
         // close for the same window emits nothing.
         assert!(session.feed("%window-close @5").is_empty());
     }
+
+    // P2: when tmux's last attached session goes away, control
+    // mode emits `%session-changed` with an empty session id (or
+    // a different id, but the previous one is gone). The shim
+    // turns that into a `WorkspaceClosed` event keyed on the
+    // session id we last knew was active.
+    #[test]
+    fn parse_session_changed_to_empty_emits_workspace_closed() {
+        use super::parse::{CppEvent, Session};
+
+        let mut session = Session::default();
+        // Initial attach: tells the accumulator which session is
+        // current. No event fires.
+        let attach_events = session.feed("%session-changed $5 work");
+        assert!(attach_events.is_empty(), "{attach_events:?}");
+
+        // Subsequent change to empty fires WorkspaceClosed for $5.
+        let close_events = session.feed("%session-changed  ");
+        assert_eq!(
+            close_events,
+            vec![CppEvent::WorkspaceClosed {
+                workspace_id: "$5".into()
+            }]
+        );
+
+        // After the close, no current session — re-emit guards.
+        assert!(session.feed("%session-changed  ").is_empty());
+    }
 }
 
 #[cfg(test)]
