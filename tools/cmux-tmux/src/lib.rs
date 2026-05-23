@@ -32,4 +32,24 @@ mod tests {
 
         assert_eq!(argv, vec!["split-window", "-h", "-c", "/work", "-t", "%3"]);
     }
+
+    // R1: down direction emits `-v`. tmux uses `-h` for horizontal
+    // (split into a right neighbour) and `-v` for vertical (split
+    // into a bottom neighbour).
+    #[test]
+    fn pane_split_down_translates_to_v_flag() {
+        let request_json = r#"{
+            "id": "2",
+            "method": "pane.split",
+            "params": {
+                "target_pane_id": "%7",
+                "direction": "down"
+            }
+        }"#;
+
+        let argv = super::translate::request_json_to_tmux_argv(request_json)
+            .expect("down split should translate");
+
+        assert_eq!(argv, vec!["split-window", "-v", "-t", "%7"]);
+    }
 }
