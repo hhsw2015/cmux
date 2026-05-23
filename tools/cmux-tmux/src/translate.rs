@@ -95,6 +95,9 @@ pub fn translate_request_in_context(
         "pane.split" => translate_pane_split(&req.params).map(TranslateOutcome::RunTmux),
         "panes.list" => translate_panes_list(&req.params).map(TranslateOutcome::RunTmux),
         "workspace.list" => Ok(TranslateOutcome::RunTmux(translate_workspace_list())),
+        "workspace.create" => {
+            translate_workspace_create(&req.params).map(TranslateOutcome::RunTmux)
+        }
         "pane.resize" => translate_pane_resize(&req.params).map(TranslateOutcome::RunTmux),
         "pane.focus" => {
             translate_single_pane_target("select-pane", &req.params).map(TranslateOutcome::RunTmux)
@@ -135,6 +138,19 @@ const SESSION_FORMAT: &str = "#{session_id}\t#{session_name}\t#{session_attached
 
 fn translate_workspace_list() -> Vec<String> {
     vec!["list-sessions".into(), "-F".into(), SESSION_FORMAT.into()]
+}
+
+fn translate_workspace_create(params: &Value) -> Result<Vec<String>, TranslateError> {
+    let mut argv: Vec<String> = vec!["new-session".into(), "-d".into()];
+    if let Some(name) = params.get("name").and_then(Value::as_str) {
+        argv.push("-s".into());
+        argv.push(name.into());
+    }
+    if let Some(cwd) = params.get("cwd").and_then(Value::as_str) {
+        argv.push("-c".into());
+        argv.push(cwd.into());
+    }
+    Ok(argv)
 }
 
 fn translate_panes_list(params: &Value) -> Result<Vec<String>, TranslateError> {

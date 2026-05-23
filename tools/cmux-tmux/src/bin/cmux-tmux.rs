@@ -10,13 +10,16 @@
 //! * `raw-pty-attach` — to be implemented in stage 4.
 
 use std::io::{self, BufRead, Write};
+use std::process::Command;
 
+use cmux_tmux::tmux_response::{capture_args_for, shape_response};
 use cmux_tmux::translate::{
     translate_request, ErrorObject, ErrorResponse, TranslateError, TranslateOutcome,
 };
 
 const INTERNAL_ERROR: i32 = -32603;
 const PARSE_ERROR: i32 = -32700;
+const TMUX_ERROR: i32 = -32000;
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -78,12 +81,14 @@ fn handle_line(line: &str) -> String {
                 error_envelope(serde_json::Value::Null, INTERNAL_ERROR, &err.to_string())
             })
         }
-        Ok(TranslateOutcome::RunTmux(_)) | Ok(TranslateOutcome::RunMulti(_)) => {
-            // I1+ will route these through a tmux control-mode
-            // child. For now answer with a clear error so the
-            // caller doesn't hang waiting for output.
+        Ok(TranslateOutcome::RunTmux(argv)) => {
             let id = parse_id(line);
-            error_envelope(id, INTERNAL_ERROR, "tmux-backed method not yet wired")
+            let method = parse_method(line);
+            run_tmux_and_shape(id, &method, argv)
+        }
+        Ok(TranslateOutcome::RunMulti(_)) => {
+            let id = parse_id(line);
+            error_envelope(id, INTERNAL_ERROR, "multi-step requests not yet wired")
         }
         Err(TranslateError::InvalidJson(e)) => {
             error_envelope(serde_json::Value::Null, PARSE_ERROR, &e.to_string())
@@ -100,6 +105,38 @@ fn parse_id(line: &str) -> serde_json::Value {
         .ok()
         .and_then(|v| v.get("id").cloned())
         .unwrap_or(serde_json::Value::Null)
+}
+
+fn parse_method(line: &str) -> String {
+    serde_json::from_str::<serde_json::Value>(line)
+        .ok()
+        .and_then(|v| v.get("method").and_then(|m| m.as_str().map(str::to_string)))
+        .unwrap_or_default()
+}
+
+fn run_tmux_and_shape(id: serde_json::Value, method: &str, base_argv: Vec<String>) -> String {
+    let mut argv = base_argv;
+    if let Some(extra) = capture_args_for(method) {
+        argv.extend(extra);
+    }
+    let output = match Command::new("tmux").args(&argv).output() {
+        Ok(o) => o,
+        Err(e) => return error_envelope(id, TMUX_ERROR, &format!("spawn tmux: {e}")),
+    };
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return error_envelope(
+            id,
+            TMUX_ERROR,
+            &format!("tmux exited {}: {}", output.status, stderr.trim()),
+        );
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    match shape_response(method, id.clone(), &stdout) {
+        Ok(resp) => serde_json::to_string(&resp)
+            .unwrap_or_else(|e| error_envelope(id, INTERNAL_ERROR, &e.to_string())),
+        Err(e) => error_envelope(id, INTERNAL_ERROR, &e.to_string()),
+    }
 }
 
 fn error_envelope(id: serde_json::Value, code: i32, message: &str) -> String {

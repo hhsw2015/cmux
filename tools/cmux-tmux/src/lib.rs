@@ -3,6 +3,7 @@
 
 pub mod parse;
 pub mod pty;
+pub mod tmux_response;
 pub mod translate;
 
 #[cfg(test)]
@@ -179,6 +180,126 @@ mod tests {
             other => panic!("expected RunTmux, got {other:?}"),
         };
         assert_eq!(argv, vec!["kill-pane", "-t", "%5"]);
+    }
+
+    // I1b: tmux capture-args helper. The bin appends these to the
+    // base argv from translate so commands that "create" a thing
+    // (workspace.create, pane.split) can return its id.
+    #[test]
+    fn capture_args_for_create_methods() {
+        use super::tmux_response::capture_args_for;
+        assert_eq!(
+            capture_args_for("workspace.create"),
+            Some(vec!["-P".to_string(), "-F".into(), "#{session_id}".into()])
+        );
+        assert_eq!(
+            capture_args_for("pane.split"),
+            Some(vec!["-P".to_string(), "-F".into(), "#{pane_id}".into()])
+        );
+        assert_eq!(capture_args_for("panes.list"), None);
+        assert_eq!(capture_args_for("pane.focus"), None);
+    }
+
+    // I1c: shape_response turns raw tmux stdout into the CPP
+    // result envelope. Each method has its own shaper.
+    #[test]
+    fn shape_workspace_create_response() {
+        use super::tmux_response::shape_response;
+
+        let resp =
+            shape_response("workspace.create", serde_json::json!("10"), "$3\n").expect("shape ok");
+
+        assert_eq!(resp.id, serde_json::json!("10"));
+        assert_eq!(resp.result, serde_json::json!({"workspace_id": "$3"}));
+    }
+
+    #[test]
+    fn shape_pane_split_response() {
+        use super::tmux_response::shape_response;
+
+        let resp = shape_response("pane.split", serde_json::json!("11"), "%7").expect("shape ok");
+
+        assert_eq!(resp.result, serde_json::json!({"pane_id": "%7"}));
+    }
+
+    #[test]
+    fn shape_panes_list_response_parses_tab_separated_lines() {
+        use super::tmux_response::shape_response;
+
+        let stdout = "%1\t1\t80\t24\n%2\t0\t40\t24\n";
+        let resp = shape_response("panes.list", serde_json::json!("12"), stdout).expect("shape ok");
+
+        assert_eq!(
+            resp.result,
+            serde_json::json!({
+                "panes": [
+                    {"pane_id": "%1", "active": true, "cols": 80, "rows": 24},
+                    {"pane_id": "%2", "active": false, "cols": 40, "rows": 24},
+                ]
+            })
+        );
+    }
+
+    #[test]
+    fn shape_workspace_list_response_parses_session_lines() {
+        use super::tmux_response::shape_response;
+
+        let stdout = "$0\twork\t1\n$5\tidle\t0\n";
+        let resp =
+            shape_response("workspace.list", serde_json::json!("13"), stdout).expect("shape ok");
+
+        assert_eq!(
+            resp.result,
+            serde_json::json!({
+                "workspaces": [
+                    {"workspace_id": "$0", "name": "work", "attached": true},
+                    {"workspace_id": "$5", "name": "idle", "attached": false},
+                ]
+            })
+        );
+    }
+
+    // For methods with no useful output, shape_response returns
+    // {result: true}.
+    #[test]
+    fn shape_pane_focus_response_is_true() {
+        use super::tmux_response::shape_response;
+
+        let resp = shape_response("pane.focus", serde_json::json!("14"), "").expect("shape ok");
+        assert_eq!(resp.result, serde_json::json!(true));
+    }
+
+    // I1a: workspace.create -> new-session -d [-s NAME] [-c CWD].
+    // -d keeps the new session detached so we don't need a tty.
+    // The bin appends `-P -F '#{session_id}'` at exec time so the
+    // shim can answer with the freshly-created workspace id.
+    #[test]
+    fn workspace_create_translates_to_new_session() {
+        use super::translate::{translate_request, TranslateOutcome};
+
+        let request_json = r#"{
+            "id": "10",
+            "method": "workspace.create",
+            "params": { "name": "work", "cwd": "/home/u" }
+        }"#;
+
+        let argv = match translate_request(request_json).expect("workspace.create translates") {
+            TranslateOutcome::RunTmux(a) => a,
+            other => panic!("expected RunTmux, got {other:?}"),
+        };
+
+        assert_eq!(
+            argv,
+            vec!["new-session", "-d", "-s", "work", "-c", "/home/u"]
+        );
+
+        // Without name and cwd: just `new-session -d`.
+        let bare_json = r#"{"id":"11","method":"workspace.create","params":{}}"#;
+        let bare_argv = match translate_request(bare_json).expect("bare create translates") {
+            TranslateOutcome::RunTmux(a) => a,
+            other => panic!("expected RunTmux, got {other:?}"),
+        };
+        assert_eq!(bare_argv, vec!["new-session", "-d"]);
     }
 
     // R8: pane.set_split_ratio is the first request that needs
