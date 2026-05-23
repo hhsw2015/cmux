@@ -266,3 +266,20 @@ rule it's tiny — a new `HerdrHost.Transport` variant pointing at
 `cmux-tmux serve` (control plane) and `cmux-tmux raw-pty-attach
 --pane %N` (data plane). The CPP wire is already byte-compatible
 with herdr's subset.
+
+## Known non-blocking risks (audit, 2026-05-23)
+
+These are documented now so a future reviewer doesn't think they're
+oversights. None block M4.
+
+1. **`raw-pty-attach` spawns `tmux send-keys` per stdin chunk.** A
+   process per ~4KB burst is fine for typical typing but expensive
+   for paste / scripted input. Future optimization: batch through a
+   long-lived `tmux -C` connection on the write side too.
+2. **No notification when the tmux server dies.** The control-mode
+   reader thread exits silently. cmux-side timeouts cover this; if
+   we want explicit notice we'd add a per-connection `WorkspaceClosed`
+   synthesis on EOF.
+3. **`serve` allows only one `events.subscribe` per process.** Second
+   subscribe is an idempotent ack. Matches cmux's one-workspace-per-
+   session pattern; revisit if we ever multiplex.
