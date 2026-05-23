@@ -676,18 +676,23 @@ private struct AddHostSheet: View {
     /// No SSH plumbing involved — cmux spawns the binary directly.
     @ViewBuilder
     private var localCmuxTmuxFieldsBody: some View {
-        Form {
-            TextField(
-                String(localized: "settings.hosts.name", defaultValue: "Name"),
-                text: $displayName
-            )
-            TextField(
-                String(localized: "settings.hosts.localBinary",
-                       defaultValue: "cmux-tmux binary path (optional)"),
-                text: $cmuxTmuxLocalBinaryPath
-            )
-            .font(.system(.body, design: .monospaced))
-        }
+        // Plain TextFields instead of Form for the same reason as
+        // advancedSection — Form's intrinsic-size layout breaks
+        // inside the parent ScrollView.
+        TextField(
+            String(localized: "settings.hosts.name", defaultValue: "Name"),
+            text: $displayName
+        )
+        .textFieldStyle(.roundedBorder)
+
+        TextField(
+            String(localized: "settings.hosts.localBinary",
+                   defaultValue: "cmux-tmux binary path (optional)"),
+            text: $cmuxTmuxLocalBinaryPath
+        )
+        .textFieldStyle(.roundedBorder)
+        .font(.system(.body, design: .monospaced))
+
         Text(String(
             localized: "settings.hosts.localBinary.hint",
             defaultValue: "Empty = look up `cmux-tmux` on $PATH. Drives the user's local tmux server."
@@ -703,51 +708,63 @@ private struct AddHostSheet: View {
     /// non-default values so the user immediately sees them.
     @ViewBuilder
     private var advancedSection: some View {
+        // Plain VStack, not Form. Form on macOS injects its own
+        // intrinsic-size layout that fights the parent ScrollView
+        // and clips fields when the disclosure expands. VStack
+        // composes cleanly inside ScrollView.
         VStack(alignment: .leading, spacing: 8) {
-            Form {
-                TextField(
-                    String(localized: "settings.hosts.name", defaultValue: "Name"),
-                    text: $displayName,
-                    prompt: Text(parsedPreview()?.target
-                        ?? String(localized: "settings.hosts.namePlaceholder", defaultValue: "auto from target"))
-                )
-                TextField(
-                    String(localized: "settings.hosts.session", defaultValue: "Session name"),
-                    text: $sessionName
-                )
-                if !Self.sessionNameIsValid(sessionName) {
-                    Text(String(
-                        localized: "settings.hosts.sessionInvalid",
-                        defaultValue: "Session name must use only letters, digits, dashes, underscores, dots."
-                    ))
-                    .font(.caption)
-                    .foregroundColor(.red)
-                }
-                Toggle(String(
-                    localized: "settings.hosts.autoInstall",
-                    defaultValue: "Install cmux agent on save"
-                ), isOn: $autoInstall)
-                Toggle(String(
-                    localized: "settings.hosts.skipDefaultOptions",
-                    defaultValue: "Don't inject cmux SSH defaults (ControlMaster, keepalives)"
-                ), isOn: $overrideSkipDefaultOptions)
-                TextField(
-                    String(
-                        localized: "settings.hosts.sshExecutable",
-                        defaultValue: "Custom ssh executable"
-                    ),
-                    text: $overrideSshExecutable,
-                    prompt: Text("/usr/bin/ssh")
-                )
-                TextField(
-                    String(
-                        localized: "settings.hosts.remoteBinaryPath",
-                        defaultValue: "Custom cmux agent path on remote"
-                    ),
-                    text: $overrideRemoteBinaryPath,
-                    prompt: Text("herdr-cmux  (uses remote $PATH)")
-                )
+            TextField(
+                String(localized: "settings.hosts.name", defaultValue: "Name"),
+                text: $displayName,
+                prompt: Text(parsedPreview()?.target
+                    ?? String(localized: "settings.hosts.namePlaceholder", defaultValue: "auto from target"))
+            )
+            .textFieldStyle(.roundedBorder)
+
+            TextField(
+                String(localized: "settings.hosts.session", defaultValue: "Session name"),
+                text: $sessionName
+            )
+            .textFieldStyle(.roundedBorder)
+
+            if !Self.sessionNameIsValid(sessionName) {
+                Text(String(
+                    localized: "settings.hosts.sessionInvalid",
+                    defaultValue: "Session name must use only letters, digits, dashes, underscores, dots."
+                ))
+                .font(.caption)
+                .foregroundColor(.red)
             }
+
+            Toggle(String(
+                localized: "settings.hosts.autoInstall",
+                defaultValue: "Install cmux agent on save"
+            ), isOn: $autoInstall)
+
+            Toggle(String(
+                localized: "settings.hosts.skipDefaultOptions",
+                defaultValue: "Don't inject cmux SSH defaults (ControlMaster, keepalives)"
+            ), isOn: $overrideSkipDefaultOptions)
+
+            TextField(
+                String(
+                    localized: "settings.hosts.sshExecutable",
+                    defaultValue: "Custom ssh executable"
+                ),
+                text: $overrideSshExecutable,
+                prompt: Text("/usr/bin/ssh")
+            )
+            .textFieldStyle(.roundedBorder)
+
+            TextField(
+                String(
+                    localized: "settings.hosts.remoteBinaryPath",
+                    defaultValue: "Custom cmux agent path on remote"
+                ),
+                text: $overrideRemoteBinaryPath,
+                prompt: Text("herdr-cmux  (uses remote $PATH)")
+            )
+            .textFieldStyle(.roundedBorder)
 
             HStack {
                 Button(String(
@@ -761,6 +778,7 @@ private struct AddHostSheet: View {
                 probeResultRow
                 Spacer()
             }
+            .padding(.top, 4)
         }
     }
 
