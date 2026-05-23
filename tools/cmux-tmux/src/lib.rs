@@ -2,6 +2,7 @@
 // moment a failing test in this crate forces it.
 
 pub mod parse;
+pub mod pty;
 pub mod translate;
 
 #[cfg(test)]
@@ -360,6 +361,29 @@ mod tests {
 
         // After the close, no current session — re-emit guards.
         assert!(session.feed("%session-changed  ").is_empty());
+    }
+
+    // B0: cmux-side client bytes (keyboard input, paste blob,
+    // anything) must reach the tmux pane intact. Shell argv can
+    // not carry NUL bytes safely, so we encode every byte as a
+    // pair of hex digits and ship them via `send-keys -H`. The
+    // round-trip (bytes -> argv -> bytes) must recover the input
+    // verbatim, including binary, UTF-8 multibyte, and ESC.
+    #[test]
+    fn client_input_bytes_round_trip_through_send_keys_argv() {
+        use super::pty::{bytes_to_send_keys_argv, send_keys_argv_to_bytes};
+
+        let cases: Vec<&[u8]> = vec![b"hello", b"\x00\x01\x02\x1b[A", "日本語".as_bytes(), b""];
+
+        for bytes in cases {
+            let argv = bytes_to_send_keys_argv("%3", bytes);
+            let recovered = send_keys_argv_to_bytes(&argv).expect("argv parses back to bytes");
+            assert_eq!(recovered, bytes, "round-trip lost data for {bytes:?}");
+        }
+
+        // Sanity-check the argv shape for one concrete case.
+        let argv = bytes_to_send_keys_argv("%3", b"AB\x1b");
+        assert_eq!(argv, vec!["send-keys", "-t", "%3", "-H", "41", "42", "1b"]);
     }
 
     // P3a: parse a leaf layout string into a Leaf node. Layout
