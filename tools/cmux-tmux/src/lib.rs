@@ -412,6 +412,49 @@ mod tests {
         assert!(decode_output_event("%layout-change @0 1234,80x24,0,0,1").is_none());
     }
 
+    // B2: realistic ANSI / CSI / OSC sequences must survive the
+    // %output escape boundary byte-for-byte. Anything that gets
+    // mangled here breaks colour, cursor positioning, OSC 7 cwd
+    // tracking, and bracketed paste on reattach.
+    #[test]
+    fn output_with_escape_sequences_unmangled() {
+        use super::pty::decode_output_event;
+
+        let cases: &[(&str, &[u8])] = &[
+            // SGR red, content, reset.
+            ("\\033[31mfoo\\033[0m", b"\x1b[31mfoo\x1b[0m"),
+            // OSC 7 (working directory) with BEL terminator.
+            (
+                "\\033]7;file://host/work\\007",
+                b"\x1b]7;file://host/work\x07",
+            ),
+            // OSC 7 with ST (\\033\\\\).
+            (
+                "\\033]7;file://host/x\\033\\134",
+                b"\x1b]7;file://host/x\x1b\\",
+            ),
+            // DECSET show cursor.
+            ("\\033[?25h", b"\x1b[?25h"),
+            // 24-bit colour SGR.
+            (
+                "\\033[38;2;255;128;0mX\\033[0m",
+                b"\x1b[38;2;255;128;0mX\x1b[0m",
+            ),
+            // Tab + LF + DEL.
+            ("\\011\\012\\177", b"\t\n\x7f"),
+            // Bracketed paste begin / end.
+            ("\\033[200~paste\\033[201~", b"\x1b[200~paste\x1b[201~"),
+        ];
+
+        for (escaped, expected) in cases {
+            let line = format!("%output %4 {escaped}");
+            let (pane, bytes) =
+                decode_output_event(&line).unwrap_or_else(|| panic!("decode failed for {line:?}"));
+            assert_eq!(pane, "%4");
+            assert_eq!(bytes, *expected, "input {escaped:?}");
+        }
+    }
+
     // P3a: parse a leaf layout string into a Leaf node. Layout
     // grammar: `<checksum>,WxH,X,Y,paneN`. tmux stores pane ids as
     // bare integers; the shim normalises to the cmux pane id form
