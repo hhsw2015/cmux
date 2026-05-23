@@ -256,3 +256,47 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod proptests {
+    use super::translate::{translate_request, translate_request_in_context, TranslateContext};
+    use proptest::prelude::*;
+
+    // R10: translate_request must be panic-free for any input.
+    // Garbage strings, partial JSON, exotic numbers — all should
+    // round-trip to a structured Result (Ok variant or Err), never
+    // a panic / overflow / unwrap. This is a fuzz-style guard so a
+    // malicious / corrupt client cannot crash the shim.
+    proptest! {
+        #[test]
+        fn arbitrary_strings_never_panic(s in "\\PC{0,256}") {
+            let _ = translate_request(&s);
+        }
+
+        #[test]
+        fn arbitrary_request_shapes_never_panic(
+            method in "[a-zA-Z._-]{0,32}",
+            target in "%[0-9]{1,4}",
+            ratio in -10.0f64..10.0,
+            cols in 0u64..10_000,
+            rows in 0u64..10_000,
+        ) {
+            let json = serde_json::json!({
+                "id": "x",
+                "method": method,
+                "params": {
+                    "target_pane_id": target,
+                    "direction": "right",
+                    "cwd": "/tmp",
+                    "ratio": ratio,
+                    "cols": cols,
+                    "rows": rows,
+                    "workspace_id": "$0",
+                }
+            });
+            let mut ctx = TranslateContext::default();
+            ctx.split_geometry.insert(target.clone(), ('h', 100));
+            let _ = translate_request_in_context(&json.to_string(), &ctx);
+        }
+    }
+}
