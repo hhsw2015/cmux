@@ -124,6 +124,23 @@ pub fn translate_request_in_context(
             translate_workspace_rename(&req.params).map(TranslateOutcome::RunTmux)
         }
         "layout.snapshot" => translate_layout_snapshot(&req.params).map(TranslateOutcome::RunTmux),
+        "pane.swap" => translate_pane_swap(&req.params).map(TranslateOutcome::RunTmux),
+        "tab.list" => translate_tab_list(&req.params).map(TranslateOutcome::RunTmux),
+        "tab.focus" => translate_tab_focus(&req.params).map(TranslateOutcome::RunTmux),
+        "workspace.focus" => {
+            translate_workspace_target("switch-client", &req.params).map(TranslateOutcome::RunTmux)
+        }
+        // tab.reorder is a no-op stub today: tmux's
+        // move-window-by-index requires a temporary "park"
+        // sweep to avoid index collisions, which is fragile
+        // enough that I'd rather punt than ship a half-broken
+        // version. cmux gets a successful response so the UI
+        // doesn't error; the next reattach will show whatever
+        // order tmux had. See PLAN.md known-loss list.
+        "tab.reorder" => Ok(TranslateOutcome::ImmediateResponse(ResultResponse {
+            id: req.id,
+            result: serde_json::json!({}),
+        })),
         "pane.resize" => translate_pane_resize(&req.params).map(TranslateOutcome::RunTmux),
         "pane.focus" => {
             translate_single_pane_target("select-pane", &req.params).map(TranslateOutcome::RunTmux)
@@ -186,6 +203,48 @@ fn translate_layout_snapshot(params: &Value) -> Result<Vec<String>, TranslateErr
         // shaper's split logic simple.
         "#{window_layout}\t#{pane_id}".into(),
     ])
+}
+
+fn translate_pane_swap(params: &Value) -> Result<Vec<String>, TranslateError> {
+    let a = params
+        .get("a_pane_id")
+        .and_then(Value::as_str)
+        .ok_or(TranslateError::MissingField("a_pane_id"))?;
+    let b = params
+        .get("b_pane_id")
+        .and_then(Value::as_str)
+        .ok_or(TranslateError::MissingField("b_pane_id"))?;
+    Ok(vec![
+        "swap-pane".into(),
+        "-s".into(),
+        a.into(),
+        "-t".into(),
+        b.into(),
+    ])
+}
+
+const WINDOW_FORMAT: &str = "#{window_id}\t#{window_index}\t#{window_name}\t#{window_active}";
+
+fn translate_tab_list(params: &Value) -> Result<Vec<String>, TranslateError> {
+    let workspace_id = params
+        .get("workspace_id")
+        .and_then(Value::as_str)
+        .ok_or(TranslateError::MissingField("workspace_id"))?;
+    Ok(vec![
+        "list-windows".into(),
+        "-t".into(),
+        workspace_id.into(),
+        "-F".into(),
+        WINDOW_FORMAT.into(),
+    ])
+}
+
+fn translate_tab_focus(params: &Value) -> Result<Vec<String>, TranslateError> {
+    let tab_id = params
+        .get("tab_id")
+        .and_then(Value::as_str)
+        .ok_or(TranslateError::MissingField("tab_id"))?;
+    Ok(vec!["select-window".into(), "-t".into(), tab_id.into()])
 }
 
 fn translate_workspace_target(verb: &str, params: &Value) -> Result<Vec<String>, TranslateError> {

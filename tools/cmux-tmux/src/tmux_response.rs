@@ -154,6 +154,14 @@ pub fn shape_response_with_params(
                 .into_iter()
                 .collect(),
         ),
+        "tab.list" => {
+            let workspace_id = param_str(params, "workspace_id");
+            let tabs = parse_window_lines(trimmed)?;
+            serde_json::json!({
+                "workspace_id": workspace_id,
+                "tabs": tabs,
+            })
+        }
         "workspace.list" => Value::Object(
             [(
                 "workspaces".into(),
@@ -196,6 +204,31 @@ fn parse_pane_lines(stdout: &str) -> Result<Vec<Value>, ShapeError> {
                 "active": active_raw == "1",
                 "cols": cols,
                 "rows": rows,
+            }))
+        })
+        .collect()
+}
+
+fn parse_window_lines(stdout: &str) -> Result<Vec<Value>, ShapeError> {
+    if stdout.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+    stdout
+        .lines()
+        .map(|line| {
+            let mut fields = line.split('\t');
+            let tab_id = next_field(&mut fields, "window_id")?;
+            let index_raw = next_field(&mut fields, "window_index")?;
+            let name = next_field(&mut fields, "window_name")?;
+            let active_raw = next_field(&mut fields, "window_active")?;
+            let index = index_raw.parse::<u32>().map_err(|e| ShapeError {
+                message: format!("bad window_index: {e}"),
+            })?;
+            Ok(serde_json::json!({
+                "tab_id": tab_id,
+                "index": index,
+                "name": name,
+                "active": active_raw == "1",
             }))
         })
         .collect()

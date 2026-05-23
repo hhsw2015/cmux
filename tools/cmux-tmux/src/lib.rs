@@ -601,6 +601,88 @@ mod tests {
         assert_eq!(bare_argv, vec!["new-session", "-d"]);
     }
 
+    // L4a: pane.swap maps to tmux swap-pane -s A -t B.
+    #[test]
+    fn pane_swap_translates_to_swap_pane() {
+        use super::translate::{translate_request, TranslateOutcome};
+
+        let request_json = r#"{
+            "id": "20",
+            "method": "pane.swap",
+            "params": { "a_pane_id": "%2", "b_pane_id": "%5" }
+        }"#;
+        let argv = match translate_request(request_json).expect("swap translates") {
+            TranslateOutcome::RunTmux(a) => a,
+            other => panic!("expected RunTmux, got {other:?}"),
+        };
+        assert_eq!(argv, vec!["swap-pane", "-s", "%2", "-t", "%5"]);
+    }
+
+    // L4b: tab.list maps to list-windows with our pinned format.
+    #[test]
+    fn tab_list_translates_to_list_windows() {
+        use super::translate::{translate_request, TranslateOutcome};
+
+        let request_json = r#"{
+            "id": "21",
+            "method": "tab.list",
+            "params": { "workspace_id": "$0" }
+        }"#;
+        let argv = match translate_request(request_json).expect("tab.list translates") {
+            TranslateOutcome::RunTmux(a) => a,
+            other => panic!("expected RunTmux, got {other:?}"),
+        };
+        assert_eq!(
+            argv,
+            vec![
+                "list-windows",
+                "-t",
+                "$0",
+                "-F",
+                "#{window_id}\t#{window_index}\t#{window_name}\t#{window_active}",
+            ]
+        );
+    }
+
+    // L4c: tab.focus -> select-window -t TID.
+    #[test]
+    fn tab_focus_translates_to_select_window() {
+        use super::translate::{translate_request, TranslateOutcome};
+
+        let request_json = r#"{
+            "id": "22",
+            "method": "tab.focus",
+            "params": { "tab_id": "@3" }
+        }"#;
+        let argv = match translate_request(request_json).expect("tab.focus translates") {
+            TranslateOutcome::RunTmux(a) => a,
+            other => panic!("expected RunTmux, got {other:?}"),
+        };
+        assert_eq!(argv, vec!["select-window", "-t", "@3"]);
+    }
+
+    // L4d: tab.list shape parses tab-separated window lines.
+    #[test]
+    fn shape_tab_list_response_parses_window_lines() {
+        use super::tmux_response::shape_response_with_params;
+
+        let stdout = "@0\t0\twork\t1\n@5\t1\tlogs\t0\n";
+        let params = serde_json::json!({"workspace_id": "$0"});
+        let resp = shape_response_with_params("tab.list", serde_json::json!("23"), stdout, &params)
+            .expect("shape ok");
+
+        assert_eq!(
+            resp.result,
+            serde_json::json!({
+                "workspace_id": "$0",
+                "tabs": [
+                    {"tab_id": "@0", "index": 0, "name": "work", "active": true},
+                    {"tab_id": "@5", "index": 1, "name": "logs", "active": false},
+                ]
+            })
+        );
+    }
+
     // L3a: walk_split_path navigates the BSP projection of a
     // tmux layout. Empty path on a 2-child h-split returns the
     // root split's info: horizontal direction, total dim along
