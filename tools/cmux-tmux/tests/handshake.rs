@@ -10,7 +10,11 @@ use std::time::Duration;
 fn serve_responds_to_ping_with_pong() {
     let bin = env!("CARGO_BIN_EXE_cmux-tmux");
     let mut child = Command::new(bin)
-        .arg("serve")
+        // Match cmux's invocation pattern: --session NAME goes
+        // before the subcommand. The flag is accepted today
+        // (cosmetic) so cmux SSHCommandBuilder.build doesn't
+        // need a special case.
+        .args(["--session", "test-session", "serve"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

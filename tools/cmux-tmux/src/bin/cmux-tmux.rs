@@ -24,16 +24,41 @@ use cmux_tmux::translate::{
 };
 
 fn main() {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    let exit = match args.first().map(String::as_str) {
+    let raw: Vec<String> = std::env::args().skip(1).collect();
+    let mut iter = raw.iter();
+    let mut session_name: Option<String> = None;
+    let mut subcommand: Option<String> = None;
+    let mut subcommand_args: Vec<String> = Vec::new();
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            // Pre-subcommand flags. Mirror cmux's herdr-cmux
+            // invocation pattern: `cmux-tmux --session NAME
+            // <subcommand> ...`. The session label today is
+            // cosmetic — for logs and a future per-session
+            // socket. tmux server selection still follows the
+            // user's environment (TMUX_TMPDIR / TMUX).
+            "--session" => {
+                session_name = iter.next().cloned();
+            }
+            other if subcommand.is_none() => {
+                subcommand = Some(other.to_string());
+                subcommand_args = iter.cloned().collect();
+                break;
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    let _ = session_name; // accepted, currently unused.
+    let exit = match subcommand.as_deref() {
         Some("serve") => serve(),
-        Some("raw-pty-attach") => raw_pty_attach(&args[1..]),
+        Some("raw-pty-attach") => raw_pty_attach(&subcommand_args),
         Some(other) => {
             eprintln!("unknown subcommand: {other}");
             2
         }
         None => {
-            eprintln!("usage: cmux-tmux serve | cmux-tmux raw-pty-attach --pane %N");
+            eprintln!("usage: cmux-tmux [--session NAME] (serve | raw-pty-attach --pane %N)");
             2
         }
     };
