@@ -8,10 +8,10 @@ permissions:
 
 jobs:
   build:
-    # Use WarpBuild runner instead of free macos-15. Free hosted
-    # macOS queue can stall for hours during peak; WarpBuild is
-    # what the main CI workflow already uses successfully.
-    runs-on: warp-macos-26-arm64-6x
+    # Use Depot runner — both free macos-15 and WarpBuild were
+    # backlogged at peak (11+ hour queue). Depot is what
+    # test-e2e.yml uses successfully.
+    runs-on: depot-macos-latest
     timeout-minutes: 30
     steps:
       - name: Checkout
