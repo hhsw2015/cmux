@@ -14,8 +14,11 @@ enum SessionSnapshotSchema {
 }
 
 enum SessionPersistencePolicy {
+    static let sidebarMinimumWidthKey = "sidebarMinimumWidth"
     static let defaultSidebarWidth: Double = 220
-    static let minimumSidebarWidth: Double = 220
+    static let defaultMinimumSidebarWidth: Double = 216
+    static let minimumSidebarWidth: Double = 216
+    static let sidebarMinimumWidthRange: ClosedRange<Double> = 120...260
     static let maximumSidebarWidth: Double = 600
     static let minimumWindowWidth: Double = 300
     static let minimumWindowHeight: Double = 200
@@ -52,10 +55,33 @@ enum SessionPersistencePolicy {
         )
     }
 
-    static func sanitizedSidebarWidth(_ candidate: Double?) -> Double {
-        let fallback = defaultSidebarWidth
+    static func sanitizedSidebarWidth(_ candidate: Double?, defaults: UserDefaults = .standard) -> Double {
+        let resolvedMinimum = resolvedMinimumSidebarWidth(defaults: defaults)
+        let fallback = min(max(defaultSidebarWidth, resolvedMinimum), maximumSidebarWidth)
         guard let candidate, candidate.isFinite else { return fallback }
-        return min(max(candidate, minimumSidebarWidth), maximumSidebarWidth)
+        return min(max(candidate, resolvedMinimum), maximumSidebarWidth)
+    }
+
+    static func resolvedMinimumSidebarWidth(defaults: UserDefaults = .standard) -> Double {
+        guard let candidate = storedSidebarMinimumWidth(defaults: defaults) else {
+            return defaultMinimumSidebarWidth
+        }
+        return sanitizedMinimumSidebarWidth(candidate)
+    }
+
+    static func sanitizedMinimumSidebarWidth(_ candidate: Double) -> Double {
+        guard candidate.isFinite else { return defaultMinimumSidebarWidth }
+        return min(max(candidate, sidebarMinimumWidthRange.lowerBound), sidebarMinimumWidthRange.upperBound)
+    }
+
+    private static func storedSidebarMinimumWidth(defaults: UserDefaults) -> Double? {
+        if let value = defaults.object(forKey: sidebarMinimumWidthKey) as? NSNumber {
+            return value.doubleValue
+        }
+        if let value = defaults.string(forKey: sidebarMinimumWidthKey) {
+            return Double(value)
+        }
+        return nil
     }
 
     static func truncatedScrollback(_ text: String?, defaults: UserDefaults = .standard) -> String? {
@@ -1276,6 +1302,7 @@ struct SessionTerminalPanelSnapshot: Codable, Sendable {
     /// with `zmx attach <name>` so the user reattaches without lifting a
     /// finger. Optional + nil-on-decode-failure so older session files load.
     var zmx: SessionZmxBindingSnapshot?
+    var hibernation: SessionAgentHibernationSnapshot?
     var resumeBinding: SurfaceResumeBindingSnapshot?
     var textBoxDraft: SessionTextBoxInputDraftSnapshot?
     var remotePTYSessionID: String?
@@ -1289,6 +1316,7 @@ struct SessionTerminalPanelSnapshot: Codable, Sendable {
         agent: SessionRestorableAgentSnapshot? = nil,
         tmuxStartCommand: String? = nil,
         zmx: SessionZmxBindingSnapshot? = nil,
+        hibernation: SessionAgentHibernationSnapshot? = nil,
         resumeBinding: SurfaceResumeBindingSnapshot? = nil,
         textBoxDraft: SessionTextBoxInputDraftSnapshot? = nil,
         remotePTYSessionID: String? = nil,
@@ -1299,11 +1327,17 @@ struct SessionTerminalPanelSnapshot: Codable, Sendable {
         self.agent = agent
         self.tmuxStartCommand = tmuxStartCommand
         self.zmx = zmx
+        self.hibernation = hibernation
         self.resumeBinding = resumeBinding
         self.textBoxDraft = textBoxDraft
         self.remotePTYSessionID = remotePTYSessionID
         self.wasAgentRunning = wasAgentRunning
     }
+}
+
+struct SessionAgentHibernationSnapshot: Codable, Sendable {
+    var hibernatedAt: TimeInterval
+    var lastActivityAt: TimeInterval
 }
 
 struct SessionTextBoxInputDraftSnapshot: Codable, Equatable, Sendable {
@@ -1389,6 +1423,7 @@ struct SessionTextBoxInputAttachmentSnapshot: Codable, Equatable, Sendable {
     var localPath: String?
     var cleanupLocalPathWhenDisposed: Bool
 }
+
 struct SessionBrowserPanelSnapshot: Codable, Sendable {
     var urlString: String?
     var profileID: UUID?
@@ -1581,6 +1616,18 @@ struct SessionWorkspaceSnapshot: Codable, Sendable {
     var progress: SessionProgressSnapshot?
     var gitBranch: SessionGitBranchSnapshot?
     var remote: SessionRemoteWorkspaceSnapshot?
+}
+
+extension SessionWorkspaceSnapshot {
+    var hasRestorablePanels: Bool {
+        !panels.isEmpty
+    }
+}
+
+extension SessionWindowSnapshot {
+    var hasRestorablePanels: Bool {
+        tabManager.workspaces.contains { $0.hasRestorablePanels }
+    }
 }
 
 struct SessionTabManagerSnapshot: Codable, Sendable {

@@ -17,13 +17,18 @@ time, so all manaflow customisations are still on its `main`.
 
 ## Current fork changes
 
-Current cmux pinned fork head: `0f9451d2d`, a merge of manaflow's
-`main` (`7e4cf8a2f`, cursor-line selection API + manual embedded IO +
-cmux theme picker hooks + Metal renderer guard) with the
-`issue-cmd-hover-path-range` branch (`ff6e1260d`, path-range bounds +
-crash-report-subdir option + preedit catch-up fix). This head keeps
-every manaflow patch plus the upstream-cmux fixes that hadn't yet
-landed on manaflow `main`.
+The fork was refreshed from upstream `main` again on May 1, 2026.
+Current cmux pinned fork head: `176bd550f`, based on `ff6e1260d`, with the
+manual embedded IO patch in https://github.com/manaflow-ai/ghostty/pull/53,
+the Metal renderer row rebuild guard for https://github.com/manaflow-ai/cmux/issues/3369, and the URL/path
+regex bound for spaced file paths followed by prose. This head keeps the cmux
+theme picker hooks, exposes the manual surface IO needed by libghostty iOS
+clients, bounds shaped glyph iteration during IME/preedit row rebuilds, and
+prevents Cmd-hover from highlighting normal sentence text after a file path.
+It also supports Ctrl-N and Ctrl-P in the cmux theme picker.
+The corresponding prebuilt archive is published at
+https://github.com/manaflow-ai/ghostty/releases/tag/xcframework-176bd550f6fedd29e85cd92470e5dfadf295ebf7-crashsubdir-cmux-crash-v1
+and pinned in `scripts/ghosttykit-checksums.txt`.
 
 ### 1) macOS display link restart on display changes
 
@@ -78,6 +83,7 @@ tend to conflict together during rebases.
   - `eb34bcdd6` (Harden cmux theme override writes)
   - `04ec69173` (Apply highlighted cmux theme on Enter)
   - `4265d3428` (Apply cmux theme from picker search)
+  - `176bd550f` (Add ctrl navigation to cmux theme picker)
 - Files:
   - `build.zig`
   - `src/cli/list_themes.zig`
@@ -88,6 +94,7 @@ tend to conflict together during rebases.
   - Keeps the preview UI readable in light mode, matches upstream picker startup behavior, and hardens writes to the cmux-managed theme override file.
   - Restores Enter as the cmux apply action by writing the currently highlighted theme before the picker exits.
   - Applies the highlighted search result when Enter is pressed from search mode in cmux-managed picker sessions.
+  - Supports Ctrl-N and Ctrl-P as one-row down/up navigation in cmux-managed picker sessions.
 
 ### 5) Color scheme mode 2031 reporting
 
@@ -196,24 +203,13 @@ tend to conflict together during rebases.
     required failing-test-then-fix history for issue #3369.
 
 The current cmux pin is the head listed above. It is reachable from
-`manaflow-ai/ghostty` through the `xcframework-7e4cf8a2fd2539d68240aa046e2cc892d21d2e89`
-release tag.
-Published `xcframework-7e4cf8a2fd2539d68240aa046e2cc892d21d2e89` and pinned its
-`GhosttyKit.xcframework.tar.gz` archive checksum
-`6161b00fe4737abcdad9ec9cb456deb50e3cfdd2682cce2bdf83f024637c69d2` in
-`scripts/ghosttykit-checksums.txt`. The release and checksum pin must be
-regenerated whenever this commit changes, even for comment-only amends, because
-the release tag is keyed by the Ghostty commit SHA.
-
-Merge note, May 14, 2026: cmux `main` temporarily pinned Ghostty `aef980e27b`
-for the `-Dcrash-report-subdir` build option while this issue branch pins
-`7e4cf8a2f` for the cursor-line selection API. The parent merge keeps `7e4cf8a2f`
-because terminal Select All depends on `ghostty_surface_select_cursor_line`, and
-cmux build scripts detect whether a Ghostty checkout supports
-`crash-report-subdir` before selecting crash-flavored release tags or Zig flags.
-When the fork next advances, prefer a single Ghostty head that contains both
-patches and publish the crash-flavored `xcframework-<sha>-crashsubdir-cmux-crash-v1`
-artifact.
+`manaflow-ai/ghostty` through the
+`xcframework-176bd550f6fedd29e85cd92470e5dfadf295ebf7-crashsubdir-cmux-crash-v1`
+release tag and branch `issue-themes-broken-ctrl-np`.
+Published `xcframework-176bd550f6fedd29e85cd92470e5dfadf295ebf7-crashsubdir-cmux-crash-v1` and pinned its
+archive checksum in `scripts/ghosttykit-checksums.txt`. The release and checksum
+pin must be regenerated whenever this commit changes, even for comment-only
+amends, because the release tag is keyed by the Ghostty commit SHA.
 
 ## Upstreamed fork changes
 

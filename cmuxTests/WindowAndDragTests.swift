@@ -979,7 +979,7 @@ final class WindowDragHandleHitTests: XCTestCase {
         )
     }
 
-    func testTitlebarChromeSettingsUseHardcodedDefaults() {
+    func testTitlebarChromeSettingsUseDefaultsAndStoredOverrides() {
         let suiteName = "WindowDragHandleHitTests.titlebarChromeSettings.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defer { defaults.removePersistentDomain(forName: suiteName) }
@@ -1004,6 +1004,46 @@ final class WindowDragHandleHitTests: XCTestCase {
             MinimalModeSidebarTitlebarControlsMetrics.topInset(defaults: defaults),
             CGFloat(MinimalModeTitlebarDebugSettings.defaultLeftControlsTopInset),
             accuracy: 0.001
+        )
+
+        defaults.set(44.5, forKey: MinimalModeTitlebarDebugSettings.leftControlsLeadingInsetKey)
+        defaults.set(6.5, forKey: MinimalModeTitlebarDebugSettings.leftControlsTopInsetKey)
+        defaults.set(12.0, forKey: "titlebarDebug.trafficLightsXOffset")
+        defaults.set(-3.0, forKey: "titlebarDebug.trafficLightsYOffset")
+        defaults.set(88.0, forKey: MinimalModeTitlebarDebugSettings.trafficLightTabBarInsetKey)
+        defaults.set(92.0, forKey: MinimalModeTitlebarDebugSettings.trafficLightTitlebarLeadingInsetKey)
+
+        let storedSnapshot = MinimalModeTitlebarDebugSettings.snapshot(defaults: defaults)
+        XCTAssertEqual(storedSnapshot.leftControlsLeadingInset, 44.5, accuracy: 0.001)
+        XCTAssertEqual(storedSnapshot.leftControlsTopInset, 6.5, accuracy: 0.001)
+        XCTAssertEqual(storedSnapshot.trafficLightTabBarLeadingInset, 88.0, accuracy: 0.001)
+        XCTAssertEqual(storedSnapshot.trafficLightTitlebarLeadingInset, 92.0, accuracy: 0.001)
+
+        defaults.set(999.0, forKey: MinimalModeTitlebarDebugSettings.leftControlsLeadingInsetKey)
+        XCTAssertEqual(
+            MinimalModeTitlebarDebugSettings.leftControlsLeadingInset(defaults: defaults),
+            CGFloat(MinimalModeTitlebarDebugSettings.horizontalInsetRange.upperBound),
+            accuracy: 0.001
+        )
+    }
+
+    func testTitlebarChromeSettingsIgnoreLegacyNativeTrafficLightOffsets() {
+        let suiteName = "WindowDragHandleHitTests.titlebarChromeLegacyTrafficLights.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        defaults.set(44.0, forKey: "titlebarDebug.trafficLightsXOffset")
+        defaults.set(-12.0, forKey: "titlebarDebug.trafficLightsYOffset")
+
+        let snapshot = MinimalModeTitlebarDebugSettings.snapshot(defaults: defaults)
+        XCTAssertEqual(
+            snapshot,
+            MinimalModeTitlebarDebugSnapshot(
+                leftControlsLeadingInset: MinimalModeTitlebarDebugSettings.defaultLeftControlsLeadingInset,
+                leftControlsTopInset: MinimalModeTitlebarDebugSettings.defaultLeftControlsTopInset,
+                trafficLightTabBarLeadingInset: MinimalModeTitlebarDebugSettings.defaultTrafficLightTabBarInset,
+                trafficLightTitlebarLeadingInset: MinimalModeTitlebarDebugSettings.defaultTrafficLightTitlebarLeadingInset
+            )
         )
     }
 
@@ -1715,6 +1755,7 @@ final class WindowDragHandleHitTests: XCTestCase {
         defer { window.orderOut(nil) }
 
         let rootView = RightSidebarPanelView(
+            tabManager: TabManager(),
             fileExplorerStore: FileExplorerStore(),
             fileExplorerState: FileExplorerState(),
             sessionIndexStore: SessionIndexStore(),
@@ -3545,7 +3586,7 @@ final class TmuxWorkspacePaneOverlayTests: XCTestCase {
             .navigation,
             .notificationArrival,
             .notificationDismiss,
-            .manualUnreadDismiss,
+            .unreadIndicatorDismiss,
             .debug,
         ]
 

@@ -4691,6 +4691,51 @@ class GhosttyApp {
             #if DEBUG
             cmuxDebugLog("link.openURL raw=\(urlString)")
             #endif
+
+            // Try file-path resolution before URL classification.
+            // Ghostty's link detection can match relative file paths that
+            // contain slashes or dots (e.g. "docs/spec.md.") as URLs.
+            // Attempt to resolve the raw string as a local file first
+            // (with trailing-punctuation trimming via cmuxResolveQuicklookPath).
+            // If the file exists and cmux can handle it, route through the
+            // file viewer instead of the browser.
+            let trimmedUrlString = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmedUrlString.isEmpty,
+               !NSString(string: trimmedUrlString).isAbsolutePath,
+               URL(string: trimmedUrlString)?.scheme == nil {
+                let filePathRouted: Bool = performOnMain {
+                    guard let termSurface = surfaceView.terminalSurface,
+                          let workspace = termSurface.owningWorkspace(),
+                          !workspace.isRemoteTerminalSurface(termSurface.id) else {
+                        return false
+                    }
+                    let cwd = CommandClickFileOpenRouter.resolveWorkingDirectory(
+                        workspace: workspace,
+                        surfaceId: termSurface.id
+                    )
+                    guard let resolvedPath = cmuxResolveQuicklookPath(trimmedUrlString, cwd: cwd),
+                          CommandClickFileOpenRouter.shouldRouteInCmux(path: resolvedPath) else {
+                        return false
+                    }
+                    #if DEBUG
+                    cmuxDebugLog("link.openURL resolvedAsFilePath=\(resolvedPath)")
+                    #endif
+                    let fileURL = URL(fileURLWithPath: resolvedPath)
+                    CommandClickFileOpenRouter.deferredOpenFileInCmux(
+                        workspace: workspace,
+                        preferredWorkspaceId: workspace.id,
+                        surfaceId: termSurface.id,
+                        filePath: resolvedPath
+                    ) {
+                        NSWorkspace.shared.open(fileURL)
+                    }
+                    return true
+                }
+                if filePathRouted {
+                    return true
+                }
+            }
+
             guard let target = resolveTerminalOpenURLTarget(urlString) else {
                 #if DEBUG
                 cmuxDebugLog("link.openURL resolve failed, returning false")
@@ -4709,65 +4754,18 @@ class GhosttyApp {
                fileURLHost == nil || fileURLHost?.isEmpty == true || fileURLHost == "localhost" {
                 let fileURL = target.url
                 let routed: Bool = performOnMain {
-                    // Remote-surface guard runs before shouldRoute so we never
-                    // stat a local path on the main thread for a remote workspace.
                     guard let termSurface = surfaceView.terminalSurface,
                           let workspace = termSurface.owningWorkspace(),
                           !workspace.isRemoteTerminalSurface(termSurface.id),
                           CommandClickFileOpenRouter.shouldRouteInCmux(path: fileURL.path) else {
                         return false
                     }
-                    // Defer the split creation. Ghostty's Surface.openUrl holds
-                    // an internal os_unfair_lock when it dispatches into this
-                    // Swift handler; opening a new panel synchronously triggers
-                    // Surface.encodeKey on the focus path, which tries to
-                    // acquire the same lock and aborts (recursive os_unfair_lock
-                    // — see crash reports referenced in #3370).
-                    //
-                    // CAVEAT — timing-based mitigation: this works because the
-                    // Ghostty C side currently releases the surface lock within
-                    // the same runloop cycle that dispatches this callback,
-                    // which is an undocumented Ghostty implementation detail.
-                    // If a future Ghostty change moves the unlock to a later
-                    // tick, every Swift caller that re-enters Surface state
-                    // from inside performOnMain (not just this one) will
-                    // silently regress to the same crash. The structural fix
-                    // is to dispatch the OPEN_URL callback asynchronously from
-                    // C so the lock is always released before any Swift runs
-                    // — tracked in #3560. Until that lands, do NOT remove
-                    // this DispatchQueue.main.async.
-                    let preferredWorkspaceId = workspace.id
-                    let surfaceId = termSurface.id
-                    DispatchQueue.main.async {
-                        // Re-resolve workspace at dispatch time: tabs can move
-                        // between workspaces in the runloop gap, so the
-                        // captured value may be stale. Mirrors the deferred
-                        // browser path's pattern.
-                        let resolvedWorkspace = AppDelegate.shared?.workspaceContainingPanel(
-                            panelId: surfaceId,
-                            preferredWorkspaceId: preferredWorkspaceId
-                        )?.workspace ?? workspace
-                        // Re-apply the sync remote-surface gate; panel may have moved.
-                        guard !resolvedWorkspace.isRemoteTerminalSurface(surfaceId) else {
-                            NSWorkspace.shared.open(fileURL)
-                            return
-                        }
-                        // TOCTOU re-check: file may have been removed/renamed
-                        // since the synchronous gate. Fall through if so.
-                        guard CommandClickFileOpenRouter.shouldRouteInCmux(path: fileURL.path) else {
-                            NSWorkspace.shared.open(fileURL)
-                            return
-                        }
-                        if CommandClickFileOpenRouter.openInCmux(
-                            workspace: resolvedWorkspace,
-                            sourcePanelId: surfaceId,
-                            filePath: fileURL.path
-                        ) {
-                            return
-                        }
-                        // Split creation failed (source pane gone between
-                        // commit and dispatch). Surface via system opener so
-                        // the click is not silently lost.
+                    CommandClickFileOpenRouter.deferredOpenFileInCmux(
+                        workspace: workspace,
+                        preferredWorkspaceId: workspace.id,
+                        surfaceId: termSurface.id,
+                        filePath: fileURL.path
+                    ) {
                         NSWorkspace.shared.open(fileURL)
                     }
                     return true
@@ -5134,6 +5132,18 @@ enum TerminalSurfaceFocusPlacement: Equatable {
     case rightSidebarDock
 }
 
+private func recordAgentHibernationTerminalInput(workspaceId: UUID, panelId: UUID) {
+    guard AgentHibernationTrackingGate.isEnabled() else { return }
+    let recordedAt = Date()
+    Task { @MainActor in
+        AgentHibernationController.shared.recordTerminalInput(
+            workspaceId: workspaceId,
+            panelId: panelId,
+            recordedAt: recordedAt
+        )
+    }
+}
+
 final class TerminalSurface: Identifiable, ObservableObject {
     final class SearchState: ObservableObject {
         @Published var needle: String
@@ -5256,6 +5266,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
     let initialCommand: String?
     let tmuxStartCommand: String?
     let initialInput: String?
+    private var nextRuntimeInitialInput: String?
     private let initialEnvironmentOverrides: [String: String]
     var requestedWorkingDirectory: String? { workingDirectory }
     let focusPlacement: TerminalSurfaceFocusPlacement
@@ -5277,6 +5288,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
     private var pendingSocketInputBytes: Int = 0
     private let maxPendingSocketInputBytes = 1_048_576
     private var backgroundSurfaceStartQueued = false
+    private var runtimeSurfaceSuspendedForAgentHibernation = false
     private var headlessStartupWindow: NSWindow?
     private var surfaceCallbackContext: Unmanaged<GhosttySurfaceCallbackContext>?
     /// When non-nil, the surface is created in `GHOSTTY_SURFACE_IO_MANUAL`
@@ -5374,8 +5386,43 @@ final class TerminalSurface: Identifiable, ObservableObject {
     private var searchNeedleCancellable: AnyCancellable?
     var currentKeyStateIndicatorText: String? { surfaceView.currentKeyStateIndicatorText }
 
+    private static func cmuxContextEnvironment(
+        workspaceId: UUID,
+        surfaceId: UUID,
+        socketPath: String
+    ) -> CmuxContextEnvironment {
+        CmuxContextEnvironment(
+            workspaceId: workspaceId,
+            surfaceId: surfaceId,
+            socketPath: socketPath
+        )
+    }
+
+    /// Pre-spawn lookup for managed context keys and explicit startup overrides.
+    /// Full runtime-only values such as bundle, port, PATH, and shell-integration
+    /// entries are assembled when a Ghostty surface is created.
+    @MainActor
     func startupEnvironmentValue(_ key: String) -> String? {
-        additionalEnvironment[key] ?? initialEnvironmentOverrides[key]
+        let socketPath = TerminalController.shared.activeSocketPath(
+            preferredPath: SocketControlSettings.socketPath()
+        )
+        var environment: [String: String] = [:]
+        var protectedKeys: Set<String> = []
+        Self.applyManagedCmuxContextEnvironment(
+            Self.cmuxContextEnvironment(
+                workspaceId: tabId,
+                surfaceId: id,
+                socketPath: socketPath
+            ),
+            to: &environment,
+            protectedKeys: &protectedKeys
+        )
+        return Self.mergedStartupEnvironment(
+            base: environment,
+            protectedKeys: protectedKeys,
+            additionalEnvironment: additionalEnvironment,
+            initialEnvironmentOverrides: initialEnvironmentOverrides
+        )[key]
     }
 
     init(
@@ -5798,7 +5845,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
     }
 
     private func allowsRuntimeSurfaceCreation() -> Bool {
-        portalLifecycleState == .live
+        portalLifecycleState == .live && !runtimeSurfaceSuspendedForAgentHibernation
     }
 
     private var hasDeferredStartupWork: Bool {
@@ -5877,6 +5924,42 @@ final class TerminalSurface: Identifiable, ObservableObject {
         Task { @MainActor in
             // Keep free behavior aligned with deinit: perform the runtime teardown on
             // the next main-actor turn so SIGHUP delivery is deterministic but non-reentrant.
+            ghostty_surface_free(surfaceToFree)
+            callbackContext?.release()
+        }
+    }
+
+    @MainActor
+    func suspendRuntimeSurfaceForAgentHibernation(reason: String) {
+        runtimeSurfaceSuspendedForAgentHibernation = true
+        backgroundSurfaceStartQueued = false
+        closeHeadlessStartupWindowIfNeeded()
+        let callbackContext = surfaceCallbackContext
+        surfaceCallbackContext = nil
+
+        let surfaceToFree = surface
+        if let surfaceToFree {
+            TerminalSurfaceRegistry.shared.unregisterRuntimeSurface(surfaceToFree, ownerId: id)
+        }
+        surface = nil
+        activePortalHostLease = nil
+        pendingSocketInputQueue.removeAll(keepingCapacity: false)
+        pendingSocketInputBytes = 0
+        desiredFocusState = false
+
+        guard let surfaceToFree else {
+            callbackContext?.release()
+            return
+        }
+
+#if DEBUG
+        cmuxDebugLog(
+            "surface.lifecycle.hibernate surface=\(id.uuidString.prefix(5)) " +
+            "workspace=\(tabId.uuidString.prefix(5)) reason=\(reason)"
+        )
+#endif
+
+        Task { @MainActor in
             ghostty_surface_free(surfaceToFree)
             callbackContext?.release()
         }
@@ -6148,15 +6231,18 @@ final class TerminalSurface: Identifiable, ObservableObject {
             protectedStartupEnvironmentKeys.insert(key)
         }
 
-        setManagedEnvironmentValue("CMUX_SURFACE_ID", id.uuidString)
-        setManagedEnvironmentValue("CMUX_WORKSPACE_ID", tabId.uuidString)
-        // Backward-compatible shell integration keys used by existing scripts/tests.
-        setManagedEnvironmentValue("CMUX_PANEL_ID", id.uuidString)
-        setManagedEnvironmentValue("CMUX_TAB_ID", tabId.uuidString)
         let socketPath = TerminalController.shared.activeSocketPath(
             preferredPath: SocketControlSettings.socketPath()
         )
-        setManagedEnvironmentValue("CMUX_SOCKET_PATH", socketPath)
+        Self.applyManagedCmuxContextEnvironment(
+            Self.cmuxContextEnvironment(
+                workspaceId: tabId,
+                surfaceId: id,
+                socketPath: socketPath
+            ),
+            to: &env,
+            protectedKeys: &protectedStartupEnvironmentKeys
+        )
         setManagedEnvironmentValue("CMUX_SOCKET", "")
         if let inheritedClaudeConfigDir = ProcessInfo.processInfo.environment["CLAUDE_CONFIG_DIR"],
            !inheritedClaudeConfigDir.isEmpty {
@@ -6314,7 +6400,11 @@ final class TerminalSurface: Identifiable, ObservableObject {
             }
             return baseConfig.command
         }()
+        let runtimeInitialInput = nextRuntimeInitialInput
         let resolvedInitialInput: String? = {
+            if let runtimeInitialInput, !runtimeInitialInput.isEmpty {
+                return runtimeInitialInput
+            }
             if let initialInput, !initialInput.isEmpty {
                 return initialInput
             }
@@ -6367,6 +6457,9 @@ final class TerminalSurface: Identifiable, ObservableObject {
         guard let createdSurface = surface else { return }
         TerminalSurfaceRegistry.shared.registerRuntimeSurface(createdSurface, ownerId: id)
         recordRuntimeSurfaceCreation()
+        if runtimeInitialInput != nil {
+            nextRuntimeInitialInput = nil
+        }
 
         // Session scrollback replay must be one-shot. Reusing it on a later runtime
         // surface recreation would inject stale restored output into a live shell.
@@ -6594,6 +6687,17 @@ final class TerminalSurface: Identifiable, ObservableObject {
         }
     }
 
+    func prepareNextRuntimeInitialInput(_ input: String?) {
+        let trimmedInput = input?.isEmpty == false ? input : nil
+        nextRuntimeInitialInput = trimmedInput
+    }
+
+    @MainActor
+    func prepareAgentHibernationResume(initialInput: String?) {
+        runtimeSurfaceSuspendedForAgentHibernation = false
+        prepareNextRuntimeInitialInput(initialInput)
+    }
+
     func setOcclusion(_ visible: Bool) {
         guard let surface = surface else { return }
         ghostty_surface_set_occlusion(surface, visible)
@@ -6625,6 +6729,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
             guard allowsRuntimeSurfaceCreation() else { return false }
             let queued = enqueuePendingSocketInput(.pasteText(data))
             if queued {
+                recordAgentHibernationTerminalInput(workspaceId: tabId, panelId: id)
                 requestBackgroundSurfaceStartIfNeeded()
             }
             return queued
@@ -6633,6 +6738,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
             return false
         }
         guard !ghostty_surface_process_exited(liveSurface) else { return false }
+        recordAgentHibernationTerminalInput(workspaceId: tabId, panelId: id)
         writeTextData(data, to: liveSurface)
         return true
     }
@@ -6666,6 +6772,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
         guard surface != nil else {
             guard allowsRuntimeSurfaceCreation() else { return .surfaceUnavailable }
             guard enqueuePendingSocketInput(.key(event)) else { return .inputQueueFull }
+            recordAgentHibernationTerminalInput(workspaceId: tabId, panelId: id)
             requestBackgroundSurfaceStartIfNeeded()
             return .queued
         }
@@ -6673,6 +6780,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
             return .surfaceUnavailable
         }
         guard !ghostty_surface_process_exited(liveSurface) else { return .processExited }
+        recordAgentHibernationTerminalInput(workspaceId: tabId, panelId: id)
         sendKeyEvent(surface: liveSurface, keycode: event.keycode, mods: event.mods)
         return .sent
     }
@@ -6701,6 +6809,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
             guard allowsRuntimeSurfaceCreation() else { return .surfaceUnavailable }
             let queued = enqueuePendingSocketInput(text)
             if queued {
+                recordAgentHibernationTerminalInput(workspaceId: tabId, panelId: id)
                 requestBackgroundSurfaceStartIfNeeded()
             }
             return queued ? .queued : .inputQueueFull
@@ -6709,6 +6818,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
             return .surfaceUnavailable
         }
         guard !ghostty_surface_process_exited(liveSurface) else { return .processExited }
+        recordAgentHibernationTerminalInput(workspaceId: tabId, panelId: id)
         sendInput(text, to: liveSurface)
         return .sent
     }
@@ -8371,16 +8481,26 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         )
     }
 
+    private func recordDirectAgentHibernationTerminalInput() {
+        guard let terminalSurface else { return }
+        recordAgentHibernationTerminalInput(
+            workspaceId: terminalSurface.tabId,
+            panelId: terminalSurface.id
+        )
+    }
+
     // MARK: - Clipboard paste
 
     @IBAction func paste(_ sender: Any?) {
         guard prepareSurfaceForPaste(reason: "paste.missingSurface") else { return }
+        recordDirectAgentHibernationTerminalInput()
         _ = performBindingAction("paste_from_clipboard")
     }
 
     /// Pastes clipboard text as plain text, stripping any rich formatting.
     @IBAction func pasteAsPlainText(_ sender: Any?) {
         guard prepareSurfaceForPaste(reason: "pasteAsPlainText.missingSurface") else { return }
+        recordDirectAgentHibernationTerminalInput()
         _ = performBindingAction("paste_from_clipboard")
     }
 
@@ -8881,6 +9001,7 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
             super.keyDown(with: event)
             return
         }
+        recordDirectAgentHibernationTerminalInput()
 #if DEBUG
         ensureSurfaceMs = (ProcessInfo.processInfo.systemUptime - ensureSurfaceStart) * 1000.0
 #endif
@@ -9913,17 +10034,10 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
         workspace: Workspace,
         terminalSurface: TerminalSurface
     ) -> String? {
-        if let dir = workspace.panelDirectories[terminalSurface.id]?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !dir.isEmpty {
-            return dir
-        }
-        if let dir = workspace.terminalPanel(for: terminalSurface.id)?
-            .requestedWorkingDirectory?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !dir.isEmpty {
-            return dir
-        }
-        let dir = workspace.currentDirectory.trimmingCharacters(in: .whitespacesAndNewlines)
-        return dir.isEmpty ? nil : dir
+        CommandClickFileOpenRouter.resolveWorkingDirectory(
+            workspace: workspace,
+            surfaceId: terminalSurface.id
+        )
     }
 
     private func pointIsUsableForWordResolution(_ point: NSPoint) -> Bool {
@@ -14784,6 +14898,7 @@ extension GhosttyNSView: NSTextInputClient {
         guard !sanitizedChars.isEmpty else { return }
 
         // Otherwise send directly to the terminal
+        recordDirectAgentHibernationTerminalInput()
         sendTextToSurface(
             sanitizedChars,
             preserveLiteralEscape: !isExternalCommittedText

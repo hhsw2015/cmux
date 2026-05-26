@@ -183,27 +183,92 @@ final class TitlebarControlsSizingPolicyTests: XCTestCase {
         XCTAssertTrue(titlebarControlsShouldApplyLayout(previous: baseline, next: offsetChanged))
     }
 
-    func testShortcutHintVerticalOffsetKeepsPillInsideButtonLane() {
+    func testTitlebarControlsListenForWindowGeometryChanges() {
+        XCTAssertTrue(TitlebarWindowGeometryNotifications.names.contains(NSWindow.didResizeNotification))
+        XCTAssertTrue(TitlebarWindowGeometryNotifications.names.contains(NSWindow.didEndLiveResizeNotification))
+        XCTAssertTrue(TitlebarWindowGeometryNotifications.names.contains(NSWindow.willEnterFullScreenNotification))
+        XCTAssertTrue(TitlebarWindowGeometryNotifications.names.contains(NSWindow.didEnterFullScreenNotification))
+        XCTAssertTrue(TitlebarWindowGeometryNotifications.names.contains(NSWindow.willExitFullScreenNotification))
+        XCTAssertTrue(TitlebarWindowGeometryNotifications.names.contains(NSWindow.didExitFullScreenNotification))
+        XCTAssertTrue(TitlebarWindowGeometryNotifications.names.contains(NSWindow.didChangeScreenNotification))
+        XCTAssertTrue(TitlebarWindowGeometryNotifications.names.contains(NSWindow.didChangeBackingPropertiesNotification))
+    }
+
+    func testShortcutHintVerticalOffsetTucksPillIntoBottomOfButtonLane() {
         for style in TitlebarControlsStyle.allCases {
             let config = style.config
             let hintHeight = titlebarShortcutHintHeight(for: config)
             let verticalOffset = titlebarShortcutHintVerticalOffset(for: config)
 
-            XCTAssertGreaterThanOrEqual(verticalOffset, 0, "Expected non-negative hint offset for style \(style)")
-            XCTAssertLessThanOrEqual(
-                verticalOffset + hintHeight,
-                config.buttonSize,
-                "Expected hint pill to fit within the titlebar button lane for style \(style)"
-            )
+            XCTAssertLessThan(verticalOffset, config.buttonSize)
+            XCTAssertGreaterThan(verticalOffset + hintHeight, config.buttonSize)
         }
     }
 
-    func testTitlebarControlsUseSharedVisualLift() {
+    func testShortcutHintVerticalGapStaysTuckedAgainstButtonLane() {
+        XCTAssertEqual(TitlebarShortcutHintMetrics.verticalGap, -3, accuracy: 0.001)
+    }
+
+    func testTitlebarControlsUseNeutralVisualLift() {
         XCTAssertEqual(
             TitlebarControlsVisualMetrics.liftedYOffset(3),
-            5,
+            3,
             accuracy: 0.001
         )
+    }
+
+    func testTitlebarControlsUseDeterministicContentSize() {
+        let classic = TitlebarControlsLayoutMetrics.contentSize(config: TitlebarControlsStyle.classic.config)
+        XCTAssertEqual(classic.width, 150, accuracy: 0.001)
+        XCTAssertEqual(classic.height, WindowChromeMetrics.appTitlebarHeight, accuracy: 0.001)
+
+        let compact = TitlebarControlsLayoutMetrics.contentSize(config: TitlebarControlsStyle.compact.config)
+        XCTAssertEqual(compact.width, 136, accuracy: 0.001)
+        XCTAssertEqual(compact.height, WindowChromeMetrics.appTitlebarHeight, accuracy: 0.001)
+    }
+
+    func testTitlebarControlsVerticalOffsetAlignsToTrafficLightsWhenAvailable() {
+        let snapshot = MinimalModeTitlebarDebugSettings.snapshot()
+        let yOffset = TitlebarControlsLayoutMetrics.yOffset(
+            contentHeight: WindowChromeMetrics.appTitlebarHeight,
+            containerHeight: 32,
+            trafficLightFrame: NSRect(x: 20, y: 7, width: 14, height: 14),
+            debugSnapshot: snapshot
+        )
+
+        XCTAssertEqual(yOffset, 0, accuracy: 0.001)
+    }
+
+    func testTitlebarControlsBalanceTopAndBottomAgainstTrafficLights() {
+        let snapshot = MinimalModeTitlebarDebugSettings.snapshot()
+        let trafficLightFrame = NSRect(x: 20, y: 7, width: 14, height: 14)
+        let contentHeight = WindowChromeMetrics.appTitlebarHeight
+        let yOffset = TitlebarControlsLayoutMetrics.yOffset(
+            contentHeight: contentHeight,
+            containerHeight: 32,
+            trafficLightFrame: trafficLightFrame,
+            debugSnapshot: snapshot
+        )
+        let contentFrame = NSRect(x: 0, y: yOffset, width: 100, height: contentHeight)
+
+        XCTAssertEqual(contentFrame.midY, trafficLightFrame.midY, accuracy: 0.001)
+        XCTAssertEqual(
+            trafficLightFrame.minY - contentFrame.minY,
+            contentFrame.maxY - trafficLightFrame.maxY,
+            accuracy: 0.001
+        )
+    }
+
+    func testTitlebarControlsVerticalOffsetFallsBackToTitlebarCenter() {
+        let snapshot = MinimalModeTitlebarDebugSettings.snapshot()
+        let yOffset = TitlebarControlsLayoutMetrics.yOffset(
+            contentHeight: WindowChromeMetrics.appTitlebarHeight,
+            containerHeight: 32,
+            trafficLightFrame: nil,
+            debugSnapshot: snapshot
+        )
+
+        XCTAssertEqual(yOffset, 2, accuracy: 0.001)
     }
 
     func testNotificationBadgeIsSmallAndShiftedUpRight() {
@@ -289,6 +354,13 @@ final class TitlebarControlsHoverPolicyTests: XCTestCase {
         }
     }
 
+    func testIdleTitlebarButtonsStayReadableButMuted() {
+        let idleForeground = titlebarControlForegroundOpacity(isHovering: false, isPressed: false)
+
+        XCTAssertGreaterThanOrEqual(idleForeground, 0.84)
+        XCTAssertLessThan(idleForeground, 1.0)
+    }
+
     func testPressedStateDoesNotScaleTitlebarButtons() {
         XCTAssertEqual(titlebarControlPressedScale(isPressed: false), 1, accuracy: 0.001)
         XCTAssertEqual(titlebarControlPressedScale(isPressed: true), 1, accuracy: 0.001)
@@ -309,6 +381,148 @@ final class TitlebarControlsHoverPolicyTests: XCTestCase {
                 "Expected disabled titlebar button hover to have no active background for style \(style)"
             )
         }
+    }
+
+    func testMinimalModeHoverTrackerPassesMouseMovedThroughWhenButtonsAreVisible() {
+        XCTAssertTrue(
+            minimalModePassthroughHoverTrackerCapturesHit(
+                capturesPassiveHits: true,
+                eventType: .mouseMoved,
+                pressedMouseButtons: 0,
+                boundsContainsPoint: true
+            ),
+            "Expected the hidden minimal-mode hover tracker to capture passive hover so controls reveal"
+        )
+
+        XCTAssertFalse(
+            minimalModePassthroughHoverTrackerCapturesHit(
+                capturesPassiveHits: false,
+                eventType: .mouseMoved,
+                pressedMouseButtons: 0,
+                boundsContainsPoint: true
+            ),
+            "Expected revealed minimal-mode buttons to receive mouseMoved so their hover style can update"
+        )
+    }
+
+    func testMinimalModeHoverTrackerDoesNotCaptureMouseDownOrDraggedHover() {
+        XCTAssertFalse(
+            minimalModePassthroughHoverTrackerCapturesHit(
+                capturesPassiveHits: true,
+                eventType: .leftMouseDown,
+                pressedMouseButtons: 0,
+                boundsContainsPoint: true
+            )
+        )
+        XCTAssertFalse(
+            minimalModePassthroughHoverTrackerCapturesHit(
+                capturesPassiveHits: true,
+                eventType: .mouseMoved,
+                pressedMouseButtons: 1,
+                boundsContainsPoint: true
+            )
+        )
+        XCTAssertFalse(
+            minimalModePassthroughHoverTrackerCapturesHit(
+                capturesPassiveHits: true,
+                eventType: .mouseMoved,
+                pressedMouseButtons: 0,
+                boundsContainsPoint: false
+            )
+        )
+    }
+}
+
+@MainActor
+final class NotificationsPopoverAnchorPolicyTests: XCTestCase {
+    func testPreferredPopoverAnchorUsesVisibleButtonAnchorBeforeWideFallback() {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 220, height: 80),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        defer { window.orderOut(nil) }
+        guard let contentView = window.contentView else {
+            XCTFail("Expected content view")
+            return
+        }
+
+        let fallback = NSView(frame: NSRect(x: 20, y: 40, width: 160, height: 24))
+        let buttonAnchor = NSView(frame: NSRect(x: 50, y: 2, width: 20, height: 20))
+        contentView.addSubview(fallback)
+        fallback.addSubview(buttonAnchor)
+
+        XCTAssertTrue(
+            preferredNotificationsPopoverAnchor(buttonAnchor: buttonAnchor, fallbackAnchor: fallback) === buttonAnchor
+        )
+
+        buttonAnchor.isHidden = true
+        XCTAssertTrue(
+            preferredNotificationsPopoverAnchor(buttonAnchor: buttonAnchor, fallbackAnchor: fallback) === fallback
+        )
+    }
+
+    func testPreferredPopoverAnchorRejectsButtonAnchorFromDifferentWindow() {
+        let sourceWindow = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 220, height: 80),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        defer { sourceWindow.orderOut(nil) }
+        let otherWindow = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 220, height: 80),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        defer { otherWindow.orderOut(nil) }
+        guard let sourceContentView = sourceWindow.contentView,
+              let otherContentView = otherWindow.contentView else {
+            XCTFail("Expected content views")
+            return
+        }
+
+        let fallback = NSView(frame: NSRect(x: 20, y: 40, width: 160, height: 24))
+        let buttonAnchor = NSView(frame: NSRect(x: 50, y: 2, width: 20, height: 20))
+        sourceContentView.addSubview(fallback)
+        otherContentView.addSubview(buttonAnchor)
+
+        XCTAssertTrue(
+            preferredNotificationsPopoverAnchor(buttonAnchor: buttonAnchor, fallbackAnchor: fallback) === fallback
+        )
+    }
+
+    func testNotificationAnchorRegistryFindsNearestVisibleButtonAnchor() {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 260, height: 100),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        defer { window.orderOut(nil) }
+        guard let contentView = window.contentView else {
+            XCTFail("Expected content view")
+            return
+        }
+
+        let bellAnchor = NSView(frame: NSRect(x: 90, y: 60, width: 20, height: 20))
+        let plusAnchor = NSView(frame: NSRect(x: 140, y: 60, width: 20, height: 20))
+        contentView.addSubview(bellAnchor)
+        contentView.addSubview(plusAnchor)
+        NotificationsAnchorRegistry.shared.register(bellAnchor)
+        NotificationsAnchorRegistry.shared.register(plusAnchor)
+
+        let pointNearBell = NSPoint(x: bellAnchor.frame.midX + 2, y: bellAnchor.frame.midY)
+        XCTAssertTrue(
+            NotificationsAnchorRegistry.shared.closestAnchor(in: window, to: pointNearBell) === bellAnchor
+        )
+
+        bellAnchor.isHidden = true
+        XCTAssertTrue(
+            NotificationsAnchorRegistry.shared.closestAnchor(in: window, to: pointNearBell) === plusAnchor
+        )
     }
 }
 
