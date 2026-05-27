@@ -88,6 +88,7 @@
 		C420Z000C420Z000C42FT102 /* SessionPersistenceFeatureFlagsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42FT101 /* SessionPersistenceFeatureFlagsTests.swift */; };
 		C420Z000C420Z000C42CT102 /* ClosePanelReasonTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42CT101 /* ClosePanelReasonTests.swift */; };
 		C420Z000C420Z000C42BSS2 /* BackgroundSessionStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42BSS1 /* BackgroundSessionStoreTests.swift */; };
+		C420Z000C420Z000C42FRT2 /* ForkRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42FRT1 /* ForkRegressionTests.swift */; };
 		D36A00020000000000000001 /* AgentHibernationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D36A00020000000000000002 /* AgentHibernationTests.swift */; };
 		D36A00010000000000000001 /* AgentHibernationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D36A00010000000000000002 /* AgentHibernationController.swift */; };
 		D36A00030000000000000001 /* AgentHibernationLifecycleState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D36A00030000000000000002 /* AgentHibernationLifecycleState.swift */; };
@@ -760,6 +761,7 @@
 		C420Z000C420Z000C42FT101 /* SessionPersistenceFeatureFlagsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPersistenceFeatureFlagsTests.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42CT101 /* ClosePanelReasonTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClosePanelReasonTests.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42BSS1 /* BackgroundSessionStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundSessionStoreTests.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42FRT1 /* ForkRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForkRegressionTests.swift; sourceTree = "<group>"; };
 		D36A00020000000000000002 /* AgentHibernationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentHibernationTests.swift; sourceTree = "<group>"; };
 		D36A00010000000000000002 /* AgentHibernationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/AgentHibernationController.swift; sourceTree = "<group>"; };
 		D36A00030000000000000002 /* AgentHibernationLifecycleState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentHibernation/AgentHibernationLifecycleState.swift; sourceTree = "<group>"; };
@@ -1868,6 +1870,7 @@
 					C420Z000C420Z000C42FT101 /* SessionPersistenceFeatureFlagsTests.swift */,
 					C420Z000C420Z000C42CT101 /* ClosePanelReasonTests.swift */,
 					C420Z000C420Z000C42BSS1 /* BackgroundSessionStoreTests.swift */,
+					C420Z000C420Z000C42FRT1 /* ForkRegressionTests.swift */,
 					D36A00020000000000000002 /* AgentHibernationTests.swift */,
 					F5410001A1B2C3D4E5F60718 /* RestorableAgentHookProviderResumeTests.swift */,
 					F5410005A1B2C3D4E5F60718 /* RestorableAgentHookProviderHermesTests.swift */,
@@ -2815,6 +2818,7 @@
 					C420Z000C420Z000C42FT102 /* SessionPersistenceFeatureFlagsTests.swift in Sources */,
 					C420Z000C420Z000C42CT102 /* ClosePanelReasonTests.swift in Sources */,
 					C420Z000C420Z000C42BSS2 /* BackgroundSessionStoreTests.swift in Sources */,
+					C420Z000C420Z000C42FRT2 /* ForkRegressionTests.swift in Sources */,
 					D36A00020000000000000001 /* AgentHibernationTests.swift in Sources */,
 					F5410000A1B2C3D4E5F60718 /* RestorableAgentHookProviderResumeTests.swift in Sources */,
 					F5410004A1B2C3D4E5F60718 /* RestorableAgentHookProviderHermesTests.swift in Sources */,

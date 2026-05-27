@@ -3116,41 +3116,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         return true
     }
 
-    @discardableResult
-    func reopenMostRecentlyClosedItem(
-        preferredTabManager: TabManager? = nil,
-        shouldActivate: Bool = true
-    ) -> Bool {
-        while let entry = ClosedItemHistoryStore.shared.pop() {
-            switch entry {
-            case .panel(let panelEntry):
-                let manager =
-                    tabManagerFor(tabId: panelEntry.workspaceId)
-                    ?? preferredTabManager
-                    ?? tabManager
-                if manager?.restoreClosedPanel(panelEntry) == true {
-                    return true
-                }
-            case .workspace(let workspaceEntry):
-                let manager =
-                    workspaceEntry.windowId.flatMap { tabManagerFor(windowId: $0) }
-                    ?? preferredTabManager
-                    ?? tabManager
-                if manager?.restoreClosedWorkspace(workspaceEntry) == true {
-                    return true
-                }
-            case .window(let windowEntry):
-                _ = createMainWindow(
-                    sessionWindowSnapshot: windowEntry.snapshot,
-                    shouldActivate: shouldActivate
-                )
-                return true
-            }
-        }
-
-        return false
-    }
-
     private func applySessionWindowSnapshot(
         _ snapshot: SessionWindowSnapshot,
         to context: MainWindowContext,
