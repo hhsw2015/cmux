@@ -11,6 +11,7 @@ struct ClosedPanelSplitPlacement {
 struct ClosedPanelHistoryEntry {
     let workspaceId: UUID
     let paneId: UUID
+    let layoutTabId: UUID?
     let paneAnchorPanelId: UUID?
     let restoreInOriginalPane: Bool
     let tabIndex: Int
@@ -20,6 +21,7 @@ struct ClosedPanelHistoryEntry {
     init(
         workspaceId: UUID,
         paneId: UUID,
+        layoutTabId: UUID? = nil,
         paneAnchorPanelId: UUID? = nil,
         restoreInOriginalPane: Bool = true,
         tabIndex: Int,
@@ -28,6 +30,7 @@ struct ClosedPanelHistoryEntry {
     ) {
         self.workspaceId = workspaceId
         self.paneId = paneId
+        self.layoutTabId = layoutTabId
         self.paneAnchorPanelId = paneAnchorPanelId
         self.restoreInOriginalPane = restoreInOriginalPane
         self.tabIndex = tabIndex
@@ -261,6 +264,7 @@ final class ClosedItemHistoryStore: ObservableObject {
             return ClosedItemHistoryRecord(id: record.id, closedAt: record.closedAt, entry: .panel(ClosedPanelHistoryEntry(
                 workspaceId: newWorkspaceId,
                 paneId: panelEntry.paneId,
+                layoutTabId: panelEntry.layoutTabId,
                 paneAnchorPanelId: remapAnchor(panelEntry.paneAnchorPanelId),
                 restoreInOriginalPane: false,
                 tabIndex: panelEntry.tabIndex,
@@ -299,6 +303,7 @@ final class ClosedItemHistoryStore: ObservableObject {
             return ClosedItemHistoryRecord(id: record.id, closedAt: record.closedAt, entry: .panel(ClosedPanelHistoryEntry(
                 workspaceId: panelEntry.workspaceId,
                 paneId: panelEntry.paneId,
+                layoutTabId: panelEntry.layoutTabId,
                 paneAnchorPanelId: paneAnchorPanelId,
                 restoreInOriginalPane: panelEntry.restoreInOriginalPane,
                 tabIndex: panelEntry.tabIndex,
