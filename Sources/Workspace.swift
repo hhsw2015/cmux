@@ -9885,6 +9885,23 @@ final class Workspace: Identifiable, ObservableObject {
         layoutTabs.first { $0.topTabId == topTabId }?.bonsplitController
     }
 
+    /// Resolve the BonsplitController for a given layout tab id. Used by
+    /// herdr inbound LayoutChanged handlers to route mutations into the
+    /// SAME layout tab the binding lives in, even when the user has a
+    /// different top tab active. Returns nil if the layout tab no longer
+    /// exists (its top tab was closed). Caller falls back to no-op.
+    func bonsplitController(forLayoutTabId layoutTabId: UUID?) -> BonsplitController? {
+        guard let layoutTabId else { return nil }
+        return layoutTabs.first { $0.id == layoutTabId }?.bonsplitController
+    }
+
+    /// Look up the layout tab that owns a given pane id, exposed for
+    /// herdr inbound code that needs to remember which tab a binding
+    /// belongs to.
+    func layoutTabId(containingPaneId paneId: PaneID) -> UUID? {
+        layoutTabs.first { $0.bonsplitController.allPaneIds.contains(paneId) }?.id
+    }
+
     func isSelectedTopLevelTab(_ topTabId: TabID) -> Bool {
         selectedLayoutTabId == topTabId.uuid
     }

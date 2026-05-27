@@ -1,3 +1,4 @@
+import Bonsplit
 import Foundation
 
 /// One herdr-backed subtree inside a cmux workspace. Records which
@@ -23,6 +24,13 @@ final class HerdrTabBinding {
     /// E2e inbound LayoutChanged uses this to find the BonsplitController
     /// to mutate.
     weak var workspace: Workspace?
+    /// Top-tabs PR #4829: the cmux layout tab this binding lives in.
+    /// nil for legacy bindings registered before top tabs (single-layout
+    /// world). Inbound LayoutChanged routes mutations to the
+    /// BonsplitController for THIS layoutTab id, not the workspace's
+    /// active tab — otherwise typing in a non-active tab would mutate
+    /// the wrong tree.
+    var cmuxLayoutTabId: UUID?
 
     init(
         host: HerdrHost,
@@ -30,7 +38,8 @@ final class HerdrTabBinding {
         tabId: String,
         rootCmuxPaneId: UUID,
         paneBindings: HerdrPaneBindingRegistry,
-        workspace: Workspace? = nil
+        workspace: Workspace? = nil,
+        cmuxLayoutTabId: UUID? = nil
     ) {
         self.host = host
         self.workspaceId = workspaceId
@@ -38,6 +47,21 @@ final class HerdrTabBinding {
         self.rootCmuxPaneId = rootCmuxPaneId
         self.paneBindings = paneBindings
         self.workspace = workspace
+        self.cmuxLayoutTabId = cmuxLayoutTabId
+    }
+
+    /// Resolve the live BonsplitController this binding should mutate.
+    /// Falls back to the workspace's active controller (legacy behavior)
+    /// when cmuxLayoutTabId is nil — so existing register call sites
+    /// that haven't been updated still work in single-layoutTab mode.
+    var liveBonsplitController: BonsplitController? {
+        guard let workspace else { return nil }
+        if let layoutTabId = cmuxLayoutTabId,
+           let controller = workspace.bonsplitController(forLayoutTabId: layoutTabId) {
+            return controller
+        }
+        return workspace.bonsplitController(containingPaneId: PaneID(id: rootCmuxPaneId))
+            ?? workspace.bonsplitController
     }
 
     var ownedCmuxPaneIds: Set<UUID> {

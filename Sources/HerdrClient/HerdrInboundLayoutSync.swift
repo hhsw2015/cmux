@@ -344,7 +344,10 @@ enum HerdrInboundLayoutSync {
                 && $0.tabId == tabId
         }) else { return }
         guard let workspace = binding.workspace else { return }
-        let controller = workspace.bonsplitController
+        // Top tabs PR #4829: route to the BonsplitController for THIS
+        // binding's layout tab, not the workspace's active tab.
+        guard let controller = binding.liveBonsplitController else { return }
+        _ = workspace
         if !zoomed {
             if controller.zoomedPaneId == nil { return }
             controller.clearPaneZoom()
@@ -405,7 +408,10 @@ enum HerdrInboundLayoutSync {
         // outright below.
         workspace.markAllTabsForceCloseable()
         for (cmuxPaneId, _) in pairs {
-            workspace.bonsplitController.closePane(PaneID(id: cmuxPaneId))
+            let pid = PaneID(id: cmuxPaneId)
+            let controller = workspace.bonsplitController(containingPaneId: pid)
+                ?? workspace.bonsplitController
+            controller.closePane(pid)
         }
         os_log(
             "herdr.inbound.teardown reason=%{public}@ panes=%{public}d",
@@ -503,7 +509,8 @@ enum HerdrInboundLayoutSync {
             os_log("herdr.inbound.applyDividers.end binding=%{public}@ durMs=%{public}d",
                    String(bindingKey.uuidString.prefix(8)), durMs)
         }
-        let cmuxTree = workspace.bonsplitController.treeSnapshot()
+        let bindingController = binding.liveBonsplitController ?? workspace.bonsplitController
+        let cmuxTree = bindingController.treeSnapshot()
         guard let cmuxSubtree = findCmuxSubtreeRoot(tree: cmuxTree, binding: binding) else {
             os_log("herdr.inbound.applyDividers no_subtree_match bound=%{public}d treeLeaves=%{public}d",
                    binding.paneBindings.count,
@@ -518,7 +525,7 @@ enum HerdrInboundLayoutSync {
                 missed += 1
                 continue
             }
-            workspace.bonsplitController.setDividerPosition(
+            bindingController.setDividerPosition(
                 CGFloat(ratio),
                 forSplit: splitId,
                 fromExternal: true
@@ -541,7 +548,7 @@ enum HerdrInboundLayoutSync {
         // echoes (raw-pty-attach output is starved by the storm).
         let primed = HerdrDividerSync.prime(
             binding: binding,
-            treeSnapshot: workspace.bonsplitController.treeSnapshot()
+            treeSnapshot: bindingController.treeSnapshot()
         )
         if !primed {
             // Post-apply tree shape didn't match this binding (mid-
@@ -577,7 +584,11 @@ enum HerdrInboundLayoutSync {
         }
         // Suppress the outbound pane.close echo — remote already closed.
         HerdrCloseHandler.suppressNextCloseFor.insert(herdrPaneId)
-        workspace.bonsplitController.closePane(PaneID(id: cmuxPaneId))
+        let pid = PaneID(id: cmuxPaneId)
+        let controller = workspace.bonsplitController(containingPaneId: pid)
+            ?? binding.liveBonsplitController
+            ?? workspace.bonsplitController
+        controller.closePane(pid)
         // didClosePane → HerdrCloseHandler.handlePanelClosed runs the
         // local cleanup (HerdrPanelRegistry.remove, binding unbind).
         cmuxDebugLog("herdr.inbound: removed pane \(herdrPaneId)")
@@ -674,9 +685,11 @@ enum HerdrInboundLayoutSync {
 
             // Re-prime divider lastSeen so the geometry change from
             // this materialization doesn't echo back as a user drag.
+            let materializeController = binding.liveBonsplitController
+                ?? workspace.bonsplitController
             HerdrDividerSync.prime(
                 binding: binding,
-                treeSnapshot: workspace.bonsplitController.treeSnapshot()
+                treeSnapshot: materializeController.treeSnapshot()
             )
             os_log(
                 "herdr.inbound.applyAddition wired pane=%{public}@ cmux=%{public}@",

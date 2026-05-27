@@ -1039,7 +1039,9 @@ enum HerdrPanelOpener {
         }
 
         if let focusedCmux = result.focusedCmuxPaneId {
-            workspace.bonsplitController.focusPane(PaneID(id: focusedCmux))
+            let pid = PaneID(id: focusedCmux)
+            (workspace.bonsplitController(containingPaneId: pid) ?? workspace.bonsplitController)
+                .focusPane(pid)
         }
 
         let binding = HerdrTabBinding(
@@ -1048,12 +1050,14 @@ enum HerdrPanelOpener {
             tabId: activeTabId,
             rootCmuxPaneId: rootPaneId.id,
             paneBindings: result.registry,
-            workspace: workspace
+            workspace: workspace,
+            cmuxLayoutTabId: workspace.layoutTabId(containingPaneId: rootPaneId)
         )
         HerdrTabRegistry.shared.register(key: rootPaneId.id, binding: binding)
+        let bindingController = binding.liveBonsplitController ?? workspace.bonsplitController
         HerdrDividerSync.prime(
             binding: binding,
-            treeSnapshot: workspace.bonsplitController.treeSnapshot()
+            treeSnapshot: bindingController.treeSnapshot()
         )
         await HerdrEventPump.shared.acquire(host: host)
         HerdrPersistence.shared.record(
