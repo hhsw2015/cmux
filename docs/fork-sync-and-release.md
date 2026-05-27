@@ -293,6 +293,17 @@ Build via `./scripts/build-release-local.sh --install` first.
 If any check fails, do NOT release. Tag the issue `fork-regression` with
 the affected backend (herdr / cmux-tmux / top-tabs) in the title.
 
+## Known limitations after PR #4829 (top tabs) merge
+
+**herdr remote backend:** ✅ full layoutTab support. Each layoutTab's panes route to the correct herdr Tab via `HerdrTabBinding.cmuxLayoutTabId`. Cross-layoutTab move updates the binding hint in `splitTabBar(didMoveTab:)`.
+
+**cmux-tmux backend:** ⚠️ partial. Each cmux Workspace = 1 tmux session, but **all cmux layoutTabs in that workspace still map to a single tmux window** (window 0). The cmux-tmux Rust shim doesn't yet bridge `tab.create` / `tab.close` / `tab.focus` RPCs to `tmux new-window` / `kill-window` / `select-window`. Symptoms:
+- `tmux list-windows` shows 1 window even when cmux has 2+ layoutTabs
+- Switching cmux top tabs doesn't switch tmux windows
+- Closing a cmux layoutTab doesn't kill its tmux window
+
+cmux's local view is fully functional; only the external tmux client view is degraded. Ticket: extend `tools/cmux-tmux/src/bin/cmux-tmux.rs` to handle `tab.*` methods + emit `tab.created/closed/focused` events on tmux window changes; cmux side then needs a bridge that calls `tab.create` when user opens a new layoutTab against a cmux-tmux workspace.
+
 ## Caveats
 
 - **adhoc signing only** — downloaders need to run `xattr -cr` + `codesign --force --deep --sign -`. Public release would need Apple Developer cert + notarization (out of scope for this fork).

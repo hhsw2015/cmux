@@ -18259,6 +18259,17 @@ extension Workspace: BonsplitDelegate {
            selectedLayoutTabId != layout.id {
             _ = selectTopLevelTab(id: layout.id, reassertAppKitFocus: false)
         }
+        // Top tabs PR #4829: a herdr-bound panel that crossed into a
+        // different layout tab needs its binding's cached layoutTabId
+        // refreshed so future inbound LayoutChanged routes to the new
+        // tab. liveBonsplitController already prefers the rootPaneId
+        // lookup, but we update the hint here for telemetry / fallback.
+        if let movedPanelId = panelIdFromSurfaceId(tab.id),
+           let binding = HerdrTabRegistry.shared.binding(forCmuxPaneId: movedPanelId),
+           let newLayoutTabId = layoutTabId(containingPaneId: destination),
+           binding.cmuxLayoutTabId != newLayoutTabId {
+            binding.cmuxLayoutTabId = newLayoutTabId
+        }
 #if DEBUG
         let now = ProcessInfo.processInfo.systemUptime
         let sincePrev: String

@@ -51,17 +51,24 @@ final class HerdrTabBinding {
     }
 
     /// Resolve the live BonsplitController this binding should mutate.
-    /// Falls back to the workspace's active controller (legacy behavior)
-    /// when cmuxLayoutTabId is nil — so existing register call sites
-    /// that haven't been updated still work in single-layoutTab mode.
+    /// Lookup order:
+    /// 1. By the binding's root pane id — survives cross-layoutTab moves
+    ///    (bonsplit pane UUIDs are unique workspace-wide regardless of
+    ///    which layoutTab they end up in).
+    /// 2. By the cached cmuxLayoutTabId — covers legacy bindings whose
+    ///    rootCmuxPaneId may have been swapped out by reordering.
+    /// 3. Workspace default (active layoutTab) — single-layoutTab mode
+    ///    fallback for bindings created before top tabs landed.
     var liveBonsplitController: BonsplitController? {
         guard let workspace else { return nil }
+        if let controller = workspace.bonsplitController(containingPaneId: PaneID(id: rootCmuxPaneId)) {
+            return controller
+        }
         if let layoutTabId = cmuxLayoutTabId,
            let controller = workspace.bonsplitController(forLayoutTabId: layoutTabId) {
             return controller
         }
-        return workspace.bonsplitController(containingPaneId: PaneID(id: rootCmuxPaneId))
-            ?? workspace.bonsplitController
+        return workspace.bonsplitController
     }
 
     var ownedCmuxPaneIds: Set<UUID> {
