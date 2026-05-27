@@ -127,6 +127,9 @@ pub fn translate_request_in_context(
         "pane.swap" => translate_pane_swap(&req.params).map(TranslateOutcome::RunTmux),
         "tab.list" => translate_tab_list(&req.params).map(TranslateOutcome::RunTmux),
         "tab.focus" => translate_tab_focus(&req.params).map(TranslateOutcome::RunTmux),
+        "tab.create" => translate_tab_create(&req.params).map(TranslateOutcome::RunTmux),
+        "tab.close" => translate_tab_close(&req.params).map(TranslateOutcome::RunTmux),
+        "tab.rename" => translate_tab_rename(&req.params).map(TranslateOutcome::RunTmux),
         "workspace.focus" => {
             translate_workspace_target("switch-client", &req.params).map(TranslateOutcome::RunTmux)
         }
@@ -245,6 +248,58 @@ fn translate_tab_focus(params: &Value) -> Result<Vec<String>, TranslateError> {
         .and_then(Value::as_str)
         .ok_or(TranslateError::MissingField("tab_id"))?;
     Ok(vec!["select-window".into(), "-t".into(), tab_id.into()])
+}
+
+fn translate_tab_create(params: &Value) -> Result<Vec<String>, TranslateError> {
+    let workspace_id = params
+        .get("workspace_id")
+        .and_then(Value::as_str)
+        .ok_or(TranslateError::MissingField("workspace_id"))?;
+    let mut argv: Vec<String> = vec![
+        "new-window".into(),
+        "-t".into(),
+        workspace_id.into(),
+        "-P".into(),
+        "-F".into(),
+        WINDOW_FORMAT.into(),
+    ];
+    if let Some(name) = params.get("name").and_then(Value::as_str) {
+        argv.extend(["-n".into(), name.into()]);
+    }
+    if let Some(cwd) = params.get("cwd").and_then(Value::as_str) {
+        argv.extend(["-c".into(), cwd.into()]);
+    }
+    if let Some(focus) = params.get("focus").and_then(Value::as_bool) {
+        if !focus {
+            argv.insert(1, "-d".into());
+        }
+    }
+    Ok(argv)
+}
+
+fn translate_tab_close(params: &Value) -> Result<Vec<String>, TranslateError> {
+    let tab_id = params
+        .get("tab_id")
+        .and_then(Value::as_str)
+        .ok_or(TranslateError::MissingField("tab_id"))?;
+    Ok(vec!["kill-window".into(), "-t".into(), tab_id.into()])
+}
+
+fn translate_tab_rename(params: &Value) -> Result<Vec<String>, TranslateError> {
+    let tab_id = params
+        .get("tab_id")
+        .and_then(Value::as_str)
+        .ok_or(TranslateError::MissingField("tab_id"))?;
+    let name = params
+        .get("name")
+        .and_then(Value::as_str)
+        .ok_or(TranslateError::MissingField("name"))?;
+    Ok(vec![
+        "rename-window".into(),
+        "-t".into(),
+        tab_id.into(),
+        name.into(),
+    ])
 }
 
 fn translate_workspace_target(verb: &str, params: &Value) -> Result<Vec<String>, TranslateError> {
