@@ -182,4 +182,114 @@ final class ForkRegressionTests: XCTestCase {
         // call sites stop compiling, surfacing the regression here first.
         _ = workspace.bonsplitController.allPaneIds
     }
+
+    private func layoutContains(layout: SessionWorkspaceLayoutSnapshot, panelId: UUID) -> Bool {
+        switch layout {
+        case .pane(let pane):
+            return pane.panelIds.contains(panelId)
+        case .split(let split):
+            return layoutContains(layout: split.first, panelId: panelId)
+                || layoutContains(layout: split.second, panelId: panelId)
+        }
+    }
+
+    // MARK: - 8. zmx panel restore drives initialInput end-to-end
+    //
+    // Catches the actual logic regression class that PR #4829 (top tabs)
+    // is most likely to introduce: even if `SessionTerminalPanelSnapshot.zmx`
+    // still exists and Codable round-trips, the restore PATH inside
+    // `Workspace.restoreSessionSnapshot` could lose its `zmxStartupInput`
+    // step when that function gets refactored to walk per-layoutTab
+    // children. Compile passes, Codable passes, but the user opens cmux
+    // after restart and the zmx panel boots a plain shell instead of
+    // reattaching to the daemon.
+    //
+    // This test injects a zmx field into the saved-state JSON, runs the
+    // full restoreSessionSnapshot path on a fresh TabManager, then probes
+    // the resulting TerminalPanel's surface.initialInput for the
+    // `zmx attach` invocation we expect.
+
+    func testForkZmxPanelRestoreInjectsAttachIntoInitialInput() throws {
+        // Source: build a workspace, snapshot it, inject zmx into the
+        // first terminal panel's snapshot.
+        let source = TabManager()
+        let sourceWorkspace = source.addWorkspace(select: false)
+        sourceWorkspace.setCustomTitle("fork-zmx-restore-test")
+
+        var snapshot = source.sessionSnapshot(includeScrollback: false)
+        guard let wsIdx = snapshot.workspaces.firstIndex(where: { $0.customTitle == "fork-zmx-restore-test" }),
+              !snapshot.workspaces[wsIdx].panels.isEmpty else {
+            throw XCTSkip("could not locate test workspace in snapshot; addWorkspace flow changed")
+        }
+        let originalPanelId = snapshot.workspaces[wsIdx].panels[0].id
+
+        let zmx = SessionZmxBindingSnapshot(
+            zmxSessionName: "fork-test-attach",
+            originalArgv: ["zmx", "attach", "fork-test-attach"],
+            workingDirectory: NSTemporaryDirectory(),
+            attachState: .attached,
+            lastSeenAt: Date()
+        )
+
+        if snapshot.workspaces[wsIdx].panels[0].terminal != nil {
+            snapshot.workspaces[wsIdx].panels[0].terminal!.zmx = zmx
+            snapshot.workspaces[wsIdx].panels[0].terminal!.workingDirectory = NSTemporaryDirectory()
+        } else {
+            snapshot.workspaces[wsIdx].panels[0].terminal = SessionTerminalPanelSnapshot(
+                workingDirectory: NSTemporaryDirectory(),
+                zmx: zmx
+            )
+        }
+        snapshot.workspaces[wsIdx].panels[0].directory = NSTemporaryDirectory()
+        snapshot.workspaces[wsIdx].currentDirectory = NSTemporaryDirectory()
+
+        // Sanity: snapshot must actually carry zmx into the restore path.
+        XCTAssertNotNil(
+            snapshot.workspaces[wsIdx].panels[0].terminal?.zmx,
+            "test setup: zmx must be present in snapshot before restore"
+        )
+        XCTAssertEqual(
+            snapshot.workspaces[wsIdx].panels[0].type,
+            .terminal,
+            "test setup: panel type must be .terminal so createPanel takes the terminal branch"
+        )
+        let layoutContainsPanel = layoutContains(layout: snapshot.workspaces[wsIdx].layout, panelId: originalPanelId)
+        XCTAssertTrue(
+            layoutContainsPanel,
+            "test setup: source layout must reference panel \(originalPanelId.uuidString.prefix(8))"
+        )
+
+        // Destination: fresh manager runs the full restore path that the
+        // top-tabs PR refactors.
+        let destination = TabManager()
+        destination.restoreSessionSnapshot(snapshot)
+
+        let restoredWorkspace = try XCTUnwrap(
+            destination.tabs.first(where: { $0.customTitle == "fork-zmx-restore-test" }),
+            "restored workspace must reappear with its custom title"
+        )
+        let allTerminals = restoredWorkspace.panels.values.compactMap { $0 as? TerminalPanel }
+        XCTAssertFalse(
+            allTerminals.isEmpty,
+            "restored workspace must contain at least one TerminalPanel"
+        )
+        let allInputs = allTerminals.map { (id: $0.id, input: $0.surface.initialInput ?? "<nil>") }
+        _ = originalPanelId
+
+        let input = try XCTUnwrap(
+            allInputs.first(where: { $0.input.contains("zmx") })?.input,
+            "zmx restore must seed the terminal surface's initialInput; "
+            + "Workspace.restoreSessionSnapshot dropped the zmxStartupInput step "
+            + "(likely while accommodating PR #4829 layoutTab restructure). "
+            + "All restored panel inputs: \(allInputs)"
+        )
+        XCTAssertTrue(
+            input.contains("zmx") && input.contains("attach"),
+            "initialInput should contain 'zmx attach' command, got: \(input)"
+        )
+        XCTAssertTrue(
+            input.contains("fork-test-attach"),
+            "initialInput should mention the saved zmx session name, got: \(input)"
+        )
+    }
 }
