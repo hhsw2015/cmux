@@ -442,7 +442,11 @@ mod tab_translator_tests {
         assert!(argv.iter().any(|a| a == "-t"));
         assert!(argv.iter().any(|a| a == "$0"));
         assert!(argv.iter().any(|a| a == "-P"));
-        assert!(!argv.iter().any(|a| a == "-d"), "default focus should not pass -d, got {:?}", argv);
+        assert!(
+            !argv.iter().any(|a| a == "-d"),
+            "default focus should not pass -d, got {:?}",
+            argv
+        );
     }
 
     #[test]
@@ -453,7 +457,11 @@ mod tab_translator_tests {
             "params": {"workspace_id": "$0", "focus": false}
         });
         let argv = outcome_to_argv(&req.to_string());
-        assert!(argv.iter().any(|a| a == "-d"), "focus=false must add -d, got {:?}", argv);
+        assert!(
+            argv.iter().any(|a| a == "-d"),
+            "focus=false must add -d, got {:?}",
+            argv
+        );
     }
 
     #[test]
