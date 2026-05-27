@@ -117,4 +117,68 @@ final class ForkRegressionTests: XCTestCase {
         let typeName = String(describing: CmuxTmuxStdioTransport.self)
         XCTAssertEqual(typeName, "CmuxTmuxStdioTransport")
     }
+
+    // MARK: - 6. zmx field survives FULL nested workspace snapshot round-trip
+    //
+    // Pre-merge guard for PR #4829 (Ghostty-style top tabs). That PR adds
+    // `SessionWorkspaceLayoutTabSnapshot` and wraps panel snapshots inside
+    // a `layoutTabs` array. The zmx field lives on the inner
+    // SessionTerminalPanelSnapshot and must survive nesting under any
+    // future schema reshuffle.
+
+    func testForkZmxFieldSurvivesNestedWorkspaceSnapshotRoundTrip() throws {
+        // Build a workspace snapshot from a real TabManager so we don't have
+        // to track every field SessionWorkspaceSnapshot grows. Inject a panel
+        // snapshot containing zmx via persistence-store rewrite.
+        let manager = TabManager()
+        let workspace = manager.addWorkspace(select: false)
+        workspace.setCustomTitle("fork-zmx-test")
+
+        var snapshot = manager.sessionSnapshot(includeScrollback: false)
+        guard !snapshot.workspaces.isEmpty,
+              !snapshot.workspaces[0].panels.isEmpty else {
+            throw XCTSkip("addWorkspace did not produce a default panel; skip")
+        }
+        let zmx = SessionZmxBindingSnapshot(
+            zmxSessionName: "demo-nested",
+            originalArgv: ["zmx", "attach", "demo-nested"],
+            workingDirectory: "/Users/test/proj",
+            attachState: .attached,
+            lastSeenAt: Date(timeIntervalSince1970: 1_700_000_500)
+        )
+        if snapshot.workspaces[0].panels[0].terminal != nil {
+            snapshot.workspaces[0].panels[0].terminal!.zmx = zmx
+        } else {
+            snapshot.workspaces[0].panels[0].terminal = SessionTerminalPanelSnapshot(zmx: zmx)
+        }
+
+        let data = try JSONEncoder().encode(snapshot)
+        let decoded = try JSONDecoder().decode(SessionTabManagerSnapshot.self, from: data)
+
+        let decodedZmx = try XCTUnwrap(
+            decoded.workspaces.first?.panels.first?.terminal?.zmx,
+            "zmx field on nested panel terminal snapshot must survive full TabManager snapshot round-trip; PR #4829 layoutTabs wrapper or future schema change broke it"
+        )
+        XCTAssertEqual(decodedZmx.zmxSessionName, "demo-nested")
+        XCTAssertEqual(decodedZmx.originalArgv, ["zmx", "attach", "demo-nested"])
+    }
+
+    // MARK: - 7. Bonsplit accessor naming guard
+    //
+    // PR #4829 introduces overload `bonsplitController(containingPanelId:)`,
+    // `bonsplitController(containingPaneId:)`, and `bonsplitController(containingSurfaceId:)`.
+    // The default `bonsplitController` (no args) still exists. Fork code in
+    // HerdrInboundLayoutSync etc. uses the no-arg form. After merge, those
+    // call sites must be audited but should still COMPILE. This test exists
+    // so a future upstream change that REMOVES the no-arg accessor breaks
+    // here loudly instead of cascading through 20+ HerdrClient files.
+
+    func testForkBonsplitControllerNoArgAccessorPreserved() {
+        let manager = TabManager()
+        let workspace = manager.addWorkspace(select: false)
+        // Property access compile-check. If this stops being a property and
+        // becomes only a function with required label, fork's HerdrClient
+        // call sites stop compiling, surfacing the regression here first.
+        _ = workspace.bonsplitController.allPaneIds
+    }
 }
