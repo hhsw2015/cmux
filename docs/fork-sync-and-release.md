@@ -254,40 +254,44 @@ specific feature it guards.
 If a test fails, read its failure message — it usually points at the
 exact merge resolution that lost a fork-only behavior.
 
-### 2. Manual test checklist (only after big upstream merges or any PR
-that touches Workspace.swift / TabManager.swift / TerminalController.swift /
-HerdrClient/* — particularly PR #4829 top tabs when it lands)
+### 2. Manual test checklist — cross-process behaviors only
 
-Build via `./scripts/build-release-local.sh --install`, then:
+Code review covers fork-only types and call-site existence. Single-process
+logic (zmx initialInput chain, etc.) is covered by ForkRegressionTests.
+Manual tests are reserved for behaviors that depend on **real external
+daemons** or **async multi-process state** that automated tests can't
+reproduce honestly.
 
-**zmx restore:**
-- [ ] Open a panel running `zmx attach foo` against a real zmx daemon
-- [ ] Quit cmux (Cmd-Q)
-- [ ] Relaunch cmux
-- [ ] Panel auto-reattaches to `foo` — terminal shows existing zmx state, not a fresh shell
+Run only after merges that touch `HerdrClient/*`, `Sources/HerdrTransport/*`,
+`tools/cmux-tmux/`, or `Workspace.swift` workspace-level restore code.
+Build via `./scripts/build-release-local.sh --install` first.
 
-**herdr backend:**
+**herdr remote daemon round-trip:**
 - [ ] Add a remote computer in Settings → Computers (SSH herdr flavor)
-- [ ] Open a workspace on that computer, create 2 panels
+- [ ] Open a workspace on that computer, create 2 panels with running processes
 - [ ] Quit cmux, relaunch
-- [ ] Workspace reconnects, both panels alive, scrollback intact
-- [ ] Close one panel — remote daemon still has the other (verify via `ssh host herdr-cmux list`)
+- [ ] Workspace reconnects, both panels alive with their processes still attached
+- [ ] Close one panel from cmux → remote daemon retains the other
+      (verify with `ssh <host> herdr-cmux pane list`)
 
-**cmux-tmux backend:**
+**cmux-tmux ↔ external tmux:**
 - [ ] Add a Local tmux computer in Settings → Computers (Local tmux flavor)
-- [ ] Open a workspace, create 2 panels with different shell commands
-- [ ] In a separate tmux client (`tmux ls`, `tmux attach`), confirm cmux's panes appear as tmux panes
-- [ ] Quit cmux, relaunch — workspace + panes reattach to the running tmux session
+- [ ] Open a workspace, create 2 panels with different long-running commands
+- [ ] In a separate terminal: `tmux ls` shows cmux's session;
+      `tmux attach -t <session>` shows the same panes
+- [ ] Quit cmux, relaunch — workspace reattaches to the running tmux session;
+      panes still alive
 
-**Top tabs (only after PR #4829 lands):**
-- [ ] Cmd+T creates new top tab inside same workspace
-- [ ] Each top tab has its own split tree (split in Tab1 doesn't show in Tab2)
-- [ ] Ctrl+Tab / Ctrl+Shift+Tab cycle through top tabs
-- [ ] herdr workspace + 2 top tabs: each tab's panes appear independently in herdr's `pane.list`
-- [ ] cmux-tmux workspace + 2 top tabs: each tab maps to a distinct tmux window (`tmux list-windows`)
-- [ ] Close one top tab → remote daemon retains the other tab's session
+**Top tabs × backend isolation (post PR #4829 only):**
+- [ ] Open a herdr workspace with 2 top tabs (Cmd+T), one panel per tab
+- [ ] Each top tab's panel appears as an independent entry in
+      `ssh <host> herdr-cmux pane list`
+- [ ] Open a cmux-tmux workspace with 2 top tabs, one panel per tab
+- [ ] Each top tab maps to a distinct tmux window in `tmux list-windows`
+- [ ] Close one top tab → the other top tab's remote session stays alive
 
-If any manual check fails, do NOT release. Open an issue tagged `fork-regression`, capture the broken behavior with the affected backend (zmx / herdr / cmux-tmux) in the title.
+If any check fails, do NOT release. Tag the issue `fork-regression` with
+the affected backend (herdr / cmux-tmux / top-tabs) in the title.
 
 ## Caveats
 
