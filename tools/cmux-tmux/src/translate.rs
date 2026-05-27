@@ -271,7 +271,9 @@ fn translate_tab_create(params: &Value) -> Result<Vec<String>, TranslateError> {
     }
     if let Some(focus) = params.get("focus").and_then(Value::as_bool) {
         if !focus {
-            argv.insert(1, "-d".into());
+            // tmux accepts flags in any order; push so reordering the
+            // constructor above doesn't shift -d into the wrong slot.
+            argv.push("-d".into());
         }
     }
     Ok(argv)
@@ -414,4 +416,83 @@ fn translate_pane_split(params: &Value) -> Result<Vec<String>, TranslateError> {
     argv.push("-t".into());
     argv.push(target.into());
     Ok(argv)
+}
+
+#[cfg(test)]
+mod tab_translator_tests {
+    use super::*;
+    use serde_json::json;
+
+    fn outcome_to_argv(json_str: &str) -> Vec<String> {
+        match translate_request(json_str).expect("translate ok") {
+            TranslateOutcome::RunTmux(argv) => argv,
+            other => panic!("expected RunTmux, got {:?}", std::mem::discriminant(&other)),
+        }
+    }
+
+    #[test]
+    fn tab_create_default_focus_omits_d_flag() {
+        let req = json!({
+            "id": "1",
+            "method": "tab.create",
+            "params": {"workspace_id": "$0"}
+        });
+        let argv = outcome_to_argv(&req.to_string());
+        assert_eq!(argv[0], "new-window");
+        assert!(argv.iter().any(|a| a == "-t"));
+        assert!(argv.iter().any(|a| a == "$0"));
+        assert!(argv.iter().any(|a| a == "-P"));
+        assert!(!argv.iter().any(|a| a == "-d"), "default focus should not pass -d, got {:?}", argv);
+    }
+
+    #[test]
+    fn tab_create_focus_false_appends_d_flag() {
+        let req = json!({
+            "id": "1",
+            "method": "tab.create",
+            "params": {"workspace_id": "$0", "focus": false}
+        });
+        let argv = outcome_to_argv(&req.to_string());
+        assert!(argv.iter().any(|a| a == "-d"), "focus=false must add -d, got {:?}", argv);
+    }
+
+    #[test]
+    fn tab_create_with_name_and_cwd() {
+        let req = json!({
+            "id": "1",
+            "method": "tab.create",
+            "params": {
+                "workspace_id": "$0",
+                "name": "demo",
+                "cwd": "/tmp"
+            }
+        });
+        let argv = outcome_to_argv(&req.to_string());
+        let n_idx = argv.iter().position(|a| a == "-n").expect("-n present");
+        assert_eq!(argv[n_idx + 1], "demo");
+        let c_idx = argv.iter().position(|a| a == "-c").expect("-c present");
+        assert_eq!(argv[c_idx + 1], "/tmp");
+    }
+
+    #[test]
+    fn tab_close_uses_kill_window() {
+        let req = json!({
+            "id": "1",
+            "method": "tab.close",
+            "params": {"workspace_id": "$0", "tab_id": "@5"}
+        });
+        let argv = outcome_to_argv(&req.to_string());
+        assert_eq!(argv, vec!["kill-window", "-t", "@5"]);
+    }
+
+    #[test]
+    fn tab_rename_uses_rename_window() {
+        let req = json!({
+            "id": "1",
+            "method": "tab.rename",
+            "params": {"tab_id": "@7", "name": "new-name"}
+        });
+        let argv = outcome_to_argv(&req.to_string());
+        assert_eq!(argv, vec!["rename-window", "-t", "@7", "new-name"]);
+    }
 }

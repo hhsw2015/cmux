@@ -16,8 +16,8 @@
 //    cmuxLayoutTabId so HerdrInboundLayoutSync routes mutations into
 //    the right BonsplitController.
 //
-// Best-effort: failures (RPC error, missing pane, wire-fail) leave
-// the new layout tab as a local-only fallback. Caller doesn't await.
+// Best-effort: failures past tab.create roll back the daemon-side
+// Tab so we don't leak orphans. Caller doesn't await.
 
 import Foundation
 import Bonsplit
@@ -45,10 +45,12 @@ enum HerdrLayoutTabBridge {
         }
         let host = originBinding.host
         let workspaceId = originBinding.workspaceId
+        let workspaceUUID = workspace.id
 
-        Task.detached { [host, workspaceId] in
+        Task.detached { [host, workspaceId, workspaceUUID, weak workspace] in
             await mirror(
                 workspace: workspace,
+                workspaceUUID: workspaceUUID,
                 host: host,
                 herdrWorkspaceId: workspaceId,
                 cmuxLayoutTabId: layoutTabId,
@@ -58,7 +60,8 @@ enum HerdrLayoutTabBridge {
     }
 
     private static func mirror(
-        workspace: Workspace,
+        workspace: Workspace?,
+        workspaceUUID: UUID,
         host: HerdrHost,
         herdrWorkspaceId: String,
         cmuxLayoutTabId: UUID,
@@ -88,36 +91,74 @@ enum HerdrLayoutTabBridge {
             return
         }
 
+        // Past this point any failure must roll back the daemon-side
+        // tab so we don't leak orphans. cleanup() fires tab.close +
+        // logs.
+        let cleanup: () async -> Void = { [host, herdrWorkspaceId, newTabId] in
+            await HerdrOneShotRPC.send(
+                host: host,
+                method: "tab.close",
+                params: [
+                    "workspace_id": herdrWorkspaceId,
+                    "tab_id": newTabId,
+                ]
+            )
+        }
+
         // Discover the default pane the daemon created inside the new
         // tab/window. cmux-tmux's tmux backend always creates one
-        // initial pane via `tmux new-window`.
+        // initial pane via `tmux new-window`, but tmux pane creation
+        // is technically async — retry briefly so we don't race the
+        // first panes.list against pane materialization.
         let listParams: [String: Any] = [
             "workspace_id": herdrWorkspaceId,
             "tab_id": newTabId,
         ]
-        let listResp: [String: Any]
-        do {
-            listResp = try await HerdrOneShotRPC.request(
-                host: host,
-                method: "panes.list",
-                params: listParams
-            )
-        } catch {
-            await logFailure(stage: "panes.list", error: error, startedAt: startedAt, host: host)
-            return
+        var firstPane: [String: Any]? = nil
+        var lastListError: Error? = nil
+        for attempt in 0..<5 {
+            do {
+                let listResp = try await HerdrOneShotRPC.request(
+                    host: host,
+                    method: "panes.list",
+                    params: listParams
+                )
+                if let panes = listResp["panes"] as? [[String: Any]],
+                   let candidate = panes.first {
+                    firstPane = candidate
+                    break
+                }
+            } catch {
+                lastListError = error
+            }
+            if attempt < 4 {
+                try? await Task.sleep(nanoseconds: UInt64(80_000_000) * UInt64(attempt + 1))
+            }
         }
 
-        guard let panes = listResp["panes"] as? [[String: Any]],
-              let firstPane = panes.first,
+        guard let firstPane,
               let herdrPaneId = firstPane["id"] as? String,
               let terminalId = firstPane["terminal_id"] as? String
         else {
-            await logFailure(stage: "panes.list.parse", error: BridgeError.missingPaneInfo, startedAt: startedAt, host: host)
+            await logFailure(
+                stage: "panes.list",
+                error: lastListError ?? BridgeError.missingPaneInfo,
+                startedAt: startedAt,
+                host: host
+            )
+            await cleanup()
             return
         }
 
         guard let exec = await MainActor.run(body: { HerdrLocalBinary.resolve() }) else {
             await logFailure(stage: "resolveBinary", error: BridgeError.missingBinary, startedAt: startedAt, host: host)
+            await cleanup()
+            return
+        }
+
+        guard let workspace else {
+            await logFailure(stage: "workspaceGone", error: BridgeError.workspaceDeallocated, startedAt: startedAt, host: host)
+            await cleanup()
             return
         }
 
@@ -134,6 +175,7 @@ enum HerdrLayoutTabBridge {
             )
         } catch {
             await logFailure(stage: "wirePanel", error: error, startedAt: startedAt, host: host)
+            await cleanup()
             return
         }
 
@@ -141,7 +183,8 @@ enum HerdrLayoutTabBridge {
         // pane next to the placeholder, close the original local pane
         // so the user sees a single daemon-backed pane in the new
         // layout tab.
-        await MainActor.run {
+        await MainActor.run { [weak workspace] in
+            guard let workspace else { return }
             workspace.markAllTabsForceCloseable()
             if let controller = workspace.bonsplitController(forLayoutTabId: cmuxLayoutTabId) {
                 if controller.allPaneIds.contains(placeholderPaneId) {
@@ -167,7 +210,7 @@ enum HerdrLayoutTabBridge {
         #if DEBUG
         await MainActor.run {
             cmuxDebugLog(
-                "herdr.layoutTab.bridge ok workspace=\(workspace.id.uuidString.prefix(5)) "
+                "herdr.layoutTab.bridge ok workspace=\(workspaceUUID.uuidString.prefix(5)) "
                 + "layoutTab=\(cmuxLayoutTabId.uuidString.prefix(5)) "
                 + "tab=\(newTabId) durMs=\(durMs)"
             )
@@ -181,16 +224,15 @@ enum HerdrLayoutTabBridge {
         startedAt: Date,
         host: HerdrHost
     ) async {
+        #if DEBUG
         let durMs = Int(Date().timeIntervalSince(startedAt) * 1000)
         await MainActor.run {
-            #if DEBUG
             cmuxDebugLog(
                 "herdr.layoutTab.bridge fail stage=\(stage) "
                 + "host=\(host.displayName) durMs=\(durMs) error=\(error)"
             )
-            #endif
-            _ = (stage, error, durMs, host)
         }
+        #endif
     }
 
     /// Find the binding (if any) whose cmuxLayoutTabId matches.
@@ -206,6 +248,13 @@ enum HerdrLayoutTabBridge {
     /// Close the daemon-side Tab corresponding to a cmux layoutTab,
     /// then drop the registry binding. Best-effort; no-op when the
     /// layoutTab was never daemon-backed.
+    ///
+    /// Suppresses pane.close echoes for every herdr pane in the
+    /// binding so the surrounding `removeTopLevelLayoutTab` flow
+    /// (which closes panes synchronously, triggering HerdrCloseHandler)
+    /// doesn't fire pane.close RPCs against an about-to-die window.
+    /// tab.close kills the window; pane echoes would race or land on
+    /// reused window ids.
     static func closeMirroredLayoutTab(
         workspace: Workspace,
         layoutTabId: UUID
@@ -217,6 +266,10 @@ enum HerdrLayoutTabBridge {
         let workspaceId = binding.workspaceId
         let tabId = binding.tabId
         let bindingKey = binding.rootCmuxPaneId
+        for pair in binding.paneBindings.pairs {
+            HerdrCloseHandler.suppressNextCloseFor.insert(pair.herdr)
+        }
+        lastSentTabRenames.removeValue(forKey: bindingKey)
         Task.detached { [host, workspaceId, tabId, bindingKey] in
             await HerdrOneShotRPC.send(
                 host: host,
@@ -266,11 +319,14 @@ enum HerdrLayoutTabBridge {
 
     /// Last-sent title cache to avoid spamming tab.rename when the
     /// panel title sync runs frequently with the same value.
+    /// Cleared per-binding in closeMirroredLayoutTab so the cache
+    /// can't grow unbounded across long sessions with many tab churns.
     private static var lastSentTabRenames: [UUID: String] = [:]
 
     private enum BridgeError: Error {
         case missingTabId
         case missingPaneInfo
         case missingBinary
+        case workspaceDeallocated
     }
 }
