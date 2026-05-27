@@ -245,8 +245,9 @@ final class HerdrPersistentApiClientTests: XCTestCase {
             if await persistent._isCachedClientClosedForTesting() { break }
             try await Task.sleep(nanoseconds: 10_000_000)
         }
+        let isClosed = await persistent._isCachedClientClosedForTesting()
         XCTAssertTrue(
-            await persistent._isCachedClientClosedForTesting(),
+            isClosed,
             "pump must observe daemon's post-response close within 5s"
         )
 
