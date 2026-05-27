@@ -11117,6 +11117,14 @@ final class Workspace: Identifiable, ObservableObject {
             showsNotificationBadge: hasVisibleNotificationIndicator(panelId: panelId),
             isLoading: browser?.isLoading ?? false
         )
+        // Mirror the title into the daemon-backed Tab (cmux-tmux ⇒ tmux
+        // window name) when the layout tab has a binding. Throttled
+        // internally per binding so panel title spam doesn't spam RPCs.
+        HerdrLayoutTabBridge.renameMirroredLayoutTabIfChanged(
+            workspace: self,
+            layoutTabId: layout.id,
+            title: title
+        )
     }
 
     private func syncTopLevelTabMetadata(forPanelId panelId: UUID) {
@@ -11179,6 +11187,10 @@ final class Workspace: Identifiable, ObservableObject {
     }
 
     private func removeTopLevelLayoutTab(_ layout: WorkspaceLayoutTab, fallbackLayoutId: UUID?) {
+        // If this layoutTab was mirrored into a daemon Tab, close that
+        // daemon-side tab too so external clients (tmux ls / herdr
+        // pane list) stay in sync. Best-effort, fire-and-forget.
+        HerdrLayoutTabBridge.closeMirroredLayoutTab(workspace: self, layoutTabId: layout.id)
         layoutTabs.removeAll { $0.id == layout.id }
         forceCloseTopLevelTabIds.insert(layout.topTabId)
         if !topTabController.closeTab(layout.topTabId) {

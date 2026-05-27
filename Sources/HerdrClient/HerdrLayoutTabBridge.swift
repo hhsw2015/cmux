@@ -193,6 +193,81 @@ enum HerdrLayoutTabBridge {
         }
     }
 
+    /// Find the binding (if any) whose cmuxLayoutTabId matches.
+    private static func bindingForLayoutTab(
+        workspace: Workspace,
+        layoutTabId: UUID
+    ) -> HerdrTabBinding? {
+        HerdrTabRegistry.shared.allBindings.first { binding in
+            binding.workspace?.id == workspace.id && binding.cmuxLayoutTabId == layoutTabId
+        }
+    }
+
+    /// Close the daemon-side Tab corresponding to a cmux layoutTab,
+    /// then drop the registry binding. Best-effort; no-op when the
+    /// layoutTab was never daemon-backed.
+    static func closeMirroredLayoutTab(
+        workspace: Workspace,
+        layoutTabId: UUID
+    ) {
+        guard let binding = bindingForLayoutTab(workspace: workspace, layoutTabId: layoutTabId) else {
+            return
+        }
+        let host = binding.host
+        let workspaceId = binding.workspaceId
+        let tabId = binding.tabId
+        let bindingKey = binding.rootCmuxPaneId
+        Task.detached { [host, workspaceId, tabId, bindingKey] in
+            await HerdrOneShotRPC.send(
+                host: host,
+                method: "tab.close",
+                params: [
+                    "workspace_id": workspaceId,
+                    "tab_id": tabId,
+                ]
+            )
+            await MainActor.run {
+                HerdrTabRegistry.shared.remove(key: bindingKey)
+            }
+        }
+    }
+
+    /// Mirror a cmux layoutTab title change to the daemon-side Tab name.
+    /// No-op when the layoutTab isn't daemon-backed or when the title
+    /// hasn't changed since the last sent rename.
+    static func renameMirroredLayoutTabIfChanged(
+        workspace: Workspace,
+        layoutTabId: UUID,
+        title: String
+    ) {
+        guard let binding = bindingForLayoutTab(workspace: workspace, layoutTabId: layoutTabId) else {
+            return
+        }
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let key = binding.rootCmuxPaneId
+        if lastSentTabRenames[key] == trimmed {
+            return
+        }
+        lastSentTabRenames[key] = trimmed
+        let host = binding.host
+        let tabId = binding.tabId
+        Task.detached { [host, tabId, trimmed] in
+            await HerdrOneShotRPC.send(
+                host: host,
+                method: "tab.rename",
+                params: [
+                    "tab_id": tabId,
+                    "name": trimmed,
+                ]
+            )
+        }
+    }
+
+    /// Last-sent title cache to avoid spamming tab.rename when the
+    /// panel title sync runs frequently with the same value.
+    private static var lastSentTabRenames: [UUID: String] = [:]
+
     private enum BridgeError: Error {
         case missingTabId
         case missingPaneInfo
