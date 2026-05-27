@@ -392,6 +392,8 @@
 		C420Z000C420Z000C42AC102 /* HerdrApiClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42AC101 /* HerdrApiClient.swift */; };
 		C420Z000C420Z000C42LT102 /* HerdrLayoutTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42LT101 /* HerdrLayoutTypes.swift */; };
 		C420Z000C420Z000C42LS102 /* HerdrLayoutSpec.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42LS101 /* HerdrLayoutSpec.swift */; };
+		C420Z000C420Z000C42LTB02 /* HerdrLayoutTabBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42LTB01 /* HerdrLayoutTabBridge.swift */; };
+
 		C420Z000C420Z000C42TX102 /* HerdrTabRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42TX101 /* HerdrTabRegistry.swift */; };
 		C420Z000C420Z000C42CH102 /* HerdrCloseHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42CH101 /* HerdrCloseHandler.swift */; };
 		C420Z000C420Z000C42DS102 /* HerdrDividerSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42DS101 /* HerdrDividerSync.swift */; };
@@ -1067,6 +1069,7 @@
 		C420Z000C420Z000C42GV101 /* HerdrGhosttyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrGhosttyView.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42LT101 /* HerdrLayoutTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrLayoutTypes.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42LS101 /* HerdrLayoutSpec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrLayoutSpec.swift; sourceTree = "<group>"; };
+		C420Z000C420Z000C42LTB01 /* HerdrLayoutTabBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrLayoutTabBridge.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42TX101 /* HerdrTabRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrTabRegistry.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42CH101 /* HerdrCloseHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrCloseHandler.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42DS101 /* HerdrDividerSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrClient/HerdrDividerSync.swift; sourceTree = "<group>"; };
@@ -1619,6 +1622,7 @@
 				C420Z000C420Z000C42AC101 /* HerdrApiClient.swift */,
 				C420Z000C420Z000C42LT101 /* HerdrLayoutTypes.swift */,
 				C420Z000C420Z000C42LS101 /* HerdrLayoutSpec.swift */,
+				C420Z000C420Z000C42LTB01 /* HerdrLayoutTabBridge.swift */,
 				C420Z000C420Z000C42TX101 /* HerdrTabRegistry.swift */,
 				C420Z000C420Z000C42CH101 /* HerdrCloseHandler.swift */,
 				C420Z000C420Z000C42DS101 /* HerdrDividerSync.swift */,
@@ -2524,6 +2528,7 @@
 				C420Z000C420Z000C42AC102 /* HerdrApiClient.swift in Sources */,
 				C420Z000C420Z000C42LT102 /* HerdrLayoutTypes.swift in Sources */,
 				C420Z000C420Z000C42LS102 /* HerdrLayoutSpec.swift in Sources */,
+				C420Z000C420Z000C42LTB02 /* HerdrLayoutTabBridge.swift in Sources */,
 				C420Z000C420Z000C42TX102 /* HerdrTabRegistry.swift in Sources */,
 				C420Z000C420Z000C42CH102 /* HerdrCloseHandler.swift in Sources */,
 				C420Z000C420Z000C42DS102 /* HerdrDividerSync.swift in Sources */,

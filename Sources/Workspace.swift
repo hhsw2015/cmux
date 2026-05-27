@@ -15957,6 +15957,17 @@ final class Workspace: Identifiable, ObservableObject {
             focusPanel(panel.id)
         }
         syncTopLevelTabMetadata(for: layout)
+        // If this workspace is daemon-backed (herdr / cmux-tmux), mirror
+        // the new layout tab to a fresh daemon Tab so external clients
+        // (tmux ls, herdr-cmux pane list, ...) see the same structure
+        // cmux shows. Best-effort, fire-and-forget.
+        if HerdrLayoutTabBridge.isDaemonBackedWorkspace(self) {
+            HerdrLayoutTabBridge.mirrorNewLayoutTabIfBacked(
+                workspace: self,
+                layoutTabId: layout.id,
+                rootPaneId: paneId
+            )
+        }
         return panel
     }
 
