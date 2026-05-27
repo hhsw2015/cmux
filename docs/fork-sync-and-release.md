@@ -237,6 +237,58 @@ codesign --force --deep --sign - /Applications/cmux.app
 "
 ```
 
+## Post-merge verification
+
+After every upstream sync, run these in order. Stop at the first failure.
+
+### 1. Automated guards (~30s)
+
+```bash
+./scripts/test-fork-regression.sh
+```
+
+Expected: `Executed 9 tests, with 0 failures`. Fails mean upstream changed
+something that fork code depends on. See test names — each one names the
+specific feature it guards.
+
+If a test fails, read its failure message — it usually points at the
+exact merge resolution that lost a fork-only behavior.
+
+### 2. Manual test checklist (only after big upstream merges or any PR
+that touches Workspace.swift / TabManager.swift / TerminalController.swift /
+HerdrClient/* — particularly PR #4829 top tabs when it lands)
+
+Build via `./scripts/build-release-local.sh --install`, then:
+
+**zmx restore:**
+- [ ] Open a panel running `zmx attach foo` against a real zmx daemon
+- [ ] Quit cmux (Cmd-Q)
+- [ ] Relaunch cmux
+- [ ] Panel auto-reattaches to `foo` — terminal shows existing zmx state, not a fresh shell
+
+**herdr backend:**
+- [ ] Add a remote computer in Settings → Computers (SSH herdr flavor)
+- [ ] Open a workspace on that computer, create 2 panels
+- [ ] Quit cmux, relaunch
+- [ ] Workspace reconnects, both panels alive, scrollback intact
+- [ ] Close one panel — remote daemon still has the other (verify via `ssh host herdr-cmux list`)
+
+**cmux-tmux backend:**
+- [ ] Add a Local tmux computer in Settings → Computers (Local tmux flavor)
+- [ ] Open a workspace, create 2 panels with different shell commands
+- [ ] In a separate tmux client (`tmux ls`, `tmux attach`), confirm cmux's panes appear as tmux panes
+- [ ] Quit cmux, relaunch — workspace + panes reattach to the running tmux session
+
+**Top tabs (only after PR #4829 lands):**
+- [ ] Cmd+T creates new top tab inside same workspace
+- [ ] Each top tab has its own split tree (split in Tab1 doesn't show in Tab2)
+- [ ] Ctrl+Tab / Ctrl+Shift+Tab cycle through top tabs
+- [ ] herdr workspace + 2 top tabs: each tab's panes appear independently in herdr's `pane.list`
+- [ ] cmux-tmux workspace + 2 top tabs: each tab maps to a distinct tmux window (`tmux list-windows`)
+- [ ] Close one top tab → remote daemon retains the other tab's session
+
+If any manual check fails, do NOT release. Open an issue tagged `fork-regression`, capture the broken behavior with the affected backend (zmx / herdr / cmux-tmux) in the title.
+
 ## Caveats
 
 - **adhoc signing only** — downloaders need to run `xattr -cr` + `codesign --force --deep --sign -`. Public release would need Apple Developer cert + notarization (out of scope for this fork).
