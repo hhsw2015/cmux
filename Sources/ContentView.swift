@@ -17573,11 +17573,7 @@ private struct WindowBackdropLayer: View {
                 }
             }
         case .clear:
-            if let sidebarOverlay = snapshot.sidebarContrastOverlayColor(for: role) {
-                Color(nsColor: sidebarOverlay)
-            } else {
-                Color.clear
-            }
+            Color.clear
         }
     }
 }
