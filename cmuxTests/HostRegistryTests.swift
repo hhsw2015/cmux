@@ -78,8 +78,8 @@ final class HostRegistryTests: XCTestCase {
         registry.update(changed)
         XCTAssertEqual(registry.hosts.count, 2)
         XCTAssertEqual(registry.hosts[1].displayName, "new")
-        if case .sshStdio(let t) = registry.hosts[1].transport {
-            XCTAssertEqual(t, "newhost")
+        if case .sshStdio(let target, _, _, _, _) = registry.hosts[1].transport {
+            XCTAssertEqual(target, "newhost")
         } else {
             XCTFail("transport not updated")
         }

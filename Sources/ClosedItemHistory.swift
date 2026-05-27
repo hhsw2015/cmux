@@ -134,6 +134,13 @@ final class ClosedItemHistoryStore: ObservableObject {
         !records.isEmpty
     }
 
+    /// Read-only snapshot of recorded entries in oldest-first order.
+    /// `entries.last` is the most recent. Test-facing accessor; mutation
+    /// must go through `push` / `pop` / `restoreFirstRestorable`.
+    var entries: [ClosedItemHistoryEntry] {
+        records.map(\.entry)
+    }
+
     func push(_ entry: ClosedItemHistoryEntry) {
         push(ClosedItemHistoryRecord(entry: entry))
     }

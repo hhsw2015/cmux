@@ -3370,12 +3370,8 @@ final class BonsplitTabDragPayloadTests: XCTestCase {
                 frame: CGRect(x: 0, y: 0, width: 200, height: 200)
             )
         ]
-        view.hasValidTransfer = {
-            _ = pasteboard.data(forType: Self.bonsplitPasteboardType)
-            return true
-        }
         var canPerformActionCalled = false
-        view.canPerformAction = { _ in
+        view.canPerformAction = { _, _ in
             canPerformActionCalled = true
             return true
         }
@@ -3396,7 +3392,7 @@ final class BonsplitTabDragPayloadTests: XCTestCase {
         defer { pasteboard.clearContents() }
 
         let view = SidebarBonsplitTabNewWorkspaceDropView(frame: NSRect(x: 0, y: 0, width: 200, height: 200))
-        view.isValidTransfer = {
+        view.isValidTransfer = { _ in
             _ = pasteboard.data(forType: Self.bonsplitPasteboardType)
             return true
         }

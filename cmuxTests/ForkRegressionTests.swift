@@ -16,6 +16,7 @@ import XCTest
 @testable import cmux
 import CMUXSessionDaemon
 
+@MainActor
 final class ForkRegressionTests: XCTestCase {
     // MARK: - 1. zmx field round-trip
 
