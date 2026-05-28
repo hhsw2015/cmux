@@ -121,7 +121,26 @@ final class CmuxSSHURLRequestTests: XCTestCase {
         case .success(.some(let request)):
             XCTAssertEqual(
                 request.cliPreview(socketPath: "/tmp/cmux-urlcmd.sock"),
-                "cmux --socket /tmp/cmux-urlcmd.sock ssh --name \"Dev SSH\" dev.example.com"
+                "cmux --socket /tmp/cmux-urlcmd.sock ssh --name 'Dev SSH' dev.example.com"
+            )
+        case .success(nil):
+            XCTFail("Expected SSH URL request")
+        case .failure(let error):
+            XCTFail("Unexpected parse error: \(error)")
+        }
+    }
+
+    func testCommandPreviewShellQuotesTitleMetacharacters() throws {
+        let url = try XCTUnwrap(sshURL(queryItems: [
+            URLQueryItem(name: "host", value: "dev.example.com"),
+            URLQueryItem(name: "title", value: "$(open -a Calculator) and `whoami` and 'quoted'")
+        ]))
+
+        switch CmuxSSHURLRequest.parse(url) {
+        case .success(.some(let request)):
+            XCTAssertEqual(
+                request.cliPreview,
+                #"cmux ssh --name '$(open -a Calculator) and `whoami` and '\''quoted'\''' dev.example.com"#
             )
         case .success(nil):
             XCTFail("Expected SSH URL request")
