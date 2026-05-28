@@ -3495,6 +3495,9 @@ struct CMUXCLI {
             let response = try client.sendV2(method: "system.identify", params: params)
             print(jsonString(formatIDs(response, mode: idFormat)))
 
+        case "worktree":
+            try runWorktreeSubcommand(commandArgs: commandArgs)
+
         case "list-windows":
             let response = try sendV1Command("list_windows", client: client)
             if jsonOutput {
