@@ -1305,6 +1305,7 @@ private let cmuxAuxiliaryWindowIdentifiers: Set<String> = [
     "cmux.fileExplorerStyleDebug",
     "cmux.folderDragIcon",
     "cmux.pdfPreviewChromeDebug",
+    "cmux.quickTerminal",
     "cmux.recentlyClosedHistory",
     "cmux.splitButtonLayoutDebug",
     "cmux.tabBarBackdropLab",
@@ -9003,12 +9004,12 @@ private struct GlobalHotkeySection: View {
         if isEnabled {
             return String(
                 localized: "settings.globalHotkey.enable.subtitleOn",
-                defaultValue: "Press the shortcut from any app to show or hide all cmux windows."
+                defaultValue: "Press the shortcut from any app to show or hide Quick Terminal."
             )
         }
         return String(
             localized: "settings.globalHotkey.enable.subtitleOff",
-            defaultValue: "Turn this on to show or hide all cmux windows from any app."
+            defaultValue: "Turn this on to summon Quick Terminal from any app."
         )
     }
 
@@ -9020,7 +9021,7 @@ private struct GlobalHotkeySection: View {
         SettingsCard {
             SettingsCardRow(
                 configurationReview: .settingsOnly,
-                String(localized: "settings.globalHotkey.enable", defaultValue: "Enable System-Wide Hotkey"),
+                String(localized: "settings.globalHotkey.enable", defaultValue: "Enable Quick Terminal Hotkey"),
                 subtitle: enableSubtitle,
                 searchAnchorID: SettingsSearchIndex.settingID(for: .globalHotkey, idSuffix: "enable-hotkey")
             ) {
@@ -9053,7 +9054,7 @@ private struct GlobalHotkeySection: View {
         SettingsCardNote(
             String(
                 localized: "settings.globalHotkey.note",
-                defaultValue: "Use Command, Option, or Control with another key. No extra macOS permission is required."
+                defaultValue: "Quick Terminal slides from the active screen edge and keeps its session running while hidden."
             )
         )
             .accessibilityIdentifier("SettingsGlobalHotkeyNote")
