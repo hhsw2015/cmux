@@ -462,6 +462,10 @@ struct cmuxApp: App {
                     appDelegate.openDebugStressWorkspacesWithLoadedSurfaces(nil)
                 }
 
+                Button("Export Session Blueprint to Pasteboard") {
+                    SessionBlueprintExportAction.copyCurrentBlueprintToPasteboard()
+                }
+
                 Divider()
                 Menu("Debug Windows") {
                     Button("Background Debug…") {
