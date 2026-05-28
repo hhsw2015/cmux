@@ -10487,7 +10487,7 @@ final class Workspace: Identifiable, ObservableObject {
         appearance.showSplitButtons = true
         return BonsplitConfiguration(
             allowSplits: true,
-            allowCloseTabs: false,
+            allowCloseTabs: true,
             allowCloseLastPane: false,
             allowTabReordering: true,
             allowCrossPaneTabMove: false,
@@ -10522,6 +10522,17 @@ final class Workspace: Identifiable, ObservableObject {
 
     private func configureTopTabController() {
         topTabController.delegate = self
+        // PR #4829: bonsplit's default close button → closeTab →
+        // shouldCloseTab. Without this hook the request never carries
+        // a "user clicked close" signal; our shouldCloseTab routes
+        // through removeTopLevelLayoutTab on the topTabController
+        // branch regardless, so this is currently belt-and-suspenders
+        // for telemetry / future "confirm close" flows.
+        topTabController.onTabCloseRequest = { [weak self] _, _, _ in
+            // No-op for now; the actual close dispatch happens in
+            // splitTabBar shouldCloseTab via removeTopLevelLayoutTab.
+            _ = self
+        }
     }
 
     private func configureLayoutController(_ controller: BonsplitController) {
