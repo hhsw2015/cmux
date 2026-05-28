@@ -182,6 +182,7 @@ extension Workspace {
             layoutTabSnapshots.first(where: { $0.id == selectedId })?.layout
         } ?? layoutTabSnapshots.first?.layout
             ?? sessionLayoutSnapshot(from: bonsplitController.treeSnapshot())
+        let rawLayout = selectedLayout
         let terminalScrollbackReader = terminalScrollbackReader ?? Self.defaultSessionTerminalSnapshotScrollback
         if let surfaceResumeBindingIndex {
             reconcileSurfaceResumeBindings(using: surfaceResumeBindingIndex)
@@ -213,6 +214,10 @@ extension Workspace {
                     )
                 )
             }
+        let persistedPanelIds = Set(panelSnapshots.map(\.id))
+        let layout = prunedSessionLayoutSnapshot(rawLayout, keeping: persistedPanelIds) ?? .pane(
+            SessionPaneLayoutSnapshot(panelIds: [], selectedPanelId: nil)
+        )
 
         let statusSnapshots = statusEntries.values
             .sorted { lhs, rhs in lhs.key < rhs.key }
@@ -425,6 +430,41 @@ extension Workspace {
         }
     }
 
+    private func prunedSessionLayoutSnapshot(
+        _ node: SessionWorkspaceLayoutSnapshot,
+        keeping panelIdsToKeep: Set<UUID>
+    ) -> SessionWorkspaceLayoutSnapshot? {
+        switch node {
+        case .pane(let pane):
+            let panelIds = pane.panelIds.filter { panelIdsToKeep.contains($0) }
+            guard !panelIds.isEmpty else { return nil }
+            let selectedPanelId = pane.selectedPanelId.flatMap {
+                panelIdsToKeep.contains($0) ? $0 : nil
+            } ?? panelIds.first
+            return .pane(SessionPaneLayoutSnapshot(panelIds: panelIds, selectedPanelId: selectedPanelId))
+        case .split(let split):
+            let first = prunedSessionLayoutSnapshot(split.first, keeping: panelIdsToKeep)
+            let second = prunedSessionLayoutSnapshot(split.second, keeping: panelIdsToKeep)
+            switch (first, second) {
+            case (.some(let first), .some(let second)):
+                return .split(
+                    SessionSplitLayoutSnapshot(
+                        orientation: split.orientation,
+                        dividerPosition: split.dividerPosition,
+                        first: first,
+                        second: second
+                    )
+                )
+            case (.some(let first), .none):
+                return first
+            case (.none, .some(let second)):
+                return second
+            case (.none, .none):
+                return nil
+            }
+        }
+    }
+
     private func sessionPanelIDs(for pane: ExternalPaneNode) -> [UUID] {
         var panelIds: [UUID] = []
         var seen = Set<UUID>()
@@ -610,14 +650,16 @@ extension Workspace {
             rightSidebarToolSnapshot = nil
         case .browser:
             guard let browserPanel = panel as? BrowserPanel else { return nil }
+            guard browserPanel.shouldPersistSessionSnapshot() else { return nil }
             terminalSnapshot = nil
             let historySnapshot = browserPanel.sessionNavigationHistorySnapshot()
             browserSnapshot = SessionBrowserPanelSnapshot(
-                urlString: browserPanel.preferredURLStringForOmnibar(),
+                urlString: browserPanel.preferredURLStringForSessionSnapshot(),
                 profileID: browserPanel.profileID,
                 shouldRenderWebView: browserPanel.shouldRenderWebViewForSessionSnapshot(),
                 pageZoom: Double(browserPanel.currentPageZoomFactor()),
                 developerToolsVisible: browserPanel.isDeveloperToolsVisible(),
+                omnibarVisible: browserPanel.isOmnibarVisible,
                 backHistoryURLStrings: historySnapshot.backHistoryURLStrings,
                 forwardHistoryURLStrings: historySnapshot.forwardHistoryURLStrings
             )
@@ -14248,6 +14290,8 @@ final class Workspace: Identifiable, ObservableObject {
         preferredProfileID: UUID? = nil,
         focus: Bool = true,
         creationPolicy: BrowserPanelCreationPolicy = .userInitiated,
+        omnibarVisible: Bool = true,
+        bypassRemoteProxy: Bool = false,
         initialDividerPosition: CGFloat? = nil
     ) -> BrowserPanel? {
         _ = selectTopLevelTab(containingPanelId: panelId, reassertAppKitFocus: false)
@@ -14282,7 +14326,9 @@ final class Workspace: Identifiable, ObservableObject {
             initialURL: url,
             renderInitialNavigation: browserEnabled || creationPolicy != .restoration,
             preloadInitialNavigationInBackground: creationPolicy.preloadsInitialNavigationInBackground,
+            omnibarVisible: omnibarVisible,
             proxyEndpoint: remoteProxyEndpoint,
+            bypassRemoteProxy: bypassRemoteProxy,
             isRemoteWorkspace: isRemoteWorkspace,
             remoteWebsiteDataStoreIdentifier: isRemoteWorkspace ? id : nil
         )
@@ -14353,10 +14399,13 @@ final class Workspace: Identifiable, ObservableObject {
         url: URL? = nil,
         initialRequest: URLRequest? = nil,
         focus: Bool? = nil,
+        selectWhenNotFocused: Bool = false,
         insertAtEnd: Bool = false,
         preferredProfileID: UUID? = nil,
         bypassInsecureHTTPHostOnce: String? = nil,
-        creationPolicy: BrowserPanelCreationPolicy = .userInitiated
+        creationPolicy: BrowserPanelCreationPolicy = .userInitiated,
+        omnibarVisible: Bool = true,
+        bypassRemoteProxy: Bool = false
     ) -> BrowserPanel? {
         let browserEnabled = BrowserAvailabilitySettings.isEnabled()
         guard browserEnabled || creationPolicy.permitsCreationWhenBrowserDisabled else {
@@ -14390,7 +14439,9 @@ final class Workspace: Identifiable, ObservableObject {
             renderInitialNavigation: browserEnabled || creationPolicy != .restoration,
             preloadInitialNavigationInBackground: creationPolicy.preloadsInitialNavigationInBackground,
             bypassInsecureHTTPHostOnce: bypassInsecureHTTPHostOnce,
+            omnibarVisible: omnibarVisible,
             proxyEndpoint: remoteProxyEndpoint,
+            bypassRemoteProxy: bypassRemoteProxy,
             isRemoteWorkspace: isRemoteWorkspace,
             remoteWebsiteDataStoreIdentifier: isRemoteWorkspace ? id : nil
         )
@@ -14429,6 +14480,9 @@ final class Workspace: Identifiable, ObservableObject {
             browserPanel.focus()
             applyTabSelection(tabId: newTabId, inPane: paneId)
         } else {
+            if selectWhenNotFocused {
+                hideBrowserPortalsForDeselectedTabs(inPane: paneId, selectedTabId: newTabId)
+            }
             preserveFocusAfterNonFocusSplit(
                 preferredPanelId: previousFocusedPanelId,
                 splitPanelId: browserPanel.id,
@@ -15228,6 +15282,10 @@ final class Workspace: Identifiable, ObservableObject {
         )
         let resolvedURL = browserPanel.currentURL
             ?? browserPanel.preferredURLStringForOmnibar().flatMap(URL.init(string:))
+        guard !browserIsTemporaryHistoryURL(resolvedURL) else {
+            pendingClosedBrowserRestoreSnapshots.removeValue(forKey: tab.id)
+            return
+        }
 
         pendingClosedBrowserRestoreSnapshots[tab.id] = ClosedBrowserPanelRestoreSnapshot(
             workspaceId: id,
@@ -17155,7 +17213,9 @@ final class Workspace: Identifiable, ObservableObject {
             inPane: paneId,
             url: browser.currentURLForTabDuplication,
             focus: focus,
-            preferredProfileID: browser.profileID
+            preferredProfileID: browser.profileID,
+            omnibarVisible: browser.isOmnibarVisible,
+            bypassRemoteProxy: browser.bypassesRemoteWorkspaceProxyForTabDuplication
         ) else { return nil }
         _ = reorderSurface(panelId: newPanel.id, toIndex: targetIndex, focus: focus)
         return newPanel

@@ -6695,6 +6695,13 @@ class TabManager: ObservableObject {
     }
 
     @discardableResult
+    func toggleOmnibarFocusedBrowser() -> Bool {
+        guard let panel = focusedBrowserPanel else { return false }
+        panel.toggleOmnibarVisibility()
+        return true
+    }
+
+    @discardableResult
     func toggleReactGrabFromCurrentFocus() -> Bool {
         guard let workspace = selectedWorkspace else { return false }
 
