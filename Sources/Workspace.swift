@@ -17976,7 +17976,27 @@ extension Workspace: BonsplitDelegate {
 
     func splitTabBar(_ controller: BonsplitController, shouldCloseTab tab: Bonsplit.Tab, inPane pane: PaneID) -> Bool {
         if controller === topTabController {
-            return forceCloseTopLevelTabIds.remove(tab.id) != nil
+            // PR #4829 path: user clicked the close button on a top tab.
+            // forceCloseTopLevelTabIds is set by removeTopLevelLayoutTab
+            // when WE drive the close (Cmd+W, etc). When the user
+            // directly clicks the top-tab close button, no one set it,
+            // so we must route the request through
+            // removeTopLevelLayoutTab here. Returning false here would
+            // veto the close and the tab would never go away.
+            if forceCloseTopLevelTabIds.remove(tab.id) != nil {
+                return true
+            }
+            if let layout = layoutTabs.first(where: { $0.topTabId == tab.id }) {
+                let fallback = layoutTabs.first(where: { $0.id != layout.id })?.id
+                removeTopLevelLayoutTab(layout, fallbackLayoutId: fallback)
+                // removeTopLevelLayoutTab already called
+                // topTabController.closeTab with the force flag set.
+                // Vetoing the in-flight callback prevents bonsplit
+                // from running its own close on top of the recursive
+                // call we just initiated.
+                return false
+            }
+            return false
         }
 
         func recordPostCloseSelection() {
