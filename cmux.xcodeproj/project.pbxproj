@@ -406,6 +406,7 @@
 		C47110010000000000000001 /* ProcessPipeReadCrashRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C47110010000000000000002 /* ProcessPipeReadCrashRegressionTests.swift */; };
 		C47110020000000000000001 /* ProcessPipeReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = C47110020000000000000002 /* ProcessPipeReader.swift */; };
 		C47110020000000000000003 /* ProcessPipeReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = C47110020000000000000002 /* ProcessPipeReader.swift */; };
+		C47110020000000000000005 /* ProcessPipeReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = C47110020000000000000002 /* ProcessPipeReader.swift */; };
 		A5001550 /* ProcessScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001551 /* ProcessScanner.swift */; };
 		F4100002A1B2C3D4E5F60718 /* ProcessScannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4100003A1B2C3D4E5F60718 /* ProcessScannerTests.swift */; };
 		C4327001A1B2C3D4E5F60718 /* QuickTerminalController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4327002A1B2C3D4E5F60718 /* QuickTerminalController.swift */; };
@@ -502,6 +503,10 @@
 		C420Z000C420Z000C42SP103 /* SSHCommandParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42SP103R /* SSHCommandParserTests.swift */; };
 		F6355600A1B2C3D4E5F60718 /* SSHStartupSignalLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6355601A1B2C3D4E5F60718 /* SSHStartupSignalLifecycleTests.swift */; };
 		C420Z000C420Z000C42SS102 /* SSHStdioTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42SS101 /* SSHStdioTransport.swift */; };
+		C5AB1E0010000000000A0001 /* StableLayoutCoord.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5AB1E0010000000000A0002 /* StableLayoutCoord.swift */; };
+		C5AB1E0040000000000A0001 /* StableLayoutCoordResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5AB1E0040000000000A0002 /* StableLayoutCoordResolver.swift */; };
+		C5AB1E0020000000000A0001 /* StableLayoutCoordStamper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5AB1E0020000000000A0002 /* StableLayoutCoordStamper.swift */; };
+		C5AB1E0030000000000A0001 /* StableLayoutCoordTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5AB1E0030000000000A0002 /* StableLayoutCoordTests.swift */; };
 		F20F85FC5900550685FA33AD /* StackAuth in Frameworks */ = {isa = PBXBuildFile; productRef = A8BD195031FC4B82B4354297 /* StackAuth */; };
 		D35B71010000000000000001 /* StartupBreadcrumbLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D35B71010000000000000002 /* StartupBreadcrumbLog.swift */; };
 		A5001303 /* SurfaceSearchOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001301 /* SurfaceSearchOverlay.swift */; };
@@ -1168,6 +1173,10 @@
 		C420Z000C420Z000C42SP103R /* SSHCommandParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHCommandParserTests.swift; sourceTree = "<group>"; };
 		F6355601A1B2C3D4E5F60718 /* SSHStartupSignalLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHStartupSignalLifecycleTests.swift; sourceTree = "<group>"; };
 		C420Z000C420Z000C42SS101 /* SSHStdioTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerdrTransport/SSHStdioTransport.swift; sourceTree = "<group>"; };
+		C5AB1E0010000000000A0002 /* StableLayoutCoord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StableLayoutCoord.swift; sourceTree = "<group>"; };
+		C5AB1E0040000000000A0002 /* StableLayoutCoordResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StableLayoutCoordResolver.swift; sourceTree = "<group>"; };
+		C5AB1E0020000000000A0002 /* StableLayoutCoordStamper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StableLayoutCoordStamper.swift; sourceTree = "<group>"; };
+		C5AB1E0030000000000A0002 /* StableLayoutCoordTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StableLayoutCoordTests.swift; sourceTree = "<group>"; };
 		D35B71010000000000000002 /* StartupBreadcrumbLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/StartupBreadcrumbLog.swift; sourceTree = "<group>"; };
 		A5001301 /* SurfaceSearchOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Find/SurfaceSearchOverlay.swift; sourceTree = "<group>"; };
 		C3677003000000000000002 /* TabManager+CompatibilityTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TabManager+CompatibilityTypes.swift"; sourceTree = "<group>"; };
@@ -1610,6 +1619,7 @@
 				C7A503000000000000000001 /* TaskManagerSnapshot.swift */,
 				C7A504000000000000000001 /* TaskManagerTypes.swift */,
 				A5001541 /* PortScanner.swift */,
+				C5AB1E00ABC000000000ABCD /* StableLayout */,
 				C47110020000000000000002 /* ProcessPipeReader.swift */,
 				A5001551 /* ProcessScanner.swift */,
 				C420Z000C420Z000C42HK101 /* ZmxCommandHooks.swift */,
@@ -1884,6 +1894,7 @@
 					C420Z000C420Z000C42CT101 /* ClosePanelReasonTests.swift */,
 					C420Z000C420Z000C42BSS1 /* BackgroundSessionStoreTests.swift */,
 					C420Z000C420Z000C42FRT1 /* ForkRegressionTests.swift */,
+				C5AB1E0030000000000A0002 /* StableLayoutCoordTests.swift */,
 				C47110010000000000000002 /* ProcessPipeReadCrashRegressionTests.swift */,
 					D36A00020000000000000002 /* AgentHibernationTests.swift */,
 					F5410001A1B2C3D4E5F60718 /* RestorableAgentHookProviderResumeTests.swift */,
@@ -2017,6 +2028,16 @@
 				FE002003 /* FileSearchRipgrepParserTests.swift */,
 			);
 			path = cmuxTests;
+			sourceTree = "<group>";
+		};
+		C5AB1E00ABC000000000ABCD /* StableLayout */ = {
+			isa = PBXGroup;
+			children = (
+				C5AB1E0010000000000A0002 /* StableLayoutCoord.swift */,
+				C5AB1E0020000000000A0002 /* StableLayoutCoordStamper.swift */,
+				C5AB1E0040000000000A0002 /* StableLayoutCoordResolver.swift */,
+			);
+			path = StableLayout;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -2653,6 +2674,9 @@
 				C420Z000C420Z000C42CB102 /* SSHCommandBuilder.swift in Sources */,
 				C420Z000C420Z000C42CP102 /* SSHCommandParser.swift in Sources */,
 				C420Z000C420Z000C42SS102 /* SSHStdioTransport.swift in Sources */,
+				C5AB1E0010000000000A0001 /* StableLayoutCoord.swift in Sources */,
+				C5AB1E0040000000000A0001 /* StableLayoutCoordResolver.swift in Sources */,
+				C5AB1E0020000000000A0001 /* StableLayoutCoordStamper.swift in Sources */,
 				D35B71010000000000000001 /* StartupBreadcrumbLog.swift in Sources */,
 				A5001303 /* SurfaceSearchOverlay.swift in Sources */,
 					C3677003000000000000001 /* TabManager+CompatibilityTypes.swift in Sources */,
@@ -2765,6 +2789,7 @@
 					B9000044A1B2C3D4E5F60719 /* CMUXCLI+TmuxCompatSupport.swift in Sources */,
 				B9000033A1B2C3D4E5F60719 /* CMUXCLI+TopRendering.swift in Sources */,
 				C0DEF0B10000000000000003 /* JSONCParser.swift in Sources */,
+				C47110020000000000000005 /* ProcessPipeReader.swift in Sources */,
 				B9000027A1B2C3D4E5F60719 /* RemoteRelayZshBootstrap.swift in Sources */,
 				C510C1E00000000000000002 /* SocketOperationTelemetry.swift in Sources */,
 			);
@@ -2938,6 +2963,7 @@
 				F8000000A1B2C3D4E5F60718 /* SocketControlPasswordStoreTests.swift in Sources */,
 				C420Z000C420Z000C42SP103 /* SSHCommandParserTests.swift in Sources */,
 				F6355600A1B2C3D4E5F60718 /* SSHStartupSignalLifecycleTests.swift in Sources */,
+					C5AB1E0030000000000A0001 /* StableLayoutCoordTests.swift in Sources */,
 				2BB56A710BB1FC50367E5BCF /* TabManagerSessionSnapshotTests.swift in Sources */,
 				B6BF3DC98DB1495E57900199 /* TabManagerUnitTests.swift in Sources */,
 				C7A507000000000000000002 /* TaskManagerResourcesTests.swift in Sources */,

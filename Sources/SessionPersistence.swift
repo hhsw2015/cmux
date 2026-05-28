@@ -1648,6 +1648,10 @@ struct SessionPanelSnapshot: Codable, Sendable {
     var markdown: SessionMarkdownPanelSnapshot?
     var filePreview: SessionFilePreviewPanelSnapshot?
     var rightSidebarTool: SessionRightSidebarToolPanelSnapshot?
+    /// Stable position fingerprint computed from the layout tree at snapshot time.
+    /// Used as a fallback restore key when UUIDs drift across reinstalls,
+    /// migrations, or imports. Format: see `StableLayoutCoord`.
+    var stableCoord: StableLayoutCoord? = nil
 }
 
 enum SessionSplitOrientation: String, Codable, Sendable {
@@ -1810,9 +1814,10 @@ enum SessionPersistenceStore {
     }
 
     private static func encodedSnapshotData(_ snapshot: AppSessionSnapshot) throws -> Data {
+        let stamped = StableLayoutCoordStamper.stamp(snapshot)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
-        return try encoder.encode(snapshot)
+        return try encoder.encode(stamped)
     }
 
     static func removeSnapshot(fileURL: URL? = nil) {
