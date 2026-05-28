@@ -7,6 +7,18 @@ enum QuickTerminalSettings {
     static let primarySizeRatioKey = "quickTerminal.primarySizeRatio"
     static let secondarySizeRatioKey = "quickTerminal.secondarySizeRatio"
     static let autoHideKey = "quickTerminal.autoHide"
+    /// Optional shell command that the surface runs as soon as it spawns.
+    /// Empty / unset means "use the user's login shell". Useful for binding
+    /// the Quick Terminal to `claude --resume`, `tail -f /tmp/cmux-debug.log`,
+    /// `htop`, etc. without manually retyping each time the panel opens.
+    static let initialCommandKey = "quickTerminal.initialCommand"
+    /// Optional working directory the surface enters before running
+    /// `initialCommand`. Tilde expansion (`~`) is honored.
+    static let workingDirectoryKey = "quickTerminal.workingDirectory"
+    /// Optional text injected into the surface's stdin once it's ready (after
+    /// `initialCommand`, if any). Useful for pre-filling a prompt the user
+    /// can edit before pressing return.
+    static let initialInputKey = "quickTerminal.initialInput"
 
     static let defaultPosition: QuickTerminalPosition = .top
     static let defaultPrimarySizeRatio: Double = 0.38
@@ -32,17 +44,31 @@ enum QuickTerminalSettings {
             ? defaultAutoHide
             : defaults.bool(forKey: autoHideKey)
 
+        let initialCommand = defaults.string(forKey: initialCommandKey)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let workingDirectory = defaults.string(forKey: workingDirectoryKey)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let initialInput = defaults.string(forKey: initialInputKey)
+
         return QuickTerminalResolvedSettings(
             position: position,
             primarySizeRatio: primarySizeRatio,
             secondarySizeRatio: secondarySizeRatio,
             autoHide: autoHide,
-            animationDuration: defaultAnimationDuration
+            animationDuration: defaultAnimationDuration,
+            initialCommand: initialCommand?.isEmpty == false ? initialCommand : nil,
+            workingDirectory: expandTilde(workingDirectory),
+            initialInput: initialInput?.isEmpty == false ? initialInput : nil
         )
     }
 
     static func clampRatio(_ value: Double) -> Double {
         min(max(value, 0.2), 1.0)
+    }
+
+    private static func expandTilde(_ value: String?) -> String? {
+        guard let value, !value.isEmpty else { return nil }
+        return (value as NSString).expandingTildeInPath
     }
 }
 
@@ -52,6 +78,9 @@ struct QuickTerminalResolvedSettings {
     let secondarySizeRatio: Double
     let autoHide: Bool
     let animationDuration: TimeInterval
+    let initialCommand: String?
+    let workingDirectory: String?
+    let initialInput: String?
 }
 
 enum QuickTerminalPosition: String, CaseIterable, Identifiable {
@@ -433,7 +462,10 @@ final class QuickTerminalController: NSObject, NSWindowDelegate {
                 tabId: workspaceId,
                 context: GHOSTTY_SURFACE_CONTEXT_WINDOW,
                 configTemplate: nil,
+                workingDirectory: settings.workingDirectory,
                 portOrdinal: quickTerminalPortOrdinal(),
+                initialCommand: settings.initialCommand,
+                initialInput: settings.initialInput,
                 initialEnvironmentOverrides: ["CMUX_QUICK_TERMINAL": "1"]
             )
         }

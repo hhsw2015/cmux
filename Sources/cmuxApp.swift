@@ -5430,6 +5430,12 @@ struct SettingsView: View {
     private var quickTerminalSecondarySizeRatio = QuickTerminalSettings.defaultSecondarySizeRatio
     @AppStorage(QuickTerminalSettings.autoHideKey)
     private var quickTerminalAutoHide = QuickTerminalSettings.defaultAutoHide
+    @AppStorage(QuickTerminalSettings.initialCommandKey)
+    private var quickTerminalInitialCommand: String = ""
+    @AppStorage(QuickTerminalSettings.workingDirectoryKey)
+    private var quickTerminalWorkingDirectory: String = ""
+    @AppStorage(QuickTerminalSettings.initialInputKey)
+    private var quickTerminalInitialInput: String = ""
     @AppStorage(FileDropBehaviorSettings.defaultBehaviorKey)
     private var fileDropDefaultBehavior = FileDropBehaviorSettings.defaultBehavior.rawValue
     @AppStorage(AgentSessionAutoResumeSettings.autoResumeAgentSessionsKey)
@@ -7066,6 +7072,54 @@ struct SettingsView: View {
                                 .accessibilityLabel(
                                     String(localized: "settings.quickTerminal.autoHide", defaultValue: "Quick Terminal Auto-Hide")
                                 )
+                        }
+
+                        SettingsCardDivider()
+
+                        SettingsCardRow(
+                            configurationReview: .json("terminal.quickTerminalInitialCommand"),
+                            String(localized: "settings.quickTerminal.initialCommand", defaultValue: "Quick Terminal Startup Command"),
+                            subtitle: String(localized: "settings.quickTerminal.initialCommand.subtitle", defaultValue: "Optional command run when the panel spawns. Leave empty for the login shell.")
+                        ) {
+                            TextField(
+                                String(localized: "settings.quickTerminal.initialCommand.placeholder", defaultValue: "claude --resume"),
+                                text: $quickTerminalInitialCommand
+                            )
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 240)
+                            .accessibilityIdentifier("SettingsQuickTerminalInitialCommand")
+                        }
+
+                        SettingsCardDivider()
+
+                        SettingsCardRow(
+                            configurationReview: .json("terminal.quickTerminalWorkingDirectory"),
+                            String(localized: "settings.quickTerminal.workingDirectory", defaultValue: "Quick Terminal Working Directory"),
+                            subtitle: String(localized: "settings.quickTerminal.workingDirectory.subtitle", defaultValue: "Optional cwd for the panel. Tilde is expanded.")
+                        ) {
+                            TextField(
+                                String(localized: "settings.quickTerminal.workingDirectory.placeholder", defaultValue: "~/code"),
+                                text: $quickTerminalWorkingDirectory
+                            )
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 240)
+                            .accessibilityIdentifier("SettingsQuickTerminalWorkingDirectory")
+                        }
+
+                        SettingsCardDivider()
+
+                        SettingsCardRow(
+                            configurationReview: .json("terminal.quickTerminalInitialInput"),
+                            String(localized: "settings.quickTerminal.initialInput", defaultValue: "Quick Terminal Pre-typed Input"),
+                            subtitle: String(localized: "settings.quickTerminal.initialInput.subtitle", defaultValue: "Optional text injected into the prompt after the startup command runs.")
+                        ) {
+                            TextField(
+                                String(localized: "settings.quickTerminal.initialInput.placeholder", defaultValue: ""),
+                                text: $quickTerminalInitialInput
+                            )
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 240)
+                            .accessibilityIdentifier("SettingsQuickTerminalInitialInput")
                         }
 
                         SettingsCardDivider()
