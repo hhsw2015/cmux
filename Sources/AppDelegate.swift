@@ -782,7 +782,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             }
         )
     )
-    private lazy var quickTerminalController = QuickTerminalController(appDelegate: self)
+    private lazy var quickTerminalController = QuickTerminalController()
+    /// Original "main window quick-show" controller from PR #4828. Kept
+    /// alongside PR #4830's QuickTerminalController because the two own
+    /// different responsibilities: this one handles main-window
+    /// visibility/snapshot restore; the other owns the global-hotkey
+    /// floating terminal.
+    private lazy var mainWindowQuickTerminalController = MainWindowQuickTerminalController(
+        appDelegate: self
+    )
     private static let serviceErrorNoPath = NSString(string: String(localized: "error.clipboardFolderPath", defaultValue: "Could not load any folder path from the clipboard."))
     private static let didInstallWindowKeyEquivalentSwizzle: Void = {
         let targetClass: AnyClass = NSWindow.self
@@ -1792,6 +1800,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         _ = saveSessionSnapshotIncludingProcessDetectedIndexes(includeScrollback: true, removeWhenEmpty: false)
         stopSessionAutosaveTimer()
         teardownAllWorkspacePanelsBeforeAppTeardown()
+        quickTerminalController.teardown()
         CloudVMActionLauncher.shared.terminateAll()
         CmuxSSHURLProcessLauncher.shared.terminateAll()
         TerminalController.shared.stop()
@@ -2985,7 +2994,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let startupSnapshot = startupSessionSnapshot
         let quickTerminalSnapshot = startupSnapshot?.windows.first(where: { $0.isQuickTerminal == true })
         if let quickTerminalSnapshot {
-            quickTerminalController.restoreSession(quickTerminalSnapshot)
+            mainWindowQuickTerminalController.restoreSession(quickTerminalSnapshot)
         }
         let regularWindowSnapshots = startupSnapshot?.windows.filter { $0.isQuickTerminal != true } ?? []
         let primaryWindowSnapshot = regularWindowSnapshots.first
@@ -3071,7 +3080,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             snapshot.windows.prefix(SessionPersistencePolicy.maxWindowsPerSnapshot)
         )
         if let quickTerminalSnapshot = allSnapshotWindows.first(where: { $0.isQuickTerminal == true }) {
-            quickTerminalController.restoreSession(quickTerminalSnapshot)
+            mainWindowQuickTerminalController.restoreSession(quickTerminalSnapshot)
         }
         let snapshotWindows = allSnapshotWindows.filter { $0.isQuickTerminal != true }
         guard !snapshotWindows.isEmpty else { return !allSnapshotWindows.isEmpty }
@@ -4148,7 +4157,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let windowsWithPendingQuickTerminal = Self.includingPendingQuickTerminalSnapshot(
             windows,
             pendingQuickTerminalSnapshot: liveQuickTerminalSnapshot
-                ?? quickTerminalController.pendingSessionSnapshotForPersistence()
+                ?? mainWindowQuickTerminalController.pendingSessionSnapshotForPersistence()
         )
 
         guard !windowsWithPendingQuickTerminal.isEmpty else { return nil }
@@ -6175,6 +6184,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     @discardableResult
+    func toggleQuickTerminalVisibility(activateApp: Bool = true) -> Bool {
+        return quickTerminalController.toggle(activateApp: activateApp)
+    }
+
+    @discardableResult
+    func showQuickTerminal(activateApp: Bool = true) -> Bool {
+        return quickTerminalController.show(activateApp: activateApp)
+    }
+
+    @discardableResult
+    func hideQuickTerminal(restorePreviousApp: Bool = true) -> Bool {
+        return quickTerminalController.hide(restorePreviousApp: restorePreviousApp)
+    }
+
+    func quickTerminalStatusPayload() -> [String: Any] {
+        quickTerminalController.statusPayload()
+    }
+
+    @objc func toggleQuickTerminal(_ sender: Any?) {
+        _ = sender
+        _ = toggleQuickTerminalVisibility()
+    }
+
+    @discardableResult
     func toggleRightSidebarInActiveMainWindow(preferredWindow: NSWindow? = nil) -> Bool {
         guard let context = preferredRegisteredMainWindowContext(preferredWindow: preferredWindow) else {
             if let fileExplorerState {
@@ -7836,7 +7869,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             if isQuickTerminal,
                self?.isTerminatingApp == false,
                let quickTerminalWindow = window {
-                self?.quickTerminalController.hideFromCloseShortcut(quickTerminalWindow)
+                self?.mainWindowQuickTerminalController.hideFromCloseShortcut(quickTerminalWindow)
                 return false
             }
             let shouldClose = self?.handleMainTerminalWindowShouldClose() ?? true
@@ -11780,7 +11813,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             // here would swallow the first stroke and leave the second one
             // orphaned, breaking that keystroke for the focused terminal/browser
             // input.
-            guard action != .showHideAllWindows && action != .globalSearch else { return false }
+            guard action != .showHideAllWindows && action != .globalSearch && action != .toggleQuickTerminal else { return false }
             return KeyboardShortcutSettings.shortcut(for: action).hasChord
         }
     }
@@ -12419,6 +12452,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 focusFirstItem: true,
                 preferredWindow: rightSidebarWindow
             )
+            return true
+        }
+
+        if matchConfiguredShortcut(event: event, action: .toggleQuickTerminal) {
+            _ = toggleQuickTerminalVisibility()
             return true
         }
 
@@ -14411,7 +14449,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     private func isMenuBackedShortcutAction(_ action: KeyboardShortcutSettings.Action) -> Bool {
-        action != .showHideAllWindows && action != .globalSearch
+        action != .showHideAllWindows && action != .globalSearch && action != .toggleQuickTerminal
     }
 
     private func isCloseShortcutAction(_ action: KeyboardShortcutSettings.Action) -> Bool {

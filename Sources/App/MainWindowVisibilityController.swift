@@ -505,7 +505,7 @@ final class MainWindowVisibilityController {
     }
 }
 
-enum QuickTerminalPosition: String {
+enum MainWindowQuickTerminalPosition: String {
     case top
     case bottom
     case left
@@ -520,12 +520,12 @@ struct QuickTerminalConfiguration: Equatable {
         animationDuration: 0.18
     )
 
-    var position: QuickTerminalPosition
+    var position: MainWindowQuickTerminalPosition
     var screenFraction: CGFloat
     var animationDuration: TimeInterval
 
     init(
-        position: QuickTerminalPosition,
+        position: MainWindowQuickTerminalPosition,
         screenFraction: CGFloat,
         animationDuration: TimeInterval
     ) {
@@ -537,7 +537,7 @@ struct QuickTerminalConfiguration: Equatable {
     static func current(loadConfig: () -> GhosttyConfig = { GhosttyConfig.load() }) -> QuickTerminalConfiguration {
         let config = loadConfig()
         return QuickTerminalConfiguration(
-            position: config.quickTerminalPosition.flatMap(QuickTerminalPosition.init(rawValue:)) ?? fallback.position,
+            position: config.quickTerminalPosition.flatMap(MainWindowQuickTerminalPosition.init(rawValue:)) ?? fallback.position,
             screenFraction: CGFloat(config.quickTerminalScreenFraction ?? Double(fallback.screenFraction)),
             animationDuration: config.quickTerminalAnimationDuration ?? fallback.animationDuration
         )
@@ -630,7 +630,7 @@ struct QuickTerminalPlacement: Equatable {
 }
 
 @MainActor
-final class QuickTerminalController {
+final class MainWindowQuickTerminalController {
     @MainActor
     struct Dependencies {
         var createMainWindow: @MainActor (AppDelegate, QuickTerminalPlacement, SessionWindowSnapshot?) -> UUID

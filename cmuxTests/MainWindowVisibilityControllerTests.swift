@@ -510,7 +510,7 @@ final class MainWindowVisibilityControllerTests: XCTestCase {
         let snapshot = makeQuickTerminalWindowSnapshot()
         var createdSnapshots: [SessionWindowSnapshot?] = []
         var beepCount = 0
-        let controller = QuickTerminalController(
+        let controller = MainWindowQuickTerminalController(
             appDelegate: appDelegate,
             configurationProvider: { .fallback },
             placementProvider: { _ in placement },
@@ -549,7 +549,7 @@ final class MainWindowVisibilityControllerTests: XCTestCase {
         let window = makeCmuxWindow(frame: placement.visibleFrame)
         defer { window.orderOut(nil) }
         var animationCount = 0
-        let controller = QuickTerminalController(
+        let controller = MainWindowQuickTerminalController(
             appDelegate: appDelegate,
             configurationProvider: { configuration },
             placementProvider: { _ in placement },
@@ -611,8 +611,8 @@ final class MainWindowVisibilityControllerTests: XCTestCase {
             TimeInterval,
             @escaping @MainActor () -> Void
         ) -> Void = { _, _, _, completion in completion() }
-    ) -> QuickTerminalController.Dependencies {
-        QuickTerminalController.Dependencies(
+    ) -> MainWindowQuickTerminalController.Dependencies {
+        MainWindowQuickTerminalController.Dependencies(
             createMainWindow: createMainWindow,
             windowForMainWindowId: windowForMainWindowId,
             focusQuickTerminalWindow: focusQuickTerminalWindow,
