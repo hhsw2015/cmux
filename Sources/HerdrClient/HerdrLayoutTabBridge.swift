@@ -302,18 +302,33 @@ enum HerdrLayoutTabBridge {
         if lastSentTabRenames[key] == trimmed {
             return
         }
-        lastSentTabRenames[key] = trimmed
         let host = binding.host
         let tabId = binding.tabId
-        Task.detached { [host, tabId, trimmed] in
-            await HerdrOneShotRPC.send(
-                host: host,
-                method: "tab.rename",
-                params: [
-                    "tab_id": tabId,
-                    "name": trimmed,
-                ]
-            )
+        Task.detached { [host, tabId, trimmed, key] in
+            do {
+                _ = try await HerdrOneShotRPC.request(
+                    host: host,
+                    method: "tab.rename",
+                    params: [
+                        "tab_id": tabId,
+                        "name": trimmed,
+                    ]
+                )
+                // Cache only after the daemon acked. A transient
+                // failure (SSH drop, daemon restart) leaves the cache
+                // stale so the next call retries instead of
+                // short-circuiting and stranding tmux/cmux titles
+                // out of sync until the tab closes.
+                await MainActor.run {
+                    lastSentTabRenames[key] = trimmed
+                }
+            } catch {
+                #if DEBUG
+                await MainActor.run {
+                    cmuxDebugLog("herdr.layoutTab.rename fail tab=\(tabId) error=\(error)")
+                }
+                #endif
+            }
         }
     }
 
