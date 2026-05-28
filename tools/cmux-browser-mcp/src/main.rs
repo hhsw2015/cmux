@@ -188,16 +188,163 @@ fn tools_manifest() -> Vec<Value> {
         .iter()
         .map(|m| {
             let tool = m.replace('.', "_");
+            let (desc, schema) = method_doc(m);
             json!({
                 "name": tool,
-                "description": format!("Forwards to cmux socket method `{m}`. See cmux browser API docs for parameters."),
-                "inputSchema": {
-                    "type": "object",
-                    "additionalProperties": true
-                }
+                "description": desc,
+                "inputSchema": schema
             })
         })
         .collect()
+}
+
+/// Per-method description and JSON Schema. The schema is a hint for the
+/// agent, not a strict gate: cmux's server-side handlers do their own
+/// validation, and `additionalProperties: true` keeps undocumented
+/// pass-through params usable until the schema catches up.
+fn method_doc(method: &str) -> (String, Value) {
+    let selector_schema = json!({
+        "type": "object",
+        "properties": {
+            "selector": { "type": "string", "description": "CSS selector targeting the element." }
+        },
+        "required": ["selector"],
+        "additionalProperties": true
+    });
+    let selector_text_schema = json!({
+        "type": "object",
+        "properties": {
+            "selector": { "type": "string", "description": "CSS selector targeting the element." },
+            "text": { "type": "string", "description": "Text to type or fill." }
+        },
+        "required": ["selector", "text"],
+        "additionalProperties": true
+    });
+    let url_schema = json!({
+        "type": "object",
+        "properties": {
+            "url": { "type": "string", "description": "Absolute URL to navigate to." }
+        },
+        "required": ["url"],
+        "additionalProperties": true
+    });
+    let no_args_schema = json!({
+        "type": "object",
+        "additionalProperties": true
+    });
+
+    match method {
+        "browser.navigate" => (
+            "Navigate the active webview to a URL.".into(),
+            url_schema,
+        ),
+        "browser.back" => ("Webview history back.".into(), no_args_schema.clone()),
+        "browser.forward" => ("Webview history forward.".into(), no_args_schema.clone()),
+        "browser.reload" => ("Reload the webview.".into(), no_args_schema.clone()),
+        "browser.url.get" => (
+            "Return the active webview's current URL.".into(),
+            no_args_schema.clone(),
+        ),
+        "browser.click" => (
+            "Click an element matched by a CSS selector.".into(),
+            selector_schema.clone(),
+        ),
+        "browser.dblclick" => (
+            "Double-click an element matched by a CSS selector.".into(),
+            selector_schema.clone(),
+        ),
+        "browser.hover" => (
+            "Hover over an element matched by a CSS selector.".into(),
+            selector_schema.clone(),
+        ),
+        "browser.focus" => (
+            "Focus an element matched by a CSS selector.".into(),
+            selector_schema.clone(),
+        ),
+        "browser.fill" => (
+            "Set the value of an input/textarea/contenteditable matched by selector.".into(),
+            selector_text_schema.clone(),
+        ),
+        "browser.type" => (
+            "Type text into the focused element character-by-character.".into(),
+            json!({
+                "type": "object",
+                "properties": {
+                    "text": { "type": "string" }
+                },
+                "required": ["text"],
+                "additionalProperties": true
+            }),
+        ),
+        "browser.press" => (
+            "Press a key combo (e.g. \"Enter\", \"Meta+a\").".into(),
+            json!({
+                "type": "object",
+                "properties": {
+                    "key": { "type": "string" }
+                },
+                "required": ["key"],
+                "additionalProperties": true
+            }),
+        ),
+        "browser.eval" => (
+            "Evaluate a JavaScript expression in the active webview and return its value.".into(),
+            json!({
+                "type": "object",
+                "properties": {
+                    "script": { "type": "string", "description": "JS expression or IIFE." }
+                },
+                "required": ["script"],
+                "additionalProperties": true
+            }),
+        ),
+        "browser.screenshot" => (
+            "Capture a PNG screenshot of the active webview.".into(),
+            json!({
+                "type": "object",
+                "properties": {
+                    "fullPage": { "type": "boolean", "description": "Capture the full scrollable page." }
+                },
+                "additionalProperties": true
+            }),
+        ),
+        "browser.snapshot" => (
+            "Return a structured accessibility snapshot of the active webview.".into(),
+            no_args_schema.clone(),
+        ),
+        "browser.wait" => (
+            "Wait for a CSS selector to appear, with optional timeout (ms).".into(),
+            json!({
+                "type": "object",
+                "properties": {
+                    "selector": { "type": "string" },
+                    "timeoutMs": { "type": "integer", "minimum": 0 }
+                },
+                "required": ["selector"],
+                "additionalProperties": true
+            }),
+        ),
+        "browser.get.text" => (
+            "Return the visible text content of an element.".into(),
+            selector_schema.clone(),
+        ),
+        "browser.get.html" => (
+            "Return outerHTML of an element.".into(),
+            selector_schema.clone(),
+        ),
+        "browser.get.value" => (
+            "Return the .value of an input matched by selector.".into(),
+            selector_schema.clone(),
+        ),
+        "browser.scroll_into_view" => (
+            "Scroll an element into the viewport.".into(),
+            selector_schema.clone(),
+        ),
+        _ => (
+            format!("Forwards to cmux socket method `{method}`. Pass parameters as documented in cmux's browser API."),
+            no_args_schema,
+        ),
+    }
 }
 
 /// Curated cmux browser.* method list. Each becomes a single MCP tool whose
