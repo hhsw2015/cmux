@@ -305,13 +305,14 @@ struct WorkspaceContentView: View {
                 ZStack(alignment: .top) {
                     topTabsView
                     if topTabsVisibility == .auto {
-                        // Hover trigger zone — invisible 12px strip across the
-                        // top edge. While hovering, force the BonsplitController
-                        // to .always so the bar reveals; leaving resets to the
-                        // resting baseline (which auto-hides on 0/1 tab and
-                        // shows on 2+).
+                        // Hover trigger zone. Resting size is a 12px sliver on
+                        // the top edge so it doesn't intercept clicks meant for
+                        // the layout below. While hovering, expand to ~40px so
+                        // the pointer can move horizontally over the revealed
+                        // tab bar without exiting the zone (which would cause
+                        // an immediate hide-flicker).
                         Color.clear
-                            .frame(height: 12)
+                            .frame(height: topTabsHoverActive ? 40 : 12)
                             .contentShape(Rectangle())
                             .onHover { hovering in
                                 topTabsHoverActive = hovering

@@ -9391,68 +9391,24 @@ private struct GlobalHotkeySection: View {
 private struct SettingsWindowRootView: View {
     @State private var draftState = SettingsDraftState()
     @State private var windowReference = WeakSettingsWindowReference()
-    @State private var shouldRenderSettingsContent = true
 
     var body: some View {
-        Group {
-            if shouldRenderSettingsContent {
-                SettingsRootView(draftState: draftState)
-            } else {
-                Color.clear
-                    .frame(
-                        minWidth: SettingsWindowPresenter.minimumSize.width,
-                        minHeight: SettingsWindowPresenter.minimumSize.height
-                    )
-            }
-        }
-        .background(WindowAccessor { window in
-            windowReference.window = window
-            SettingsWindowPresenter.configure(window: window)
-            // Force content visible on every WindowAccessor callback. Reopens
-            // of the SwiftUI Window reuse the same NSWindow but on macOS 26
-            // SwiftUI no longer fires didBecomeKey/didBecomeMain consistently
-            // for the reopened window, leaving shouldRenderSettingsContent
-            // stuck at false (set by willCloseNotification on the previous
-            // close). Re-asserting visibility here makes reopen always show
-            // SettingsRootView.
-            setContentVisibility(true)
-        })
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didMiniaturizeNotification)) { notification in
-            guard isObservedWindow(notification.object) else { return }
-            setContentVisibility(false)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didDeminiaturizeNotification)) { notification in
-            guard isObservedWindow(notification.object) else { return }
-            setContentVisibility(true)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { notification in
-            guard isObservedWindow(notification.object) else { return }
-            setContentVisibility(true)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeMainNotification)) { notification in
-            guard isObservedWindow(notification.object) else { return }
-            setContentVisibility(true)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { notification in
-            guard isObservedWindow(notification.object) else { return }
-            setContentVisibility(false)
-            windowReference.window = nil
-        }
-    }
-
-    private func isObservedWindow(_ object: Any?) -> Bool {
-        guard
-            let notificationWindow = object as? NSWindow,
-            let window = windowReference.window
-        else {
-            return false
-        }
-        return notificationWindow === window
-    }
-
-    private func setContentVisibility(_ isVisible: Bool) {
-        guard shouldRenderSettingsContent != isVisible else { return }
-        shouldRenderSettingsContent = isVisible
+        // Always render content. Upstream PR #4661 added a
+        // shouldRenderSettingsContent gate (toggled by didBecomeKey /
+        // willClose notifications) to skip the SettingsRootView body while
+        // the window is hidden — but on macOS 26 SwiftUI Windows reuse the
+        // same NSWindow on reopen, and the matching didBecomeKey is not
+        // re-delivered, leaving the gate stuck at false. Removing the gate
+        // gives back a small amount of CPU on inactive Settings windows but
+        // makes reopen reliable. The CPU regression PR #4661 addressed only
+        // matters when many Codex panes spam output AND Settings is open in
+        // the background; that's a rare combination, and the upstream fix
+        // is brittle on macOS 26 either way.
+        SettingsRootView(draftState: draftState)
+            .background(WindowAccessor { window in
+                windowReference.window = window
+                SettingsWindowPresenter.configure(window: window)
+            })
     }
 }
 
