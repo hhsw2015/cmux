@@ -5424,6 +5424,8 @@ struct SettingsView: View {
     @AppStorage(CommandPaletteSwitcherSearchSettings.searchAllSurfacesKey)
     private var commandPaletteSearchAllSurfaces = CommandPaletteSwitcherSearchSettings.defaultSearchAllSurfaces
     @AppStorage(WorkspacePlacementSettings.placementKey) private var newWorkspacePlacement = WorkspacePlacementSettings.defaultPlacement.rawValue
+    @AppStorage(AgentConversationForkDefaultSettings.key)
+    private var forkConversationDefaultDestination = AgentConversationForkDefaultSettings.defaultDestination.rawValue
     @AppStorage(WorkspaceWorkingDirectoryInheritanceSettings.key)
     private var workspaceInheritWorkingDirectory = WorkspaceWorkingDirectoryInheritanceSettings.defaultValue
     @AppStorage(LastSurfaceCloseShortcutSettings.key)
@@ -5529,6 +5531,25 @@ struct SettingsView: View {
 
     private var selectedWorkspacePlacement: NewWorkspacePlacement {
         NewWorkspacePlacement(rawValue: newWorkspacePlacement) ?? WorkspacePlacementSettings.defaultPlacement
+    }
+
+    private var selectedForkConversationDefaultDestination: AgentConversationForkDestination {
+        AgentConversationForkDestination(rawValue: forkConversationDefaultDestination) ?? AgentConversationForkDefaultSettings.defaultDestination
+    }
+
+    private var forkConversationDefaultDestinationBinding: Binding<String> {
+        Binding(
+            get: {
+                selectedForkConversationDefaultDestination.rawValue
+            },
+            set: { newValue in
+                guard let destination = AgentConversationForkDestination(rawValue: newValue) else {
+                    forkConversationDefaultDestination = AgentConversationForkDefaultSettings.defaultDestination.rawValue
+                    return
+                }
+                forkConversationDefaultDestination = destination.rawValue
+            }
+        )
     }
 
     private var workspaceWorkingDirectoryInheritanceSubtitle: String {
@@ -6481,6 +6502,20 @@ struct SettingsView: View {
                         ) {
                             ForEach(NewWorkspacePlacement.allCases) { placement in
                                 Text(placement.displayName).tag(placement.rawValue)
+                            }
+                        }
+
+                        SettingsCardDivider()
+
+                        SettingsPickerRow(
+                            configurationReview: .json("app.forkConversationDefaultDestination"),
+                            String(localized: "settings.app.forkConversationDefaultDestination", defaultValue: "Fork Conversation Default"),
+                            subtitle: selectedForkConversationDefaultDestination.settingsDescription,
+                            controlWidth: pickerColumnWidth,
+                            selection: forkConversationDefaultDestinationBinding
+                        ) {
+                            ForEach(AgentConversationForkDestination.allCases) { destination in
+                                Text(destination.settingsTitle).tag(destination.rawValue)
                             }
                         }
 
@@ -8493,6 +8528,7 @@ struct SettingsView: View {
         commandPaletteRenameSelectAllOnFocus = CommandPaletteRenameSelectionSettings.defaultSelectAllOnFocus
         commandPaletteSearchAllSurfaces = CommandPaletteSwitcherSearchSettings.defaultSearchAllSurfaces
         newWorkspacePlacement = WorkspacePlacementSettings.defaultPlacement.rawValue
+        forkConversationDefaultDestination = AgentConversationForkDefaultSettings.defaultDestination.rawValue
         workspaceInheritWorkingDirectory = WorkspaceWorkingDirectoryInheritanceSettings.defaultValue
         workspacePresentationMode = WorkspacePresentationModeSettings.defaultMode.rawValue
         let defaults = UserDefaults.standard

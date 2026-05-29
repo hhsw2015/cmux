@@ -41862,6 +41862,23 @@
         }
       }
     },
+    "agent.hermes.notification.body.approvalCommand": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@: %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@: %2$@"
+          }
+        }
+      }
+    },
     "agent.generic.notification.status.error": {
       "extractionState": "manual",
       "localizations": {
@@ -48517,6 +48534,53 @@
         }
       }
     },
+    "command.forkAgentConversationNewTab.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fork Conversation to New Tab"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "会話を新規タブにフォーク"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konversation in neuem Tab forken"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bifurcar conversación en pestaña nueva"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대화를 새 탭으로 포크"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将对话分叉到新标签页"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "將對話分叉到新分頁"
+          }
+        }
+      }
+    },
     "command.forkAgentConversationNewWorkspace.title": {
       "extractionState": "manual",
       "localizations": {
@@ -48530,6 +48594,570 @@
           "stringUnit": {
             "state": "translated",
             "value": "会話を新規ワークスペースにフォーク"
+          }
+        }
+      }
+    },
+    "forkConversation.destination.right": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Right Split"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右分割"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechte Teilung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "División derecha"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오른쪽 분할"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右侧分屏"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右側分割"
+          }
+        }
+      }
+    },
+    "forkConversation.destination.right.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Right-click Fork Conversation creates a split to the right."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右クリックの「会話をフォーク」で右側に分割を作成します。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechtsklick auf „Konversation forken“ erstellt eine Teilung rechts."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fork Conversation con clic derecho crea una división a la derecha."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오른쪽 클릭의 Fork Conversation은 오른쪽에 분할을 만듭니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右键点击 Fork Conversation 会在右侧创建分屏。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右鍵點按 Fork Conversation 會在右側建立分割。"
+          }
+        }
+      }
+    },
+    "forkConversation.destination.left": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Left Split"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左分割"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linke Teilung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "División izquierda"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "왼쪽 분할"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左侧分屏"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左側分割"
+          }
+        }
+      }
+    },
+    "forkConversation.destination.left.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Right-click Fork Conversation creates a split to the left."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右クリックの「会話をフォーク」で左側に分割を作成します。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechtsklick auf „Konversation forken“ erstellt eine Teilung links."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fork Conversation con clic derecho crea una división a la izquierda."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오른쪽 클릭의 Fork Conversation은 왼쪽에 분할을 만듭니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右键点击 Fork Conversation 会在左侧创建分屏。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右鍵點按 Fork Conversation 會在左側建立分割。"
+          }
+        }
+      }
+    },
+    "forkConversation.destination.top": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Top Split"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上分割"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obere Teilung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "División superior"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "위쪽 분할"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上方分屏"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上方分割"
+          }
+        }
+      }
+    },
+    "forkConversation.destination.top.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Right-click Fork Conversation creates a split above the current pane."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右クリックの「会話をフォーク」で現在のペインの上に分割を作成します。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechtsklick auf „Konversation forken“ erstellt eine Teilung über dem aktuellen Bereich."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fork Conversation con clic derecho crea una división encima del panel actual."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오른쪽 클릭의 Fork Conversation은 현재 패널 위에 분할을 만듭니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右键点击 Fork Conversation 会在当前窗格上方创建分屏。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右鍵點按 Fork Conversation 會在目前窗格上方建立分割。"
+          }
+        }
+      }
+    },
+    "forkConversation.destination.bottom": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bottom Split"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下分割"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Untere Teilung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "División inferior"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아래쪽 분할"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下方分屏"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下方分割"
+          }
+        }
+      }
+    },
+    "forkConversation.destination.bottom.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Right-click Fork Conversation creates a split below the current pane."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右クリックの「会話をフォーク」で現在のペインの下に分割を作成します。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechtsklick auf „Konversation forken“ erstellt eine Teilung unter dem aktuellen Bereich."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fork Conversation con clic derecho crea una división debajo del panel actual."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오른쪽 클릭의 Fork Conversation은 현재 패널 아래에 분할을 만듭니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右键点击 Fork Conversation 会在当前窗格下方创建分屏。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右鍵點按 Fork Conversation 會在目前窗格下方建立分割。"
+          }
+        }
+      }
+    },
+    "forkConversation.destination.newTab": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Tab"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規タブ"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neuer Tab"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pestaña nueva"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 탭"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新标签页"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新分頁"
+          }
+        }
+      }
+    },
+    "forkConversation.destination.newTab.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Right-click Fork Conversation creates a sibling tab in the current pane."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右クリックの「会話をフォーク」で現在のペインに兄弟タブを作成します。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechtsklick auf „Konversation forken“ erstellt einen gleichgeordneten Tab im aktuellen Bereich."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fork Conversation con clic derecho crea una pestaña hermana en el panel actual."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오른쪽 클릭의 Fork Conversation은 현재 패널에 형제 탭을 만듭니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右键点击 Fork Conversation 会在当前窗格中创建相邻标签页。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右鍵點按 Fork Conversation 會在目前窗格中建立相鄰分頁。"
+          }
+        }
+      }
+    },
+    "forkConversation.destination.newWorkspace": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Workspace"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規ワークスペース"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neuer Arbeitsbereich"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Espacio de trabajo nuevo"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 작업 공간"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新工作区"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新工作區"
+          }
+        }
+      }
+    },
+    "forkConversation.destination.newWorkspace.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Right-click Fork Conversation creates a new workspace."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右クリックの「会話をフォーク」で新規ワークスペースを作成します。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechtsklick auf „Konversation forken“ erstellt einen neuen Arbeitsbereich."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fork Conversation con clic derecho crea un espacio de trabajo nuevo."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오른쪽 클릭의 Fork Conversation은 새 작업 공간을 만듭니다."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右键点击 Fork Conversation 会创建新工作区。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右鍵點按 Fork Conversation 會建立新工作區。"
           }
         }
       }
@@ -80334,6 +80962,53 @@
         }
       }
     },
+    "settings.app.forkConversationDefaultDestination": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fork Conversation Default"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "会話フォークのデフォルト"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard für Konversation forken"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destino predeterminado de bifurcar conversación"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대화 포크 기본값"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "对话分叉默认目标"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "對話分叉預設目標"
+          }
+        }
+      }
+    },
     "settings.app.workspaceInheritWorkingDirectory": {
       "extractionState": "manual",
       "localizations": {
@@ -109855,6 +110530,53 @@
           "stringUnit": {
             "state": "translated",
             "value": "sidebar.showProgress progress bar percent status set_progress програма загальні параметри поведінка док рядок меню статус бічна панель навігація ліворуч деталі приховати макет"
+          }
+        }
+      }
+    },
+    "settings.search.alias.setting.app.fork-conversation-default": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "app.forkConversationDefaultDestination fork conversation right left top bottom split tab workspace default"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "app.forkConversationDefaultDestination fork conversation right left top bottom split tab workspace default 会話 フォーク デフォルト 右 左 上 下 分割 タブ ワークスペース"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "app.forkConversationDefaultDestination fork conversation right left top bottom split tab workspace default konversation forken rechts links oben unten teilen tab arbeitsbereich standard"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "app.forkConversationDefaultDestination fork conversation right left top bottom split tab workspace default bifurcar conversación derecha izquierda arriba abajo dividir pestaña espacio trabajo predeterminado"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "app.forkConversationDefaultDestination fork conversation right left top bottom split tab workspace default 대화 포크 오른쪽 왼쪽 위 아래 분할 탭 작업 공간 기본값"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "app.forkConversationDefaultDestination fork conversation right left top bottom split tab workspace default 对话 分叉 右 左 上 下 分屏 标签页 工作区 默认"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "app.forkConversationDefaultDestination fork conversation right left top bottom split tab workspace default 對話 分叉 右 左 上 下 分割 分頁 工作區 預設"
           }
         }
       }

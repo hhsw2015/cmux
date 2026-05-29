@@ -29,3 +29,11 @@ cmux also reads cmux-specific sidebar color keys from Ghostty config files and t
 - `sidebar-notification-badge-background`: unread badge background. Supports light/dark pairs.
 
 `sidebar-notification-badge-color` is accepted as an alias for `sidebar-notification-badge-background`.
+
+## `app.forkConversationDefaultDestination`
+
+Controls what the tab right-click `Fork Conversation` item does. The submenu still exposes every destination.
+
+Values: `right`, `left`, `top`, `bottom`, `newTab`, `newWorkspace`.
+
+Default: `right`.
