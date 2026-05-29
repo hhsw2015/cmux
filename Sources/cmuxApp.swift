@@ -9389,7 +9389,14 @@ private struct SettingsWindowRootView: View {
         .background(WindowAccessor { window in
             windowReference.window = window
             SettingsWindowPresenter.configure(window: window)
-            setContentVisibility(!window.isMiniaturized)
+            // Force content visible on every WindowAccessor callback. Reopens
+            // of the SwiftUI Window reuse the same NSWindow but on macOS 26
+            // SwiftUI no longer fires didBecomeKey/didBecomeMain consistently
+            // for the reopened window, leaving shouldRenderSettingsContent
+            // stuck at false (set by willCloseNotification on the previous
+            // close). Re-asserting visibility here makes reopen always show
+            // SettingsRootView.
+            setContentVisibility(true)
         })
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didMiniaturizeNotification)) { notification in
             guard isObservedWindow(notification.object) else { return }
