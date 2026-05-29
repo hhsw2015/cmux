@@ -9391,24 +9391,75 @@ private struct GlobalHotkeySection: View {
 private struct SettingsWindowRootView: View {
     @State private var draftState = SettingsDraftState()
     @State private var windowReference = WeakSettingsWindowReference()
+    @State private var shouldRenderSettingsContent = true
 
     var body: some View {
-        // Always render content. Upstream PR #4661 added a
-        // shouldRenderSettingsContent gate (toggled by didBecomeKey /
-        // willClose notifications) to skip the SettingsRootView body while
-        // the window is hidden — but on macOS 26 SwiftUI Windows reuse the
-        // same NSWindow on reopen, and the matching didBecomeKey is not
-        // re-delivered, leaving the gate stuck at false. Removing the gate
-        // gives back a small amount of CPU on inactive Settings windows but
-        // makes reopen reliable. The CPU regression PR #4661 addressed only
-        // matters when many Codex panes spam output AND Settings is open in
-        // the background; that's a rare combination, and the upstream fix
-        // is brittle on macOS 26 either way.
-        SettingsRootView(draftState: draftState)
-            .background(WindowAccessor { window in
-                windowReference.window = window
-                SettingsWindowPresenter.configure(window: window)
-            })
+        Group {
+            if shouldRenderSettingsContent {
+                SettingsRootView(draftState: draftState)
+            } else {
+                Color.clear
+                    .frame(
+                        minWidth: SettingsWindowPresenter.minimumSize.width,
+                        minHeight: SettingsWindowPresenter.minimumSize.height
+                    )
+            }
+        }
+        .background(WindowAccessor { window in
+            windowReference.window = window
+            SettingsWindowPresenter.configure(window: window)
+            // Belt-and-suspenders for the macOS 26 SwiftUI Window reopen
+            // path: when the user closes and reopens Settings, the same
+            // NSWindow is reused and didBecomeKey is sometimes NOT
+            // re-delivered, leaving shouldRenderSettingsContent stuck at
+            // false from the previous willClose. The WindowAccessor
+            // closure DOES re-run on reopen (the SwiftUI Window's body
+            // remounts), so re-asserting visibility here recovers when
+            // notifications miss.
+            setContentVisibility(true)
+        })
+        .onAppear {
+            // Same intent as the WindowAccessor branch — covers the
+            // edge case where the background view layer doesn't remount
+            // but the parent does.
+            setContentVisibility(true)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didMiniaturizeNotification)) { notification in
+            guard isObservedWindow(notification.object) else { return }
+            setContentVisibility(false)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didDeminiaturizeNotification)) { notification in
+            guard isObservedWindow(notification.object) else { return }
+            setContentVisibility(true)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { notification in
+            guard isObservedWindow(notification.object) else { return }
+            setContentVisibility(true)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeMainNotification)) { notification in
+            guard isObservedWindow(notification.object) else { return }
+            setContentVisibility(true)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { notification in
+            guard isObservedWindow(notification.object) else { return }
+            setContentVisibility(false)
+            windowReference.window = nil
+        }
+    }
+
+    private func isObservedWindow(_ object: Any?) -> Bool {
+        guard
+            let notificationWindow = object as? NSWindow,
+            let window = windowReference.window
+        else {
+            return false
+        }
+        return notificationWindow === window
+    }
+
+    private func setContentVisibility(_ isVisible: Bool) {
+        guard shouldRenderSettingsContent != isVisible else { return }
+        shouldRenderSettingsContent = isVisible
     }
 }
 
