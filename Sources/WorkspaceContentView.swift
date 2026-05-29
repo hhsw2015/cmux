@@ -171,6 +171,7 @@ struct WorkspaceContentView: View {
     @State private var config = WorkspaceContentView.resolveGhosttyAppearanceConfig(reason: "stateInit")
     @State private var lastAppliedUsesHostLayerBackground = GhosttyApp.shared.usesHostLayerBackground
     @State private var deferredThemeRefresh: DeferredThemeRefresh?
+    @State private var topTabsHoverActive = false
     @AppStorage(WorkspacePresentationModeSettings.modeKey)
     private var workspacePresentationMode = WorkspacePresentationModeSettings.defaultMode.rawValue
     @Environment(\.colorScheme) private var colorScheme
@@ -279,10 +280,17 @@ struct WorkspaceContentView: View {
             )
         }
 
-        let shouldHideTopTabs = topTabsVisibility == .never && layoutTabCount <= 1
+        let shouldBypassTopBar: Bool = {
+            switch topTabsVisibility {
+            case .never:
+                return layoutTabCount <= 1
+            case .always, .auto:
+                return false
+            }
+        }()
 
         Group {
-            if shouldHideTopTabs,
+            if shouldBypassTopBar,
                let onlyLayoutTab = workspace.layoutTabs.first {
                 layoutBonsplitView(
                     controller: onlyLayoutTab.bonsplitController,
@@ -294,10 +302,34 @@ struct WorkspaceContentView: View {
                     isLayoutInputActive: isWorkspaceInputActive
                 )
             } else {
-                topTabsView
+                ZStack(alignment: .top) {
+                    topTabsView
+                    if topTabsVisibility == .auto {
+                        // Hover trigger zone — invisible 12px strip across the
+                        // top edge. While hovering, force the BonsplitController
+                        // to .always so the bar reveals; leaving resets to the
+                        // resting baseline (which auto-hides on 0/1 tab and
+                        // shows on 2+).
+                        Color.clear
+                            .frame(height: 12)
+                            .contentShape(Rectangle())
+                            .onHover { hovering in
+                                topTabsHoverActive = hovering
+                                workspace.topTabController.configuration.tabBarVisibility =
+                                    hovering ? .always : .never
+                            }
+                    }
+                }
             }
         }
         .ignoresSafeArea(.container, edges: (isMinimalMode && !isFullScreen) ? .top : [])
+        .onChange(of: topTabsVisibility) { _, new in
+            // Visibility setting changed (user toggled in Settings). Make sure
+            // the controller's resting baseline reflects the new mode.
+            workspace.topTabController.configuration.tabBarVisibility = new.bonsplitVisibility
+            // Reset hover state — old hover override may otherwise stick.
+            topTabsHoverActive = false
+        }
     }
 
     private func publishSelectedWorkspaceSurfaceFrameChangesIfNeeded(isInputActive: Bool) {
