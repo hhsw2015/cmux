@@ -1733,6 +1733,10 @@ struct SessionWorkspaceLayoutTabSnapshot: Codable, Sendable {
 }
 
 struct SessionWorkspaceSnapshot: Codable, Sendable {
+    /// Original workspace ID captured when the snapshot comes from a live workspace.
+    /// Restore uses this to remap closed-panel history onto the new workspace IDs;
+    /// legacy or externally-created snapshots can leave it nil.
+    var workspaceId: UUID? = nil
     var processTitle: String
     var customTitle: String?
     var customDescription: String?
@@ -1795,6 +1799,7 @@ struct SessionTabManagerSnapshot: Codable, Sendable {
 }
 
 struct SessionWindowSnapshot: Codable, Sendable {
+    var windowId: UUID? = nil
     var frame: SessionRectSnapshot?
     var display: SessionDisplaySnapshot?
     var tabManager: SessionTabManagerSnapshot
