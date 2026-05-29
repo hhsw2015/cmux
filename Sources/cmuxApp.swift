@@ -6518,7 +6518,7 @@ struct SettingsView: View {
                         ) {
                             Text(String(localized: "settings.app.workspaceTopTabsVisibility.always", defaultValue: "Always show"))
                                 .tag(WorkspaceTopTabsVisibility.always.rawValue)
-                            Text(String(localized: "settings.app.workspaceTopTabsVisibility.auto", defaultValue: "Only with multiple tabs"))
+                            Text(String(localized: "settings.app.workspaceTopTabsVisibility.auto", defaultValue: "Reveal on hover"))
                                 .tag(WorkspaceTopTabsVisibility.auto.rawValue)
                             Text(String(localized: "settings.app.workspaceTopTabsVisibility.never", defaultValue: "Never show"))
                                 .tag(WorkspaceTopTabsVisibility.never.rawValue)
