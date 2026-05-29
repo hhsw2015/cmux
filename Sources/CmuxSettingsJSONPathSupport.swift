@@ -73,6 +73,7 @@ extension CmuxSettingsFileStore {
         "app.focusPaneOnFirstClick",
         "app.preferredEditor",
         "app.forkConversationDefaultDestination",
+        "app.workspaceTopTabsVisibility",
         "app.openSupportedFilesInCmux",
         "app.openMarkdownInCmuxViewer",
         "app.iMessageMode",

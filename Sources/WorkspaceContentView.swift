@@ -196,6 +196,8 @@ struct WorkspaceContentView: View {
         let usesWorkspacePaneOverlay = TmuxOverlayExperimentSettings.target().usesWorkspacePaneOverlay
         let isWorkspaceManuallyUnread = notificationStore.hasManualUnread(forTabId: workspace.id)
         let workspaceManualUnreadPanelId = workspace.representativePanelIdForWorkspaceManualUnread()
+        let topTabsVisibility = WorkspaceTopTabsVisibilitySettings.current()
+        let layoutTabCount = workspace.layoutTabs.count
 
         let topTabsView = BonsplitView(controller: workspace.topTabController) { tab, _ in
             if let layoutController = workspace.layoutBonsplitController(forTopTabId: tab.id) {
@@ -277,8 +279,25 @@ struct WorkspaceContentView: View {
             )
         }
 
-        topTabsView
-            .ignoresSafeArea(.container, edges: (isMinimalMode && !isFullScreen) ? .top : [])
+        let shouldHideTopTabs = topTabsVisibility == .never && layoutTabCount <= 1
+
+        Group {
+            if shouldHideTopTabs,
+               let onlyLayoutTab = workspace.layoutTabs.first {
+                layoutBonsplitView(
+                    controller: onlyLayoutTab.bonsplitController,
+                    appearance: appearance,
+                    usesWorkspacePaneOverlay: usesWorkspacePaneOverlay,
+                    isWorkspaceManuallyUnread: isWorkspaceManuallyUnread,
+                    workspaceManualUnreadPanelId: workspaceManualUnreadPanelId,
+                    isLayoutVisible: isWorkspaceVisible,
+                    isLayoutInputActive: isWorkspaceInputActive
+                )
+            } else {
+                topTabsView
+            }
+        }
+        .ignoresSafeArea(.container, edges: (isMinimalMode && !isFullScreen) ? .top : [])
     }
 
     private func publishSelectedWorkspaceSurfaceFrameChangesIfNeeded(isInputActive: Bool) {

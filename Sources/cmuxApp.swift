@@ -5452,6 +5452,8 @@ struct SettingsView: View {
     private var quickTerminalWorkingDirectory: String = ""
     @AppStorage(QuickTerminalSettings.initialInputKey)
     private var quickTerminalInitialInput: String = ""
+    @AppStorage(WorkspaceTopTabsVisibilitySettings.key)
+    private var workspaceTopTabsVisibilityRaw = WorkspaceTopTabsVisibilitySettings.defaultValue.rawValue
     @AppStorage(FileDropBehaviorSettings.defaultBehaviorKey)
     private var fileDropDefaultBehavior = FileDropBehaviorSettings.defaultBehavior.rawValue
     @AppStorage(AgentSessionAutoResumeSettings.autoResumeAgentSessionsKey)
@@ -6503,6 +6505,23 @@ struct SettingsView: View {
                             ForEach(NewWorkspacePlacement.allCases) { placement in
                                 Text(placement.displayName).tag(placement.rawValue)
                             }
+                        }
+
+                        SettingsCardDivider()
+
+                        SettingsPickerRow(
+                            configurationReview: .json("app.workspaceTopTabsVisibility"),
+                            String(localized: "settings.app.workspaceTopTabsVisibility", defaultValue: "Workspace Top Tabs"),
+                            subtitle: String(localized: "settings.app.workspaceTopTabsVisibility.subtitle", defaultValue: "Control whether the top tab bar shows above each workspace's layout."),
+                            controlWidth: pickerColumnWidth,
+                            selection: $workspaceTopTabsVisibilityRaw
+                        ) {
+                            Text(String(localized: "settings.app.workspaceTopTabsVisibility.always", defaultValue: "Always show"))
+                                .tag(WorkspaceTopTabsVisibility.always.rawValue)
+                            Text(String(localized: "settings.app.workspaceTopTabsVisibility.auto", defaultValue: "Only with multiple tabs"))
+                                .tag(WorkspaceTopTabsVisibility.auto.rawValue)
+                            Text(String(localized: "settings.app.workspaceTopTabsVisibility.never", defaultValue: "Never show"))
+                                .tag(WorkspaceTopTabsVisibility.never.rawValue)
                         }
 
                         SettingsCardDivider()

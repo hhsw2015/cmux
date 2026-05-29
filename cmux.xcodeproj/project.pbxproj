@@ -637,6 +637,7 @@
 		D7AB34400000000000000001 /* WorkspaceSurfaceConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7AB34400000000000000002 /* WorkspaceSurfaceConfig.swift */; };
 		C0DE32470000000000000003 /* WorkspaceSurfaceIdentifierClipboardText.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE32470000000000000004 /* WorkspaceSurfaceIdentifierClipboardText.swift */; };
 		E30750000000000000000002 /* WorkspaceTabColorResolution.swift in Sources */ = {isa = PBXBuildFile; fileRef = E30750000000000000000001 /* WorkspaceTabColorResolution.swift */; };
+		C5AB210010000000000A0001 /* WorkspaceTopTabsVisibilitySettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5AB210010000000000A0002 /* WorkspaceTopTabsVisibilitySettings.swift */; };
 		6B524A0BA34FD46A771335AB /* WorkspaceUnitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71F8ED91A4B55D34BE6A0668 /* WorkspaceUnitTests.swift */; };
 		84E00D47E4584162AE53BC8D /* xterm-ghostty in Resources */ = {isa = PBXBuildFile; fileRef = B2E7294509CC42FE9191870E /* xterm-ghostty */; };
 		C420Z000C420Z000C42HK102 /* ZmxCommandHooks.swift in Sources */ = {isa = PBXBuildFile; fileRef = C420Z000C420Z000C42HK101 /* ZmxCommandHooks.swift */; };
@@ -1323,6 +1324,7 @@
 		D7AB34400000000000000002 /* WorkspaceSurfaceConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSurfaceConfig.swift; sourceTree = "<group>"; };
 		C0DE32470000000000000004 /* WorkspaceSurfaceIdentifierClipboardText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSurfaceIdentifierClipboardText.swift; sourceTree = "<group>"; };
 		E30750000000000000000001 /* WorkspaceTabColorResolution.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTabColorResolution.swift; sourceTree = "<group>"; };
+		C5AB210010000000000A0002 /* WorkspaceTopTabsVisibilitySettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTopTabsVisibilitySettings.swift; sourceTree = "<group>"; };
 		71F8ED91A4B55D34BE6A0668 /* WorkspaceUnitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceUnitTests.swift; sourceTree = "<group>"; };
 		B2E7294509CC42FE9191870E /* xterm-ghostty */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ghostty/terminfo/78/xterm-ghostty"; sourceTree = "<group>"; };
 		C420Z000C420Z000C42HK101 /* ZmxCommandHooks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZmxCommandHooks.swift; sourceTree = "<group>"; };
@@ -1665,6 +1667,7 @@
 				C7A503000000000000000001 /* TaskManagerSnapshot.swift */,
 				C7A504000000000000000001 /* TaskManagerTypes.swift */,
 				A5001541 /* PortScanner.swift */,
+				C5AB210010000000000A0002 /* WorkspaceTopTabsVisibilitySettings.swift */,
 				C5AB1E00ABC000000000ABCD /* StableLayout */,
 				C47110020000000000000002 /* ProcessPipeReader.swift */,
 				A5001551 /* ProcessScanner.swift */,
@@ -2821,6 +2824,7 @@
 				D7AB34400000000000000001 /* WorkspaceSurfaceConfig.swift in Sources */,
 				C0DE32470000000000000003 /* WorkspaceSurfaceIdentifierClipboardText.swift in Sources */,
 					E30750000000000000000002 /* WorkspaceTabColorResolution.swift in Sources */,
+				C5AB210010000000000A0001 /* WorkspaceTopTabsVisibilitySettings.swift in Sources */,
 				C420Z000C420Z000C42HK102 /* ZmxCommandHooks.swift in Sources */,
 				C420Z000C420Z000C42PB102 /* ZmxPanelBinder.swift in Sources */,
 				C420Z000C420Z000C42SV102 /* ZmxSettingsView.swift in Sources */,

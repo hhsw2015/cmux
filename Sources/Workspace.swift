@@ -10950,6 +10950,7 @@ final class Workspace: Identifiable, ObservableObject {
             autoCloseEmptyPanes: false,
             contentViewLifecycle: .keepAllAlive,
             newTabPosition: .end,
+            tabBarVisibility: WorkspaceTopTabsVisibilitySettings.current().bonsplitVisibility,
             appearance: appearance
         )
     }
