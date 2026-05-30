@@ -512,28 +512,6 @@ struct cmuxApp: App {
                     SessionBlueprintExportAction.copyCurrentBlueprintToPasteboard()
                 }
 
-#if DEBUG
-                Button("Toggle Selected Workspace Paper Layout") {
-                    debugPaperWorkspace(action: "toggle")?.togglePaperLayoutModeForDebug()
-                }
-
-                Button("Paper View Left") {
-                    debugPaperWorkspace(action: "viewLeft")?.movePaperViewportForDebug(dx: -1200, dy: 0)
-                }
-
-                Button("Paper View Right") {
-                    debugPaperWorkspace(action: "viewRight")?.movePaperViewportForDebug(dx: 1200, dy: 0)
-                }
-
-                Button("Paper View Up") {
-                    debugPaperWorkspace(action: "viewUp")?.movePaperViewportForDebug(dx: 0, dy: -800)
-                }
-
-                Button("Paper View Down") {
-                    debugPaperWorkspace(action: "viewDown")?.movePaperViewportForDebug(dx: 0, dy: 800)
-                }
-#endif
-
                 Divider()
                 Menu("Debug Windows") {
                     Button("Background Debug…") {
@@ -855,6 +833,36 @@ struct cmuxApp: App {
             Button(String(localized: "menu.window.taskManager", defaultValue: "Task Manager...")) {
                 TaskManagerWindowController.shared.show()
             }
+
+            Divider()
+
+            // [fork] PR 5014 paper layout — released menu + shortcuts.
+            Button(String(localized: "menu.workspace.togglePaperLayout", defaultValue: "Toggle Paper Layout")) {
+                paperWorkspace(action: "toggle")?.togglePaperLayoutModeForDebug()
+            }
+            .keyboardShortcut("p", modifiers: [.command, .control])
+
+            Menu(String(localized: "menu.workspace.paperViewport", defaultValue: "Paper Viewport")) {
+                Button(String(localized: "menu.workspace.paperViewLeft", defaultValue: "Move Viewport Left")) {
+                    paperWorkspace(action: "viewLeft")?.movePaperViewportForDebug(dx: -1200, dy: 0)
+                }
+                .keyboardShortcut(.leftArrow, modifiers: [.command, .control])
+
+                Button(String(localized: "menu.workspace.paperViewRight", defaultValue: "Move Viewport Right")) {
+                    paperWorkspace(action: "viewRight")?.movePaperViewportForDebug(dx: 1200, dy: 0)
+                }
+                .keyboardShortcut(.rightArrow, modifiers: [.command, .control])
+
+                Button(String(localized: "menu.workspace.paperViewUp", defaultValue: "Move Viewport Up")) {
+                    paperWorkspace(action: "viewUp")?.movePaperViewportForDebug(dx: 0, dy: -800)
+                }
+                .keyboardShortcut(.upArrow, modifiers: [.command, .control])
+
+                Button(String(localized: "menu.workspace.paperViewDown", defaultValue: "Move Viewport Down")) {
+                    paperWorkspace(action: "viewDown")?.movePaperViewportForDebug(dx: 0, dy: 800)
+                }
+                .keyboardShortcut(.downArrow, modifiers: [.command, .control])
+            }
         }
         helpCommands
         historyCommands
@@ -1091,31 +1099,37 @@ struct cmuxApp: App {
         ) ?? tabManager
     }
 
-#if DEBUG
-    private func debugPaperWorkspace(action: String) -> Workspace? {
-        debugPaperWorkspace(logAction: action)
+    /// [fork] PR 5014 paper layout helper — resolves the workspace
+    /// targeted by the paper menu actions and shortcuts (no longer
+    /// debug-only after promoting the menu).
+    private func paperWorkspace(action: String) -> Workspace? {
+        paperWorkspace(logAction: action)
     }
 
-    private func debugPaperWorkspace(logAction action: String?) -> Workspace? {
-        let preferredWindow = debugPaperPreferredMainWindow()
+    private func paperWorkspace(logAction action: String?) -> Workspace? {
+        let preferredWindow = paperPreferredMainWindow()
         let manager = AppDelegate.shared?.activeTabManagerForCommands(
             preferredWindow: preferredWindow
         ) ?? activeTabManager
         let workspace = manager.selectedWorkspace
+#if DEBUG
         if let action {
             cmuxDebugLog(
-                "paper.debugMenu action=\(action) " +
+                "paper.menu action=\(action) " +
                 "window=\(preferredWindow?.windowNumber ?? -1) " +
                 "workspace=\(workspace?.id.uuidString.prefix(5) ?? "nil") " +
                 "mode=\(workspace?.layoutMode.rawValue ?? "nil")"
             )
         } else if workspace == nil {
-            cmuxDebugLog("paper.debugMenu action=nil workspace=nil")
+            cmuxDebugLog("paper.menu action=nil workspace=nil")
         }
+#else
+        _ = action
+#endif
         return workspace
     }
 
-    private func debugPaperPreferredMainWindow() -> NSWindow? {
+    private func paperPreferredMainWindow() -> NSWindow? {
         guard let appDelegate = AppDelegate.shared else {
             return NSApp.keyWindow ?? NSApp.mainWindow
         }
@@ -1129,7 +1143,6 @@ struct cmuxApp: App {
             appDelegate.mainWindowId(from: window) != nil
         } ?? NSApp.keyWindow ?? NSApp.mainWindow
     }
-#endif
 
     private func notificationMenuItemTitle(for notification: TerminalNotification) -> String {
         let tabTitle = appDelegate.tabTitle(for: notification.tabId)

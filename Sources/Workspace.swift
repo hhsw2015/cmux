@@ -10801,7 +10801,8 @@ final class Workspace: Identifiable, ObservableObject {
         }
     }
 
-#if DEBUG
+    // [fork] PR 5014 paper layout block — promoted out of #if DEBUG
+    // so the menu + shortcuts + trackpad panning work in Release.
     private struct PaperPaneTreePlacement {
         let paneIdString: String
         let column: Int
@@ -11027,7 +11028,6 @@ final class Workspace: Identifiable, ObservableObject {
             "snappedPane=\(snappedPane?.id.uuidString.prefix(5) ?? "nil")"
         )
     }
-#endif
 
     func representativePanelIdForWorkspaceManualUnread() -> UUID? {
         if let focusedPanelId, panels[focusedPanelId] != nil {

@@ -1013,6 +1013,17 @@ struct PaperCanvasWorkspaceView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
+                // [fork] PR 5014 enhancement: trackpad / scroll-wheel
+                // panner sits at the back of the ZStack. It receives
+                // events only when the cursor is over empty canvas
+                // (between/around panes) — pane content covers the
+                // panner everywhere else, so terminal scroll inside
+                // the focused pane keeps working unchanged.
+                PaperViewportScrollPanner { dx, dy in
+                    guard workspace.layoutMode == .paper else { return }
+                    workspace.movePaperViewportForDebug(dx: dx, dy: dy)
+                }
+
                 if let paperLayoutState = workspace.paperLayoutState {
                     paperCanvasView(paperLayoutState, viewportSize: proxy.size)
                 }
@@ -1117,5 +1128,40 @@ struct PaperCanvasWorkspaceView: View {
 
     private func initializePaperLayoutIfNeeded(viewportSize: CGSize) {
         workspace.ensurePaperLayoutState(viewportSize: viewportSize)
+    }
+}
+
+/// [fork] PR 5014 enhancement: trackpad / scroll-wheel handler for the
+/// paper canvas. Lives as a hit-testable layer behind the pane content
+/// so terminal scrolling stays unaffected — events only land here when
+/// the cursor is on empty canvas or a non-scrolling region.
+private struct PaperViewportScrollPanner: NSViewRepresentable {
+    let onScroll: (_ dx: CGFloat, _ dy: CGFloat) -> Void
+
+    func makeNSView(context: Context) -> PaperViewportScrollPannerView {
+        let view = PaperViewportScrollPannerView()
+        view.onScroll = onScroll
+        return view
+    }
+
+    func updateNSView(_ nsView: PaperViewportScrollPannerView, context: Context) {
+        nsView.onScroll = onScroll
+    }
+}
+
+private final class PaperViewportScrollPannerView: NSView {
+    var onScroll: ((_ dx: CGFloat, _ dy: CGFloat) -> Void)?
+
+    override var acceptsFirstResponder: Bool { false }
+    override var mouseDownCanMoveWindow: Bool { false }
+
+    override func scrollWheel(with event: NSEvent) {
+        // Trackpad two-finger pan and external mouse-wheel both flow
+        // through scrollingDeltaX/Y. Invert dy so dragging fingers up
+        // moves the viewport up (i.e., reveals content below).
+        let dx = -event.scrollingDeltaX
+        let dy = -event.scrollingDeltaY
+        guard dx != 0 || dy != 0 else { return }
+        onScroll?(dx, dy)
     }
 }
