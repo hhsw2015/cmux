@@ -21564,7 +21564,11 @@ class TerminalController {
             return
         }
 #endif
-        GhosttyApp.shared.reloadConfiguration(source: source)
+        if let appDelegate = AppDelegate.shared {
+            appDelegate.reloadConfiguration(source: source)
+        } else {
+            GhosttyApp.shared.reloadConfiguration(source: source)
+        }
     }
 
     private func refreshSurfaces() -> String {
