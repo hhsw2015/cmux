@@ -470,13 +470,35 @@ final class QuickTerminalController: NSObject, NSWindowDelegate {
             )
         }
 
+        // [fork] cmux uses host-layer backdrop rendering
+        // (`usesHostLayerBackground`), meaning ghostty surface
+        // doesn't paint its own background color — the cmux host
+        // view does. Normal cmux main windows use ContentView's
+        // `WindowBackdropLayer(role: .windowRoot)` for this. The QT
+        // panel hosts ghostty directly, so without a host-managed
+        // backdrop the surface is fully transparent over the desktop.
+        // Wrap the surface in a container that paints the ghostty
+        // background color (with `background-opacity`) underneath.
+        let backdropContainer = NSView(frame: NSRect(origin: .zero, size: initialFrame.size))
+        backdropContainer.autoresizingMask = [.width, .height]
+        backdropContainer.wantsLayer = true
+        let bgColor = GhosttyApp.shared.defaultBackgroundColor
+        let bgOpacity = max(0.0, min(1.0, GhosttyApp.shared.defaultBackgroundOpacity))
+        backdropContainer.layer?.backgroundColor = bgColor.withAlphaComponent(bgOpacity).cgColor
+        backdropContainer.layer?.isOpaque = bgOpacity >= 0.999
+
         if let terminalSurface {
-            terminalSurface.hostedView.frame = NSRect(origin: .zero, size: initialFrame.size)
+            terminalSurface.hostedView.frame = backdropContainer.bounds
             terminalSurface.hostedView.autoresizingMask = [.width, .height]
             terminalSurface.hostedView.setVisibleInUI(false)
             terminalSurface.hostedView.setActive(false)
-            panel.contentView = terminalSurface.hostedView
+            backdropContainer.addSubview(terminalSurface.hostedView)
         }
+
+        panel.contentView = backdropContainer
+        panel.isOpaque = bgOpacity >= 0.999
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
 
         self.panel = panel
         return panel

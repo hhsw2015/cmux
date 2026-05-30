@@ -56,6 +56,10 @@ public struct AppSection: View {
     @State private var languageAtAppear: AppLanguage?
     @State private var telemetryAtAppear: Bool?
 
+    // [fork] direct AppStorage bindings — keys not in CmuxSettingsRegistry catalog.
+    @AppStorage("workspaceTopTabsVisibility") private var forkWorkspaceTopTabsVisibility: String = "auto"
+    @AppStorage("agentConversationForkDefaultDestination") private var forkConversationDefaultDestination: String = "right"
+
     public init(
         defaultsStore: UserDefaultsSettingsStore,
         catalog: SettingCatalog,
@@ -92,6 +96,18 @@ public struct AppSection: View {
         _hideCloseButton = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.app.hideTabCloseButton))
         _renameSelects = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.app.renameSelectsExistingName))
         _paletteAllSurfaces = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.app.commandPaletteSearchesAllSurfaces))
+    }
+
+    /// [fork] subtitle for the Fork Conversation Default destination row.
+    private func forkConversationDestinationSubtitle(_ raw: String) -> String {
+        switch raw {
+        case "left": return String(localized: "forkConversation.destination.left.description", defaultValue: "Right-click Fork Conversation creates a split to the left.")
+        case "top": return String(localized: "forkConversation.destination.top.description", defaultValue: "Right-click Fork Conversation creates a split above the current pane.")
+        case "bottom": return String(localized: "forkConversation.destination.bottom.description", defaultValue: "Right-click Fork Conversation creates a split below the current pane.")
+        case "newTab": return String(localized: "forkConversation.destination.newTab.description", defaultValue: "Right-click Fork Conversation creates a sibling tab in the current pane.")
+        case "newWorkspace": return String(localized: "forkConversation.destination.newWorkspace.description", defaultValue: "Right-click Fork Conversation creates a new workspace.")
+        default: return String(localized: "forkConversation.destination.right.description", defaultValue: "Right-click Fork Conversation creates a split to the right.")
+        }
     }
 
     private static let columnWidth: CGFloat = 196
@@ -168,6 +184,43 @@ public struct AppSection: View {
                     Text(String(localized: "workspace.placement.top", defaultValue: "Top")).tag(WorkspacePlacement.top)
                     Text(String(localized: "workspace.placement.afterCurrent", defaultValue: "After current")).tag(WorkspacePlacement.afterCurrent)
                     Text(String(localized: "workspace.placement.end", defaultValue: "End")).tag(WorkspacePlacement.end)
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+            }
+            SettingsCardDivider()
+
+            // [fork] Workspace Top Tabs Visibility
+            SettingsCardRow(
+                configurationReview: .json("app.workspaceTopTabsVisibility"),
+                String(localized: "settings.app.workspaceTopTabsVisibility", defaultValue: "Workspace Top Tabs"),
+                subtitle: String(localized: "settings.app.workspaceTopTabsVisibility.subtitle", defaultValue: "Control whether the top tab bar shows above each workspace's layout."),
+                controlWidth: Self.columnWidth
+            ) {
+                Picker("", selection: $forkWorkspaceTopTabsVisibility) {
+                    Text(String(localized: "settings.app.workspaceTopTabsVisibility.always", defaultValue: "Always show")).tag("always")
+                    Text(String(localized: "settings.app.workspaceTopTabsVisibility.auto", defaultValue: "Reveal on hover")).tag("auto")
+                    Text(String(localized: "settings.app.workspaceTopTabsVisibility.never", defaultValue: "Never show")).tag("never")
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+            }
+            SettingsCardDivider()
+
+            // [fork] Fork Conversation Default Destination
+            SettingsCardRow(
+                configurationReview: .json("app.forkConversationDefaultDestination"),
+                String(localized: "settings.app.forkConversationDefaultDestination", defaultValue: "Fork Conversation Default"),
+                subtitle: forkConversationDestinationSubtitle(forkConversationDefaultDestination),
+                controlWidth: Self.columnWidth
+            ) {
+                Picker("", selection: $forkConversationDefaultDestination) {
+                    Text(String(localized: "forkConversation.destination.right", defaultValue: "Right Split")).tag("right")
+                    Text(String(localized: "forkConversation.destination.left", defaultValue: "Left Split")).tag("left")
+                    Text(String(localized: "forkConversation.destination.top", defaultValue: "Top Split")).tag("top")
+                    Text(String(localized: "forkConversation.destination.bottom", defaultValue: "Bottom Split")).tag("bottom")
+                    Text(String(localized: "forkConversation.destination.newTab", defaultValue: "New Tab")).tag("newTab")
+                    Text(String(localized: "forkConversation.destination.newWorkspace", defaultValue: "New Workspace")).tag("newWorkspace")
                 }
                 .labelsHidden()
                 .pickerStyle(.menu)

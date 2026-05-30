@@ -19,6 +19,15 @@ public struct TerminalSection: View {
     @State private var idleSeconds: DefaultsValueModel<Double>
     @State private var maxLive: DefaultsValueModel<Int>
 
+    // [fork] Quick Terminal — direct AppStorage; not in CmuxSettings catalog.
+    @AppStorage("quickTerminalPosition") private var quickTerminalPosition: String = "top"
+    @AppStorage("quickTerminalPrimarySizeRatio") private var quickTerminalPrimarySize: Double = 0.4
+    @AppStorage("quickTerminalSecondarySizeRatio") private var quickTerminalSecondarySize: Double = 1.0
+    @AppStorage("quickTerminalAutoHide") private var quickTerminalAutoHide: Bool = true
+    @AppStorage("quickTerminalInitialCommand") private var quickTerminalInitialCommand: String = ""
+    @AppStorage("quickTerminalWorkingDirectory") private var quickTerminalWorkingDirectory: String = ""
+    @AppStorage("quickTerminalInitialInput") private var quickTerminalInitialInput: String = ""
+
     public init(
         defaultsStore: UserDefaultsSettingsStore,
         jsonStore: JSONConfigStore,
@@ -172,6 +181,89 @@ public struct TerminalSection: View {
                     step: 1
                 )
                 .accessibilityIdentifier("SettingsTerminalAgentHibernationMaxLiveStepper")
+            }
+
+            // [fork] Quick Terminal block
+            SettingsCardDivider()
+            SettingsCardRow(
+                configurationReview: .json("terminal.quickTerminalPosition"),
+                String(localized: "settings.quickTerminal.position", defaultValue: "Quick Terminal Position"),
+                subtitle: String(localized: "settings.quickTerminal.position.subtitle", defaultValue: "Choose where the quick terminal slides in."),
+                controlWidth: 196
+            ) {
+                Picker("", selection: $quickTerminalPosition) {
+                    Text(String(localized: "settings.quickTerminal.position.top", defaultValue: "Top")).tag("top")
+                    Text(String(localized: "settings.quickTerminal.position.bottom", defaultValue: "Bottom")).tag("bottom")
+                    Text(String(localized: "settings.quickTerminal.position.left", defaultValue: "Left")).tag("left")
+                    Text(String(localized: "settings.quickTerminal.position.right", defaultValue: "Right")).tag("right")
+                    Text(String(localized: "settings.quickTerminal.position.center", defaultValue: "Center")).tag("center")
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+            }
+
+            SettingsCardDivider()
+            SettingsCardRow(
+                configurationReview: .json("terminal.quickTerminalPrimarySizeRatio"),
+                String(localized: "settings.quickTerminal.primarySize", defaultValue: "Quick Terminal Primary Size"),
+                subtitle: String(localized: "settings.quickTerminal.primarySize.subtitle", defaultValue: "Size along the slide-in axis."),
+                controlWidth: 280
+            ) {
+                Slider(value: $quickTerminalPrimarySize, in: 0.1...1.0, step: 0.05)
+            }
+
+            SettingsCardDivider()
+            SettingsCardRow(
+                configurationReview: .json("terminal.quickTerminalSecondarySizeRatio"),
+                String(localized: "settings.quickTerminal.secondarySize", defaultValue: "Quick Terminal Secondary Size"),
+                subtitle: String(localized: "settings.quickTerminal.secondarySize.subtitle", defaultValue: "Size across the opposite axis."),
+                controlWidth: 280
+            ) {
+                Slider(value: $quickTerminalSecondarySize, in: 0.1...1.0, step: 0.05)
+            }
+
+            SettingsCardDivider()
+            SettingsCardRow(
+                configurationReview: .json("terminal.quickTerminalAutoHide"),
+                String(localized: "settings.quickTerminal.autoHide", defaultValue: "Quick Terminal Auto-Hide"),
+                subtitle: quickTerminalAutoHide
+                    ? String(localized: "settings.quickTerminal.autoHide.subtitleOn", defaultValue: "Hide automatically when it loses focus.")
+                    : String(localized: "settings.quickTerminal.autoHide.subtitleOff", defaultValue: "Keep visible when focus moves away.")
+            ) {
+                Toggle("", isOn: $quickTerminalAutoHide).labelsHidden()
+            }
+
+            SettingsCardDivider()
+            SettingsCardRow(
+                configurationReview: .json("terminal.quickTerminalInitialCommand"),
+                String(localized: "settings.quickTerminal.initialCommand", defaultValue: "Quick Terminal Startup Command"),
+                subtitle: String(localized: "settings.quickTerminal.initialCommand.subtitle", defaultValue: "Optional command run when the panel spawns. Leave empty for the login shell."),
+                controlWidth: 320
+            ) {
+                TextField(String(localized: "settings.quickTerminal.initialCommand.placeholder", defaultValue: "claude --resume"), text: $quickTerminalInitialCommand)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            SettingsCardDivider()
+            SettingsCardRow(
+                configurationReview: .json("terminal.quickTerminalWorkingDirectory"),
+                String(localized: "settings.quickTerminal.workingDirectory", defaultValue: "Quick Terminal Working Directory"),
+                subtitle: String(localized: "settings.quickTerminal.workingDirectory.subtitle", defaultValue: "Optional cwd for the panel. Tilde is expanded."),
+                controlWidth: 320
+            ) {
+                TextField(String(localized: "settings.quickTerminal.workingDirectory.placeholder", defaultValue: "~/code"), text: $quickTerminalWorkingDirectory)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            SettingsCardDivider()
+            SettingsCardRow(
+                configurationReview: .json("terminal.quickTerminalInitialInput"),
+                String(localized: "settings.quickTerminal.initialInput", defaultValue: "Quick Terminal Pre-typed Input"),
+                subtitle: String(localized: "settings.quickTerminal.initialInput.subtitle", defaultValue: "Optional text injected into the prompt after the startup command runs."),
+                controlWidth: 320
+            ) {
+                TextField("", text: $quickTerminalInitialInput)
+                    .textFieldStyle(.roundedBorder)
             }
         }
     }

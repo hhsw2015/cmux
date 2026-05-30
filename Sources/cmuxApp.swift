@@ -53,6 +53,22 @@ struct cmuxApp: App {
             hostActions: HostSettingsActions(configFileURL: configFileURL)
         )
 
+        // [fork] inject Hosts + Persistence as sidebar entries in the SPM Settings UI.
+        SettingsExtraSectionsHost.entries = [
+            SettingsExtraSectionEntry(
+                id: "zmxPersistence",
+                title: String(localized: "settings.section.zmx", defaultValue: "Persistence"),
+                symbolName: "internaldrive",
+                viewBuilder: { AnyView(ZmxSettingsView()) }
+            ),
+            SettingsExtraSectionEntry(
+                id: "hosts",
+                title: String(localized: "settings.section.hosts", defaultValue: "Hosts"),
+                symbolName: "server.rack",
+                viewBuilder: { AnyView(HostsSettingsView()) }
+            ),
+        ]
+
         // If invoked with CLI-style arguments (e.g. `cmux hooks setup`), exec the
         // bundled CLI at Contents/Resources/bin/cmux. The GUI binary and the CLI
         // share the name `cmux`, so if the GUI's Contents/MacOS leaks onto $PATH

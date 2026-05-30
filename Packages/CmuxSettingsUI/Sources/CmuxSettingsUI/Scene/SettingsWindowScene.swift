@@ -28,6 +28,32 @@ public struct SettingsWindowScene: Scene {
     }
 }
 
+/// [fork] Host-injected extra detail sections, rendered after the
+/// built-in section list. Runtime-set so the host (cmux app target)
+/// can supply views that depend on cmux-only types without the
+/// SPM importing them. Each entry: stable id (used as anchor +
+/// sidebar tag), localized title, SF symbol, view builder.
+public struct SettingsExtraSectionEntry: Identifiable {
+    public let id: String
+    public let title: String
+    public let symbolName: String
+    public let viewBuilder: () -> AnyView
+    public init(id: String, title: String, symbolName: String, viewBuilder: @escaping () -> AnyView) {
+        self.id = id
+        self.title = title
+        self.symbolName = symbolName
+        self.viewBuilder = viewBuilder
+    }
+}
+
+@MainActor
+public enum SettingsExtraSectionsHost {
+    /// Section entries in declaration order, rendered AFTER the
+    /// built-in `cmux.json` section and BEFORE `Reset`. Each gets
+    /// its own sidebar row + scroll anchor.
+    public static var entries: [SettingsExtraSectionEntry] = []
+}
+
 /// Root view of the settings window. Owns the search query, the
 /// scroll proxy, and the section anchors. Renders sidebar + tall
 /// scrolling content side-by-side.
@@ -167,7 +193,8 @@ public struct SettingsWindowRoot: View {
     private var sidebar: some View {
         List(selection: sidebarSelectionBinding) {
             let matches = searchIndex.match(searchText)
-            if matches.isEmpty {
+            let extras = isSearching ? [] : SettingsExtraSectionsHost.entries
+            if matches.isEmpty && extras.isEmpty {
                 Text(String(localized: "settings.search.noResults", defaultValue: "No Results"))
                     .foregroundStyle(.secondary)
             } else {
@@ -178,6 +205,15 @@ public struct SettingsWindowRoot: View {
                         subtitle: subtitle(for: entry)
                     )
                     .tag(entry.id)
+                }
+                // [fork] host-injected extras (Hosts, Persistence)
+                ForEach(extras) { extra in
+                    SettingsSidebarEntryRow(
+                        title: extra.title,
+                        symbolName: extra.symbolName,
+                        subtitle: nil
+                    )
+                    .tag("extra:\(extra.id)")
                 }
             }
         }
@@ -216,6 +252,21 @@ public struct SettingsWindowRoot: View {
     /// `proxy.scrollTo(...)` so every click — including repeat clicks
     /// or sibling search hits — drives a scroll.
     private func selectSidebarEntry(_ entryID: String) {
+        // [fork] host-injected extras: tag pattern "extra:<id>". Scroll
+        // detail to the matching anchor; no underlying section pane to flip.
+        if entryID.hasPrefix("extra:") {
+            selectedSidebarEntryID = entryID
+            NotificationCenter.default.post(
+                name: Self.navigationRequestName,
+                object: nil,
+                userInfo: [
+                    "target": "",
+                    "anchor": entryID,
+                    "highlight": false
+                ]
+            )
+            return
+        }
         // Mirror legacy `SettingsRootView.selectSidebarEntry`: bail if
         // the entry id doesn't resolve to a known search-index entry,
         // so stale SceneStorage values or out-of-band selection writes
@@ -369,11 +420,20 @@ public struct SettingsWindowRoot: View {
     /// still the latest — otherwise an earlier request would clobber
     /// the user's most recent navigation.
     private func applyScrollNavigation(_ notification: Notification, proxy: ScrollViewProxy) {
-        guard
-            let rawValue = notification.userInfo?["target"] as? String,
-            let target = SettingsSectionID(rawValue: rawValue)
-        else { return }
-        let anchorID = (notification.userInfo?["anchor"] as? String) ?? self.anchorID(for: target)
+        let rawTarget = notification.userInfo?["target"] as? String ?? ""
+        let anchor = notification.userInfo?["anchor"] as? String
+        // [fork] host-injected extra section: anchor begins with "extra:".
+        if rawTarget.isEmpty, let anchor = anchor, anchor.hasPrefix("extra:") {
+            settingsNavigationGeneration += 1
+            let gen = settingsNavigationGeneration
+            DispatchQueue.main.async {
+                guard gen == settingsNavigationGeneration else { return }
+                proxy.scrollTo(anchor, anchor: .top)
+            }
+            return
+        }
+        guard let target = SettingsSectionID(rawValue: rawTarget) else { return }
+        let anchorID = anchor ?? self.anchorID(for: target)
         let shouldHighlight = (notification.userInfo?["highlight"] as? Bool) ?? false
         let sectionID = self.anchorID(for: target)
         settingsNavigationGeneration += 1
@@ -463,6 +523,12 @@ public struct SettingsWindowRoot: View {
 
         SettingsJSONSection(jsonStore: jsonStore, hostActions: hostActions)
             .id(anchorID(for: .settingsJSON))
+
+        // [fork] host-injected extra sections (e.g. Hosts, Persistence)
+        ForEach(SettingsExtraSectionsHost.entries) { extra in
+            extra.viewBuilder()
+                .id("extra:\(extra.id)")
+        }
 
         ResetSection(
             defaultsStore: defaultsStore,
