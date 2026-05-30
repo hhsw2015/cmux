@@ -1829,6 +1829,13 @@ struct SessionWorkspaceSnapshot: Codable, Sendable {
     var progress: SessionProgressSnapshot?
     var gitBranch: SessionGitBranchSnapshot?
     var remote: SessionRemoteWorkspaceSnapshot?
+    /// [fork] Paper-layout mode: nil for the default bonsplit
+    /// workspaces (the vast majority). When non-nil, the workspace
+    /// renders the paper canvas instead of the bonsplit tree on
+    /// restore. Bonsplit tree fields above stay populated so toggling
+    /// back is a one-shot.
+    var layoutMode: WorkspaceLayoutMode? = nil
+    var paperLayout: PaperLayoutState? = nil
 }
 
 struct SessionWorkspaceGroupSnapshot: Codable, Sendable, Equatable {
