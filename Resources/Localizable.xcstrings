@@ -36785,6 +36785,40 @@
         }
       }
     },
+    "defaultTerminal.updateFailed.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS could not update every default terminal handler."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS はすべてのデフォルトターミナルハンドラを更新できませんでした。"
+          }
+        }
+      }
+    },
+    "dialog.defaultTerminal.setFailed.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could Not Set Default Terminal"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デフォルトターミナルに設定できませんでした"
+          }
+        }
+      }
+    },
     "dialog.sshURL.blocked.ok": {
       "extractionState": "manual",
       "localizations": {
@@ -45360,6 +45394,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ghostty設定をTextEditで開く"
+          }
+        }
+      }
+    },
+    "command.makeDefaultTerminal.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Global"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "グローバル"
+          }
+        }
+      }
+    },
+    "command.makeDefaultTerminal.keywords": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "default,terminal,ssh,launch,services,handler,command,tool,executable"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デフォルト,ターミナル,ssh,起動,サービス,ハンドラ,コマンド,tool,実行ファイル"
+          }
+        }
+      }
+    },
+    "command.makeDefaultTerminal.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Make cmux the Default Terminal"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cmux をデフォルトターミナルにする"
           }
         }
       }
@@ -63467,6 +63552,23 @@
         }
       }
     },
+    "error.defaultTerminal.registrationFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cmux could not register as the default terminal app."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cmux をデフォルトターミナルアプリとして登録できませんでした。"
+          }
+        }
+      }
+    },
     "error.clipboardFolderPath": {
       "extractionState": "manual",
       "localizations": {
@@ -64347,6 +64449,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Налаштування Ghostty…"
+          }
+        }
+      }
+    },
+    "menu.app.makeDefaultTerminal": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Make cmux the Default Terminal"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cmux をデフォルトターミナルにする"
           }
         }
       }
@@ -81145,6 +81264,125 @@
         }
       }
     },
+    "settings.app.workspaceGroupNewWorkspacePlacement": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "موضع مساحة عمل المجموعة الجديدة"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pozicija novog grupnog workspacea"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Placering af nyt gruppe-workspace"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Platzierung neuer Gruppen-Workspaces"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Group New Workspace Placement"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ubicación del nuevo workspace de grupo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Emplacement des nouveaux workspaces de groupe"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posizionamento dei nuovi workspace di gruppo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "グループの新しいワークスペースの配置"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹 새 워크스페이스 배치"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plassering av ny gruppe-workspace"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Umieszczanie nowego workspace'a grupowego"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posicionamento do novo workspace de grupo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Размещение нового группового workspace"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตำแหน่งของ workspace ใหม่ในกลุ่ม"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grup yeni workspace konumu"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Розташування нового workspace у групі"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "组内新 workspace 位置"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "群組新 workspace 位置"
+          }
+        }
+      }
+    },
     "settings.app.forkConversationDefaultDestination": {
       "extractionState": "manual",
       "localizations": {
@@ -81423,6 +81661,176 @@
           "stringUnit": {
             "state": "translated",
             "value": "cmux.json 열기"
+          }
+        }
+      }
+    },
+    "settings.app.defaultTerminal": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default Terminal"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デフォルトターミナル"
+          }
+        }
+      }
+    },
+    "settings.app.defaultTerminal.buttonDefault": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デフォルト"
+          }
+        }
+      }
+    },
+    "settings.app.defaultTerminal.buttonSet": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set Default"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デフォルトに設定"
+          }
+        }
+      }
+    },
+    "settings.app.defaultTerminal.buttonSetting": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Setting..."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設定中..."
+          }
+        }
+      }
+    },
+    "settings.app.defaultTerminal.dialog.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set Default"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デフォルトに設定"
+          }
+        }
+      }
+    },
+    "settings.app.defaultTerminal.dialog.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cmux will ask macOS to use this app for SSH links, .command/.tool files, and UNIX executables. macOS may show a confirmation prompt."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cmux は、このアプリを SSH リンク、.command/.tool ファイル、UNIX 実行ファイルに使うよう macOS に要求します。macOS が確認を表示する場合があります。"
+          }
+        }
+      }
+    },
+    "settings.app.defaultTerminal.dialog.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set cmux as default terminal?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cmux をデフォルトターミナルに設定しますか?"
+          }
+        }
+      }
+    },
+    "settings.app.defaultTerminal.subtitleDefault": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cmux handles SSH links, .command/.tool files, and UNIX executables."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cmux は SSH リンク、.command/.tool ファイル、UNIX 実行ファイルを処理します。"
+          }
+        }
+      }
+    },
+    "settings.app.defaultTerminal.subtitleNotDefault": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set cmux as the handler for SSH links, .command/.tool files, and UNIX executables."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH リンク、.command/.tool ファイル、UNIX 実行ファイルのハンドラとして cmux を設定します。"
+          }
+        }
+      }
+    },
+    "settings.app.defaultTerminal.subtitleSetting": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS may ask you to confirm this change."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS がこの変更の確認を求める場合があります。"
           }
         }
       }
@@ -106466,6 +106874,23 @@
         }
       }
     },
+    "settings.search.alias.setting.app.default-terminal": {
+        "extractionState": "manual",
+        "localizations": {
+            "en": {
+                "stringUnit": {
+                    "state": "translated",
+                    "value": "app.defaultTerminal default terminal ssh links command tool unix executable launch services handler"
+                }
+            },
+            "ja": {
+                "stringUnit": {
+                    "state": "translated",
+                    "value": "app.defaultTerminal default terminal ssh links command tool unix executable launch services handler デフォルトターミナル SSH リンク 実行ファイル"
+                }
+            }
+        }
+    },
     "settings.search.alias.setting.app.new-workspace-placement": {
       "extractionState": "manual",
       "localizations": {
@@ -106581,6 +107006,131 @@
           "stringUnit": {
             "state": "translated",
             "value": "app.newWorkspacePlacement new tab insert position order top bottom end програма загальні параметри поведінка док рядок меню статус бічна панель робочий простір вкладка кольори палітра значок вибрано підсвічування індикатор активний крапка нова Робоча область • %@ Розташування нової робочої області В кінці На початку"
+          }
+        }
+      }
+    },
+    "settings.search.alias.setting.app.workspace-group-new-workspace-placement": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspaceGroups.newWorkspacePlacement group new workspace command n cmd-n plus insert position after current top end مجموعة مساحة عمل جديدة موضع بعد الحالي أعلى نهاية"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspaceGroups.newWorkspacePlacement group new workspace command n cmd-n plus insert position after current top end grupa novi workspace pozicija poslije trenutnog vrh kraj"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspaceGroups.newWorkspacePlacement group new workspace command n cmd-n plus insert position after current top end gruppe nyt workspace placering efter aktuel øverst sidst"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspaceGroups.newWorkspacePlacement group new workspace command n cmd-n plus insert position after current top end gruppe neuer workspace platzierung nach aktuellem oben ende"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspaceGroups.newWorkspacePlacement group new workspace command n cmd-n plus insert position after current top end"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspaceGroups.newWorkspacePlacement group new workspace command n cmd-n plus insert position after current top end grupo nuevo workspace ubicación después actual inicio final"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspaceGroups.newWorkspacePlacement group new workspace command n cmd-n plus insert position after current top end groupe nouveau workspace emplacement après actuel début fin"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspaceGroups.newWorkspacePlacement group new workspace command n cmd-n plus insert position after current top end gruppo nuovo workspace posizionamento dopo attivo inizio fine"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspaceGroups.newWorkspacePlacement group new workspace command n cmd-n plus insert position after current top end グループ 新規ワークスペース 配置 現在の後 上 末尾"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspaceGroups.newWorkspacePlacement group new workspace command n cmd-n plus insert position after current top end ក្រុម workspace ថ្មី ទីតាំង បន្ទាប់ពីបច្ចុប្បន្ន ខាងលើ ចុង"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspaceGroups.newWorkspacePlacement group new workspace command n cmd-n plus insert position after current top end 그룹 새 workspace 위치 현재 뒤 맨 위 끝"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspaceGroups.newWorkspacePlacement group new workspace command n cmd-n plus insert position after current top end gruppe nytt workspace plassering etter gjeldende øverst sist"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspaceGroups.newWorkspacePlacement group new workspace command n cmd-n plus insert position after current top end grupa nowy workspace położenie po bieżącym początek koniec"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspaceGroups.newWorkspacePlacement group new workspace command n cmd-n plus insert position after current top end grupo novo workspace posição após atual topo fim"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspaceGroups.newWorkspacePlacement group new workspace command n cmd-n plus insert position after current top end группа новый workspace расположение после текущего начало конец"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspaceGroups.newWorkspacePlacement group new workspace command n cmd-n plus insert position after current top end กลุ่ม workspace ใหม่ ตำแหน่ง หลังปัจจุบัน บนสุด ท้าย"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspaceGroups.newWorkspacePlacement group new workspace command n cmd-n plus insert position after current top end grup yeni workspace konum geçerli sonra baş son"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspaceGroups.newWorkspacePlacement group new workspace command n cmd-n plus insert position after current top end група новий workspace розташування після поточного початок кінець"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspaceGroups.newWorkspacePlacement group new workspace command n cmd-n plus insert position after current top end 组 新 workspace 位置 当前之后 顶部 末尾"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspaceGroups.newWorkspacePlacement group new workspace command n cmd-n plus insert position after current top end 群組 新 workspace 位置 目前之後 頂端 結尾"
           }
         }
       }
@@ -161323,6 +161873,756 @@
         }
       }
     },
+    "workspaceGroup.placement.afterCurrent": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بعد الحالي"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poslije trenutnog"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Efter aktuel"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach aktuellem"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "After current"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Después del actual"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Après l’actuel"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dopo quello attivo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在の後"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "បន្ទាប់ពីបច្ចុប្បន្ន"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 항목 뒤"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etter gjeldende"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Po bieżącym"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Após o atual"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "После текущего"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หลังรายการปัจจุบัน"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geçerli olandan sonra"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Після поточного"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前项之后"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目前項目之後"
+          }
+        }
+      }
+    },
+    "workspaceGroup.placement.afterCurrent.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أدخل مساحات عمل المجموعة الجديدة بعد مساحة العمل النشطة في تلك المجموعة."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Umetni nove grupne workspacee poslije aktivnog workspacea u toj grupi."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indsæt nye gruppe-workspaces efter det aktive workspace i den gruppe."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fügt neue Gruppen-Workspaces nach dem aktiven Workspace in dieser Gruppe ein."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Insert new group workspaces after the active workspace in that group."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inserta nuevos workspaces de grupo después del workspace activo en ese grupo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Insère les nouveaux workspaces de groupe après le workspace actif dans ce groupe."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inserisce i nuovi workspace di gruppo dopo il workspace attivo in quel gruppo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "グループ内のアクティブなワークスペースの後に新しいワークスペースを挿入します。"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "បញ្ចូល workspace ថ្មីក្នុងក្រុម បន្ទាប់ពី workspace សកម្មនៅក្នុងក្រុមនោះ។"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "해당 그룹의 활성 workspace 뒤에 새 그룹 workspace를 삽입합니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sett inn nye gruppe-workspaces etter aktivt workspace i den gruppen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wstawia nowe workspace grupy po aktywnym workspace w tej grupie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Insere novos workspaces de grupo após o workspace ativo nesse grupo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вставляет новые workspace группы после активного workspace в этой группе."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แทรก workspace ใหม่ของกลุ่มหลัง workspace ที่ใช้งานอยู่ในกลุ่มนั้น"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni grup workspace’lerini o gruptaki aktif workspace’ten sonra ekler."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вставляє нові workspace групи після активного workspace у цій групі."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在该组的活动 workspace 后插入新的组 workspace。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在該群組的作用中 workspace 後插入新的群組 workspace。"
+          }
+        }
+      }
+    },
+    "workspaceGroup.placement.end": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نهاية المجموعة"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kraj grupe"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sidst i gruppen"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ende der Gruppe"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "End of group"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Final del grupo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fin du groupe"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fine del gruppo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "グループの末尾"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ចុងក្រុម"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹 끝"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sist i gruppen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Na końcu grupy"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fim do grupo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В конец группы"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ท้ายกลุ่ม"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grubun sonu"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У кінець групи"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "组末尾"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "群組結尾"
+          }
+        }
+      }
+    },
+    "workspaceGroup.placement.end.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أضف مساحات عمل المجموعة الجديدة بعد آخر عضو في المجموعة."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dodaj nove grupne workspacee poslije zadnjeg člana grupe."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tilføj nye gruppe-workspaces efter det sidste gruppemedlem."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hängt neue Gruppen-Workspaces nach dem letzten Gruppenmitglied an."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Append new group workspaces after the last group member."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agrega nuevos workspaces de grupo después del último miembro del grupo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajoute les nouveaux workspaces de groupe après le dernier membre du groupe."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiunge i nuovi workspace di gruppo dopo l’ultimo membro del gruppo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "グループ内の最後のメンバーの後に新しいワークスペースを追加します。"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "បន្ថែម workspace ថ្មីក្នុងក្រុម បន្ទាប់ពីសមាជិកចុងក្រោយនៃក្រុម។"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹의 마지막 멤버 뒤에 새 그룹 workspace를 추가합니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Legg til nye gruppe-workspaces etter siste gruppemedlem."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dodaje nowe workspace grupy po ostatnim członku grupy."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adiciona novos workspaces de grupo após o último membro do grupo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавляет новые workspace группы после последнего участника группы."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เพิ่ม workspace ใหม่ของกลุ่มหลังสมาชิกกลุ่มคนสุดท้าย"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni grup workspace’lerini son grup üyesinden sonra ekler."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Додає нові workspace групи після останнього учасника групи."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在最后一个组成员后追加新的组 workspace。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在最後一個群組成員後附加新的群組 workspace。"
+          }
+        }
+      }
+    },
+    "workspaceGroup.placement.top": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أعلى المجموعة"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vrh grupe"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Øverst i gruppen"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oben in der Gruppe"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Top of group"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inicio del grupo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Début du groupe"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inizio del gruppo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "グループの先頭"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ខាងលើនៃក្រុម"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹 맨 위"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Øverst i gruppen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Na początku grupy"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Topo do grupo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В начало группы"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "บนสุดของกลุ่ม"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grubun başı"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На початок групи"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "组顶部"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "群組頂端"
+          }
+        }
+      }
+    },
+    "workspaceGroup.placement.top.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أدخل مساحات عمل المجموعة الجديدة مباشرة بعد رأس المجموعة."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Umetni nove grupne workspacee odmah poslije zaglavlja grupe."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indsæt nye gruppe-workspaces lige efter gruppehovedet."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fügt neue Gruppen-Workspaces direkt nach dem Gruppenkopf ein."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Insert new group workspaces right after the group header."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inserta nuevos workspaces de grupo justo después del encabezado del grupo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Insère les nouveaux workspaces de groupe juste après l’en-tête du groupe."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inserisce i nuovi workspace di gruppo subito dopo l’intestazione del gruppo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "グループヘッダーの直後に新しいワークスペースを挿入します。"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "បញ្ចូល workspace ថ្មីក្នុងក្រុមភ្លាមៗបន្ទាប់ពីក្បាលក្រុម។"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹 헤더 바로 뒤에 새 그룹 workspace를 삽입합니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sett inn nye gruppe-workspaces rett etter gruppehodet."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wstawia nowe workspace grupy bezpośrednio po nagłówku grupy."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Insere novos workspaces de grupo logo após o cabeçalho do grupo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вставляет новые workspace группы сразу после заголовка группы."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แทรก workspace ใหม่ของกลุ่มต่อจากหัวกลุ่มทันที"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni grup workspace’lerini grup başlığının hemen arkasına ekler."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вставляє нові workspace групи одразу після заголовка групи."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在组标题后立即插入新的组 workspace。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在群組標題後立即插入新的群組 workspace。"
+          }
+        }
+      }
+    },
     "workspaceGroup.plus.contextMenu.newWorkspace": {
       "extractionState": "manual",
       "localizations": {
@@ -162194,6 +163494,1756 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld unread"
+          }
+        }
+      }
+    },
+    "settings.search.alias.section.textBox": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "textbox text box rich input prompt beta focus composer compose attachments TextBox مربع نص إدخال غني مطالبة تجريبي تركيز مرفقات"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "textbox text box rich input prompt beta focus composer compose attachments TextBox tekstualno polje bogat unos upit beta fokus prilog"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "textbox text box rich input prompt beta focus composer compose attachments TextBox tekstfelt rig input prompt beta fokus vedhæftninger"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "textbox text box rich input prompt beta focus composer compose attachments TextBox Textfeld Rich Input Eingabe Prompt Beta Fokus Anhänge"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "textbox text box rich input prompt beta focus composer compose attachments"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "textbox text box rich input prompt beta focus composer compose attachments TextBox cuadro texto entrada enriquecida prompt beta foco adjuntos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "textbox text box rich input prompt beta focus composer compose attachments TextBox champ texte saisie riche invite bêta focus pièces jointes"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "textbox text box rich input prompt beta focus composer compose attachments TextBox casella testo input ricco prompt beta focus allegati"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "textbox text box rich input prompt beta focus composer compose attachments TextBox テキストボックス リッチ入力 プロンプト ベータ フォーカス 添付"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "textbox text box rich input prompt beta focus composer compose attachments TextBox ប្រអប់អត្ថបទ បញ្ចូល rich prompt beta ផ្តោត ឯកសារភ្ជាប់"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "textbox text box rich input prompt beta focus composer compose attachments TextBox 텍스트박스 리치 입력 프롬프트 베타 포커스 첨부"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "textbox text box rich input prompt beta focus composer compose attachments TextBox tekstfelt rik inndata prompt beta fokus vedlegg"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "textbox text box rich input prompt beta focus composer compose attachments TextBox pole tekstowe bogate wejście prompt beta fokus załączniki"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "textbox text box rich input prompt beta focus composer compose attachments TextBox caixa de texto entrada rica prompt beta foco anexos"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "textbox text box rich input prompt beta focus composer compose attachments TextBox текстовое поле расширенный ввод промпт бета фокус вложения"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "textbox text box rich input prompt beta focus composer compose attachments TextBox กล่องข้อความ อินพุต rich prompt เบต้า โฟกัส ไฟล์แนบ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "textbox text box rich input prompt beta focus composer compose attachments TextBox metin kutusu zengin giriş prompt beta odak ekler"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "textbox text box rich input prompt beta focus composer compose attachments TextBox текстове поле розширене введення промпт бета фокус вкладення"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "textbox text box rich input prompt beta focus composer compose attachments TextBox 文本框 富文本输入 提示 试用版 焦点 附件"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "textbox text box rich input prompt beta focus composer compose attachments TextBox 文字方塊 富文字輸入 提示 測試版 焦點 附件"
+          }
+        }
+      }
+    },
+    "settings.search.alias.setting.textBox.show-textbox-new-terminals": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.showTextBoxOnNewTerminals show textbox text box rich input prompt default new terminal workspace split tab beta إظهار TextBox طرفية جديدة مساحة عمل تقسيم تبويب افتراضي تجريبي"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.showTextBoxOnNewTerminals show textbox text box rich input prompt default new terminal workspace split tab beta prikaži TextBox novi terminal radni prostor podjela kartica zadano beta"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.showTextBoxOnNewTerminals show textbox text box rich input prompt default new terminal workspace split tab beta vis TextBox ny terminal arbejdsområde split fane standard beta"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.showTextBoxOnNewTerminals show textbox text box rich input prompt default new terminal workspace split tab beta TextBox anzeigen neues Terminal Arbeitsbereich Split Tab Standard Beta"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "terminal.showTextBoxOnNewTerminals show textbox text box rich input prompt default new terminal workspace split tab beta"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.showTextBoxOnNewTerminals show textbox text box rich input prompt default new terminal workspace split tab beta mostrar TextBox terminal nuevo espacio trabajo división pestaña predeterminado beta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.showTextBoxOnNewTerminals show textbox text box rich input prompt default new terminal workspace split tab beta afficher TextBox nouveau terminal espace travail fractionnement onglet défaut bêta"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.showTextBoxOnNewTerminals show textbox text box rich input prompt default new terminal workspace split tab beta mostra TextBox nuovo terminale area lavoro split scheda predefinito beta"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "terminal.showTextBoxOnNewTerminals show textbox text box rich input prompt default new terminal workspace split tab beta TextBox 表示 新しい ターミナル ワークスペース 分割 タブ 既定 ベータ"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.showTextBoxOnNewTerminals show textbox text box rich input prompt default new terminal workspace split tab beta បង្ហាញ TextBox ស្ថានីយថ្មី workspace split tab លំនាំដើម"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.showTextBoxOnNewTerminals show textbox text box rich input prompt default new terminal workspace split tab beta TextBox 표시 새 터미널 워크스페이스 분할 탭 기본 베타"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.showTextBoxOnNewTerminals show textbox text box rich input prompt default new terminal workspace split tab beta vis TextBox ny terminal arbeidsområde splitt fane standard beta"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.showTextBoxOnNewTerminals show textbox text box rich input prompt default new terminal workspace split tab beta pokaż TextBox nowy terminal obszar roboczy podział karta domyślnie beta"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.showTextBoxOnNewTerminals show textbox text box rich input prompt default new terminal workspace split tab beta mostrar TextBox novo terminal workspace divisão aba padrão beta"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.showTextBoxOnNewTerminals show textbox text box rich input prompt default new terminal workspace split tab beta показать TextBox новый терминал рабочая область разделение вкладка по умолчанию бета"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.showTextBoxOnNewTerminals show textbox text box rich input prompt default new terminal workspace split tab beta แสดง TextBox เทอร์มินัลใหม่ เวิร์กสเปซ แบ่ง แท็บ ค่าเริ่มต้น เบต้า"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.showTextBoxOnNewTerminals show textbox text box rich input prompt default new terminal workspace split tab beta TextBox göster yeni terminal çalışma alanı bölme sekme varsayılan beta"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.showTextBoxOnNewTerminals show textbox text box rich input prompt default new terminal workspace split tab beta показати TextBox новий термінал робоча область поділ вкладка типово бета"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.showTextBoxOnNewTerminals show textbox text box rich input prompt default new terminal workspace split tab beta 显示 TextBox 新终端 工作区 分屏 标签 默认 测试版"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.showTextBoxOnNewTerminals show textbox text box rich input prompt default new terminal workspace split tab beta 顯示 TextBox 新終端機 工作區 分割 分頁 預設 測試版"
+          }
+        }
+      }
+    },
+    "settings.search.alias.setting.textBox.focus-textbox-new-terminals": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.focusTextBoxOnNewTerminals focus textbox text box rich input prompt default new terminal workspace split tab beta تركيز TextBox طرفية جديدة مساحة عمل تقسيم تبويب افتراضي تجريبي"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.focusTextBoxOnNewTerminals focus textbox text box rich input prompt default new terminal workspace split tab beta fokus TextBox novi terminal radni prostor podjela kartica zadano beta"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.focusTextBoxOnNewTerminals focus textbox text box rich input prompt default new terminal workspace split tab beta fokuser TextBox ny terminal arbejdsområde split fane standard beta"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.focusTextBoxOnNewTerminals focus textbox text box rich input prompt default new terminal workspace split tab beta TextBox fokussieren neues Terminal Arbeitsbereich Split Tab Standard Beta"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "terminal.focusTextBoxOnNewTerminals focus textbox text box rich input prompt default new terminal workspace split tab beta"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.focusTextBoxOnNewTerminals focus textbox text box rich input prompt default new terminal workspace split tab beta enfocar TextBox terminal nuevo espacio trabajo división pestaña predeterminado beta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.focusTextBoxOnNewTerminals focus textbox text box rich input prompt default new terminal workspace split tab beta focaliser TextBox nouveau terminal espace travail fractionnement onglet défaut bêta"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.focusTextBoxOnNewTerminals focus textbox text box rich input prompt default new terminal workspace split tab beta focalizza TextBox nuovo terminale area lavoro split scheda predefinito beta"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "terminal.focusTextBoxOnNewTerminals focus textbox text box rich input prompt default new terminal workspace split tab beta TextBox フォーカス 新しい ターミナル ワークスペース 分割 タブ 既定 ベータ"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.focusTextBoxOnNewTerminals focus textbox text box rich input prompt default new terminal workspace split tab beta ផ្តោត TextBox ស្ថានីយថ្មី workspace split tab លំនាំដើម"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.focusTextBoxOnNewTerminals focus textbox text box rich input prompt default new terminal workspace split tab beta TextBox 포커스 새 터미널 워크스페이스 분할 탭 기본 베타"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.focusTextBoxOnNewTerminals focus textbox text box rich input prompt default new terminal workspace split tab beta fokuser TextBox ny terminal arbeidsområde splitt fane standard beta"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.focusTextBoxOnNewTerminals focus textbox text box rich input prompt default new terminal workspace split tab beta fokus TextBox nowy terminal obszar roboczy podział karta domyślnie beta"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.focusTextBoxOnNewTerminals focus textbox text box rich input prompt default new terminal workspace split tab beta focar TextBox novo terminal workspace divisão aba padrão beta"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.focusTextBoxOnNewTerminals focus textbox text box rich input prompt default new terminal workspace split tab beta фокус TextBox новый терминал рабочая область разделение вкладка по умолчанию бета"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.focusTextBoxOnNewTerminals focus textbox text box rich input prompt default new terminal workspace split tab beta โฟกัส TextBox เทอร์มินัลใหม่ เวิร์กสเปซ แบ่ง แท็บ ค่าเริ่มต้น เบต้า"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.focusTextBoxOnNewTerminals focus textbox text box rich input prompt default new terminal workspace split tab beta TextBox odak yeni terminal çalışma alanı bölme sekme varsayılan beta"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.focusTextBoxOnNewTerminals focus textbox text box rich input prompt default new terminal workspace split tab beta фокус TextBox новий термінал робоча область поділ вкладка типово бета"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.focusTextBoxOnNewTerminals focus textbox text box rich input prompt default new terminal workspace split tab beta 聚焦 TextBox 新终端 工作区 分屏 标签 默认 测试版"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.focusTextBoxOnNewTerminals focus textbox text box rich input prompt default new terminal workspace split tab beta 聚焦 TextBox 新終端機 工作區 分割 分頁 預設 測試版"
+          }
+        }
+      }
+    },
+    "settings.search.alias.setting.textBox.textbox-max-lines": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.textBoxMaxLines textbox text box rich input prompt max height lines grow scroll beta TextBox الحد الأقصى أسطر ارتفاع تمرير"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.textBoxMaxLines textbox text box rich input prompt max height lines grow scroll beta TextBox maksimalno redovi visina rast pomicanje"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.textBoxMaxLines textbox text box rich input prompt max height lines grow scroll beta TextBox maksimale linjer højde vokse rulle"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.textBoxMaxLines textbox text box rich input prompt max height lines grow scroll beta TextBox maximale Zeilen Höhe wachsen scrollen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "terminal.textBoxMaxLines textbox text box rich input prompt max height lines grow scroll beta"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.textBoxMaxLines textbox text box rich input prompt max height lines grow scroll beta TextBox máximo líneas altura crecer desplazar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.textBoxMaxLines textbox text box rich input prompt max height lines grow scroll beta TextBox lignes maximales hauteur grandir défiler"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.textBoxMaxLines textbox text box rich input prompt max height lines grow scroll beta TextBox righe massime altezza crescere scorrere"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "terminal.textBoxMaxLines textbox text box rich input prompt max height lines grow scroll beta TextBox 最大行数 高さ 行 スクロール ベータ"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.textBoxMaxLines textbox text box rich input prompt max height lines grow scroll beta TextBox បន្ទាត់អតិបរមា កម្ពស់ រមូរ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.textBoxMaxLines textbox text box rich input prompt max height lines grow scroll beta TextBox 최대 줄 높이 증가 스크롤 베타"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.textBoxMaxLines textbox text box rich input prompt max height lines grow scroll beta TextBox maksimale linjer høyde vokse rull"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.textBoxMaxLines textbox text box rich input prompt max height lines grow scroll beta TextBox maksymalne wiersze wysokość rosnąć przewijanie"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.textBoxMaxLines textbox text box rich input prompt max height lines grow scroll beta TextBox máximo linhas altura crescer rolar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.textBoxMaxLines textbox text box rich input prompt max height lines grow scroll beta TextBox максимум строк высота рост прокрутка бета"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.textBoxMaxLines textbox text box rich input prompt max height lines grow scroll beta TextBox จำนวนบรรทัดสูงสุด ความสูง เลื่อน เบต้า"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.textBoxMaxLines textbox text box rich input prompt max height lines grow scroll beta TextBox en fazla satır yükseklik büyü kaydır beta"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.textBoxMaxLines textbox text box rich input prompt max height lines grow scroll beta TextBox максимум рядків висота зростання прокручування бета"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.textBoxMaxLines textbox text box rich input prompt max height lines grow scroll beta TextBox 最大行数 高度 增长 滚动 测试版"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "terminal.textBoxMaxLines textbox text box rich input prompt max height lines grow scroll beta TextBox 最大行數 高度 成長 捲動 測試版"
+          }
+        }
+      }
+    },
+    "settings.section.textBox": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox (تجريبي)"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox (Beta)"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox (beta)"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox (Beta)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TextBox (Beta)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox (Beta)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox (bêta)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox (Beta)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TextBox（ベータ）"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox (បេតា)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox(베타)"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox (beta)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox (Beta)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox (Beta)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox (бета)"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox (เบต้า)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox (Beta)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox (бета)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox（测试版）"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox（測試版）"
+          }
+        }
+      }
+    },
+    "settings.textBox.betaWarning": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox ميزة تجريبية. قد تتغير القيم الافتراضية والسلوك أثناء الاختبار."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox je beta funkcija. Zadane vrijednosti i ponašanje mogu se promijeniti tokom testiranja."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox er en beta-funktion. Standarder og adfærd kan ændre sig under test."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox ist eine Beta-Funktion. Standardwerte und Verhalten können sich während der Tests ändern."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TextBox is a beta feature. Its defaults and behavior may change while it is being tested."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox es una función beta. Sus valores predeterminados y su comportamiento pueden cambiar durante las pruebas."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox est une fonctionnalité bêta. Ses valeurs par défaut et son comportement peuvent changer pendant les tests."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox è una funzionalità beta. Valori predefiniti e comportamento possono cambiare durante i test."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TextBox はベータ機能です。テスト中のため、既定値や動作が変わる場合があります。"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox គឺជាមុខងារបេតា។ តម្លៃលំនាំដើម និងឥរិយាបថអាចផ្លាស់ប្តូរនៅពេលកំពុងសាកល្បង។"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox는 베타 기능입니다. 테스트 중에는 기본값과 동작이 변경될 수 있습니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox er en betafunksjon. Standardverdier og oppførsel kan endres mens den testes."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox jest funkcją beta. Domyślne ustawienia i zachowanie mogą się zmienić podczas testów."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox é um recurso beta. Seus padrões e comportamento podem mudar durante os testes."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox — бета-функция. Во время тестирования значения по умолчанию и поведение могут измениться."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox เป็นฟีเจอร์เบต้า ค่าเริ่มต้นและพฤติกรรมอาจเปลี่ยนแปลงระหว่างการทดสอบ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox bir beta özelliğidir. Varsayılanlar ve davranış test süresince değişebilir."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox — бета-функція. Під час тестування типові значення й поведінка можуть змінюватися."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox 是测试版功能。在测试期间，默认值和行为可能会变化。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox 是測試版功能。測試期間，預設值和行為可能會變更。"
+          }
+        }
+      }
+    },
+    "settings.textBox.showOnNewTerminals": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "إظهار TextBox في الطرفيات الجديدة"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Prikaži TextBox u novim terminalima"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Vis TextBox i nye terminaler"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox in neuen Terminals anzeigen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show TextBox on New Terminals"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Mostrar TextBox en terminales nuevas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Afficher TextBox dans les nouveaux terminaux"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Mostra TextBox nei nuovi terminali"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しいターミナルで TextBox を表示"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "បង្ហាញ TextBox នៅក្នុងស្ថានីយថ្មី"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "새 터미널에서 TextBox 표시"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Vis TextBox i nye terminaler"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Pokaż TextBox w nowych terminalach"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Mostrar TextBox em novos terminais"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Показывать TextBox в новых терминалах"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "แสดง TextBox ในเทอร์มินัลใหม่"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Yeni terminallerde TextBox göster"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Показувати TextBox у нових терміналах"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "在新终端中显示 TextBox"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "在新終端機中顯示 TextBox"
+          }
+        }
+      }
+    },
+    "settings.textBox.showOnNewTerminals.subtitleOff": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "تبدأ الطرفيات الجديدة مع إخفاء TextBox إلى أن تفتحه."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Novi terminali počinju sa skrivenim TextBoxom dok ga ne otvorite."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Nye terminaler starter med TextBox skjult, indtil du åbner den."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Neue Terminals starten mit ausgeblendeter TextBox, bis du sie öffnest."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New terminals start with the TextBox hidden until you open it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Las terminales nuevas empiezan con TextBox oculto hasta que lo abras."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Les nouveaux terminaux démarrent avec TextBox masqué jusqu’à son ouverture."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "I nuovi terminali si avviano con TextBox nascosto finché non lo apri."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しいターミナルでは、開くまで TextBox を非表示にします。"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ស្ថានីយថ្មីចាប់ផ្តើមដោយលាក់ TextBox រហូតដល់អ្នកបើកវា។"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "새 터미널은 사용자가 열 때까지 TextBox를 숨긴 상태로 시작합니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Nye terminaler starter med TextBox skjult til du åpner den."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Nowe terminale startują z ukrytym TextBox, dopóki go nie otworzysz."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Novos terminais começam com o TextBox oculto até você abri-lo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Новые терминалы запускаются со скрытым TextBox, пока вы его не откроете."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "เทอร์มินัลใหม่จะเริ่มโดยซ่อน TextBox ไว้จนกว่าคุณจะเปิด"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Yeni terminaller, siz açana kadar TextBox gizli olarak başlar."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Нові термінали запускаються з прихованим TextBox, доки ви його не відкриєте."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "新终端启动时会隐藏 TextBox，直到你打开它。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "新終端機啟動時會隱藏 TextBox，直到你開啟它。"
+          }
+        }
+      }
+    },
+    "settings.textBox.showOnNewTerminals.subtitleOn": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "تفتح تبويبات الطرفية والتقسيمات ومساحات العمل الجديدة مع إظهار TextBox."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Novi terminalski tabovi, podjele i radni prostori otvaraju se s vidljivim TextBoxom."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Nye terminalfaner, splits og arbejdsområder åbner med TextBox synlig."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Neue Terminal-Tabs, Splits und Workspaces öffnen mit sichtbarer TextBox."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New terminal tabs, splits, and workspaces open with the TextBox visible."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Las nuevas pestañas, divisiones y espacios de trabajo de terminal se abren con TextBox visible."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Les nouveaux onglets, divisions et espaces de travail de terminal s’ouvrent avec TextBox visible."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Nuove schede, divisioni e workspace del terminale si aprono con TextBox visibile."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しいターミナルタブ、分割、ワークスペースでは TextBox を表示して開きます。"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ផ្ទាំងស្ថានីយ ស្ប្លីត និង workspace ថ្មីបើកដោយបង្ហាញ TextBox។"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "새 터미널 탭, 분할, 작업공간은 TextBox가 보이는 상태로 열립니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Nye terminalfaner, splitt og arbeidsområder åpnes med TextBox synlig."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Nowe karty terminala, podziały i obszary robocze otwierają się z widocznym TextBox."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Novas abas, divisões e áreas de trabalho de terminal abrem com o TextBox visível."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Новые вкладки терминала, разделения и рабочие пространства открываются с видимым TextBox."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "แท็บเทอร์มินัล การแบ่งหน้าต่าง และเวิร์กสเปซใหม่จะเปิดพร้อมแสดง TextBox"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Yeni terminal sekmeleri, bölmeleri ve çalışma alanları TextBox görünür halde açılır."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Нові вкладки термінала, розділення й робочі простори відкриваються з видимим TextBox."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "新的终端标签页、分屏和工作区会在打开时显示 TextBox。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "新的終端機分頁、分割和工作區會在開啟時顯示 TextBox。"
+          }
+        }
+      }
+    },
+    "settings.textBox.focusOnNewTerminals": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "تركيز TextBox في الطرفيات الجديدة"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Fokusiraj TextBox u novim terminalima"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Fokuser TextBox i nye terminaler"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox in neuen Terminals fokussieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Focus TextBox on New Terminals"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Enfocar TextBox en terminales nuevas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Focaliser TextBox dans les nouveaux terminaux"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Focalizza TextBox nei nuovi terminali"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しいターミナルで TextBox にフォーカス"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ផ្តោត TextBox នៅក្នុងស្ថានីយថ្មី"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "새 터미널에서 TextBox에 포커스"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Fokuser TextBox i nye terminaler"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ustaw fokus TextBox w nowych terminalach"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Focar TextBox em novos terminais"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Фокусировать TextBox в новых терминалах"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "โฟกัส TextBox ในเทอร์มินัลใหม่"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Yeni terminallerde TextBox odakla"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Фокусувати TextBox у нових терміналах"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "在新终端中聚焦 TextBox"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "在新終端機中聚焦 TextBox"
+          }
+        }
+      }
+    },
+    "settings.textBox.focusOnNewTerminals.subtitleOff": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "تحتفظ الطرفيات الجديدة بتركيز لوحة المفاتيح في سطح الطرفية."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Novi terminali zadržavaju fokus tastature na terminalskog površini."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Nye terminaler beholder tastaturfokus i terminalfladen."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Neue Terminals behalten den Tastaturfokus in der Terminalfläche."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New terminals keep keyboard focus in the terminal surface."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Las terminales nuevas mantienen el foco del teclado en la superficie de terminal."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Les nouveaux terminaux gardent le focus clavier dans la surface de terminal."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "I nuovi terminali mantengono il focus della tastiera nella superficie del terminale."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しいターミナルではキーボードフォーカスをターミナル面に置きます。"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ស្ថានីយថ្មីរក្សា focus ក្តារចុចនៅក្នុងផ្ទៃស្ថានីយ។"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "새 터미널은 키보드 포커스를 터미널 화면에 유지합니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Nye terminaler beholder tastaturfokus i terminalflaten."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Nowe terminale zachowują fokus klawiatury w powierzchni terminala."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Novos terminais mantêm o foco do teclado na superfície do terminal."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Новые терминалы сохраняют фокус клавиатуры в поверхности терминала."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "เทอร์มินัลใหม่จะคงโฟกัสแป้นพิมพ์ไว้ที่พื้นผิวเทอร์มินัล"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Yeni terminaller klavye odağını terminal yüzeyinde tutar."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Нові термінали зберігають фокус клавіатури на поверхні термінала."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "新终端会将键盘焦点保留在终端界面中。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "新終端機會將鍵盤焦點保留在終端機介面中。"
+          }
+        }
+      }
+    },
+    "settings.textBox.focusOnNewTerminals.subtitleOn": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "تضع تبويبات الطرفية والتقسيمات ومساحات العمل الجديدة تركيز لوحة المفاتيح في TextBox."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Novi terminalski tabovi, podjele i radni prostori stavljaju fokus tastature u TextBox."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Nye terminalfaner, splits og arbejdsområder placerer tastaturfokus i TextBox."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Neue Terminal-Tabs, Splits und Workspaces setzen den Tastaturfokus in die TextBox."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New terminal tabs, splits, and workspaces put keyboard focus in the TextBox."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Las nuevas pestañas, divisiones y espacios de trabajo de terminal ponen el foco del teclado en TextBox."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Les nouveaux onglets, divisions et espaces de travail de terminal placent le focus clavier dans TextBox."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Nuove schede, divisioni e workspace del terminale mettono il focus della tastiera in TextBox."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しいターミナルタブ、分割、ワークスペースではキーボードフォーカスを TextBox に置きます。"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ផ្ទាំងស្ថានីយ ស្ប្លីត និង workspace ថ្មីដាក់ focus ក្តារចុចក្នុង TextBox។"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "새 터미널 탭, 분할, 작업공간은 키보드 포커스를 TextBox에 둡니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Nye terminalfaner, splitt og arbeidsområder setter tastaturfokus i TextBox."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Nowe karty terminala, podziały i obszary robocze ustawiają fokus klawiatury w TextBox."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Novas abas, divisões e áreas de trabalho de terminal colocam o foco do teclado no TextBox."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Новые вкладки терминала, разделения и рабочие пространства помещают фокус клавиатуры в TextBox."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "แท็บเทอร์มินัล การแบ่งหน้าต่าง และเวิร์กสเปซใหม่จะวางโฟกัสแป้นพิมพ์ไว้ใน TextBox"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Yeni terminal sekmeleri, bölmeleri ve çalışma alanları klavye odağını TextBox içine koyar."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Нові вкладки термінала, розділення й робочі простори переносять фокус клавіатури в TextBox."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "新的终端标签页、分屏和工作区会将键盘焦点放入 TextBox。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "新的終端機分頁、分割和工作區會將鍵盤焦點放入 TextBox。"
+          }
+        }
+      }
+    },
+    "settings.textBox.maxLines": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "الحد الأقصى لأسطر TextBox"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Maksimalan broj redova TextBoxa"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Maksimale TextBox-linjer"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Maximale TextBox-Zeilen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TextBox Max Lines"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Máximo de líneas de TextBox"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Nombre maximal de lignes TextBox"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Righe massime di TextBox"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TextBox の最大行数"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ចំនួនបន្ទាត់អតិបរមា TextBox"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox 최대 줄 수"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Maksimalt antall TextBox-linjer"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Maksymalna liczba wierszy TextBox"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Máximo de linhas do TextBox"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Максимум строк TextBox"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "จำนวนบรรทัดสูงสุดของ TextBox"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox en fazla satır"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Максимум рядків TextBox"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox 最大行数"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "TextBox 最大行數"
+          }
+        }
+      }
+    },
+    "settings.textBox.maxLines.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "يحد من ارتفاع إدخال الطرفية الغني قبل أن يبدأ في التمرير."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ograničava visinu bogatog terminalskog unosa prije nego što se počne skrolati."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Begrænser hvor høj den rige terminalinput kan blive, før den ruller."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Begrenzt, wie hoch die Rich-Terminaleingabe werden kann, bevor sie scrollt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limits how tall the rich terminal input can grow before it scrolls."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Limita cuánto puede crecer la entrada enriquecida de terminal antes de desplazarse."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Limite la hauteur de l’entrée de terminal enrichie avant le défilement."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Limita l’altezza dell’input terminale avanzato prima che inizi a scorrere."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リッチなターミナル入力欄がスクロールする前に広がれる最大の高さを制限します。"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "កំណត់កម្ពស់អតិបរមាដែលការបញ្ចូលស្ថានីយ rich អាចលូតលាស់ មុនពេលវារមូរ។"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "리치 터미널 입력이 스크롤되기 전까지 커질 수 있는 높이를 제한합니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Begrenser hvor høy den rike terminalinndataen kan bli før den ruller."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ogranicza wysokość rozbudowanego wejścia terminala przed przewijaniem."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Limita a altura que a entrada rica do terminal pode atingir antes de rolar."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ограничивает высоту расширенного ввода терминала до начала прокрутки."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "จำกัดความสูงของอินพุตเทอร์มินัลแบบ rich ก่อนที่จะเริ่มเลื่อน"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Zengin terminal girişinin kaymadan önce ne kadar büyüyebileceğini sınırlar."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Обмежує висоту розширеного вводу термінала до початку прокручування."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "限制富终端输入在滚动前可增长的最大高度。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "限制富終端機輸入在捲動前可增長的最大高度。"
           }
         }
       }

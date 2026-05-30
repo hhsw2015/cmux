@@ -6564,7 +6564,7 @@ class TerminalController {
         // Placement resolution: explicit `placement` param wins, then the
         // group's per-cwd `newWorkspacePlacement` from cmux.json, then the
         // global default. The CLI exposes this as
-        // `cmux workspace-group new-workspace <group> --placement <top|end>`.
+        // `cmux workspace-group new-workspace <group> --placement <afterCurrent|top|end>`.
         let placementRaw = v2String(params, "placement")
         let explicitPlacement = WorkspaceGroupNewPlacement(rawString: placementRaw)
         if let raw = placementRaw,
@@ -6572,7 +6572,7 @@ class TerminalController {
            explicitPlacement == nil {
             return .err(
                 code: "invalid_params",
-                message: "placement must be one of: top, end",
+                message: "placement must be one of: afterCurrent, top, end",
                 data: ["placement": raw]
             )
         }
@@ -16919,8 +16919,7 @@ class TerminalController {
             // starting SidebarDragFailsafeMonitor — it would otherwise post
             // mouse_up_failsafe immediately because no real mouse is pressed.
             dragState.isSimulated = true
-            dragState.draggedTabId = fromTabId
-            dragState.dropIndicator = nil
+            dragState.beginDragging(tabId: fromTabId)
             return true
         }
         guard startedOK else {
@@ -16942,7 +16941,7 @@ class TerminalController {
             }
             let tickOK: Bool = v2MainSync {
                 guard let dragState = SidebarDragStateRegistry.state(forWindowId: windowId) else { return false }
-                dragState.dropIndicator = SidebarDropIndicator(tabId: targetTabId, edge: edge)
+                dragState.setDropIndicator(SidebarDropIndicator(tabId: targetTabId, edge: edge))
                 return true
             }
             if !tickOK {
@@ -16956,8 +16955,7 @@ class TerminalController {
 
         v2MainSync {
             guard let dragState = SidebarDragStateRegistry.state(forWindowId: windowId) else { return }
-            dragState.draggedTabId = nil
-            dragState.dropIndicator = nil
+            dragState.clearDrag()
             dragState.isSimulated = false
         }
 
