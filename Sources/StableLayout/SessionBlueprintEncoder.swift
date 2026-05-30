@@ -170,6 +170,13 @@ enum SessionBlueprintEncoder {
                 command: panel.rightSidebarTool?.mode?.rawValue ?? "",
                 cwd: nil
             )
+        case .project:
+            return .init(
+                splitPath: splitPath,
+                kind: "project",
+                command: "",
+                cwd: nil
+            )
         }
     }
 

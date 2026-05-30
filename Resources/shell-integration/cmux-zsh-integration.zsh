@@ -1568,7 +1568,6 @@ _cmux_preexec() {
     fi
     _cmux_tmux_sync_cmux_environment
     _cmux_hide_downstream_environment
-    local cmd="${1## }"
 
     if [[ -z "$_CMUX_TTY_NAME" ]]; then
         local t

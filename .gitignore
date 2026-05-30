@@ -56,3 +56,4 @@ tmp-*/
 .spm-cache/
 .zig/
 GhosttyKit.xcframework/
+.iter-logs/*.png
