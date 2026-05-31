@@ -10262,267 +10262,6 @@ final class SharedLiveAgentIndex: ObservableObject {
     }
 }
 
-enum WorkspaceLayoutMode: String, Codable, Sendable {
-    case bonsplit
-    case paper
-}
-
-struct PaperLayoutState: Codable, Equatable, Sendable {
-    var panes: [PaperPane]
-    var focusedPaneId: UUID?
-    var viewportOrigin: PaperPoint
-
-    var focusedPane: PaperPane? {
-        if let focusedPaneId,
-           let pane = panes.first(where: { $0.id == focusedPaneId }) {
-            return pane
-        }
-        return panes.first
-    }
-
-    static func initial(paneId: PaneID, tabId: UUID, viewportSize: CGSize) -> PaperLayoutState {
-        let frame = PaperRect(
-            x: 0,
-            y: 0,
-            width: max(900, viewportSize.width),
-            height: max(600, viewportSize.height)
-        )
-        let pane = PaperPane(
-            id: paneId.id,
-            frame: frame,
-            tabIds: [tabId],
-            selectedTabId: tabId
-        )
-
-        return PaperLayoutState(
-            panes: [pane],
-            focusedPaneId: pane.id,
-            viewportOrigin: PaperPoint(x: 0, y: 0)
-        )
-    }
-
-    func pane(containingTabId tabId: UUID) -> PaperPane? {
-        panes.first { $0.tabIds.contains(tabId) }
-    }
-
-    func paneNearestViewportOrigin() -> PaperPane? {
-        paneNearest(to: viewportOrigin)
-    }
-
-    func paneNearest(to point: PaperPoint) -> PaperPane? {
-        panes.min { lhs, rhs in
-            let lhsDistance = lhs.frame.originDistanceSquared(to: point)
-            let rhsDistance = rhs.frame.originDistanceSquared(to: point)
-            if lhsDistance == rhsDistance {
-                return lhs.id.uuidString < rhs.id.uuidString
-            }
-            return lhsDistance < rhsDistance
-        }
-    }
-
-    func paneInDirection(dx: CGFloat, dy: CGFloat) -> PaperPane? {
-        guard let sourcePane = paneNearestViewportOrigin() ?? focusedPane else { return nil }
-        let sourceCenterX = sourcePane.frame.midX
-        let sourceCenterY = sourcePane.frame.midY
-        let epsilon: CGFloat = 0.5
-
-        let candidates: [PaperPane]
-        if abs(dx) >= abs(dy), dx > 0 {
-            candidates = panes.filter { $0.id != sourcePane.id && $0.frame.midX > sourceCenterX + epsilon }
-            return candidates.min {
-                directionalScore($0, sourceCenterX: sourceCenterX, sourceCenterY: sourceCenterY, horizontal: true) <
-                    directionalScore($1, sourceCenterX: sourceCenterX, sourceCenterY: sourceCenterY, horizontal: true)
-            }
-        } else if abs(dx) >= abs(dy), dx < 0 {
-            candidates = panes.filter { $0.id != sourcePane.id && $0.frame.midX < sourceCenterX - epsilon }
-            return candidates.min {
-                directionalScore($0, sourceCenterX: sourceCenterX, sourceCenterY: sourceCenterY, horizontal: true) <
-                    directionalScore($1, sourceCenterX: sourceCenterX, sourceCenterY: sourceCenterY, horizontal: true)
-            }
-        } else if dy > 0 {
-            candidates = panes.filter { $0.id != sourcePane.id && $0.frame.midY > sourceCenterY + epsilon }
-            return candidates.min {
-                directionalScore($0, sourceCenterX: sourceCenterX, sourceCenterY: sourceCenterY, horizontal: false) <
-                    directionalScore($1, sourceCenterX: sourceCenterX, sourceCenterY: sourceCenterY, horizontal: false)
-            }
-        } else if dy < 0 {
-            candidates = panes.filter { $0.id != sourcePane.id && $0.frame.midY < sourceCenterY - epsilon }
-            return candidates.min {
-                directionalScore($0, sourceCenterX: sourceCenterX, sourceCenterY: sourceCenterY, horizontal: false) <
-                    directionalScore($1, sourceCenterX: sourceCenterX, sourceCenterY: sourceCenterY, horizontal: false)
-            }
-        }
-
-        return nil
-    }
-
-    private func directionalScore(
-        _ pane: PaperPane,
-        sourceCenterX: CGFloat,
-        sourceCenterY: CGFloat,
-        horizontal: Bool
-    ) -> CGFloat {
-        let primary = horizontal
-            ? abs(pane.frame.midX - sourceCenterX)
-            : abs(pane.frame.midY - sourceCenterY)
-        let cross = horizontal
-            ? abs(pane.frame.midY - sourceCenterY)
-            : abs(pane.frame.midX - sourceCenterX)
-        return (primary * 10_000) + cross
-    }
-
-    private func verticallyOverlaps(_ lhs: PaperRect, _ rhs: PaperRect) -> Bool {
-        lhs.minY < rhs.maxY && rhs.minY < lhs.maxY
-    }
-
-    private func horizontallyOverlaps(_ lhs: PaperRect, _ rhs: PaperRect) -> Bool {
-        lhs.minX < rhs.maxX && rhs.minX < lhs.maxX
-    }
-
-    mutating func focusPane(containingTabId tabId: UUID) {
-        guard let paneIndex = panes.firstIndex(where: { $0.tabIds.contains(tabId) }) else { return }
-        focusedPaneId = panes[paneIndex].id
-        panes[paneIndex].selectedTabId = tabId
-    }
-
-    @discardableResult
-    mutating func insertPaneBesideFocused(
-        id: UUID,
-        tabId: UUID,
-        orientation: SplitOrientation,
-        gap: CGFloat = 24
-    ) -> PaperPane? {
-        guard let focusedPane = focusedPane else { return nil }
-        let frame: PaperRect
-        switch orientation {
-        case .horizontal:
-            frame = PaperRect(
-                x: focusedPane.frame.maxX + gap,
-                y: focusedPane.frame.minY,
-                width: focusedPane.frame.width,
-                height: focusedPane.frame.height
-            )
-        case .vertical:
-            frame = PaperRect(
-                x: focusedPane.frame.minX,
-                y: focusedPane.frame.maxY + gap,
-                width: focusedPane.frame.width,
-                height: focusedPane.frame.height
-            )
-        }
-
-        let pane = PaperPane(
-            id: id,
-            frame: frame,
-            tabIds: [tabId],
-            selectedTabId: tabId
-        )
-        panes.append(pane)
-        focusedPaneId = id
-        viewportOrigin = PaperPoint(x: frame.minX, y: frame.minY)
-        return pane
-    }
-
-    @discardableResult
-    mutating func mirrorBonsplitSplit(
-        sourcePane: PaperPane,
-        newPaneId: PaneID,
-        tabId: UUID,
-        orientation: SplitOrientation,
-        gap: CGFloat = 24
-    ) -> PaperPane {
-        let sourceFrame = sourcePane.frame
-        let frame: PaperRect
-        switch orientation {
-        case .horizontal:
-            let shift = sourceFrame.width + gap
-            for index in panes.indices {
-                guard panes[index].id != sourcePane.id,
-                      panes[index].id != newPaneId.id,
-                      panes[index].frame.midX > sourceFrame.midX,
-                      verticallyOverlaps(panes[index].frame, sourceFrame) else {
-                    continue
-                }
-                panes[index].frame.x += shift
-            }
-            frame = PaperRect(
-                x: sourceFrame.maxX + gap,
-                y: sourceFrame.minY,
-                width: sourceFrame.width,
-                height: sourceFrame.height
-            )
-        case .vertical:
-            let shift = sourceFrame.height + gap
-            for index in panes.indices {
-                guard panes[index].id != sourcePane.id,
-                      panes[index].id != newPaneId.id,
-                      panes[index].frame.midY > sourceFrame.midY,
-                      horizontallyOverlaps(panes[index].frame, sourceFrame) else {
-                    continue
-                }
-                panes[index].frame.y += shift
-            }
-            frame = PaperRect(
-                x: sourceFrame.minX,
-                y: sourceFrame.maxY + gap,
-                width: sourceFrame.width,
-                height: sourceFrame.height
-            )
-        }
-
-        let pane = PaperPane(
-            id: newPaneId.id,
-            frame: frame,
-            tabIds: [tabId],
-            selectedTabId: tabId
-        )
-        if let index = panes.firstIndex(where: { $0.id == newPaneId.id }) {
-            panes[index] = pane
-        } else {
-            panes.append(pane)
-        }
-        focusedPaneId = pane.id
-        viewportOrigin = PaperPoint(x: frame.minX, y: frame.minY)
-        return pane
-    }
-}
-
-struct PaperPane: Codable, Equatable, Identifiable, Sendable {
-    var id: UUID
-    var frame: PaperRect
-    var tabIds: [UUID]
-    var selectedTabId: UUID?
-}
-
-struct PaperPoint: Codable, Equatable, Sendable {
-    var x: CGFloat
-    var y: CGFloat
-}
-
-struct PaperRect: Codable, Equatable, Sendable {
-    var x: CGFloat
-    var y: CGFloat
-    var width: CGFloat
-    var height: CGFloat
-
-    var cgRect: CGRect {
-        CGRect(x: x, y: y, width: width, height: height)
-    }
-
-    var minX: CGFloat { x }
-    var minY: CGFloat { y }
-    var midX: CGFloat { x + (width / 2) }
-    var midY: CGFloat { y + (height / 2) }
-    var maxX: CGFloat { x + width }
-    var maxY: CGFloat { y + height }
-
-    func originDistanceSquared(to point: PaperPoint) -> CGFloat {
-        let dx = x - point.x
-        let dy = y - point.y
-        return (dx * dx) + (dy * dy)
-    }
-}
-
 /// Workspace represents a sidebar tab.
 /// Each workspace owns top-level layout tabs; each layout tab owns one BonsplitController
 /// that manages split panes and pane-local surfaces.
@@ -10688,11 +10427,6 @@ final class Workspace: Identifiable, ObservableObject {
         get { activeLayoutTab.surfaceIdToPanelId }
         set { activeLayoutTab.surfaceIdToPanelId = newValue }
     }
-
-    // [fork] PR 5014 paper layout state (debug-only)
-    @Published var layoutMode: WorkspaceLayoutMode = .bonsplit
-    @Published var paperLayoutState: PaperLayoutState?
-
     private struct SurfaceTabBarExecutableButton {
         let button: CmuxSurfaceTabBarButton
         let builtInAction: CmuxSurfaceTabBarBuiltInAction?
@@ -10736,11 +10470,6 @@ final class Workspace: Identifiable, ObservableObject {
 
     /// The currently focused pane's panel ID
     var focusedPanelId: UUID? {
-        if layoutMode == .paper,
-           let tabId = paperLayoutState?.focusedPane?.selectedTabId {
-            return panelIdFromSurfaceId(TabID(uuid: tabId))
-        }
-
         guard let paneId = bonsplitController.focusedPaneId,
               let tab = bonsplitController.selectedTab(inPane: paneId) else {
             return nil
@@ -10756,278 +10485,6 @@ final class Workspace: Identifiable, ObservableObject {
         }
         return panel
     }
-
-    @discardableResult
-    func ensurePaperLayoutState(viewportSize: CGSize = CGSize(width: 900, height: 600)) -> PaperLayoutState? {
-        if let paperLayoutState {
-            return paperLayoutState
-        }
-
-        guard let paneId = bonsplitController.focusedPaneId ?? bonsplitController.allPaneIds.first else {
-            return nil
-        }
-        guard let tabId = bonsplitController.selectedTab(inPane: paneId)?.id ??
-            bonsplitController.tabs(inPane: paneId).first?.id else {
-            return nil
-        }
-
-        let initialState = PaperLayoutState.initial(
-            paneId: paneId,
-            tabId: tabId.uuid,
-            viewportSize: viewportSize
-        )
-        paperLayoutState = initialState
-        return initialState
-    }
-
-    private func focusPaperPanel(tabId: TabID, panelId: UUID) {
-        guard layoutMode == .paper else { return }
-        guard var state = paperLayoutState ?? ensurePaperLayoutState() else {
-            return
-        }
-        state.focusPane(containingTabId: tabId.uuid)
-        if let focusedPane = state.focusedPane {
-            state.viewportOrigin = PaperPoint(
-                x: max(0, focusedPane.frame.minX),
-                y: max(0, focusedPane.frame.minY)
-            )
-        }
-        paperLayoutState = state
-
-        if let terminalPanel = terminalPanel(for: panelId) {
-            terminalPanel.focus()
-        } else if let browserPanel = panels[panelId] as? BrowserPanel {
-            maybeAutoFocusBrowserAddressBarOnPanelFocus(browserPanel, trigger: .standard)
-        }
-    }
-
-#if DEBUG
-    private struct PaperPaneTreePlacement {
-        let paneIdString: String
-        let column: Int
-        let row: Int
-    }
-
-    func togglePaperLayoutModeForDebug() {
-        switch layoutMode {
-        case .bonsplit:
-            paperLayoutState = nil
-            layoutMode = .paper
-            rebuildPaperLayoutStateFromBonsplitForDebug()
-        case .paper:
-            layoutMode = .bonsplit
-        }
-        cmuxDebugLog(
-            "paper.layout.toggle workspace=\(id.uuidString.prefix(5)) mode=\(layoutMode.rawValue)"
-        )
-    }
-
-    @discardableResult
-    func rebuildPaperLayoutStateFromBonsplitForDebug(
-        viewportSize: CGSize = CGSize(width: 900, height: 600)
-    ) -> PaperLayoutState? {
-        let width = max(900, viewportSize.width)
-        let height = max(600, viewportSize.height)
-        let gap: CGFloat = 24
-        paperLayoutState = nil
-        let bonsplitPaneIds = bonsplitController.allPaneIds
-        let focusedBonsplitPaneId = bonsplitController.focusedPaneId
-        let paneIdsByString = Dictionary(
-            uniqueKeysWithValues: bonsplitPaneIds.map { ($0.id.uuidString.lowercased(), $0) }
-        )
-        let treeSnapshot = bonsplitController.treeSnapshot()
-        let treePlacements = paperPaneTreePlacementsFromGeometry(in: treeSnapshot)
-        var seenPlacedPaneIds = Set<UUID>()
-        var placements: [(paneId: PaneID, column: Int, row: Int)] = treePlacements.compactMap { placement in
-            guard let paneId = paneIdsByString[placement.paneIdString.lowercased()],
-                  seenPlacedPaneIds.insert(paneId.id).inserted else {
-                return nil
-            }
-            return (paneId, placement.column, placement.row)
-        }
-        let fallbackPaneIds = bonsplitPaneIds.filter { seenPlacedPaneIds.insert($0.id).inserted }
-        if !fallbackPaneIds.isEmpty {
-            let columns = max(1, Int(ceil(sqrt(Double(fallbackPaneIds.count)))))
-            let fallbackStartColumn = (placements.map(\.column).max() ?? -1) + 1
-            placements.append(contentsOf: fallbackPaneIds.enumerated().map { offset, paneId in
-                (
-                    paneId,
-                    fallbackStartColumn + (offset % columns),
-                    offset / columns
-                )
-            })
-        }
-
-        cmuxDebugLog(
-            "paper.layout.rebuild.begin workspace=\(id.uuidString.prefix(5)) " +
-            "bonsplitPaneCount=\(bonsplitPaneIds.count) " +
-            "treePlacementCount=\(treePlacements.count) " +
-            "placedPaneCount=\(placements.count) " +
-            "focusedBonsplitPane=\(focusedBonsplitPaneId?.id.uuidString.prefix(5) ?? "nil") " +
-            "bonsplitPaneIds=\(bonsplitPaneIds.map { String($0.id.uuidString.prefix(5)) }.joined(separator: ",")) " +
-            "tree=\(paperTreeDescription(treeSnapshot))"
-        )
-
-        var paperPanes: [PaperPane] = []
-        for placement in placements {
-            let paneId = placement.paneId
-            let tabs = bonsplitController.tabs(inPane: paneId)
-            let selectedTab = bonsplitController.selectedTab(inPane: paneId).flatMap { selected in
-                tabs.first { $0.id == selected.id }
-            } ?? tabs.first
-            cmuxDebugLog(
-                "paper.layout.rebuild.bonsplitPane workspace=\(id.uuidString.prefix(5)) " +
-                "pane=\(paneId.id.uuidString.prefix(5)) " +
-                "tabCount=\(tabs.count) " +
-                "selectedTab=\(selectedTab?.id.uuid.uuidString.prefix(5) ?? "nil") " +
-                "selectedPanel=\(selectedTab.flatMap { panelIdFromSurfaceId($0.id) }?.uuidString.prefix(5) ?? "nil") " +
-                "tabIds=\(tabs.map { String($0.id.uuid.uuidString.prefix(5)) }.joined(separator: ","))"
-            )
-            guard let selectedTab else { continue }
-
-            let frame = PaperRect(
-                x: CGFloat(placement.column) * (width + gap),
-                y: CGFloat(placement.row) * (height + gap),
-                width: width,
-                height: height
-            )
-            paperPanes.append(
-                PaperPane(
-                    id: paneId.id,
-                    frame: frame,
-                    tabIds: tabs.map { $0.id.uuid },
-                    selectedTabId: selectedTab.id.uuid
-                )
-            )
-            cmuxDebugLog(
-                "paper.layout.rebuild.paperPane workspace=\(id.uuidString.prefix(5)) " +
-                "pane=\(paneId.id.uuidString.prefix(5)) " +
-                "selectedTab=\(selectedTab.id.uuid.uuidString.prefix(5)) " +
-                "grid=(\(placement.column),\(placement.row)) " +
-                "frame=(\(frame.x),\(frame.y),\(frame.width),\(frame.height))"
-            )
-        }
-
-        guard !paperPanes.isEmpty else {
-            paperLayoutState = nil
-            cmuxDebugLog(
-                "paper.layout.rebuild workspace=\(id.uuidString.prefix(5)) mirrored=0 focusedPane=nil viewport=(0,0)"
-            )
-            return nil
-        }
-
-        let focusedPaperPane = focusedBonsplitPaneId.flatMap { focusedPaneId in
-            paperPanes.first { $0.id == focusedPaneId.id }
-        } ?? paperPanes[0]
-        let state = PaperLayoutState(
-            panes: paperPanes,
-            focusedPaneId: focusedPaperPane.id,
-            viewportOrigin: PaperPoint(x: focusedPaperPane.frame.minX, y: focusedPaperPane.frame.minY)
-        )
-        paperLayoutState = state
-
-        cmuxDebugLog(
-            "paper.layout.rebuild workspace=\(id.uuidString.prefix(5)) " +
-            "mirrored=\(paperPanes.count) " +
-            "focusedPane=\(focusedPaperPane.id.uuidString.prefix(5)) " +
-            "viewport=(\(state.viewportOrigin.x),\(state.viewportOrigin.y)) " +
-            "paperPanes=\(paperPanes.map { pane in "\(pane.id.uuidString.prefix(5))@(\(pane.frame.x),\(pane.frame.y),\(pane.frame.width),\(pane.frame.height))" }.joined(separator: ","))"
-        )
-        return state
-    }
-
-    private func paperPaneTreePlacementsFromGeometry(in node: ExternalTreeNode) -> [PaperPaneTreePlacement] {
-        let panes = paperPaneNodes(in: node)
-        guard !panes.isEmpty else { return [] }
-
-        let xValues = uniqueSortedCoordinates(panes.map(\.frame.x))
-        let yValues = uniqueSortedCoordinates(panes.map(\.frame.y))
-
-        return panes.map { pane in
-            PaperPaneTreePlacement(
-                paneIdString: pane.id,
-                column: nearestCoordinateIndex(for: pane.frame.x, in: xValues),
-                row: nearestCoordinateIndex(for: pane.frame.y, in: yValues)
-            )
-        }
-    }
-
-    private func paperPaneNodes(in node: ExternalTreeNode) -> [ExternalPaneNode] {
-        switch node {
-        case .pane(let pane):
-            return [pane]
-        case .split(let split):
-            return paperPaneNodes(in: split.first) + paperPaneNodes(in: split.second)
-        }
-    }
-
-    private func uniqueSortedCoordinates(_ values: [Double]) -> [Double] {
-        let epsilon = 0.5
-        return values.sorted().reduce(into: []) { result, value in
-            guard result.last.map({ abs($0 - value) < epsilon }) != true else { return }
-            result.append(value)
-        }
-    }
-
-    private func nearestCoordinateIndex(for value: Double, in values: [Double]) -> Int {
-        values.enumerated().min { lhs, rhs in
-            abs(lhs.element - value) < abs(rhs.element - value)
-        }?.offset ?? 0
-    }
-
-    private func paperTreeDescription(_ node: ExternalTreeNode) -> String {
-        switch node {
-        case .pane(let pane):
-            return "pane(\(pane.id.prefix(5)))"
-        case .split(let split):
-            return "split(\(split.orientation),\(paperTreeDescription(split.first)),\(paperTreeDescription(split.second)))"
-        }
-    }
-
-    func movePaperViewportForDebug(dx: CGFloat, dy: CGFloat) {
-        guard layoutMode == .paper else {
-            cmuxDebugLog(
-                "paper.viewport.move.skip workspace=\(id.uuidString.prefix(5)) reason=notPaper mode=\(layoutMode.rawValue) delta=(\(dx),\(dy))"
-            )
-            return
-        }
-        if paperLayoutState == nil {
-            _ = rebuildPaperLayoutStateFromBonsplitForDebug()
-        }
-        if paperLayoutState == nil {
-            _ = ensurePaperLayoutState()
-        }
-        guard var paperState = paperLayoutState else {
-            cmuxDebugLog(
-                "paper.viewport.move.skip workspace=\(id.uuidString.prefix(5)) reason=noPaperState delta=(\(dx),\(dy))"
-            )
-            return
-        }
-
-        let oldOrigin = paperState.viewportOrigin
-        let tentativeOrigin = PaperPoint(
-            x: max(0, oldOrigin.x + dx),
-            y: max(0, oldOrigin.y + dy)
-        )
-        let snappedPane = paperState.paneInDirection(dx: dx, dy: dy)
-        let newOrigin = snappedPane.map {
-            PaperPoint(x: max(0, $0.frame.minX), y: max(0, $0.frame.minY))
-        } ?? tentativeOrigin
-        paperState.viewportOrigin = newOrigin
-        paperLayoutState = paperState
-
-        cmuxDebugLog(
-            "paper.viewport.move workspace=\(id.uuidString.prefix(5)) " +
-            "result=\(snappedPane == nil ? "noTarget" : "snapped") " +
-            "paneCount=\(paperState.panes.count) " +
-            "old=(\(oldOrigin.x),\(oldOrigin.y)) " +
-            "new=(\(newOrigin.x),\(newOrigin.y)) " +
-            "tentative=(\(tentativeOrigin.x),\(tentativeOrigin.y)) " +
-            "delta=(\(dx),\(dy)) " +
-            "snappedPane=\(snappedPane?.id.uuidString.prefix(5) ?? "nil")"
-        )
-    }
-#endif
 
     func representativePanelIdForWorkspaceManualUnread() -> UUID? {
         if let focusedPanelId, panels[focusedPanelId] != nil {
@@ -14932,17 +14389,6 @@ final class Workspace: Identifiable, ObservableObject {
             return nil
         }
 
-        // [fork] PR 5014: paper layout split source pre-capture.
-        let shouldMirrorPaperSplit = layoutMode == .paper
-        var paperSplitSourcePane: PaperPane?
-        if shouldMirrorPaperSplit {
-            guard var paperState = ensurePaperLayoutState() else { return nil }
-            paperState.focusPane(containingTabId: sourceTabId.uuid)
-            guard let sourcePane = paperState.pane(containingTabId: sourceTabId.uuid) else { return nil }
-            paperLayoutState = paperState
-            paperSplitSourcePane = sourcePane
-        }
-
         var inheritedConfig = inheritedTerminalConfig(preferredPanelId: panelId, inPane: paneId)
         let requestedInitialCommand = initialCommand?.trimmingCharacters(in: .whitespacesAndNewlines)
         let explicitInitialCommand = (requestedInitialCommand?.isEmpty == false) ? requestedInitialCommand : nil
@@ -15041,17 +14487,10 @@ final class Workspace: Identifiable, ObservableObject {
         )
         surfaceIdToPanelId[newTab.id] = newPanel.id
         let previousFocusedPanelId = focusedPanelId
-        let focusTransitionSourcePanelId: UUID? = shouldMirrorPaperSplit ? panelId : previousFocusedPanelId
 
         // Capture the source terminal's hosted view before bonsplit mutates focusedPaneId,
         // so we can hand it to focusPanel as the "move focus FROM" view.
         let previousHostedView = focusedTerminalPanel?.hostedView
-        let focusTransitionHostedView: GhosttySurfaceScrollView?
-        if shouldMirrorPaperSplit {
-            focusTransitionHostedView = terminalPanel(for: panelId)?.hostedView ?? previousHostedView
-        } else {
-            focusTransitionHostedView = previousHostedView
-        }
 
         // Create the split with the new tab already present in the new pane.
         isProgrammaticSplit = true
@@ -15075,35 +14514,6 @@ final class Workspace: Identifiable, ObservableObject {
         )
         publishCmuxSplitCreated(newPaneId, sourcePaneId: paneId, orientation: orientation, surfaceId: newPanel.id, kind: "terminal", origin: "terminal_split", focused: focus)
 
-        if shouldMirrorPaperSplit,
-           let paperSplitSourcePane {
-            var paperState = paperLayoutState ?? PaperLayoutState(
-                panes: [paperSplitSourcePane],
-                focusedPaneId: paperSplitSourcePane.id,
-                viewportOrigin: PaperPoint(x: paperSplitSourcePane.frame.minX, y: paperSplitSourcePane.frame.minY)
-            )
-            let newPaperPane = paperState.mirrorBonsplitSplit(
-                sourcePane: paperSplitSourcePane,
-                newPaneId: newPaneId,
-                tabId: newTab.id.uuid,
-                orientation: orientation
-            )
-            paperLayoutState = paperState
-#if DEBUG
-            cmuxDebugLog(
-                "paper.split.mirrored workspace=\(id.uuidString.prefix(5)) " +
-                "sourcePane=\(paperSplitSourcePane.id.uuidString.prefix(5)) " +
-                "bonsplitSourcePane=\(paneId.id.uuidString.prefix(5)) " +
-                "newPane=\(newPaneId.id.uuidString.prefix(5)) orientation=\(orientation.rawValue) " +
-                "sourceFrame=(\(paperSplitSourcePane.frame.x),\(paperSplitSourcePane.frame.y)," +
-                "\(paperSplitSourcePane.frame.width),\(paperSplitSourcePane.frame.height)) " +
-                "newFrame=(\(newPaperPane.frame.x),\(newPaperPane.frame.y)," +
-                "\(newPaperPane.frame.width),\(newPaperPane.frame.height)) " +
-                "viewport=(\(paperState.viewportOrigin.x),\(paperState.viewportOrigin.y))"
-            )
-#endif
-        }
-
 #if DEBUG
         cmuxDebugLog("split.created pane=\(paneId.id.uuidString.prefix(5)) orientation=\(orientation)")
         cmuxDebugLog(
@@ -15118,15 +14528,10 @@ final class Workspace: Identifiable, ObservableObject {
         // stealing focus from the new panel and creating model/surface divergence.
         if focus {
             suppressReparentFocusUntilLayoutFollowUp(
-                focusTransitionHostedView,
+                previousHostedView,
                 reason: "workspace.terminalSplitReparent"
             )
-            focusPanel(
-                newPanel.id,
-                previousHostedView: focusTransitionHostedView,
-                forceBonsplitFocusPath: shouldMirrorPaperSplit,
-                currentlyFocusedPanelIdOverride: focusTransitionSourcePanelId
-            )
+            focusPanel(newPanel.id, previousHostedView: previousHostedView)
         } else {
             preserveFocusAfterNonFocusSplit(
                 preferredPanelId: previousFocusedPanelId,
@@ -16910,9 +16315,7 @@ final class Workspace: Identifiable, ObservableObject {
         _ panelId: UUID,
         previousHostedView: GhosttySurfaceScrollView? = nil,
         trigger: FocusPanelTrigger = .standard,
-        focusIntent: PanelFocusIntent? = nil,
-        forceBonsplitFocusPath: Bool = false,
-        currentlyFocusedPanelIdOverride: UUID? = nil
+        focusIntent: PanelFocusIntent? = nil
     ) {
         if let layout = layoutTab(containingPanelId: panelId),
            selectedLayoutTabId != layout.id {
@@ -16928,22 +16331,7 @@ final class Workspace: Identifiable, ObservableObject {
         )
 #endif
         guard let tabId = surfaceIdFromPanelId(panelId) else { return }
-        if layoutMode == .paper, !forceBonsplitFocusPath {
-            let previouslyFocusedPanelId = focusedPanelId
-            focusPaperPanel(tabId: tabId, panelId: panelId)
-            if previouslyFocusedPanelId != panelId {
-                syncUnreadBadgeStateForAllPanels()
-            }
-            if trigger == .terminalFirstResponder,
-               panels[panelId] is TerminalPanel {
-                beginEventDrivenLayoutFollowUp(
-                    reason: "workspace.focusPanel.paperTerminal",
-                    terminalFocusPanelId: panelId
-                )
-            }
-            return
-        }
-        let currentlyFocusedPanelId = currentlyFocusedPanelIdOverride ?? focusedPanelId
+        let currentlyFocusedPanelId = focusedPanelId
 
         // Capture the currently focused terminal view so we can explicitly move AppKit first
         // responder when focusing another terminal (helps avoid "highlighted but typing goes to

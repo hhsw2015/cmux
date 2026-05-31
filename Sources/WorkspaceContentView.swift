@@ -290,52 +290,35 @@ struct WorkspaceContentView: View {
         }()
 
         Group {
-            switch workspace.layoutMode {
-            case .paper:
-                // [fork] PR 5014: paper canvas takes the entire workspace
-                // area, bypassing top tabs + layout tabs (debug-only).
-                PaperCanvasWorkspaceView(
-                    workspace: workspace,
-                    isWorkspaceVisible: isWorkspaceVisible,
-                    isWorkspaceInputActive: isWorkspaceInputActive,
-                    workspacePortalPriority: workspacePortalPriority,
+            if shouldBypassTopBar,
+               let onlyLayoutTab = workspace.layoutTabs.first {
+                layoutBonsplitView(
+                    controller: onlyLayoutTab.bonsplitController,
                     appearance: appearance,
-                    isSplit: workspace.bonsplitController.allPaneIds.count > 1,
                     usesWorkspacePaneOverlay: usesWorkspacePaneOverlay,
                     isWorkspaceManuallyUnread: isWorkspaceManuallyUnread,
-                    workspaceManualUnreadPanelId: workspaceManualUnreadPanelId
+                    workspaceManualUnreadPanelId: workspaceManualUnreadPanelId,
+                    isLayoutVisible: isWorkspaceVisible,
+                    isLayoutInputActive: isWorkspaceInputActive
                 )
-            case .bonsplit:
-                if shouldBypassTopBar,
-                   let onlyLayoutTab = workspace.layoutTabs.first {
-                    layoutBonsplitView(
-                        controller: onlyLayoutTab.bonsplitController,
-                        appearance: appearance,
-                        usesWorkspacePaneOverlay: usesWorkspacePaneOverlay,
-                        isWorkspaceManuallyUnread: isWorkspaceManuallyUnread,
-                        workspaceManualUnreadPanelId: workspaceManualUnreadPanelId,
-                        isLayoutVisible: isWorkspaceVisible,
-                        isLayoutInputActive: isWorkspaceInputActive
-                    )
-                } else {
-                    ZStack(alignment: .top) {
-                        topTabsView
-                        if topTabsVisibility == .auto {
-                            // Hover trigger zone. Resting size is a 12px sliver on
-                            // the top edge so it doesn't intercept clicks meant for
-                            // the layout below. While hovering, expand to ~40px so
-                            // the pointer can move horizontally over the revealed
-                            // tab bar without exiting the zone (which would cause
-                            // an immediate hide-flicker).
-                            Color.clear
-                                .frame(height: topTabsHoverActive ? 40 : 12)
-                                .contentShape(Rectangle())
-                                .onHover { hovering in
-                                    topTabsHoverActive = hovering
-                                    workspace.topTabController.configuration.tabBarVisibility =
-                                        hovering ? .always : .never
-                                }
-                        }
+            } else {
+                ZStack(alignment: .top) {
+                    topTabsView
+                    if topTabsVisibility == .auto {
+                        // Hover trigger zone. Resting size is a 12px sliver on
+                        // the top edge so it doesn't intercept clicks meant for
+                        // the layout below. While hovering, expand to ~40px so
+                        // the pointer can move horizontally over the revealed
+                        // tab bar without exiting the zone (which would cause
+                        // an immediate hide-flicker).
+                        Color.clear
+                            .frame(height: topTabsHoverActive ? 40 : 12)
+                            .contentShape(Rectangle())
+                            .onHover { hovering in
+                                topTabsHoverActive = hovering
+                                workspace.topTabController.configuration.tabBarVisibility =
+                                    hovering ? .always : .never
+                            }
                     }
                 }
             }
@@ -995,127 +978,3 @@ enum DebugUIEventCounters {
     }
 }
 #endif
-
-// MARK: - Paper layout (PR 5014)
-
-struct PaperCanvasWorkspaceView: View {
-    @ObservedObject var workspace: Workspace
-    let isWorkspaceVisible: Bool
-    let isWorkspaceInputActive: Bool
-    let workspacePortalPriority: Int
-    let appearance: PanelAppearance
-    let isSplit: Bool
-    let usesWorkspacePaneOverlay: Bool
-    let isWorkspaceManuallyUnread: Bool
-    let workspaceManualUnreadPanelId: UUID?
-    @EnvironmentObject var notificationStore: TerminalNotificationStore
-
-    var body: some View {
-        GeometryReader { proxy in
-            ZStack(alignment: .topLeading) {
-                if let paperLayoutState = workspace.paperLayoutState {
-                    paperCanvasView(paperLayoutState, viewportSize: proxy.size)
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .clipped()
-            .onAppear {
-                initializePaperLayoutIfNeeded(viewportSize: proxy.size)
-            }
-            .onChange(of: proxy.size) { _, viewportSize in
-                initializePaperLayoutIfNeeded(viewportSize: viewportSize)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func paperCanvasView(_ paperLayoutState: PaperLayoutState, viewportSize: CGSize) -> some View {
-        ZStack(alignment: .topLeading) {
-            if let activePane = paperLayoutState.paneNearestViewportOrigin() {
-                paperPaneView(activePane)
-            }
-        }
-        .frame(width: viewportSize.width, height: viewportSize.height, alignment: .topLeading)
-    }
-
-    @ViewBuilder
-    private func paperPaneView(_ pane: PaperPane) -> some View {
-        let paneId = PaneID(id: pane.id)
-        let selectedTabId = pane.selectedTabId ?? pane.tabIds.first
-        let panel = selectedTabId.flatMap { workspace.panel(for: TabID(uuid: $0)) }
-
-        if let panel {
-            let isFocused = isWorkspaceInputActive && workspace.focusedPanelId == panel.id
-            let isVisibleInUI = WorkspaceContentView.panelVisibleInUI(
-                isWorkspaceVisible: isWorkspaceVisible,
-                isSelectedInPane: true,
-                isFocused: isFocused
-            )
-            let showsNotificationRing = Workspace.shouldShowUnreadIndicator(
-                hasUnreadNotification: notificationStore.hasVisibleNotificationIndicator(
-                    forTabId: workspace.id,
-                    surfaceId: panel.id
-                ),
-                hasPanelUnreadIndicator: workspace.manualUnreadPanelIds.contains(panel.id) ||
-                    workspace.restoredUnreadPanelIds.contains(panel.id),
-                isWorkspaceManuallyUnread: isWorkspaceManuallyUnread,
-                isWorkspaceManualUnreadRepresentative: workspaceManualUnreadPanelId == panel.id
-            )
-
-            ZStack {
-                PanelContentView(
-                    panel: panel,
-                    workspaceId: workspace.id,
-                    paneId: paneId,
-                    isFocused: isFocused,
-                    isSelectedInPane: true,
-                    isVisibleInUI: isVisibleInUI,
-                    portalPriority: workspacePortalPriority,
-                    isSplit: isSplit,
-                    appearance: appearance,
-                    hasUnreadNotification: showsNotificationRing && !usesWorkspacePaneOverlay,
-                    terminalAgentContext: WorkspaceContentView.terminalAgentContext(panel: panel, workspace: workspace),
-                    onFocus: {
-                        guard isWorkspaceInputActive else { return }
-                        guard workspace.panels[panel.id] != nil else { return }
-                        workspace.focusPanel(panel.id, trigger: .terminalFirstResponder)
-                    },
-                    onRequestPanelFocus: {
-                        guard isWorkspaceInputActive else { return }
-                        guard workspace.panels[panel.id] != nil else { return }
-                        AppDelegate.shared?.noteMainPanelKeyboardFocusIntent(
-                            workspaceId: workspace.id,
-                            panelId: panel.id,
-                            in: NSApp.keyWindow ?? NSApp.mainWindow
-                        )
-                        workspace.focusPanel(panel.id)
-                    },
-                    onResumeAgentHibernation: {
-                        guard isWorkspaceInputActive else { return }
-                        guard workspace.panels[panel.id] != nil else { return }
-                        workspace.resumeAgentHibernation(panelId: panel.id, focus: true)
-                    },
-                    onAutoResumeAgentHibernation: {
-                        guard isWorkspaceInputActive else { return }
-                        guard workspace.panels[panel.id] != nil else { return }
-                        workspace.resumeAgentHibernation(panelId: panel.id, focus: false)
-                    },
-                    onTriggerFlash: { workspace.triggerDebugFlash(panelId: panel.id) }
-                )
-            }
-            .frame(width: pane.frame.width, height: pane.frame.height)
-        } else {
-            ZStack {
-                EmptyPanelView(workspace: workspace, paneId: paneId)
-            }
-            .frame(width: pane.frame.width, height: pane.frame.height)
-            .onTapGesture {
-                workspace.bonsplitController.focusPane(paneId)
-            }
-        }
-    }
-
-    private func initializePaperLayoutIfNeeded(viewportSize: CGSize) {
-        workspace.ensurePaperLayoutState(viewportSize: viewportSize)
-    }
-}

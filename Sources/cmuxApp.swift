@@ -512,28 +512,6 @@ struct cmuxApp: App {
                     SessionBlueprintExportAction.copyCurrentBlueprintToPasteboard()
                 }
 
-#if DEBUG
-                Button("Toggle Selected Workspace Paper Layout") {
-                    debugPaperWorkspace(action: "toggle")?.togglePaperLayoutModeForDebug()
-                }
-
-                Button("Paper View Left") {
-                    debugPaperWorkspace(action: "viewLeft")?.movePaperViewportForDebug(dx: -1200, dy: 0)
-                }
-
-                Button("Paper View Right") {
-                    debugPaperWorkspace(action: "viewRight")?.movePaperViewportForDebug(dx: 1200, dy: 0)
-                }
-
-                Button("Paper View Up") {
-                    debugPaperWorkspace(action: "viewUp")?.movePaperViewportForDebug(dx: 0, dy: -800)
-                }
-
-                Button("Paper View Down") {
-                    debugPaperWorkspace(action: "viewDown")?.movePaperViewportForDebug(dx: 0, dy: 800)
-                }
-#endif
-
                 Divider()
                 Menu("Debug Windows") {
                     Button("Background Debug…") {
@@ -1090,46 +1068,6 @@ struct cmuxApp: App {
             preferredWindow: NSApp.keyWindow ?? NSApp.mainWindow
         ) ?? tabManager
     }
-
-#if DEBUG
-    private func debugPaperWorkspace(action: String) -> Workspace? {
-        debugPaperWorkspace(logAction: action)
-    }
-
-    private func debugPaperWorkspace(logAction action: String?) -> Workspace? {
-        let preferredWindow = debugPaperPreferredMainWindow()
-        let manager = AppDelegate.shared?.activeTabManagerForCommands(
-            preferredWindow: preferredWindow
-        ) ?? activeTabManager
-        let workspace = manager.selectedWorkspace
-        if let action {
-            cmuxDebugLog(
-                "paper.debugMenu action=\(action) " +
-                "window=\(preferredWindow?.windowNumber ?? -1) " +
-                "workspace=\(workspace?.id.uuidString.prefix(5) ?? "nil") " +
-                "mode=\(workspace?.layoutMode.rawValue ?? "nil")"
-            )
-        } else if workspace == nil {
-            cmuxDebugLog("paper.debugMenu action=nil workspace=nil")
-        }
-        return workspace
-    }
-
-    private func debugPaperPreferredMainWindow() -> NSWindow? {
-        guard let appDelegate = AppDelegate.shared else {
-            return NSApp.keyWindow ?? NSApp.mainWindow
-        }
-
-        let directCandidates = [NSApp.keyWindow, NSApp.mainWindow].compactMap { $0 }
-        if let directWindow = directCandidates.first(where: { appDelegate.mainWindowId(from: $0) != nil }) {
-            return directWindow
-        }
-
-        return NSApp.orderedWindows.first { window in
-            appDelegate.mainWindowId(from: window) != nil
-        } ?? NSApp.keyWindow ?? NSApp.mainWindow
-    }
-#endif
 
     private func notificationMenuItemTitle(for notification: TerminalNotification) -> String {
         let tabTitle = appDelegate.tabTitle(for: notification.tabId)
