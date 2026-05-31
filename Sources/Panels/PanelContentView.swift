@@ -101,6 +101,13 @@ struct PanelContentView: View {
                     onRequestPanelFocus: onRequestPanelFocus
                 )
             }
+        case .extensionBrowser:
+            if let extensionBrowserPanel = panel as? CMUXSidebarExtensionBrowserPanel {
+                CMUXSidebarExtensionBrowserPanelView(
+                    panel: extensionBrowserPanel,
+                    onRequestPanelFocus: onRequestPanelFocus
+                )
+            }
         }
     }
 
@@ -118,13 +125,17 @@ struct PanelContentView: View {
     private var shouldInstallPaneDropTarget: Bool {
         guard isVisibleInUI else { return false }
         switch panel.panelType {
-        case .markdown, .filePreview, .rightSidebarTool, .project:
+        case .markdown, .filePreview, .rightSidebarTool, .project, .extensionBrowser:
             return true
         case .terminal, .browser:
             return false
         }
     }
 }
+
+private let panelFilePathHeaderIconSlotSize: CGFloat = 14
+private let panelFilePathHeaderHorizontalPadding: CGFloat = 6
+private let panelFilePathHeaderContentSpacing: CGFloat = 6
 
 struct PanelFilePathHeader<TrailingContent: View>: View {
     let iconSystemName: String
@@ -133,10 +144,14 @@ struct PanelFilePathHeader<TrailingContent: View>: View {
     @ViewBuilder let trailingContent: () -> TrailingContent
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: panelFilePathHeaderContentSpacing) {
             Image(systemName: iconSystemName)
+                .font(.system(size: panelFilePathHeaderIconSlotSize))
                 .foregroundStyle(.secondary)
-                .frame(width: 16)
+                .frame(
+                    width: panelFilePathHeaderIconSlotSize,
+                    height: panelFilePathHeaderIconSlotSize
+                )
             Text(filePath)
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(Color(nsColor: foregroundColor).opacity(0.68))
@@ -146,7 +161,7 @@ struct PanelFilePathHeader<TrailingContent: View>: View {
             Spacer(minLength: 8)
             trailingContent()
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, panelFilePathHeaderHorizontalPadding)
         .frame(height: 30)
         .background(Color.clear)
     }

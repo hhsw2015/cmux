@@ -177,6 +177,13 @@ enum SessionBlueprintEncoder {
                 command: "",
                 cwd: nil
             )
+        case .extensionBrowser:
+            return .init(
+                splitPath: splitPath,
+                kind: "extensionBrowser",
+                command: "",
+                cwd: nil
+            )
         }
     }
 

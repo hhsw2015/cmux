@@ -125,7 +125,7 @@ public struct AppSection: View {
 
     public var body: some View {
         Group {
-            SettingsSectionHeader(String(localized: "settings.section.app", defaultValue: "App"))
+            SettingsSectionHeader(String(localized: "settings.section.app", defaultValue: "App"), section: .app)
                 .accessibilityIdentifier("SettingsAppSection")
             mainCard
         }
@@ -162,6 +162,7 @@ public struct AppSection: View {
                 selectedMode: appearance.current,
                 onSelect: { appearance.set($0) }
             )
+            .settingsSearchAnchors(["setting:app:appearance"])
             SettingsCardDivider()
 
             // App Icon — three-up visual picker mirroring legacy
@@ -169,6 +170,7 @@ public struct AppSection: View {
                 selectedMode: appIcon.current,
                 onSelect: { appIcon.set($0) }
             )
+            .settingsSearchAnchors(["setting:app:app-icon"])
             SettingsCardDivider()
 
             // New Workspace Placement
@@ -293,6 +295,7 @@ public struct AppSection: View {
             // File Drops
             SettingsCardRow(
                 configurationReview: .settingsOnly,
+                searchAnchorID: "setting:app:file-drops",
                 String(localized: "settings.app.fileDrop.defaultBehavior", defaultValue: "File Drops"),
                 subtitle: fileDropSubtitle(fileDrop.current),
                 controlWidth: Self.columnWidth
@@ -336,6 +339,7 @@ public struct AppSection: View {
             // Terminal Config (host action)
             SettingsCardRow(
                 configurationReview: .action,
+                searchAnchorID: "setting:app:terminal-config",
                 String(localized: "settings.app.configWindow", defaultValue: "Terminal Config"),
                 subtitle: String(localized: "settings.app.configWindow.subtitle", defaultValue: "Open the cmux terminal config and generated preview in one utility window."),
                 controlWidth: Self.columnWidth
@@ -456,6 +460,7 @@ public struct AppSection: View {
             SettingsCardDivider()
             SettingsCardRow(
                 configurationReview: .action,
+                searchAnchorID: "setting:app:desktop-notifications",
                 String(localized: "settings.notifications.desktop", defaultValue: "Desktop Notifications"),
                 subtitle: String(localized: "settings.notifications.desktop.subtitle.notDetermined", defaultValue: "Desktop notifications are not enabled yet.")
             ) {

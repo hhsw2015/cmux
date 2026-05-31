@@ -696,7 +696,8 @@
         "notifications": "Сповіщення",
         "find": "Пошук",
         "terminal": "Термінал",
-        "window": "Вікно"
+        "window": "Вікно",
+        "diffViewer": "Перегляд diff"
       },
       "sc": {
         "ws-new": "Новий робочий простір",

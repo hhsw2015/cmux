@@ -2,6 +2,750 @@
   "sourceLanguage": "en",
   "version": "1.0",
   "strings": {
+    "remoteDaemon.error.missingPersistentPTYCapability": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "remote daemon does not support persistent SSH PTY sessions; reconnect the remote workspace to update cmux"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リモートデーモンは永続 SSH PTY セッションをサポートしていません。cmux を更新するにはリモートワークスペースに再接続してください。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon does not support persistent SSH PTY sessions; reconnect the remote workspace to update cmux"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon does not support persistent SSH PTY sessions; reconnect the remote workspace to update cmux"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon does not support persistent SSH PTY sessions; reconnect the remote workspace to update cmux"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon does not support persistent SSH PTY sessions; reconnect the remote workspace to update cmux"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon does not support persistent SSH PTY sessions; reconnect the remote workspace to update cmux"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon does not support persistent SSH PTY sessions; reconnect the remote workspace to update cmux"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon does not support persistent SSH PTY sessions; reconnect the remote workspace to update cmux"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon does not support persistent SSH PTY sessions; reconnect the remote workspace to update cmux"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon does not support persistent SSH PTY sessions; reconnect the remote workspace to update cmux"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon does not support persistent SSH PTY sessions; reconnect the remote workspace to update cmux"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon does not support persistent SSH PTY sessions; reconnect the remote workspace to update cmux"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon does not support persistent SSH PTY sessions; reconnect the remote workspace to update cmux"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon does not support persistent SSH PTY sessions; reconnect the remote workspace to update cmux"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon does not support persistent SSH PTY sessions; reconnect the remote workspace to update cmux"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon does not support persistent SSH PTY sessions; reconnect the remote workspace to update cmux"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon does not support persistent SSH PTY sessions; reconnect the remote workspace to update cmux"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon does not support persistent SSH PTY sessions; reconnect the remote workspace to update cmux"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon does not support persistent SSH PTY sessions; reconnect the remote workspace to update cmux"
+          }
+        }
+      }
+    },
+    "remoteDaemon.error.missingRequiredFunctionality": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "remote daemon is missing required functionality; reconnect the remote workspace to update cmux"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リモートデーモンに必要な機能がありません。cmux を更新するにはリモートワークスペースに再接続してください。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon is missing required functionality; reconnect the remote workspace to update cmux"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon is missing required functionality; reconnect the remote workspace to update cmux"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon is missing required functionality; reconnect the remote workspace to update cmux"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon is missing required functionality; reconnect the remote workspace to update cmux"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon is missing required functionality; reconnect the remote workspace to update cmux"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon is missing required functionality; reconnect the remote workspace to update cmux"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon is missing required functionality; reconnect the remote workspace to update cmux"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon is missing required functionality; reconnect the remote workspace to update cmux"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon is missing required functionality; reconnect the remote workspace to update cmux"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon is missing required functionality; reconnect the remote workspace to update cmux"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon is missing required functionality; reconnect the remote workspace to update cmux"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon is missing required functionality; reconnect the remote workspace to update cmux"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon is missing required functionality; reconnect the remote workspace to update cmux"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon is missing required functionality; reconnect the remote workspace to update cmux"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon is missing required functionality; reconnect the remote workspace to update cmux"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon is missing required functionality; reconnect the remote workspace to update cmux"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon is missing required functionality; reconnect the remote workspace to update cmux"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon is missing required functionality; reconnect the remote workspace to update cmux"
+          }
+        }
+      }
+    },
+    "remotePTYAttach.error.attachFailed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "remote PTY attach failed"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リモート PTY への接続に失敗しました"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY attach failed"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY attach failed"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY attach failed"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY attach failed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY attach failed"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY attach failed"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY attach failed"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY attach failed"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY attach failed"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY attach failed"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY attach failed"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY attach failed"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY attach failed"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY attach failed"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY attach failed"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY attach failed"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY attach failed"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY attach failed"
+          }
+        }
+      }
+    },
+    "remotePTYAttach.error.daemonTimeout": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "remote daemon did not respond in time"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リモートデーモンが時間内に応答しませんでした"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon did not respond in time"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon did not respond in time"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon did not respond in time"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon did not respond in time"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon did not respond in time"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon did not respond in time"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon did not respond in time"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon did not respond in time"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon did not respond in time"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon did not respond in time"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon did not respond in time"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon did not respond in time"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon did not respond in time"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon did not respond in time"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon did not respond in time"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon did not respond in time"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon did not respond in time"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote daemon did not respond in time"
+          }
+        }
+      }
+    },
+    "remotePTYAttach.error.inputBackedUp": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "remote PTY input is temporarily backed up"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リモート PTY 入力が一時的に滞留しています"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY input is temporarily backed up"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY input is temporarily backed up"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY input is temporarily backed up"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY input is temporarily backed up"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY input is temporarily backed up"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY input is temporarily backed up"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY input is temporarily backed up"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY input is temporarily backed up"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY input is temporarily backed up"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY input is temporarily backed up"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY input is temporarily backed up"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY input is temporarily backed up"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY input is temporarily backed up"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY input is temporarily backed up"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY input is temporarily backed up"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY input is temporarily backed up"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY input is temporarily backed up"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "new",
+            "value": "remote PTY input is temporarily backed up"
+          }
+        }
+      }
+    },
+    "remotePTYAttach.error.sessionEnded": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "persistent SSH PTY session is no longer running"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "永続 SSH PTY セッションはもう実行されていません"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "new",
+            "value": "persistent SSH PTY session is no longer running"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": "persistent SSH PTY session is no longer running"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "persistent SSH PTY session is no longer running"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "persistent SSH PTY session is no longer running"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": "persistent SSH PTY session is no longer running"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "persistent SSH PTY session is no longer running"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": "persistent SSH PTY session is no longer running"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "new",
+            "value": "persistent SSH PTY session is no longer running"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "new",
+            "value": "persistent SSH PTY session is no longer running"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "new",
+            "value": "persistent SSH PTY session is no longer running"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "new",
+            "value": "persistent SSH PTY session is no longer running"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "new",
+            "value": "persistent SSH PTY session is no longer running"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "new",
+            "value": "persistent SSH PTY session is no longer running"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "persistent SSH PTY session is no longer running"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "new",
+            "value": "persistent SSH PTY session is no longer running"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "new",
+            "value": "persistent SSH PTY session is no longer running"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "new",
+            "value": "persistent SSH PTY session is no longer running"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "new",
+            "value": "persistent SSH PTY session is no longer running"
+          }
+        }
+      }
+    },
     "settings.error.alert.dismiss": {
       "localizations": {
         "en": {
@@ -4155,6 +4899,131 @@
           "stringUnit": {
             "state": "translated",
             "value": "Loading diff..."
+          }
+        }
+      }
+    },
+    "diffViewer.loadingDiffTarget": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading diff: %@"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading diff: %@"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading diff: %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading diff: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading diff: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading diff: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading diff: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading diff: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "差分を読み込み中: %@"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading diff: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading diff: %@"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading diff: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading diff: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading diff: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading diff: %@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading diff: %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading diff: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading diff: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading diff: %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading diff: %@"
           }
         }
       }
@@ -106875,21 +107744,21 @@
       }
     },
     "settings.search.alias.setting.app.default-terminal": {
-        "extractionState": "manual",
-        "localizations": {
-            "en": {
-                "stringUnit": {
-                    "state": "translated",
-                    "value": "app.defaultTerminal default terminal ssh links command tool unix executable launch services handler"
-                }
-            },
-            "ja": {
-                "stringUnit": {
-                    "state": "translated",
-                    "value": "app.defaultTerminal default terminal ssh links command tool unix executable launch services handler デフォルトターミナル SSH リンク 実行ファイル"
-                }
-            }
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "app.defaultTerminal default terminal ssh links command tool unix executable launch services handler"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "app.defaultTerminal default terminal ssh links command tool unix executable launch services handler デフォルトターミナル SSH リンク 実行ファイル"
+          }
         }
+      }
     },
     "settings.search.alias.setting.app.new-workspace-placement": {
       "extractionState": "manual",
@@ -166032,6 +166901,40 @@
         }
       }
     },
+    "sidebar.extensions.action.surfaceCreateRejected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Surface could not be created"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーフェスを作成できませんでした"
+          }
+        }
+      }
+    },
+    "sidebar.extensions.action.surfaceNotFound": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Surface not found"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーフェスが見つかりません"
+          }
+        }
+      }
+    },
     "sidebar.extensions.action.urlRejected": {
       "extractionState": "manual",
       "localizations": {
@@ -166151,6 +167054,23 @@
         }
       }
     },
+    "sidebar.extensions.access.statusLimited": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limited"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "制限中"
+          }
+        }
+      }
+    },
     "sidebar.extensions.access.title": {
       "extractionState": "manual",
       "localizations": {
@@ -166174,13 +167094,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "CMUX could not load this extension's manifest. No workspace data or actions were shared."
+            "value": "CMUX could not load this extension's configuration. No workspace data or actions were shared."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "CMUXはこの拡張機能のマニフェストを読み込めませんでした。ワークスペースデータや操作は共有されていません。"
+            "value": "CMUXはこの拡張機能の設定を読み込めませんでした。ワークスペースデータや操作は共有されていません。"
           }
         }
       }
@@ -166191,13 +167111,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "CMUX lost the extension's XPC connection. No workspace data or actions are being shared."
+            "value": "CMUX lost the extension connection. No workspace data or actions are being shared."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "CMUXは拡張機能のXPC接続を失いました。ワークスペースデータや操作は共有されていません。"
+            "value": "CMUXは拡張機能との接続を失いました。ワークスペースデータや操作は共有されていません。"
           }
         }
       }
@@ -166208,13 +167128,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "CMUX rejected this extension's manifest. No workspace data or actions were shared."
+            "value": "CMUX rejected this extension's configuration. No workspace data or actions were shared."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "CMUXはこの拡張機能のマニフェストを拒否しました。ワークスペースデータや操作は共有されていません。"
+            "value": "CMUXはこの拡張機能の設定を拒否しました。ワークスペースデータや操作は共有されていません。"
           }
         }
       }
@@ -166225,13 +167145,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "CMUX did not receive this extension's manifest in time. No workspace data or actions are being shared."
+            "value": "CMUX did not receive this extension's configuration in time. No workspace data or actions are being shared."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "CMUXはこの拡張機能のマニフェストを時間内に受信しませんでした。ワークスペースデータや操作は共有されていません。"
+            "value": "CMUXはこの拡張機能の設定を時間内に受信しませんでした。ワークスペースデータや操作は共有されていません。"
           }
         }
       }
@@ -166242,13 +167162,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "CMUX did not receive a sidebar extension manifest, so no workspace data or actions were shared."
+            "value": "CMUX did not receive a sidebar extension configuration, so no workspace data or actions were shared."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "CMUXはサイドバー拡張機能のマニフェストを受信しなかったため、ワークスペースデータや操作は共有されていません。"
+            "value": "CMUXはサイドバー拡張機能の設定を受信しなかったため、ワークスペースデータや操作は共有されていません。"
           }
         }
       }
@@ -166276,13 +167196,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Blocked, manifest unavailable"
+            "value": "Blocked, configuration unavailable"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ブロック中、マニフェストを利用できません"
+            "value": "ブロック中、設定を利用できません"
           }
         }
       }
@@ -166293,13 +167213,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Blocked, invalid manifest"
+            "value": "Blocked, invalid configuration"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ブロック中、マニフェストが無効です"
+            "value": "ブロック中、設定が無効です"
           }
         }
       }
@@ -166310,13 +167230,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Blocked, manifest timed out"
+            "value": "Blocked, configuration timed out"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ブロック中、マニフェストがタイムアウトしました"
+            "value": "ブロック中、設定がタイムアウトしました"
           }
         }
       }
@@ -166327,13 +167247,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Blocked, missing manifest"
+            "value": "Blocked, missing configuration"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ブロック中、マニフェストがありません"
+            "value": "ブロック中、設定がありません"
           }
         }
       }
@@ -166358,16 +167278,124 @@
     "sidebar.extensions.browser.title": {
       "extractionState": "manual",
       "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "امتدادات الشريط الجانبي"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekstenzije bočne trake"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sidepaneludvidelser"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seitenleisten-Erweiterungen"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Sidebar Extensions"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extensiones de la barra lateral"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extensions de la barre latérale"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estensioni della barra laterale"
+          }
+        },
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "サイドバー拡張機能"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ផ្នែកបន្ថែមរបារចំហៀង"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사이드바 확장 프로그램"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sidefeltutvidelser"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rozszerzenia paska bocznego"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extensões da barra lateral"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Расширения боковой панели"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ส่วนขยายแถบด้านข้าง"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kenar çubuğu uzantıları"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Розширення бічної панелі"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "侧边栏扩展"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "側邊欄擴充功能"
           }
         }
       }
@@ -166497,13 +167525,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Manifest"
+            "value": "Configuration"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "マニフェスト"
+            "value": "設定"
           }
         }
       }
@@ -166548,13 +167576,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "ExtensionKit host, XPC connection"
+            "value": "Secure extension connection"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ExtensionKitホスト、XPC接続"
+            "value": "安全な拡張機能接続"
           }
         }
       }
@@ -166599,13 +167627,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hosted out of process"
+            "value": "Connected"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "別プロセスでホスト中"
+            "value": "接続済み"
           }
         }
       }
@@ -166630,16 +167658,124 @@
     "sidebar.extensions.manage": {
       "extractionState": "manual",
       "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إدارة امتدادات الشريط الجانبي..."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upravljaj ekstenzijama bočne trake..."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Administrer sidepaneludvidelser..."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seitenleisten-Erweiterungen verwalten..."
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Manage Sidebar Extensions..."
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Administrar extensiones de la barra lateral..."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gérer les extensions de la barre latérale..."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gestisci estensioni della barra laterale..."
+          }
+        },
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "サイドバー拡張機能を管理..."
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "គ្រប់គ្រងផ្នែកបន្ថែមរបារចំហៀង..."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사이드바 확장 프로그램 관리..."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Administrer sidefeltutvidelser..."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zarządzaj rozszerzeniami paska bocznego..."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gerenciar extensões da barra lateral..."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Управление расширениями боковой панели..."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "จัดการส่วนขยายแถบด้านข้าง..."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kenar çubuğu uzantılarını yönet..."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Керувати розширеннями бічної панелі..."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "管理侧边栏扩展..."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "管理側邊欄擴充功能..."
           }
         }
       }
@@ -166980,6 +168116,631 @@
           "stringUnit": {
             "state": "translated",
             "value": "デフォルトを使用"
+          }
+        }
+      }
+    },
+    "shortcut.diffViewerScrollDown.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Down"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Down"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Down"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Down"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Down"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Down"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Down"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Down"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "差分ビューア: 下へスクロール"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Down"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Down"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Down"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Down"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Down"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Down"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Down"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Down"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Down"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Down"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Down"
+          }
+        }
+      }
+    },
+    "shortcut.diffViewerScrollUp.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Up"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Up"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Up"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Up"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Up"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Up"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Up"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Up"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "差分ビューア: 上へスクロール"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Up"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Up"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Up"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Up"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Up"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Up"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Up"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Up"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Up"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Up"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll Up"
+          }
+        }
+      }
+    },
+    "shortcut.diffViewerScrollToBottom.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Bottom"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Bottom"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Bottom"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Bottom"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Bottom"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Bottom"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Bottom"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Bottom"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "差分ビューア: 末尾へスクロール"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Bottom"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Bottom"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Bottom"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Bottom"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Bottom"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Bottom"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Bottom"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Bottom"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Bottom"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Bottom"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Bottom"
+          }
+        }
+      }
+    },
+    "shortcut.diffViewerScrollToTop.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Top"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Top"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Top"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Top"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Top"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Top"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Top"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Top"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "差分ビューア: 先頭へスクロール"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Top"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Top"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Top"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Top"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Top"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Top"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Top"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Top"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Top"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Top"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Scroll to Top"
+          }
+        }
+      }
+    },
+    "shortcut.diffViewerOpenFileSearch.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Open File Search"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Open File Search"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Open File Search"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Open File Search"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Open File Search"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Open File Search"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Open File Search"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Open File Search"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "差分ビューア: ファイル検索を開く"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Open File Search"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Open File Search"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Open File Search"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Open File Search"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Open File Search"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Open File Search"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Open File Search"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Open File Search"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Open File Search"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Open File Search"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Open File Search"
           }
         }
       }

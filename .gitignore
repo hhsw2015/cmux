@@ -57,3 +57,6 @@ tmp-*/
 .zig/
 GhosttyKit.xcframework/
 .iter-logs/*.png
+
+# Local dogfood scratch (screenshots, recordings) — never commit
+artifacts/

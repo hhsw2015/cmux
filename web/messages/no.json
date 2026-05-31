@@ -695,7 +695,8 @@
         "notifications": "Varsler",
         "find": "Finn",
         "terminal": "Terminal",
-        "window": "Vindu"
+        "window": "Vindu",
+        "diffViewer": "Diff-viser"
       },
       "sc": {
         "ws-new": "Nytt arbeidsområde",
