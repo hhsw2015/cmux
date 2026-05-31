@@ -836,46 +836,32 @@ struct cmuxApp: App {
 
             Divider()
 
-            // [fork] Paper layout — Niri/PaperWM-style scrollable
-            // tiling. Opt-in workspace mode; bonsplit is the default.
-            // See docs/paper-layout-design.md.
+            // [fork] PR 5014 paper layout — released menu + shortcuts.
             Button(String(localized: "menu.workspace.togglePaperLayout", defaultValue: "Toggle Paper Layout")) {
-                paperWorkspace(action: "toggle")?.togglePaperLayoutMode()
+                paperWorkspace(action: "toggle")?.togglePaperLayoutModeForDebug()
             }
             .keyboardShortcut("p", modifiers: [.command, .control])
 
-            Menu(String(localized: "menu.workspace.paperSubmenu", defaultValue: "Paper")) {
-                Button(String(localized: "menu.workspace.paperFocusLeft", defaultValue: "Focus Column Left")) {
-                    paperWorkspace(action: "focusLeft")?.focusPaperColumn(delta: -1)
+            Menu(String(localized: "menu.workspace.paperViewport", defaultValue: "Paper Viewport")) {
+                Button(String(localized: "menu.workspace.paperViewLeft", defaultValue: "Move Viewport Left")) {
+                    paperWorkspace(action: "viewLeft")?.movePaperViewportForDebug(dx: -1200, dy: 0)
                 }
                 .keyboardShortcut(.leftArrow, modifiers: [.command, .control])
 
-                Button(String(localized: "menu.workspace.paperFocusRight", defaultValue: "Focus Column Right")) {
-                    paperWorkspace(action: "focusRight")?.focusPaperColumn(delta: 1)
+                Button(String(localized: "menu.workspace.paperViewRight", defaultValue: "Move Viewport Right")) {
+                    paperWorkspace(action: "viewRight")?.movePaperViewportForDebug(dx: 1200, dy: 0)
                 }
                 .keyboardShortcut(.rightArrow, modifiers: [.command, .control])
 
-                Divider()
-
-                Button(String(localized: "menu.workspace.paperMoveLeft", defaultValue: "Move Column Left")) {
-                    paperWorkspace(action: "moveLeft")?.moveActivePaperColumn(delta: -1)
+                Button(String(localized: "menu.workspace.paperViewUp", defaultValue: "Move Viewport Up")) {
+                    paperWorkspace(action: "viewUp")?.movePaperViewportForDebug(dx: 0, dy: -800)
                 }
-                .keyboardShortcut(.leftArrow, modifiers: [.command, .control, .shift])
+                .keyboardShortcut(.upArrow, modifiers: [.command, .control])
 
-                Button(String(localized: "menu.workspace.paperMoveRight", defaultValue: "Move Column Right")) {
-                    paperWorkspace(action: "moveRight")?.moveActivePaperColumn(delta: 1)
+                Button(String(localized: "menu.workspace.paperViewDown", defaultValue: "Move Viewport Down")) {
+                    paperWorkspace(action: "viewDown")?.movePaperViewportForDebug(dx: 0, dy: 800)
                 }
-                .keyboardShortcut(.rightArrow, modifiers: [.command, .control, .shift])
-
-                Divider()
-
-                Button(String(localized: "menu.workspace.paperCycleWidth", defaultValue: "Cycle Column Width")) {
-                    if let workspace = paperWorkspace(action: "cycleWidth") {
-                        let width = paperViewportWidthForActiveMainWindow() ?? 1200
-                        workspace.cycleActivePaperColumnWidth(viewportWidth: width)
-                    }
-                }
-                .keyboardShortcut("=", modifiers: [.command, .control])
+                .keyboardShortcut(.downArrow, modifiers: [.command, .control])
             }
         }
         helpCommands
@@ -1156,18 +1142,6 @@ struct cmuxApp: App {
         return NSApp.orderedWindows.first { window in
             appDelegate.mainWindowId(from: window) != nil
         } ?? NSApp.keyWindow ?? NSApp.mainWindow
-    }
-
-    /// Approximate viewport width for paper-layout shortcuts that need
-    /// to resolve proportion-based column widths (e.g. cycle width).
-    /// Falls back to nil when no main window is around.
-    private func paperViewportWidthForActiveMainWindow() -> CGFloat? {
-        guard let window = paperPreferredMainWindow() else { return nil }
-        // Use the content view's width (excluding sidebar) as a
-        // proxy for the workspace canvas width. The canvas resizes
-        // dynamically anyway; this is just for cycle preset math.
-        return window.contentView?.bounds.width
-            ?? window.frame.width
     }
 
     private func notificationMenuItemTitle(for notification: TerminalNotification) -> String {

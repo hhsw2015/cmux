@@ -663,9 +663,6 @@
 		C420Z000C420Z000C4202M04 /* CMUXSessionDaemon in Frameworks */ = {isa = PBXBuildFile; productRef = C420Z000C420Z000C4202M02 /* CMUXSessionDaemon */; };
 		D3806C01000000000000001 /* CMUXSettingsCore in Frameworks */ = {isa = PBXBuildFile; productRef = D3806C01000000000000004 /* CMUXSettingsCore */; };
 		D3806C01000000000000002 /* CMUXSettingsCore in Frameworks */ = {isa = PBXBuildFile; productRef = D3806C01000000000000004 /* CMUXSettingsCore */; };
-		C5AB300010000000000A0001 /* PaperLayoutState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5AB300010000000000A0002 /* PaperLayoutState.swift */; };
-		C5AB300010000000000A0003 /* PaperLayoutMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5AB300010000000000A0004 /* PaperLayoutMath.swift */; };
-		C5AB300010000000000A0005 /* Workspace+PaperLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5AB300010000000000A0006 /* Workspace+PaperLayout.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -1381,9 +1378,6 @@
 		C420Z000C420Z000C42HK101 /* ZmxCommandHooks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ZmxCommandHooks.swift; path = "Sources/ZmxCommandHooks.swift"; sourceTree = SOURCE_ROOT; };
 		C420Z000C420Z000C42PB101 /* ZmxPanelBinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ZmxPanelBinder.swift; path = "Sources/ZmxPanelBinder.swift"; sourceTree = SOURCE_ROOT; };
 		C420Z000C420Z000C42SV101 /* ZmxSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ZmxSettingsView.swift; path = "Sources/Settings/ZmxSettingsView.swift"; sourceTree = SOURCE_ROOT; };
-		C5AB300010000000000A0002 /* PaperLayoutState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "PaperLayoutState.swift"; path = "Sources/PaperLayout/PaperLayoutState.swift"; sourceTree = SOURCE_ROOT; };
-		C5AB300010000000000A0004 /* PaperLayoutMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "PaperLayoutMath.swift"; path = "Sources/PaperLayout/PaperLayoutMath.swift"; sourceTree = SOURCE_ROOT; };
-		C5AB300010000000000A0006 /* Workspace+PaperLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "Workspace+PaperLayout.swift"; path = "Sources/PaperLayout/Workspace+PaperLayout.swift"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1954,10 +1948,6 @@
 				C420Z000C420Z000C42HK101 /* ZmxCommandHooks.swift */,
 				C420Z000C420Z000C42PB101 /* ZmxPanelBinder.swift */,
 				C420Z000C420Z000C42SV101 /* ZmxSettingsView.swift */,
-				C5AB300010000000000A0002 /* PaperLayoutState.swift */,
-				C5AB300010000000000A0004 /* PaperLayoutMath.swift */,
-				C5AB300010000000000A0006 /* Workspace+PaperLayout.swift */,
-
 
 			);
 			path = Sources;
@@ -2873,10 +2863,6 @@
 				C420Z000C420Z000C42HK102 /* ZmxCommandHooks.swift in Sources in Sources */,
 				C420Z000C420Z000C42PB102 /* ZmxPanelBinder.swift in Sources in Sources */,
 				C420Z000C420Z000C42SV102 /* ZmxSettingsView.swift in Sources in Sources */,
-				C5AB300010000000000A0001 /* PaperLayoutState.swift in Sources */,
-				C5AB300010000000000A0003 /* PaperLayoutMath.swift in Sources */,
-				C5AB300010000000000A0005 /* Workspace+PaperLayout.swift in Sources */,
-
 
 			);
 			runOnlyForDeploymentPostprocessing = 0;

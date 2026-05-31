@@ -996,13 +996,8 @@ enum DebugUIEventCounters {
 }
 #endif
 
-// MARK: - Paper layout
+// MARK: - Paper layout (PR 5014)
 
-/// SwiftUI host for the paper layout. Wraps a horizontally scrolling
-/// `LazyHStack` of column views, each rendering one or more cmux
-/// panes. Off-viewport columns are not instantiated. See
-/// `docs/paper-layout-design.md` for the full design and the Niri /
-/// PaperWM model this descends from.
 struct PaperCanvasWorkspaceView: View {
     @ObservedObject var workspace: Workspace
     let isWorkspaceVisible: Bool
@@ -1018,82 +1013,53 @@ struct PaperCanvasWorkspaceView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
-                // Trackpad / scroll-wheel panner sits behind the
-                // pane content. Pane content covers the panner
-                // everywhere a tile is rendered, so terminal scroll
-                // inside a tile keeps working — only empty canvas
-                // (gaps between columns, end-of-row whitespace) feeds
-                // events to the panner.
+                // [fork] PR 5014 enhancement: trackpad / scroll-wheel
+                // panner sits at the back of the ZStack. It receives
+                // events only when the cursor is over empty canvas
+                // (between/around panes) — pane content covers the
+                // panner everywhere else, so terminal scroll inside
+                // the focused pane keeps working unchanged.
                 PaperViewportScrollPanner { dx, dy in
-                    workspace.panPaperViewport(dx: dx, dy: dy)
+                    guard workspace.layoutMode == .paper else { return }
+                    workspace.movePaperViewportForDebug(dx: dx, dy: dy)
                 }
 
-                if let state = workspace.paperLayoutState {
-                    canvasContent(state: state, viewportSize: proxy.size)
-                } else {
-                    // Workspace just toggled into paper mode without
-                    // any panes — render an empty placeholder so
-                    // SwiftUI doesn't see size 0 and refuse to layout.
-                    Color.clear
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if let paperLayoutState = workspace.paperLayoutState {
+                    paperCanvasView(paperLayoutState, viewportSize: proxy.size)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .clipped()
-        }
-    }
-
-    @ViewBuilder
-    private func canvasContent(state: PaperLayoutState, viewportSize: CGSize) -> some View {
-        let viewOriginX = PaperLayoutMath.viewOriginX(
-            state: state,
-            viewportWidth: viewportSize.width
-        )
-        HStack(alignment: .top, spacing: PaperLayoutMath.gap) {
-            ForEach(Array(state.columns.enumerated()), id: \.element.id) { idx, column in
-                paperColumnView(column: column, columnIdx: idx, viewportSize: viewportSize)
-                    .frame(
-                        width: PaperLayoutMath.resolveColumnWidth(column.width, viewportWidth: viewportSize.width),
-                        height: viewportSize.height
-                    )
+            .onAppear {
+                initializePaperLayoutIfNeeded(viewportSize: proxy.size)
+            }
+            .onChange(of: proxy.size) { _, viewportSize in
+                initializePaperLayoutIfNeeded(viewportSize: viewportSize)
             }
         }
-        .padding(.leading, PaperLayoutMath.gap)
-        .frame(height: viewportSize.height, alignment: .topLeading)
-        .offset(x: -viewOriginX)
     }
 
     @ViewBuilder
-    private func paperColumnView(column: PaperColumn, columnIdx: Int, viewportSize: CGSize) -> some View {
-        let columnWidth = PaperLayoutMath.resolveColumnWidth(column.width, viewportWidth: viewportSize.width)
-        let heights = PaperLayoutMath.tileHeights(column: column, availableHeight: viewportSize.height)
-
-        VStack(alignment: .leading, spacing: PaperLayoutMath.gap) {
-            ForEach(Array(column.tiles.enumerated()), id: \.element.id) { tileIdx, tile in
-                paperTileView(
-                    tile: tile,
-                    column: column,
-                    columnIdx: columnIdx,
-                    tileIdx: tileIdx
-                )
-                .frame(width: columnWidth, height: heights[tileIdx])
+    private func paperCanvasView(_ paperLayoutState: PaperLayoutState, viewportSize: CGSize) -> some View {
+        ZStack(alignment: .topLeading) {
+            if let activePane = paperLayoutState.paneNearestViewportOrigin() {
+                paperPaneView(activePane)
             }
         }
-        .frame(width: columnWidth, height: viewportSize.height, alignment: .topLeading)
+        .frame(width: viewportSize.width, height: viewportSize.height, alignment: .topLeading)
     }
 
     @ViewBuilder
-    private func paperTileView(tile: PaperTile, column: PaperColumn, columnIdx: Int, tileIdx: Int) -> some View {
-        let panel = workspace.panels[tile.id]
-        let paneId = PaneID(id: tile.id)
+    private func paperPaneView(_ pane: PaperPane) -> some View {
+        let paneId = PaneID(id: pane.id)
+        let selectedTabId = pane.selectedTabId ?? pane.tabIds.first
+        let panel = selectedTabId.flatMap { workspace.panel(for: TabID(uuid: $0)) }
+
         if let panel {
-            let isFocused = isWorkspaceInputActive
-                && workspace.focusedPanelId == panel.id
-                && workspace.paperLayoutState?.activeColumnIdx == columnIdx
-                && column.activeTileIdx == tileIdx
+            let isFocused = isWorkspaceInputActive && workspace.focusedPanelId == panel.id
             let isVisibleInUI = WorkspaceContentView.panelVisibleInUI(
                 isWorkspaceVisible: isWorkspaceVisible,
-                isSelectedInPane: column.activeTileIdx == tileIdx,
+                isSelectedInPane: true,
                 isFocused: isFocused
             )
             let showsNotificationRing = Workspace.shouldShowUnreadIndicator(
@@ -1107,58 +1073,68 @@ struct PaperCanvasWorkspaceView: View {
                 isWorkspaceManualUnreadRepresentative: workspaceManualUnreadPanelId == panel.id
             )
 
-            PanelContentView(
-                panel: panel,
-                workspaceId: workspace.id,
-                paneId: paneId,
-                isFocused: isFocused,
-                isSelectedInPane: column.activeTileIdx == tileIdx,
-                isVisibleInUI: isVisibleInUI,
-                portalPriority: workspacePortalPriority,
-                isSplit: isSplit,
-                appearance: appearance,
-                hasUnreadNotification: showsNotificationRing && !usesWorkspacePaneOverlay,
-                terminalAgentContext: WorkspaceContentView.terminalAgentContext(panel: panel, workspace: workspace),
-                onFocus: {
-                    guard isWorkspaceInputActive else { return }
-                    guard workspace.panels[panel.id] != nil else { return }
-                    workspace.focusPanel(panel.id, trigger: .terminalFirstResponder)
-                },
-                onRequestPanelFocus: {
-                    guard isWorkspaceInputActive else { return }
-                    guard workspace.panels[panel.id] != nil else { return }
-                    AppDelegate.shared?.noteMainPanelKeyboardFocusIntent(
-                        workspaceId: workspace.id,
-                        panelId: panel.id,
-                        in: NSApp.keyWindow ?? NSApp.mainWindow
-                    )
-                    workspace.focusPanel(panel.id)
-                },
-                onResumeAgentHibernation: {
-                    guard isWorkspaceInputActive else { return }
-                    guard workspace.panels[panel.id] != nil else { return }
-                    workspace.resumeAgentHibernation(panelId: panel.id, focus: true)
-                },
-                onAutoResumeAgentHibernation: {
-                    guard isWorkspaceInputActive else { return }
-                    guard workspace.panels[panel.id] != nil else { return }
-                    workspace.resumeAgentHibernation(panelId: panel.id, focus: false)
-                },
-                onTriggerFlash: { workspace.triggerDebugFlash(panelId: panel.id) }
-            )
+            ZStack {
+                PanelContentView(
+                    panel: panel,
+                    workspaceId: workspace.id,
+                    paneId: paneId,
+                    isFocused: isFocused,
+                    isSelectedInPane: true,
+                    isVisibleInUI: isVisibleInUI,
+                    portalPriority: workspacePortalPriority,
+                    isSplit: isSplit,
+                    appearance: appearance,
+                    hasUnreadNotification: showsNotificationRing && !usesWorkspacePaneOverlay,
+                    terminalAgentContext: WorkspaceContentView.terminalAgentContext(panel: panel, workspace: workspace),
+                    onFocus: {
+                        guard isWorkspaceInputActive else { return }
+                        guard workspace.panels[panel.id] != nil else { return }
+                        workspace.focusPanel(panel.id, trigger: .terminalFirstResponder)
+                    },
+                    onRequestPanelFocus: {
+                        guard isWorkspaceInputActive else { return }
+                        guard workspace.panels[panel.id] != nil else { return }
+                        AppDelegate.shared?.noteMainPanelKeyboardFocusIntent(
+                            workspaceId: workspace.id,
+                            panelId: panel.id,
+                            in: NSApp.keyWindow ?? NSApp.mainWindow
+                        )
+                        workspace.focusPanel(panel.id)
+                    },
+                    onResumeAgentHibernation: {
+                        guard isWorkspaceInputActive else { return }
+                        guard workspace.panels[panel.id] != nil else { return }
+                        workspace.resumeAgentHibernation(panelId: panel.id, focus: true)
+                    },
+                    onAutoResumeAgentHibernation: {
+                        guard isWorkspaceInputActive else { return }
+                        guard workspace.panels[panel.id] != nil else { return }
+                        workspace.resumeAgentHibernation(panelId: panel.id, focus: false)
+                    },
+                    onTriggerFlash: { workspace.triggerDebugFlash(panelId: panel.id) }
+                )
+            }
+            .frame(width: pane.frame.width, height: pane.frame.height)
         } else {
-            EmptyPanelView(workspace: workspace, paneId: paneId)
-                .onTapGesture {
-                    workspace.bonsplitController.focusPane(paneId)
-                }
+            ZStack {
+                EmptyPanelView(workspace: workspace, paneId: paneId)
+            }
+            .frame(width: pane.frame.width, height: pane.frame.height)
+            .onTapGesture {
+                workspace.bonsplitController.focusPane(paneId)
+            }
         }
+    }
+
+    private func initializePaperLayoutIfNeeded(viewportSize: CGSize) {
+        workspace.ensurePaperLayoutState(viewportSize: viewportSize)
     }
 }
 
-/// Trackpad / scroll-wheel handler for the paper canvas. Lives behind
-/// the pane content so terminal scrolling stays unaffected — events
-/// only land here when the cursor is on empty canvas (gaps, end of
-/// row) or on a non-scrolling region of the active pane.
+/// [fork] PR 5014 enhancement: trackpad / scroll-wheel handler for the
+/// paper canvas. Lives as a hit-testable layer behind the pane content
+/// so terminal scrolling stays unaffected — events only land here when
+/// the cursor is on empty canvas or a non-scrolling region.
 private struct PaperViewportScrollPanner: NSViewRepresentable {
     let onScroll: (_ dx: CGFloat, _ dy: CGFloat) -> Void
 
@@ -1180,6 +1156,9 @@ private final class PaperViewportScrollPannerView: NSView {
     override var mouseDownCanMoveWindow: Bool { false }
 
     override func scrollWheel(with event: NSEvent) {
+        // Trackpad two-finger pan and external mouse-wheel both flow
+        // through scrollingDeltaX/Y. Invert dy so dragging fingers up
+        // moves the viewport up (i.e., reveals content below).
         let dx = -event.scrollingDeltaX
         let dy = -event.scrollingDeltaY
         guard dx != 0 || dy != 0 else { return }
