@@ -9,17 +9,7 @@ import WebKit
 import Combine
 import ObjectiveC.runtime
 import Darwin
-
-func cmuxJavaScriptStringLiteral(_ value: String?) -> String? {
-    guard let value else { return nil }
-    // Serialize as a JSON array, then strip the outer brackets to get a quoted JS string literal.
-    guard let data = try? JSONSerialization.data(withJSONObject: [value]),
-          let arrayLiteral = String(data: data, encoding: .utf8),
-          arrayLiteral.count >= 2 else {
-        return nil
-    }
-    return String(arrayLiteral.dropFirst().dropLast())
-}
+import CmuxFoundation
 
 private struct MultiWindowRouteCLIResult {
     let status: String
@@ -10764,7 +10754,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         awaitingInputId: String? = nil,
         completion: @escaping ([String: String]) -> Void
     ) {
-        let expectedInputIdLiteral = cmuxJavaScriptStringLiteral(awaitingInputId) ?? "null"
+        let expectedInputIdLiteral = awaitingInputId?.javaScriptStringLiteral ?? "null"
         let script = """
         (() => {
           const expectedInputId = \(expectedInputIdLiteral);
@@ -13078,6 +13068,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         if matchConfiguredShortcut(event: event, action: .attachTextBoxFile) {
             let routedManager = preferredMainWindowContextForShortcutRouting(event: event)?.tabManager ?? tabManager
             let handled = routedManager?.attachFileToFocusedTerminalTextBoxInput() ?? false
+            return handled
+        }
+
+        if matchConfiguredShortcut(event: event, action: .sendCtrlFToTerminal) {
+            let routedManager = preferredMainWindowContextForShortcutRouting(event: event)?.tabManager ?? tabManager
+            let handled = routedManager?.sendCtrlFToFocusedTerminal() ?? false
+#if DEBUG
+            cmuxDebugLog(
+                "shortcut.action name=sendCtrlFToTerminal handled=\(handled ? 1 : 0) " +
+                "\(debugShortcutRouteSnapshot(event: event))"
+            )
+#endif
+            // Only consume when a focused terminal actually received the chord.
             return handled
         }
 

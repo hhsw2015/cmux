@@ -675,9 +675,8 @@ enum MinimalModeSidebarTitlebarControlsMetrics {
     static let hostHeight: CGFloat = 28
     static let singleButtonHostWidth: CGFloat = hostHeight
 
-    static func titlebarControlsOpticalYOffset(backingScaleFactor: CGFloat?) -> CGFloat {
-        let scale = max(1.0, backingScaleFactor ?? 1.0)
-        return 1.0 / scale
+    static func titlebarControlsOpticalYOffset(backingScaleFactor _: CGFloat?) -> CGFloat {
+        0
     }
 
     @MainActor
@@ -827,9 +826,9 @@ enum MinimalModeSidebarControlActionSlot: Int, CaseIterable {
 
     var acceptsContextMenu: Bool {
         switch self {
-        case .newTab, .focusHistoryBack, .focusHistoryForward:
+        case .toggleSidebar, .newTab, .focusHistoryBack, .focusHistoryForward:
             return true
-        case .toggleSidebar, .showNotifications:
+        case .showNotifications:
             return false
         }
     }
