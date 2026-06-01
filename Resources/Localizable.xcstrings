@@ -2,6 +2,281 @@
   "sourceLanguage": "en",
   "version": "1.0",
   "strings": {
+    "cli.hooks.kiro.postInstallNote": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiro applies these hooks only when run as the cmux agent. Start Kiro with `kiro-cli chat --agent cmux`, or make it the default with `kiro-cli settings chat.defaultAgent cmux`."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiroフックはcmuxエージェントとして実行した場合のみ適用されます。Kiroを`kiro-cli chat --agent cmux`で起動するか、`kiro-cli settings chat.defaultAgent cmux`でデフォルトに設定してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiro 훅은 cmux 에이전트로 실행할 때만 적용됩니다. `kiro-cli chat --agent cmux`로 Kiro를 실행하거나 `kiro-cli settings chat.defaultAgent cmux`로 기본값으로 설정하세요."
+          }
+        }
+      }
+    },
+    "settings.automation.kiro": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiro CLI Integration"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiro CLI連携"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiro CLI 연동"
+          }
+        }
+      }
+    },
+    "settings.automation.kiro.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks must be installed with `cmux hooks kiro install`, then run Kiro with `kiro-cli chat --agent cmux` (or set it as your default agent). They no-op outside cmux terminals."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フックは`cmux hooks kiro install`でインストールし、Kiroを`kiro-cli chat --agent cmux`で起動（またはデフォルトエージェントに設定）してください。cmuxターミナル外では動作しません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "`cmux hooks kiro install`로 훅을 설치한 다음 `kiro-cli chat --agent cmux`로 Kiro를 실행(또는 기본 에이전트로 설정)하세요. cmux 터미널 외부에서는 작동하지 않습니다."
+          }
+        }
+      }
+    },
+    "settings.automation.kiro.notificationLevel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiro Notification Level"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiro通知レベル"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiro 알림 수준"
+          }
+        }
+      }
+    },
+    "settings.automation.kiro.notificationLevel.minimal": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minimal"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最小"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "최소"
+          }
+        }
+      }
+    },
+    "settings.automation.kiro.notificationLevel.standard": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "標準"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "표준"
+          }
+        }
+      }
+    },
+    "settings.automation.kiro.notificationLevel.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controls how many Kiro tool events appear in Feed."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Feedに表示するKiroツールイベントの量を制御します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Feed에 표시되는 Kiro 도구 이벤트 수를 제어합니다."
+          }
+        }
+      }
+    },
+    "settings.automation.kiro.notificationLevel.verbose": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbose"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "詳細"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자세히"
+          }
+        }
+      }
+    },
+    "settings.automation.kiro.subtitleOff": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiro runs without cmux integration."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiroはcmux連携なしで動作します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiro가 cmux 연동 없이 실행됩니다."
+          }
+        }
+      }
+    },
+    "settings.automation.kiro.subtitleOn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sidebar shows Kiro session status, notifications, and Feed tool events."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サイドバーにKiroセッションのステータス、通知、Feedツールイベントが表示されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사이드바에 Kiro 세션 상태, 알림, Feed 도구 이벤트가 표시됩니다."
+          }
+        }
+      }
+    },
+    "settings.search.alias.setting.automation.kiro": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.kiroIntegration kiro cli amazon q agent hooks notifications"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.kiroIntegration kiro cli amazon q agent hooks notifications kiro cli amazon q エージェント フック 通知 連携"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.kiroIntegration kiro cli amazon q agent hooks notifications 자동화 kiro cli amazon q 에이전트 훅 알림 연동"
+          }
+        }
+      }
+    },
+    "settings.search.alias.setting.automation.kiro-notification-level": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.kiroNotificationLevel kiro cli notification verbosity minimal standard verbose tool events"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.kiroNotificationLevel kiro cli notification verbosity minimal standard verbose tool events kiro 通知 レベル 詳細 最小 標準 ツール イベント"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.kiroNotificationLevel kiro cli notification verbosity minimal standard verbose tool events kiro 알림 수준 자세히 최소 표준 도구 이벤트"
+          }
+        }
+      }
+    },
     "remoteDaemon.error.missingPersistentPTYCapability": {
       "localizations": {
         "en": {
@@ -97936,19 +98211,70 @@
         }
       }
     },
+    "settings.betaFeatures.extensions": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extensions"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エクステンション"
+          }
+        }
+      }
+    },
+    "settings.betaFeatures.extensions.subtitleOff": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hides all extension UI until you enable it here."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ここで有効にするまで、すべてのエクステンション UI を隠します。"
+          }
+        }
+      }
+    },
+    "settings.betaFeatures.extensions.subtitleOn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shows the puzzle button, the sidebar-toggle extension menu, and lets you install and host sidebar extensions."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "パズルボタンとサイドバー切り替えのエクステンションメニューを表示し、サイドバーエクステンションのインストールとホストを可能にします。"
+          }
+        }
+      }
+    },
     "settings.betaFeatures.warning": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dock is unstable and may change or break. Enable it only when you are testing it."
+            "value": "These features are experimental and may change or break. Enable them only when you are testing them."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dock は不安定で、変更されたり壊れたりする可能性があります。テストする場合だけ有効にしてください。"
+            "value": "これらの機能は実験的で、変更されたり壊れたりする可能性があります。テストする場合だけ有効にしてください。"
           }
         }
       }
@@ -105175,6 +105501,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "퀵 터미널"
+          }
+        }
+      }
+    },
+    "settings.fontSize.valuePoints": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ pt"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ pt"
           }
         }
       }
@@ -112421,6 +112764,23 @@
         }
       }
     },
+    "settings.search.alias.setting.terminal.tab-bar-font-size": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "surface-tab-bar-font-size tab bar font size text scale terminal browser pane tab title"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "surface-tab-bar-font-size tab bar font size text scale terminal browser pane tab title タブバー フォントサイズ テキスト 拡大 ターミナル ブラウザ ペーン タブ タイトル"
+          }
+        }
+      }
+    },
     "settings.search.alias.setting.terminal.copy-on-select": {
       "extractionState": "manual",
       "localizations": {
@@ -112542,6 +112902,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "terminal.copyOnSelect copy on selection select clipboard mouse double click triple click iterm 複製 選取 剪貼簿 滑鼠 按兩下 按三下"
+          }
+        }
+      }
+    },
+    "settings.search.alias.setting.sidebarAppearance.font-size": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar-font-size sidebar font size text scale workspace title badge metadata shortcut hint"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar-font-size sidebar font size text scale workspace title badge metadata shortcut hint サイドバー フォントサイズ テキスト 拡大 ワークスペース タイトル バッジ メタデータ ショートカット ヒント"
           }
         }
       }
@@ -138895,6 +139272,91 @@
         }
       }
     },
+    "settings.sidebarAppearance.fontSize": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sidebar Font Size"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サイドバーのフォントサイズ"
+          }
+        }
+      }
+    },
+    "settings.sidebarAppearance.fontSize.points": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ pt"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ pt"
+          }
+        }
+      }
+    },
+    "settings.sidebarAppearance.fontSize.reset": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リセット"
+          }
+        }
+      }
+    },
+    "settings.sidebarAppearance.fontSize.saveFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't save sidebar font size. Please try again."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サイドバーのフォントサイズを保存できませんでした。もう一度お試しください。"
+          }
+        }
+      }
+    },
+    "settings.sidebarAppearance.fontSize.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controls workspace titles, metadata, badges, and shortcut hints in the left sidebar."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左サイドバーのワークスペースタイトル、メタデータ、バッジ、ショートカットヒントのサイズを調整します。"
+          }
+        }
+      }
+    },
     "settings.sidebarAppearance.matchTerminalBackground": {
       "extractionState": "manual",
       "localizations": {
@@ -142799,40 +143261,6 @@
         }
       }
     },
-    "contextMenu.workspaceSettings": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Workspace Settings"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ワークスペース設定"
-          }
-        }
-      }
-    },
-    "contextMenu.workspaceSettings.hideTerminalScrollBar": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hide Terminal Scroll Bar"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ターミナルのスクロールバーを隠す"
-          }
-        }
-      }
-    },
     "settings.section.terminal": {
       "extractionState": "manual",
       "localizations": {
@@ -142846,6 +143274,91 @@
           "stringUnit": {
             "state": "translated",
             "value": "ターミナル"
+          }
+        }
+      }
+    },
+    "settings.terminal.tabBarFontSize": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab Bar Font Size"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブバーのフォントサイズ"
+          }
+        }
+      }
+    },
+    "settings.terminal.tabBarFontSize.points": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ pt"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ pt"
+          }
+        }
+      }
+    },
+    "settings.terminal.tabBarFontSize.reset": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リセット"
+          }
+        }
+      }
+    },
+    "settings.terminal.tabBarFontSize.saveFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't save tab bar font size. Please try again."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブバーのフォントサイズを保存できませんでした。もう一度お試しください。"
+          }
+        }
+      }
+    },
+    "settings.terminal.tabBarFontSize.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controls the font size of the terminal and browser tab titles at the top of each pane."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "各ペーン上部のターミナルとブラウザのタブタイトルのフォントサイズを調整します。"
           }
         }
       }
@@ -142890,13 +143403,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Shows the right-edge terminal scroll bar in shell scrollback. cmux hides it automatically for alternate-screen style TUI surfaces and you can also disable it per workspace."
+            "value": "Shows the right-edge terminal scroll bar in shell scrollback. cmux hides it automatically for alternate-screen style TUI surfaces."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "シェルのスクロールバックでは右端のターミナルスクロールバーを表示します。cmux は代替画面系の TUI では自動的に隠し、ワークスペースごとにも無効化できます。"
+            "value": "シェルのスクロールバックでは右端のターミナルスクロールバーを表示します。cmux は代替画面系の TUI では自動的に隠します。"
           }
         }
       }

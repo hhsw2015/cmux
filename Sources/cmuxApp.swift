@@ -1,4 +1,5 @@
 import AppKit
+import CmuxSocketControl
 import CmuxSettings
 import CmuxSettingsUI
 import SwiftUI
@@ -41,6 +42,41 @@ struct cmuxApp: App {
         // shared static.
         let settingsCatalog = SettingCatalog()
         let configFileURL = CmuxConfigLocation().userConfigFile
+        // Secrets live in their own 0600 files under Application Support/cmux,
+        // the same directory (and `socket-control-password` file) the socket
+        // auth path reads via SocketControlPasswordStore, so the Settings UI
+        // and the listener share one source of truth.
+        let secretBaseDirectory = SocketControlPasswordStore.defaultPasswordFileURL()?
+            .deletingLastPathComponent()
+            ?? FileManager.default
+                .urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+                .appendingPathComponent("cmux", isDirectory: true)
+            ?? FileManager.default.temporaryDirectory
+        let secretStore = SecretFileStore(baseDirectory: secretBaseDirectory)
+
+        // Lift any plaintext socket-control password out of `cmux.json` into the
+        // secure store, then scrub it from the config. This runs here, in the App
+        // initializer, on purpose: it completes before the managed-config layer
+        // (`CmuxSettingsFileStore`, loaded later during app launch) reads the
+        // file, so removing the key can never be misread as a removed managed
+        // override that would trigger a restore. The secure file the migration
+        // writes is the same one both the Settings UI (via `secretStore`) and the
+        // socket listener (via `SocketControlPasswordStore`) read.
+        let socketPasswordStore = SocketControlPasswordStore()
+        let secretMigrationTimestamp: String = {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withYear, .withMonth, .withDay, .withTime]
+            return formatter.string(from: Date())
+                .replacingOccurrences(of: ":", with: "")
+                .replacingOccurrences(of: "-", with: "")
+        }()
+        PlaintextSecretMigration.scrub(
+            plaintextKeyPath: ["automation", "socketPassword"],
+            configURL: configFileURL,
+            loadCurrentSecret: { (try? socketPasswordStore.loadPassword()) ?? nil },
+            saveSecret: { try socketPasswordStore.savePassword($0) },
+            backupTimestamp: secretMigrationTimestamp
+        )
         self.settingsRuntime = SettingsRuntime(
             catalog: settingsCatalog,
             userDefaultsStore: UserDefaultsSettingsStore(
@@ -48,6 +84,7 @@ struct cmuxApp: App {
                 migrating: settingsCatalog.all
             ),
             jsonStore: JSONConfigStore(fileURL: configFileURL),
+            secretStore: secretStore,
             errorLog: SettingsErrorLog(),
             accountFlow: HostAccountFlow(authManager: .shared),
             hostActions: HostSettingsActions(configFileURL: configFileURL)
@@ -126,7 +163,7 @@ struct cmuxApp: App {
         if !SocketControlSettings.isDebugLikeBundleIdentifier(bundleID)
             && !SocketControlSettings.isStagingBundleIdentifier(bundleID) {
             StartupBreadcrumbLog.append("app.init.keychainMigration.begin")
-            SocketControlPasswordStore.migrateLegacyKeychainPasswordIfNeeded(defaults: defaults)
+            SocketControlPasswordStore().migrateLegacyKeychainPasswordIfNeeded(defaults: defaults)
             StartupBreadcrumbLog.append("app.init.keychainMigration.complete")
         }
         migrateSidebarAppearanceDefaultsIfNeeded(defaults: defaults)
@@ -5159,6 +5196,47 @@ enum GeminiIntegrationSettings {
     }
 }
 
+enum KiroIntegrationSettings {
+    enum NotificationLevel: String, CaseIterable, Identifiable {
+        case minimal
+        case standard
+        case verbose
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .minimal:
+                return String(localized: "settings.automation.kiro.notificationLevel.minimal", defaultValue: "Minimal")
+            case .standard:
+                return String(localized: "settings.automation.kiro.notificationLevel.standard", defaultValue: "Standard")
+            case .verbose:
+                return String(localized: "settings.automation.kiro.notificationLevel.verbose", defaultValue: "Verbose")
+            }
+        }
+    }
+
+    static let hooksEnabledKey = "kiroHooksEnabled"
+    static let defaultHooksEnabled = true
+    static let notificationLevelKey = "kiroNotificationLevel"
+    static let defaultNotificationLevel = NotificationLevel.standard
+
+    static func hooksEnabled(defaults: UserDefaults = .standard) -> Bool {
+        if defaults.object(forKey: hooksEnabledKey) == nil {
+            return defaultHooksEnabled
+        }
+        return defaults.bool(forKey: hooksEnabledKey)
+    }
+
+    static func notificationLevel(defaults: UserDefaults = .standard) -> NotificationLevel {
+        guard let raw = defaults.string(forKey: notificationLevelKey),
+              let level = NotificationLevel(rawValue: raw) else {
+            return defaultNotificationLevel
+        }
+        return level
+    }
+}
+
 enum WelcomeSettings {
     static let shownKey = "cmuxWelcomeShown"
 }
@@ -6209,7 +6287,7 @@ struct SettingsView: View {
     }
 
     private var hasSocketPasswordConfigured: Bool {
-        SocketControlPasswordStore.hasConfiguredPassword()
+        SocketControlPasswordStore().hasConfiguredPassword(allowLazyKeychainFallback: true)
     }
 
     private var browserHistorySubtitle: String {
@@ -6541,7 +6619,7 @@ struct SettingsView: View {
         }
 
         do {
-            try SocketControlPasswordStore.savePassword(trimmed)
+            try SocketControlPasswordStore().savePassword(trimmed)
             draftState.socketPasswordDraft = ""
             socketPasswordStatusMessage = String(localized: "settings.automation.socketPassword.saved", defaultValue: "Password saved.")
             socketPasswordStatusIsError = false
@@ -6553,7 +6631,7 @@ struct SettingsView: View {
 
     private func clearSocketPassword() {
         do {
-            try SocketControlPasswordStore.clearPassword()
+            try SocketControlPasswordStore().clearPassword()
             draftState.socketPasswordDraft = ""
             socketPasswordStatusMessage = String(localized: "settings.automation.socketPassword.cleared", defaultValue: "Password cleared.")
             socketPasswordStatusIsError = false
@@ -7764,10 +7842,9 @@ struct SettingsView: View {
                         .disabled(sidebarHideAllDetails)
                     }
 
-                    BetaFeaturesSettingsView(
-                        dockEnabled: $rightSidebarDockEnabled
-                    )
-
+                    // BetaFeaturesSettingsView removed upstream; the
+                    // SPM `BetaFeaturesSection` covers it via the
+                    // CmuxSettings catalog driven UI.
                     ZmxSettingsView()
                         .settingsSearchAnchor(SettingsSearchIndex.sectionID(for: .zmx))
 

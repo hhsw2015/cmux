@@ -264,7 +264,6 @@ extension Workspace {
             isManuallyUnread: isWorkspaceManuallyUnread,
             hasUnreadIndicator: hasWorkspaceUnreadIndicator,
             notifications: workspaceNotificationSnapshots.isEmpty ? nil : workspaceNotificationSnapshots,
-            terminalScrollBarHidden: terminalScrollBarHidden ? true : nil,
             currentDirectory: currentDirectory,
             focusedPanelId: focusedPanelId,
             layout: selectedLayout,
@@ -368,7 +367,6 @@ extension Workspace {
         setCustomColor(snapshot.customColor)
         isPinned = snapshot.isPinned
         groupId = snapshot.groupId
-        setTerminalScrollBarHidden(snapshot.terminalScrollBarHidden ?? false)
 
         // Status entries and agent PIDs are ephemeral runtime state tied to running
         // processes (e.g. claude_code "Running"). Don't restore them across app
@@ -10764,6 +10762,8 @@ final class Workspace: Identifiable, ObservableObject {
     /// The group entity itself lives in `TabManager.workspaceGroups`.
     @Published var groupId: UUID?
     @Published var customColor: String?  // hex string, e.g. "#C0392B"
+    // Legacy in-memory state for old helpers/tests. Product UI, rendering, and
+    // session persistence no longer honor per-workspace scrollbar overrides.
     @Published private(set) var terminalScrollBarHidden: Bool = false
     @Published var currentDirectory: String {
         didSet {
@@ -11129,7 +11129,6 @@ final class Workspace: Identifiable, ObservableObject {
             sidebarObservationSignal($customDescription),
             sidebarObservationSignal($isPinned),
             sidebarObservationSignal($customColor),
-            sidebarObservationSignal($terminalScrollBarHidden),
             sidebarObservationSignal($latestConversationMessage),
             sidebarObservationSignal($latestSubmittedMessage),
             sidebarObservationSignal($latestSubmittedAt),
@@ -11940,6 +11939,7 @@ final class Workspace: Identifiable, ObservableObject {
     /// Deterministic tab selection to apply after a tab closes.
     /// Keyed by the closing tab ID, value is the tab ID we want to select next.
     private var postCloseSelectTabId: [TabID: TabID] = [:]
+    private var postCloseClearSplitZoomTabIds: Set<TabID> = []
     /// Panel IDs that were in a pane when a pane-close operation was approved.
     /// Bonsplit pane-close does not emit per-tab didClose callbacks.
     private var pendingPaneClosePanelIds: [UUID: [UUID]] = [:]
@@ -19578,7 +19578,14 @@ extension Workspace: BonsplitDelegate {
             return false
         }
 
-        func recordPostCloseSelection() {
+        func recordPostCloseState() {
+            if controller.zoomedPaneId == pane,
+               controller.selectedTab(inPane: pane)?.id == tab.id {
+                postCloseClearSplitZoomTabIds.insert(tab.id)
+            } else {
+                postCloseClearSplitZoomTabIds.remove(tab.id)
+            }
+
             let tabs = controller.tabs(inPane: pane)
             guard let idx = tabs.firstIndex(where: { $0.id == tab.id }) else {
                 postCloseSelectTabId.removeValue(forKey: tab.id)
@@ -19607,7 +19614,7 @@ extension Workspace: BonsplitDelegate {
             } else {
                 clearStagedClosedBrowserRestoreSnapshot(for: tab.id)
             }
-            recordPostCloseSelection()
+            recordPostCloseState()
             return true
         }
 
@@ -19645,7 +19652,7 @@ extension Workspace: BonsplitDelegate {
         // Check if the panel needs close confirmation
         guard let panelId = panelIdFromSurfaceId(tab.id) else {
             stageClosedBrowserRestoreSnapshotIfNeeded(for: tab, inPane: pane, controller: controller)
-            recordPostCloseSelection()
+            recordPostCloseState()
             return true
         }
 
@@ -19702,7 +19709,7 @@ extension Workspace: BonsplitDelegate {
         } else {
             clearStagedClosedBrowserRestoreSnapshot(for: tab.id)
         }
-        recordPostCloseSelection()
+        recordPostCloseState()
         return true
     }
 
@@ -19712,8 +19719,12 @@ extension Workspace: BonsplitDelegate {
         forceCloseTabIds.remove(tabId)
         tabCloseButtonCloseTabIds.remove(tabId)
         let selectTabId = postCloseSelectTabId.removeValue(forKey: tabId)
+        let shouldClearSplitZoom = postCloseClearSplitZoomTabIds.remove(tabId) != nil
         let closedBrowserRestoreSnapshot = pendingClosedBrowserRestoreSnapshots.removeValue(forKey: tabId)
         let isDetaching = detachingTabIds.remove(tabId) != nil || isDetachingCloseTransaction
+        if shouldClearSplitZoom {
+            clearSplitZoom()
+        }
 
         // Clean up our panel
         guard let panelId = panelIdFromSurfaceId(tabId) else {
