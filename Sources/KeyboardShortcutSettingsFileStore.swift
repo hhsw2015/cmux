@@ -363,6 +363,9 @@ final class CmuxSettingsFileStore {
         if let browserSection = root["browser"] as? [String: Any] {
             parseBrowserSection(browserSection, sourcePath: sourcePath, snapshot: &snapshot)
         }
+        if let markdownSection = root["markdown"] as? [String: Any] {
+            parseMarkdownSection(markdownSection, sourcePath: sourcePath, snapshot: &snapshot)
+        }
         if let workspaceGroupsSection = root["workspaceGroups"] as? [String: Any] {
             parseWorkspaceGroupsSection(workspaceGroupsSection, sourcePath: sourcePath, snapshot: &snapshot)
         }
@@ -615,6 +618,25 @@ final class CmuxSettingsFileStore {
             snapshot.managedUserDefaults[QuickTerminalSettings.autoHideKey] = .bool(value)
         } else if section.keys.contains("quickTerminalAutoHide") {
             logInvalid("terminal.quickTerminalAutoHide", sourcePath: sourcePath)
+        }
+    }
+
+    private func parseMarkdownSection(
+        _ section: [String: Any],
+        sourcePath: String,
+        snapshot: inout ResolvedSettingsSnapshot
+    ) {
+        // Accept numeric doubles (e.g. 15 or 15.0) and round to integer points,
+        // matching the integer `markdown.fontSize` catalog/UI representation.
+        if let value = jsonDouble(section["fontSize"]) {
+            if value >= MarkdownFontSizeSettings.minimumPointSize,
+               value <= MarkdownFontSizeSettings.maximumPointSize {
+                snapshot.managedUserDefaults[MarkdownFontSizeSettings.key] = .int(Int(value.rounded()))
+            } else {
+                logInvalid("markdown.fontSize", sourcePath: sourcePath)
+            }
+        } else if section.keys.contains("fontSize") {
+            logInvalid("markdown.fontSize", sourcePath: sourcePath)
         }
     }
 

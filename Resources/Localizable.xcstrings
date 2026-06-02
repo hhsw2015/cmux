@@ -2,6 +2,176 @@
   "sourceLanguage": "en",
   "version": "1.0",
   "strings": {
+    "shortcut.markdownZoomIn.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markdown Viewer: Zoom In"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markdown ビューア: 拡大"
+          }
+        }
+      }
+    },
+    "shortcut.markdownZoomOut.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markdown Viewer: Zoom Out"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markdown ビューア: 縮小"
+          }
+        }
+      }
+    },
+    "shortcut.markdownZoomReset.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markdown Viewer: Actual Size"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markdown ビューア: 実際のサイズ"
+          }
+        }
+      }
+    },
+    "command.markdownZoomIn.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoom In"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拡大"
+          }
+        }
+      }
+    },
+    "command.markdownZoomOut.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoom Out"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "縮小"
+          }
+        }
+      }
+    },
+    "command.markdownZoomReset.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actual Size"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "実際のサイズ"
+          }
+        }
+      }
+    },
+    "commandPalette.subtitle.markdownWithName": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markdown • %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markdown • %@"
+          }
+        }
+      }
+    },
+    "settings.app.markdownFontSize": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markdown Viewer Font Size"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markdown ビューアのフォントサイズ"
+          }
+        }
+      }
+    },
+    "settings.app.markdownFontSize.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default body font size, in points, for newly opened markdown viewers. Zoom a viewer live with Cmd-+ / Cmd-- / Cmd-0."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しく開く Markdown ビューアの本文フォントサイズ（ポイント単位）。Cmd-+ / Cmd-- / Cmd-0 でその場で拡大・縮小できます。"
+          }
+        }
+      }
+    },
+    "settings.search.alias.setting.app.markdown-font-size": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "markdown.fontSize md markdown viewer font size points zoom scale text bigger smaller larger default"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "markdown.fontSize Markdown マークダウン ビューア フォントサイズ 文字サイズ ズーム 拡大 縮小 大きく 小さく 既定 ポイント font size zoom"
+          }
+        }
+      }
+    },
     "cli.hooks.kiro.postInstallNote": {
       "localizations": {
         "en": {
@@ -98262,6 +98432,57 @@
         }
       }
     },
+    "settings.betaFeatures.feed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Feed"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Feed"
+          }
+        }
+      }
+    },
+    "settings.betaFeatures.feed.subtitleOff": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hides Feed from the right sidebar until you enable it here."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ここで有効にするまで、Feed を右サイドバーから隠します。"
+          }
+        }
+      }
+    },
+    "settings.betaFeatures.feed.subtitleOn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shows Feed in the right sidebar mode switcher for inline agent decisions."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Feed を右サイドバーのモード切り替えに表示し、エージェントの判断をインラインで扱えるようにします。"
+          }
+        }
+      }
+    },
     "settings.betaFeatures.warning": {
       "extractionState": "manual",
       "localizations": {
@@ -141271,6 +141492,29 @@
           "stringUnit": {
             "state": "translated",
             "value": "ID 복사"
+          }
+        }
+      }
+    },
+    "terminalContextMenu.lookUpFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Look Up “%@”"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」を調べる"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” 찾아보기"
           }
         }
       }
