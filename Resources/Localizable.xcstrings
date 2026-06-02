@@ -2,6 +2,210 @@
   "sourceLanguage": "en",
   "version": "1.0",
   "strings": {
+    "markdown.typography.font": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Font"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォント"
+          }
+        }
+      }
+    },
+    "markdown.typography.size": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Size"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サイズ"
+          }
+        }
+      }
+    },
+    "markdown.typography.maxWidth": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Max Width"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最大幅"
+          }
+        }
+      }
+    },
+    "markdown.font.system": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "System"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "システム"
+          }
+        }
+      }
+    },
+    "markdown.maxWidth.field": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Width"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "幅"
+          }
+        }
+      }
+    },
+    "markdown.maxWidth.unit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "px"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "px"
+          }
+        }
+      }
+    },
+    "markdown.toolbar.fontSize": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Font Size"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォントサイズ"
+          }
+        }
+      }
+    },
+    "markdown.typography.resetBuiltIn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset to built-in defaults"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "組み込みデフォルトにリセット"
+          }
+        }
+      }
+    },
+    "markdown.fontSize.field": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Size"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サイズ"
+          }
+        }
+      }
+    },
+    "markdown.fontSize.unit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pt"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pt"
+          }
+        }
+      }
+    },
+    "markdown.fontSize.reset": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset to default"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デフォルトにリセット"
+          }
+        }
+      }
+    },
+    "markdown.fontSize.setDefault": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set as default for new viewers"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今後のビューアのデフォルトに設定"
+          }
+        }
+      }
+    },
     "shortcut.markdownZoomIn.label": {
       "extractionState": "manual",
       "localizations": {
@@ -280,6 +484,125 @@
         }
       }
     },
+    "settings.app.markdownFontFamily": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markdown Viewer Font"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markdown ビューアのフォント"
+          }
+        }
+      }
+    },
+    "settings.app.markdownFontFamily.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default body font family for newly opened markdown viewers. Leave empty for the system markdown font stack."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しく開く Markdown ビューアの本文フォントファミリーです。空のままにするとシステムの Markdown フォントスタックを使います。"
+          }
+        }
+      }
+    },
+    "settings.app.markdownFontFamily.placeholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "System"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "システム"
+          }
+        }
+      }
+    },
+    "settings.app.markdownMaxWidth": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markdown Viewer Max Width"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markdown ビューアの最大幅"
+          }
+        }
+      }
+    },
+    "settings.app.markdownMaxWidth.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default maximum reading column width, in CSS pixels, for newly opened markdown viewers."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しく開く Markdown ビューアの読み取りカラム最大幅（CSS ピクセル単位）です。"
+          }
+        }
+      }
+    },
+    "settings.app.fileEditorWordWrap": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File Editor Word Wrap"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルエディタの行折り返し"
+          }
+        }
+      }
+    },
+    "settings.app.fileEditorWordWrap.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wrap long lines at the editor's right edge instead of scrolling horizontally. Applies to the plain-text file editor."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "長い行を横スクロールせずにエディタの右端で折り返します。プレーンテキストのファイルエディタに適用されます。"
+          }
+        }
+      }
+    },
     "settings.search.alias.setting.app.markdown-font-size": {
       "extractionState": "manual",
       "localizations": {
@@ -293,6 +616,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "markdown.fontSize Markdown マークダウン ビューア フォントサイズ 文字サイズ ズーム 拡大 縮小 大きく 小さく 既定 ポイント font size zoom"
+          }
+        }
+      }
+    },
+    "settings.search.alias.setting.app.markdown-font-family": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "markdown.fontFamily md markdown viewer font font-family family typeface system stack custom"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "markdown.fontFamily Markdown マークダウン ビューア フォント フォントファミリー 書体 システム カスタム font family typeface"
+          }
+        }
+      }
+    },
+    "settings.search.alias.setting.app.markdown-max-width": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "markdown.maxWidth md markdown viewer max width column reading line length pixels px narrow wide"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "markdown.maxWidth Markdown マークダウン ビューア 最大幅 幅 カラム 読み取り 行長 ピクセル px 狭い 広い"
+          }
+        }
+      }
+    },
+    "settings.search.alias.setting.app.file-editor-word-wrap": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "fileEditor.wordWrap file editor word wrap soft wrap reflow lines text horizontal scroll preview"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "fileEditor.wordWrap ファイル エディタ 行折り返し ワードラップ 折り返し 改行 テキスト 横スクロール プレビュー"
           }
         }
       }
@@ -11681,6 +12055,131 @@
           "stringUnit": {
             "state": "translated",
             "value": "通知の移動先が見つかりません"
+          }
+        }
+      }
+    },
+    "socket.workspace.unsupportedWindowParam": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المعامل `window` غير مدعوم؛ استخدم `window_id` مع UUID للنافذة أو مرجع من `window.list`."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parametar `window` nije podržan; koristite `window_id` s UUID-om prozora ili referencom iz `window.list`."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parameteren `window` understøttes ikke; brug `window_id` med et vindues-UUID eller en reference fra `window.list`."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht unterstützter Parameter `window`; verwenden Sie `window_id` mit einer Fenster-UUID oder Referenz aus `window.list`."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unsupported parameter `window`; use `window_id` with a window UUID or ref from `window.list`."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parámetro `window` no admitido; usa `window_id` con un UUID de ventana o una referencia de `window.list`."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paramètre `window` non pris en charge; utilisez `window_id` avec un UUID de fenêtre ou une référence de `window.list`."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parametro `window` non supportato; usa `window_id` con un UUID finestra o un riferimento da `window.list`."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サポートされていないパラメータ `window` です。`window.list` のウィンドウ UUID または参照を指定して `window_id` を使用してください。"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ប៉ារ៉ាម៉ែត្រ `window` មិនត្រូវបានគាំទ្រទេ; ប្រើ `window_id` ជាមួយ UUID របស់បង្អួច ឬការយោងពី `window.list`។"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지원되지 않는 매개변수 `window`입니다. `window.list`의 창 UUID 또는 참조와 함께 `window_id`를 사용하세요."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parameteren `window` støttes ikke; bruk `window_id` med en vindus-UUID eller referanse fra `window.list`."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parametr `window` nie jest obsługiwany; użyj `window_id` z UUID okna lub odwołaniem z `window.list`."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parâmetro `window` sem suporte; use `window_id` com um UUID de janela ou referência de `window.list`."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Параметр `window` не поддерживается; используйте `window_id` с UUID окна или ссылкой из `window.list`."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่รองรับพารามิเตอร์ `window`; ใช้ `window_id` พร้อม UUID ของหน้าต่างหรือการอ้างอิงจาก `window.list`"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "`window` parametresi desteklenmiyor; `window_id` değerini `window.list` içindeki bir pencere UUID'si veya başvuruyla kullanın."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Параметр `window` не підтримується; використовуйте `window_id` з UUID вікна або посиланням із `window.list`."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不支持参数 `window`；请使用 `window_id`，并传入来自 `window.list` 的窗口 UUID 或引用。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不支援參數 `window`；請使用 `window_id`，並傳入來自 `window.list` 的視窗 UUID 或參照。"
           }
         }
       }
@@ -31631,6 +32130,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "再読み込み"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ផ្ទុកឡើងវិញ"
           }
         },
         "zh-Hans": {
@@ -133397,6 +133902,23 @@
         }
       }
     },
+    "update.error.failed.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Something went wrong while checking for updates. Try again, or check the update log for details."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アップデートの確認中に問題が発生しました。もう一度お試しいただくか、アップデートログをご確認ください。"
+          }
+        }
+      }
+    },
     "update.error.failed.title": {
       "extractionState": "manual",
       "localizations": {
@@ -134583,6 +135105,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Немає підключення до інтернету"
+          }
+        }
+      }
+    },
+    "update.error.notReady": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updater is still starting. Try again in a moment."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アップデーターを準備中です。しばらくしてからもう一度お試しください。"
           }
         }
       }
@@ -143031,29 +143570,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "ID 복사"
-          }
-        }
-      }
-    },
-    "terminalContextMenu.lookUpFormat": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Look Up “%@”"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "「%@」を調べる"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@” 찾아보기"
           }
         }
       }
@@ -170604,6 +171120,23 @@
         }
       }
     },
+    "sidebar.extensions.actionScope.createWorkspaceWithPath": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create workspaces with paths"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "パス付きワークスペースを作成"
+          }
+        }
+      }
+    },
     "sidebar.extensions.actionScope.selectWorkspace": {
       "extractionState": "manual",
       "localizations": {
@@ -170685,6 +171218,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "拡張機能からリンクを開きます"
+          }
+        }
+      }
+    },
+    "sidebar.extensions.permission.createWorkspaceWithPath.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create workspaces for specific local folders"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "特定のローカルフォルダ用のワークスペースを作成します"
           }
         }
       }
