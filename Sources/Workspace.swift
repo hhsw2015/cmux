@@ -6261,6 +6261,18 @@ final class WorkspaceRemotePTYBridgeServer {
                     defaultValue: "remote daemon did not respond in time"
                 )
             }
+            // Surface the daemon's PTY-allocation diagnostic (it names the failing
+            // device and the devpts/ptmxmode cause) instead of collapsing it into a
+            // generic message. Key off the daemon's stable marker only, so an
+            // unrelated error that merely mentions a device path is not leaked, and
+            // route the dynamic detail through the localization API to match the
+            // surrounding branches. See issue #5185.
+            if lowered.contains("could not allocate a remote pty") {
+                return String(
+                    localized: "remotePTYAttach.error.allocationDiagnostic",
+                    defaultValue: "\(message)"
+                )
+            }
             return String(
                 localized: "remotePTYAttach.error.attachFailed",
                 defaultValue: "remote PTY attach failed"
@@ -12476,6 +12488,29 @@ final class Workspace: Identifiable, ObservableObject {
 
     func filePreviewPanel(for panelId: UUID) -> FilePreviewPanel? {
         panels[panelId] as? FilePreviewPanel
+    }
+
+    /// The working directory app-level actions (diff viewer, configured commands)
+    /// should target for this workspace: the focused panel's tracked directory, then
+    /// its terminal's requested directory, then the workspace's current directory.
+    /// Returns `nil` when none is known so callers can apply their own fallback.
+    ///
+    /// This is the focused-panel case of ``configTrackingDirectory(for:)`` (the same
+    /// three-tier order); the tiers are spelled out here so the public entry point is
+    /// self-contained.
+    func resolvedWorkingDirectory() -> String? {
+        let candidates = [
+            focusedPanelId.flatMap { panelDirectories[$0] },
+            focusedPanelId.flatMap { terminalPanel(for: $0)?.requestedWorkingDirectory },
+            currentDirectory,
+        ]
+        for candidate in candidates {
+            let trimmed = candidate?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if !trimmed.isEmpty {
+                return trimmed
+            }
+        }
+        return nil
     }
 
     private func surfaceKind(for panel: any Panel) -> String {

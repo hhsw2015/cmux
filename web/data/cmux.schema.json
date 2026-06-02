@@ -1148,6 +1148,7 @@
               "useSelectionForFind",
               "toggleBrowserDeveloperTools",
               "showBrowserJavaScriptConsole",
+              "toggleBrowserFocusMode",
               "toggleReactGrab",
               "diffViewerScrollDown",
               "diffViewerScrollUp",
