@@ -5554,16 +5554,16 @@ struct SettingsView: View {
     @AppStorage(WorkspacePresentationModeSettings.modeKey)
     private var workspacePresentationMode = WorkspacePresentationModeSettings.defaultMode.rawValue
     @AppStorage(SocketControlSettings.appStorageKey) private var socketControlMode = SocketControlSettings.defaultMode.rawValue
-    @Setting(\.integrations.claudeCodeHooksEnabled) private var claudeCodeHooksEnabled
-    @Setting(\.integrations.claudeCodeCustomClaudePath) private var customClaudePath
-    @Setting(\.integrations.ripgrepCustomBinaryPath) private var customRipgrepPath
-    @Setting(\.integrations.suppressSubagentNotifications) private var suppressSubagentNotifications
-    @Setting(\.integrations.cursorHooksEnabled) private var cursorHooksEnabled
-    @Setting(\.integrations.geminiHooksEnabled) private var geminiHooksEnabled
-    @Setting(\.app.sendAnonymousTelemetry) private var sendAnonymousTelemetry
-    @Setting(\.app.preferredEditor) private var preferredEditorCommand
-    @Setting(\.app.openSupportedFilesInCmux) private var openSupportedFilesInCmux
-    @Setting(\.app.openMarkdownInCmuxViewer) private var openMarkdownInCmuxViewer
+    @LiveSetting(\.integrations.claudeCodeHooksEnabled) private var claudeCodeHooksEnabled
+    @LiveSetting(\.integrations.claudeCodeCustomClaudePath) private var customClaudePath
+    @LiveSetting(\.integrations.ripgrepCustomBinaryPath) private var customRipgrepPath
+    @LiveSetting(\.integrations.suppressSubagentNotifications) private var suppressSubagentNotifications
+    @LiveSetting(\.integrations.cursorHooksEnabled) private var cursorHooksEnabled
+    @LiveSetting(\.integrations.geminiHooksEnabled) private var geminiHooksEnabled
+    @LiveSetting(\.app.sendAnonymousTelemetry) private var sendAnonymousTelemetry
+    @LiveSetting(\.app.preferredEditor) private var preferredEditorCommand
+    @LiveSetting(\.app.openSupportedFilesInCmux) private var openSupportedFilesInCmux
+    @LiveSetting(\.app.openMarkdownInCmuxViewer) private var openMarkdownInCmuxViewer
     @AppStorage(AutomationSettings.portBaseKey) private var cmuxPortBase = AutomationSettings.defaultPortBase
     @AppStorage(AutomationSettings.portRangeKey) private var cmuxPortRange = AutomationSettings.defaultPortRange
     @AppStorage(BrowserSearchSettings.searchEngineKey) private var browserSearchEngine = BrowserSearchSettings.defaultSearchEngine.rawValue
@@ -5571,14 +5571,14 @@ struct SettingsView: View {
     @AppStorage(BrowserSearchSettings.customSearchEngineURLTemplateKey) private var browserCustomSearchEngineURLTemplate = BrowserSearchSettings.defaultCustomSearchEngineURLTemplate
     @AppStorage(BrowserThemeSettings.modeKey) private var browserThemeMode = BrowserThemeSettings.defaultMode.rawValue
     @AppStorage(BrowserImportHintSettings.variantKey) private var browserImportHintVariantRaw = BrowserImportHintSettings.defaultVariant.rawValue
-    @Setting(\.browser.showSearchSuggestions) private var browserSearchSuggestionsEnabled
-    @Setting(\.browser.disabled) private var browserDisabled
-    @Setting(\.browser.discardHiddenWebViews) private var browserHiddenWebViewDiscardEnabled
-    @Setting(\.browser.hiddenWebViewDiscardDelaySeconds) private var browserHiddenWebViewDiscardDelay
-    @Setting(\.browser.importHintDismissed) private var isBrowserImportHintDismissed
-    @Setting(\.browser.showImportHintOnBlankTabs) private var showBrowserImportHintOnBlankTabs
-    @Setting(\.browser.reactGrabVersion) private var reactGrabVersion
-    @Setting(\.browser.openTerminalLinksInCmuxBrowser) private var openTerminalLinksInCmuxBrowser
+    @LiveSetting(\.browser.showSearchSuggestions) private var browserSearchSuggestionsEnabled
+    @LiveSetting(\.browser.disabled) private var browserDisabled
+    @LiveSetting(\.browser.discardHiddenWebViews) private var browserHiddenWebViewDiscardEnabled
+    @LiveSetting(\.browser.hiddenWebViewDiscardDelaySeconds) private var browserHiddenWebViewDiscardDelay
+    @LiveSetting(\.browser.importHintDismissed) private var isBrowserImportHintDismissed
+    @LiveSetting(\.browser.showImportHintOnBlankTabs) private var showBrowserImportHintOnBlankTabs
+    @LiveSetting(\.browser.reactGrabVersion) private var reactGrabVersion
+    @LiveSetting(\.browser.openTerminalLinksInCmuxBrowser) private var openTerminalLinksInCmuxBrowser
     @AppStorage(BrowserLinkOpenSettings.interceptTerminalOpenCommandInCmuxBrowserKey)
     private var interceptTerminalOpenCommandInCmuxBrowser = BrowserLinkOpenSettings.initialInterceptTerminalOpenCommandInCmuxBrowserValue()
     @AppStorage(BrowserLinkOpenSettings.browserHostWhitelistKey) private var browserHostWhitelist = BrowserLinkOpenSettings.defaultBrowserHostWhitelist
@@ -5589,33 +5589,33 @@ struct SettingsView: View {
     @AppStorage(NotificationSoundSettings.customFilePathKey)
     private var notificationSoundCustomFilePath = NotificationSoundSettings.defaultCustomFilePath
     @AppStorage(NotificationSoundSettings.customCommandKey) private var notificationCustomCommand = NotificationSoundSettings.defaultCustomCommand
-    @Setting(\.notifications.dockBadge) private var notificationDockBadgeEnabled
-    @Setting(\.notifications.unreadPaneRing) private var notificationPaneRingEnabled
-    @Setting(\.notifications.paneFlash) private var notificationPaneFlashEnabled
-    @Setting(\.notifications.showInMenuBar) private var showMenuBarExtra
-    @Setting(\.app.menuBarOnly) private var menuBarOnly
+    @LiveSetting(\.notifications.dockBadge) private var notificationDockBadgeEnabled
+    @LiveSetting(\.notifications.unreadPaneRing) private var notificationPaneRingEnabled
+    @LiveSetting(\.notifications.paneFlash) private var notificationPaneFlashEnabled
+    @LiveSetting(\.notifications.showInMenuBar) private var showMenuBarExtra
+    @LiveSetting(\.app.menuBarOnly) private var menuBarOnly
     @AppStorage(QuitWarningSettings.confirmQuitKey)
     private var confirmQuitModeRaw = QuitWarningSettings.defaultConfirmQuitMode.rawValue
-    @Setting(\.app.warnBeforeQuit) private var warnBeforeQuitShortcut
-    @Setting(\.app.warnBeforeClosingTab) private var warnBeforeClosingTab
-    @Setting(\.app.warnBeforeClosingTabXButton) private var warnBeforeClosingTabXButton
-    @Setting(\.app.hideTabCloseButton) private var hideTabCloseButton
-    @Setting(\.app.renameSelectsExistingName) private var commandPaletteRenameSelectAllOnFocus
-    @Setting(\.app.commandPaletteSearchesAllSurfaces) private var commandPaletteSearchAllSurfaces
+    @LiveSetting(\.app.warnBeforeQuit) private var warnBeforeQuitShortcut
+    @LiveSetting(\.app.warnBeforeClosingTab) private var warnBeforeClosingTab
+    @LiveSetting(\.app.warnBeforeClosingTabXButton) private var warnBeforeClosingTabXButton
+    @LiveSetting(\.app.hideTabCloseButton) private var hideTabCloseButton
+    @LiveSetting(\.app.renameSelectsExistingName) private var commandPaletteRenameSelectAllOnFocus
+    @LiveSetting(\.app.commandPaletteSearchesAllSurfaces) private var commandPaletteSearchAllSurfaces
     @AppStorage(WorkspacePlacementSettings.placementKey) private var newWorkspacePlacement = WorkspacePlacementSettings.defaultPlacement.rawValue
     @AppStorage(WorkspaceGroupNewWorkspacePlacementSettings.key)
     private var workspaceGroupNewWorkspacePlacement = WorkspaceGroupNewWorkspacePlacementSettings.defaultValue.rawValue
     @AppStorage(AgentConversationForkDefaultSettings.key)
     private var forkConversationDefaultDestination = AgentConversationForkDefaultSettings.defaultDestination.rawValue
-    @Setting(\.app.workspaceInheritWorkingDirectory) private var workspaceInheritWorkingDirectory
-    @Setting(\.app.keepWorkspaceOpenWhenClosingLastSurface) private var closeWorkspaceOnLastSurfaceShortcut
-    @Setting(\.app.focusPaneOnFirstClick) private var paneFirstClickFocusEnabled
-    @Setting(\.terminal.showScrollBar) private var showTerminalScrollBar
+    @LiveSetting(\.app.workspaceInheritWorkingDirectory) private var workspaceInheritWorkingDirectory
+    @LiveSetting(\.app.keepWorkspaceOpenWhenClosingLastSurface) private var closeWorkspaceOnLastSurfaceShortcut
+    @LiveSetting(\.app.focusPaneOnFirstClick) private var paneFirstClickFocusEnabled
+    @LiveSetting(\.terminal.showScrollBar) private var showTerminalScrollBar
     @AppStorage(TerminalCopyOnSelectSettings.copyOnSelectKey)
     private var terminalCopyOnSelect = TerminalCopyOnSelectSettings.defaultCopyOnSelect
-    @Setting(\.terminal.showTextBoxOnNewTerminals) private var showTextBoxOnNewTerminals
-    @Setting(\.terminal.focusTextBoxOnNewTerminals) private var focusTextBoxOnNewTerminals
-    @Setting(\.terminal.textBoxMaxLines) private var textBoxMaxLines
+    @LiveSetting(\.terminal.showTextBoxOnNewTerminals) private var showTextBoxOnNewTerminals
+    @LiveSetting(\.terminal.focusTextBoxOnNewTerminals) private var focusTextBoxOnNewTerminals
+    @LiveSetting(\.terminal.textBoxMaxLines) private var textBoxMaxLines
     @AppStorage(QuickTerminalSettings.positionKey)
     private var quickTerminalPosition = QuickTerminalSettings.defaultPosition.rawValue
     @AppStorage(QuickTerminalSettings.primarySizeRatioKey)
@@ -5634,14 +5634,14 @@ struct SettingsView: View {
     private var workspaceTopTabsVisibilityRaw = WorkspaceTopTabsVisibilitySettings.defaultValue.rawValue
     @AppStorage(FileDropBehaviorSettings.defaultBehaviorKey)
     private var fileDropDefaultBehavior = FileDropBehaviorSettings.defaultBehavior.rawValue
-    @Setting(\.terminal.autoResumeAgentSessions) private var autoResumeAgentSessions
-    @Setting(\.terminal.agentHibernationEnabled) private var agentHibernationEnabled
+    @LiveSetting(\.terminal.autoResumeAgentSessions) private var autoResumeAgentSessions
+    @LiveSetting(\.terminal.agentHibernationEnabled) private var agentHibernationEnabled
     @AppStorage(AgentHibernationSettings.idleSecondsKey)
     private var agentHibernationIdleSeconds = AgentHibernationSettings.defaultIdleSeconds
     @AppStorage(AgentHibernationSettings.maxLiveTerminalsKey)
     private var agentHibernationMaxLiveTerminals = AgentHibernationSettings.defaultMaxLiveTerminals
-    @Setting(\.app.reorderOnNotification) private var workspaceAutoReorder
-    @Setting(\.app.iMessageMode) private var iMessageMode
+    @LiveSetting(\.app.reorderOnNotification) private var workspaceAutoReorder
+    @LiveSetting(\.app.iMessageMode) private var iMessageMode
     // iMessageModeGroupSortSettings.{sortInsideGroupsKey,floatGroupsKey}
     // exist in UserDefaults but are not surfaced in Settings yet — the
     // sort path doesn't read them yet. Re-add @AppStorage bindings here
@@ -5685,7 +5685,7 @@ struct SettingsView: View {
     // routes reads/writes through UserDefaultsSettingsStore actor +
     // DefaultsValueModel observation. UserDefaults key is the same
     // ("rightSidebar.beta.dock.enabled") so existing values round-trip.
-    @Setting(\.betaFeatures.rightSidebarDock) private var rightSidebarDockEnabled
+    @LiveSetting(\.betaFeatures.rightSidebarDock) private var rightSidebarDockEnabled
 
     @ObservedObject private var notificationStore = TerminalNotificationStore.shared
     @ObservedObject private var authManager = AuthManager.shared
