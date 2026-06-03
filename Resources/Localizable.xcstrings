@@ -125671,6 +125671,29 @@
         }
       }
     },
+    "fileExplorer.error.sshFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH command failed"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH コマンドに失敗しました"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH 명령에 실패했습니다"
+          }
+        }
+      }
+    },
     "fileExplorer.status.sshHomeFailed": {
       "extractionState": "manual",
       "localizations": {
