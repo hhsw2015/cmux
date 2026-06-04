@@ -18,16 +18,16 @@ extension Notification.Name {
 }
 
 nonisolated private struct SocketLineProcessingResult: Sendable {
-    let response: String
+    let response: String?
     let authenticated: Bool
     let postResponseAction: SocketLinePostResponseAction?
 }
 
 nonisolated private struct SocketCommandProcessingResult: Sendable {
-    let response: String
+    let response: String?
     let postResponseAction: SocketLinePostResponseAction?
 
-    static func responseOnly(_ response: String) -> SocketCommandProcessingResult {
+    static func responseOnly(_ response: String?) -> SocketCommandProcessingResult {
         SocketCommandProcessingResult(response: response, postResponseAction: nil)
     }
 }
@@ -2354,18 +2354,56 @@ class TerminalController {
         )
     }
 
-    private nonisolated func socketWorkerV2ResponseIfNeeded(for command: String) -> String? {
+    private nonisolated func socketWorkerV2ResponseIfHandled(for command: String) -> (handled: Bool, response: String?) {
         guard let request = parseV2SocketRequest(command),
               Self.executionPolicy(forV2Method: request.method) == .socketWorker else {
-            return nil
+            return (false, nil)
         }
 
         return withSocketCommandPolicy(commandKey: request.method, isV2: true, params: request.params) {
             if let workspaceParamError = v2UnsupportedWorkspaceAliasError(method: request.method, params: request.params) {
-                return v2Result(id: request.id, workspaceParamError)
+                return (true, v2Result(id: request.id, workspaceParamError))
             }
-            return socketWorkerV2Response(request)
+            if request.method == "feed.push", request.id == nil {
+                guard let waitTimeout = Self.feedPushWaitTimeoutSeconds(params: request.params) else {
+                    return (true, v2Error(
+                        id: request.id,
+                        code: "invalid_params",
+                        message: "feed.push wait_timeout_seconds must be numeric and between 0 and 120"
+                    ))
+                }
+                guard waitTimeout == 0 else {
+                    return (true, v2Error(
+                        id: request.id,
+                        code: "invalid_params",
+                        message: "feed.push without an id requires wait_timeout_seconds 0"
+                    ))
+                }
+                _ = socketWorkerV2Response(request)
+                return (true, nil)
+            }
+            return (true, socketWorkerV2Response(request))
         }
+    }
+
+    private nonisolated static func feedPushWaitTimeoutSeconds(params: [String: Any]) -> TimeInterval? {
+        guard let rawTimeout = params["wait_timeout_seconds"] else {
+            return 0
+        }
+        let seconds: Double?
+        if let number = rawTimeout as? NSNumber {
+            seconds = number.doubleValue
+        } else if let value = rawTimeout as? Double {
+            seconds = value
+        } else if let value = rawTimeout as? Int {
+            seconds = Double(value)
+        } else {
+            seconds = nil
+        }
+        guard let seconds, seconds.isFinite, seconds >= 0, seconds <= 120 else {
+            return nil
+        }
+        return seconds
     }
 
     private nonisolated func socketWorkerV2Response(_ request: V2SocketRequest) -> String {
@@ -2818,11 +2856,13 @@ class TerminalController {
 
                 let result = processSocketLine(trimmed, authenticated: authenticated)
                 authenticated = result.authenticated
-                let didWriteResponse = writeSocketResponse(result.response, to: socket)
-                guard didWriteResponse else {
-                    return
+                if let response = result.response {
+                    let didWriteResponse = writeSocketResponse(response, to: socket)
+                    publishSocketEvents(command: trimmed, response: response)
+                    guard didWriteResponse else {
+                        return
+                    }
                 }
-                publishSocketEvents(command: trimmed, response: result.response)
                 schedulePostResponseAction(result.postResponseAction)
             }
         }
@@ -2861,12 +2901,14 @@ class TerminalController {
 
         let commandResult = processCommandUsingSocketExecutionPolicy(command)
 #if DEBUG
-        Self.debugLogSocketCommandEndIfNeeded(
-            debugInfo: debugInfo,
-            startedAt: debugStart,
-            response: commandResult.response,
-            loggingEnabled: debugLoggingEnabled
-        )
+        if let response = commandResult.response {
+            Self.debugLogSocketCommandEndIfNeeded(
+                debugInfo: debugInfo,
+                startedAt: debugStart,
+                response: response,
+                loggingEnabled: debugLoggingEnabled
+            )
+        }
 #endif
         return SocketLineProcessingResult(
             response: commandResult.response,
@@ -2979,8 +3021,12 @@ class TerminalController {
             ))
         }
 
-        if let response = socketWorkerV2ResponseIfNeeded(for: command) {
-            return .responseOnly(response)
+        let socketWorkerResult = socketWorkerV2ResponseIfHandled(for: command)
+        if socketWorkerResult.handled {
+            return SocketCommandProcessingResult(
+                response: socketWorkerResult.response,
+                postResponseAction: nil
+            )
         }
 
         if command.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "ping" {
@@ -3001,7 +3047,7 @@ class TerminalController {
     nonisolated func handleSocketLine(_ line: String) -> String {
         let result = processCommandUsingSocketExecutionPolicy(line)
         schedulePostResponseAction(result.postResponseAction)
-        return result.response
+        return result.response ?? ""
     }
 
     private func processCommand(_ command: String) -> SocketCommandProcessingResult {
