@@ -3373,6 +3373,14 @@ class TerminalController {
 
     // MARK: - V2 JSON Socket Protocol
 
+    /// Runs a v2 command line (`{"method","params","id"}`) through the
+    /// dispatcher in-process and returns the JSON response. Internal seam so
+    /// in-app callers (e.g. custom-sidebar button actions) can drive the same
+    /// command surface as the socket without reaching the private dispatcher.
+    func runV2CommandLine(_ jsonLine: String) -> String {
+        processV2Command(jsonLine)
+    }
+
     private func processV2Command(_ jsonLine: String) -> String {
         // v1 access-mode gating applies to v2 as well. We can't know which v2 method maps
         // to which v1 command without parsing, so parse first and then apply allow-list.
@@ -6943,6 +6951,9 @@ class TerminalController {
         let foregroundAuthToken = v2RawString(params, "foreground_auth_token")?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let localSocketPath = v2RawString(params, "local_socket_path")
+        let hasExplicitAgentSocketPath = v2HasNonNullParam(params, "ssh_auth_sock")
+        let agentSocketPath = v2RawString(params, "ssh_auth_sock")?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         let terminalStartupCommand = v2RawString(params, "terminal_startup_command")?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         var persistentDaemonSlot = v2RawString(params, "persistent_daemon_slot")?
@@ -7031,6 +7042,7 @@ class TerminalController {
             "target=\(destination) transport=\(transport.rawValue) port=\(sshPort.map(String.init) ?? "nil") " +
             "autoConnect=\(autoConnect ? 1 : 0) relayPort=\(relayPort.map(String.init) ?? "nil") " +
             "localSocket=\(localSocketPath?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? localSocketPath! : "nil") " +
+            "sshAuthSock=\(agentSocketPath?.isEmpty == false ? 1 : 0) " +
             "sshOptions=\(sshOptions.joined(separator: "|"))"
         )
 #endif
@@ -7059,6 +7071,11 @@ class TerminalController {
                 localSocketPath: localSocketPath,
                 terminalStartupCommand: terminalStartupCommand?.isEmpty == true ? nil : terminalStartupCommand,
                 foregroundAuthToken: foregroundAuthToken?.isEmpty == true ? nil : foregroundAuthToken,
+                agentSocketPath: WorkspaceRemoteConfiguration.resolvedAgentSocketPath(
+                    sshOptions: sshOptions,
+                    explicitAgentSocketPath: agentSocketPath,
+                    explicitAgentSocketPathIsSet: hasExplicitAgentSocketPath
+                ),
                 daemonWebSocketEndpoint: daemonWebSocketEndpoint,
                 preserveAfterTerminalExit: preserveAfterTerminalExit,
                 persistentDaemonSlot: persistentDaemonSlot?.isEmpty == true ? nil : persistentDaemonSlot,
