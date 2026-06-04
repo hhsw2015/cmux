@@ -258,6 +258,7 @@
 		D0B10022A1B2C3D4E5F60001 /* FileDropOverlayViewHitTesting.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0B10023A1B2C3D4E5F60001 /* FileDropOverlayViewHitTesting.swift */; };
 		D0B10018A1B2C3D4E5F60001 /* FileDropOverlayViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0B10019A1B2C3D4E5F60001 /* FileDropOverlayViewTests.swift */; };
 		FE002101 /* FileExplorerRootResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE002001 /* FileExplorerRootResolverTests.swift */; };
+		9F8A6669D6F54F0EA8E8BEB8 /* FileExplorerRootSyncPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 120A1EF846214C938416846E /* FileExplorerRootSyncPolicyTests.swift */; };
 		FE001103 /* FileExplorerSearchController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE001003 /* FileExplorerSearchController.swift */; };
 		B37A00000000000000000009 /* FileExplorerState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37A0000000000000000000A /* FileExplorerState.swift */; };
 		B37A0000000000000000000B /* FileExplorerStateModePersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37A0000000000000000000C /* FileExplorerStateModePersistenceTests.swift */; };
@@ -618,6 +619,8 @@
 		D0B10000A1B2C3D4E5F60001 /* TerminalPaneDropTargetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0B10001A1B2C3D4E5F60001 /* TerminalPaneDropTargetView.swift */; };
 		A5001401 /* TerminalPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001411 /* TerminalPanel.swift */; };
 		A5001403 /* TerminalPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001413 /* TerminalPanelView.swift */; };
+		C0DE53350000000000000001 /* TerminalSearchOverlayHostingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE53350000000000000002 /* TerminalSearchOverlayHostingView.swift */; };
+		C0DE53360000000000000001 /* TerminalSearchOverlayMouseReleaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE53360000000000000002 /* TerminalSearchOverlayMouseReleaseTests.swift */; };
 		A5001543 /* TerminalSSHSessionDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001545 /* TerminalSSHSessionDetector.swift */; };
 		C13519000000000000000001 /* TerminalStartupEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = C13519000000000000000002 /* TerminalStartupEnvironment.swift */; };
 		A5001532 /* TerminalWindowPortal.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001531 /* TerminalWindowPortal.swift */; };
@@ -1000,6 +1003,7 @@
 		D0B10023A1B2C3D4E5F60001 /* FileDropOverlayViewHitTesting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileDropOverlayViewHitTesting.swift; sourceTree = "<group>"; };
 		D0B10019A1B2C3D4E5F60001 /* FileDropOverlayViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileDropOverlayViewTests.swift; sourceTree = "<group>"; };
 		FE002001 /* FileExplorerRootResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileExplorerRootResolverTests.swift; sourceTree = "<group>"; };
+		120A1EF846214C938416846E /* FileExplorerRootSyncPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileExplorerRootSyncPolicyTests.swift; sourceTree = "<group>"; };
 		FE001003 /* FileExplorerSearchController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileExplorerSearchController.swift; sourceTree = "<group>"; };
 		B37A0000000000000000000A /* FileExplorerState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileExplorerState.swift; sourceTree = "<group>"; };
 		B37A0000000000000000000C /* FileExplorerStateModePersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileExplorerStateModePersistenceTests.swift; sourceTree = "<group>"; };
@@ -1351,6 +1355,8 @@
 		D0B10001A1B2C3D4E5F60001 /* TerminalPaneDropTargetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalPaneDropTargetView.swift; sourceTree = "<group>"; };
 		A5001411 /* TerminalPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/TerminalPanel.swift; sourceTree = "<group>"; };
 		A5001413 /* TerminalPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/TerminalPanelView.swift; sourceTree = "<group>"; };
+		C0DE53350000000000000002 /* TerminalSearchOverlayHostingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Find/TerminalSearchOverlayHostingView.swift; sourceTree = "<group>"; };
+		C0DE53360000000000000002 /* TerminalSearchOverlayMouseReleaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSearchOverlayMouseReleaseTests.swift; sourceTree = "<group>"; };
 		A5001545 /* TerminalSSHSessionDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSSHSessionDetector.swift; sourceTree = "<group>"; };
 		C13519000000000000000002 /* TerminalStartupEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalStartupEnvironment.swift; sourceTree = "<group>"; };
 		A5001531 /* TerminalWindowPortal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalWindowPortal.swift; sourceTree = "<group>"; };
@@ -1851,6 +1857,7 @@
 					A5A5A502A1B2C3D4E5F60718 /* TerminalNotificationQueue.swift */,
 				A5C41102A1B2C3D4E5F60718 /* TerminalNotificationCallerResolver.swift */,
 				A5001301 /* SurfaceSearchOverlay.swift */,
+				C0DE53350000000000000002 /* TerminalSearchOverlayHostingView.swift */,
 				A5008370 /* BrowserSearchOverlay.swift */,
 				A5008372 /* BrowserFindJavaScript.swift */,
 				3865B0013865B0013865B001 /* SearchIndex.swift */,
@@ -2151,6 +2158,7 @@
 				D0B1000DA1B2C3D4E5F60001 /* CmuxWebViewDragRoutingTests.swift */,
 					D0B1000FA1B2C3D4E5F60001 /* BrowserPaneDropRoutingTests.swift */,
 					02FC74F2C27127CC565B3E8C /* TerminalAndGhosttyTests.swift */,
+					C0DE53360000000000000002 /* TerminalSearchOverlayMouseReleaseTests.swift */,
 					C35610000000000000000002 /* FinderFileDropRegressionTests.swift */,
 					C44550000000000000000002 /* PanelOwnedNativeViewSessionTests.swift */,
 					3069F1D10000000000000004 /* GhosttyPasteboardFidelityTests.swift */,
@@ -2178,6 +2186,7 @@
 				2907A0042907A0042907A004 /* AppDelegateIssue2907RoutingTests.swift */,
 				E50320010000000000000002 /* ExtensionWorktreeSpawnArgsTests.swift */,
 				C0DE49950000000000000002 /* FilePreviewKindResolverTests.swift */,
+				120A1EF846214C938416846E /* FileExplorerRootSyncPolicyTests.swift */,
 				C0DEFB300000000000000002 /* FocusSurfaceBroadcasterTests.swift */,
 				A5001435A5001435A5001435 /* FilePreviewPDFThumbnailSidebarTests.swift */,
 				D3664001D3664001D3664001 /* MarkdownPanelTests.swift */,
@@ -2964,6 +2973,7 @@
 				D0B10000A1B2C3D4E5F60001 /* TerminalPaneDropTargetView.swift in Sources */,
 				A5001401 /* TerminalPanel.swift in Sources */,
 				A5001403 /* TerminalPanelView.swift in Sources */,
+				C0DE53350000000000000001 /* TerminalSearchOverlayHostingView.swift in Sources */,
 				A5001543 /* TerminalSSHSessionDetector.swift in Sources */,
 				C13519000000000000000001 /* TerminalStartupEnvironment.swift in Sources */,
 				A5001532 /* TerminalWindowPortal.swift in Sources */,
@@ -3175,6 +3185,7 @@
 				FEEDC1A50000000000000003 /* FeedEventClassifier.swift in Sources */,
 				D0B10018A1B2C3D4E5F60001 /* FileDropOverlayViewTests.swift in Sources */,
 				FE002101 /* FileExplorerRootResolverTests.swift in Sources */,
+				9F8A6669D6F54F0EA8E8BEB8 /* FileExplorerRootSyncPolicyTests.swift in Sources */,
 				B37A0000000000000000000B /* FileExplorerStateModePersistenceTests.swift in Sources */,
 				FE002102 /* FileExplorerStoreTests.swift in Sources */,
 				C0DE49950000000000000001 /* FilePreviewKindResolverTests.swift in Sources */,
@@ -3268,6 +3279,7 @@
 					A5A5A505A1B2C3D4E5F60718 /* TerminalNotificationDirectInteractionTests.swift in Sources */,
 				A5A5A503A1B2C3D4E5F60718 /* TerminalNotificationQueueTests.swift in Sources */,
 					A5E380700000000000000001 /* TerminalNotificationSocketActionTests.swift in Sources */,
+				C0DE53360000000000000001 /* TerminalSearchOverlayMouseReleaseTests.swift in Sources */,
 				C0DE7B300000000000000001 /* TextBoxMentionCompletionTests.swift in Sources */,
 				F50030040000000000000001 /* TitlebarInteractiveControlTests.swift in Sources */,
 				D3284001A1B2C3D4E5F60718 /* TraditionalChineseIMENumpadRegressionTests.swift in Sources */,
