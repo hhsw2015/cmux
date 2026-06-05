@@ -148,7 +148,7 @@ try_fetch_prebuilt_xcframework() {
     return 1
   fi
 
-  local repo="${CMUX_GHOSTTYKIT_REPO:-manaflow-ai/ghostty}"
+  local repo="${CMUX_GHOSTTYKIT_REPO:-hhsw2015/ghostty}"
   local url="https://github.com/${repo}/releases/download/xcframework-${GHOSTTY_CLEAN_KEY}/GhosttyKit.xcframework.tar.gz"
   if [[ ! -f "$GHOSTTYKIT_CHECKSUMS_FILE" ]]; then
     echo "==> Missing GhosttyKit checksum manifest; falling back to local build." >&2
