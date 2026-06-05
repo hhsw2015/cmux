@@ -259,6 +259,7 @@ extension AgentLaunchSanitizer {
             "--thinking",
             "--tools",
             "-e",
+            "-r",
             "-t"
         ],
         nonRestorableCommands: [
