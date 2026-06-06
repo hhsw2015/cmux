@@ -1,4 +1,5 @@
 import AppKit
+import CmuxAuthRuntime
 import CmuxControlSocket
 import CmuxSettings
 import CmuxSocketControl
@@ -129,35 +130,24 @@ class TerminalController {
 
     static let shared = TerminalController()
 
-    private nonisolated(unsafe) var socketPath = SocketControlSettings.stableDefaultSocketPath
-    private nonisolated(unsafe) var boundSocketPathIdentity: SocketPathIdentity?
-    private nonisolated(unsafe) var serverSocket: Int32 = -1
-    private nonisolated(unsafe) var isRunning = false
-    private nonisolated(unsafe) var acceptLoopAlive = false
-    private nonisolated(unsafe) var activeAcceptLoopGeneration: UInt64 = 0
-    private nonisolated(unsafe) var nextAcceptLoopGeneration: UInt64 = 0
-    private nonisolated(unsafe) var pendingAcceptLoopRearmGeneration: UInt64?
-    private nonisolated(unsafe) var reservedStartupSocketPath: String?
-    private nonisolated(unsafe) var reservedStartupSocketPathCanReplaceRefusedSocket = false
-    private nonisolated(unsafe) var listenerStartInProgress = false
-    private nonisolated(unsafe) var socketPathLockFD: Int32 = -1
-    private nonisolated let listenerStateLock = NSLock()
-    private nonisolated let socketListenerQueue = DispatchQueue(label: "com.cmux.socket.listener")
-    private nonisolated(unsafe) var listenerReadSource: DispatchSourceRead?
-    private nonisolated(unsafe) var listenerReadSourceSuspended = false
-    private nonisolated(unsafe) var socketPathMonitorSource: DispatchSourceFileSystemObject?
-    private nonisolated(unsafe) var acceptSourceConsecutiveFailures = 0
-    private var clientHandlers: [Int32: Thread] = [:]
     private nonisolated let remotePTYControllerAvailabilityCondition = NSCondition()
     private nonisolated(unsafe) var remotePTYControllerAvailabilityGeneration: UInt64 = 0
     private var tabManager: TabManager?
-    private nonisolated(unsafe) var accessMode: SocketControlMode = .cmuxOnly
+    /// The shared auth coordinator + browser sign-in flow, injected once via
+    /// `attachAuth` at app startup (AppDelegate `configure`) before the socket
+    /// listener starts. Socket auth commands read these on the main actor.
+    @MainActor private(set) var authCoordinator: AuthCoordinator?
+    @MainActor private(set) var browserSignInFlow: HostBrowserSignInFlow?
     // Sendable value type; injected at construction so socket auth never reaches a global.
     private nonisolated let passwordStore: SocketControlPasswordStore
     // Stateless Sendable structs from CmuxControlSocket; injected at construction.
     // `transport` is internal so sibling-file extensions (CmuxEventStream) can write through it.
     nonisolated let transport: SocketTransport
-    private nonisolated let listenerPolicy: SocketListenerPolicy
+    // The package-owned listener: path/bind/lock lifecycle, accept source,
+    // backoff/rearm recovery, and the generation-counted state machine.
+    nonisolated let socketServer: SocketControlServer
+    // Per-surface dedupe for high-frequency report_* socket telemetry.
+    private nonisolated let socketFastPathState = SocketFastPathState()
     private nonisolated let myPid = getpid()
     private nonisolated static let socketCommandFocusAllowanceStackKey = "cmux.socketCommandFocusAllowanceStack"
     private nonisolated static let socketListenerFailureCaptureCooldown: TimeInterval = 60
@@ -215,19 +205,6 @@ class TerminalController {
 
     private static var terminalSurfaceUnavailableSocketError: String {
         "ERROR: \(terminalSurfaceUnavailableMessage)"
-    }
-
-    private struct ListenerStateSnapshot {
-        let socketPath: String
-        let boundSocketPathIdentity: SocketPathIdentity?
-        let serverSocket: Int32
-        let isRunning: Bool
-        let acceptLoopAlive: Bool
-        let activeGeneration: UInt64
-        let pendingRearmGeneration: UInt64?
-        let reservedStartupSocketPath: String?
-        let listenerStartInProgress: Bool
-        let socketPathLockHeld: Bool
     }
 
     private nonisolated static let focusIntentV1Commands: Set<String> = [
@@ -345,6 +322,13 @@ class TerminalController {
         }
     }
 
+    /// Bridges the package server's event closures back to the controller.
+    /// Assigned exactly once during `init`, before the listener can start, and
+    /// read-only afterward; the controller is an app-lifetime singleton.
+    private final class ServerEventTarget: @unchecked Sendable {
+        weak var controller: TerminalController?
+    }
+
     private init(
         passwordStore: SocketControlPasswordStore = SocketControlPasswordStore(),
         transport: SocketTransport = SocketTransport(),
@@ -352,7 +336,13 @@ class TerminalController {
     ) {
         self.passwordStore = passwordStore
         self.transport = transport
-        self.listenerPolicy = listenerPolicy
+        let serverEventTarget = ServerEventTarget()
+        self.socketServer = SocketControlServer(
+            transport: transport,
+            listenerPolicy: listenerPolicy,
+            events: Self.makeSocketServerEvents(target: serverEventTarget)
+        )
+        serverEventTarget.controller = self
         browserDownloadObserver = NotificationCenter.default.addObserver(
             forName: .browserDownloadEventDidArrive,
             object: nil,
@@ -369,119 +359,17 @@ class TerminalController {
         }
     }
 
-    private nonisolated func withListenerState<T>(_ body: () -> T) -> T {
-        listenerStateLock.lock()
-        defer { listenerStateLock.unlock() }
-        return body()
-    }
-
     nonisolated func currentSocketPathForRemoteRestore() -> String? {
-        withListenerState {
-            if isRunning || acceptLoopAlive || listenerStartInProgress || serverSocket >= 0 {
-                return socketPath
-            }
-            return reservedStartupSocketPath
-        }
-    }
-
-    private nonisolated func listenerStateSnapshot() -> ListenerStateSnapshot {
-        withListenerState {
-            ListenerStateSnapshot(
-                socketPath: socketPath,
-                boundSocketPathIdentity: boundSocketPathIdentity,
-                serverSocket: serverSocket,
-                isRunning: isRunning,
-                acceptLoopAlive: acceptLoopAlive,
-                activeGeneration: activeAcceptLoopGeneration,
-                pendingRearmGeneration: pendingAcceptLoopRearmGeneration,
-                reservedStartupSocketPath: reservedStartupSocketPath,
-                listenerStartInProgress: listenerStartInProgress,
-                socketPathLockHeld: socketPathLockFD >= 0
-            )
-        }
-    }
-
-    private nonisolated func canReserveStartupSocketPathLocked() -> Bool {
-        !isRunning &&
-            !acceptLoopAlive &&
-            !listenerStartInProgress &&
-            pendingAcceptLoopRearmGeneration == nil &&
-            socketPathLockFD < 0 &&
-            listenerReadSource == nil &&
-            socketPathMonitorSource == nil &&
-            serverSocket < 0
+        socketServer.currentSocketPathForRemoteRestore()
     }
 
     @discardableResult
     nonisolated func reserveStartupSocketPath(_ path: String) -> String {
-        guard withListenerState({ canReserveStartupSocketPathLocked() }) else {
-            return path
-        }
-
-        var reservationPath = path
-        var reservationLockFD: Int32 = -1
-        var reservationCanReplaceRefusedSocket = false
-        switch transport.acquireSocketPathLock(for: path) {
-        case .acquired(let fd, let canReplaceRefusedSocket):
-            reservationLockFD = fd
-            reservationCanReplaceRefusedSocket = canReplaceRefusedSocket
-        case .failed(let failure):
-            if let fallbackPath = listenerPolicy.fallbackSocketPathAfterBindFailure(
-                requestedPath: path,
-                stage: failure.stage,
-                errnoCode: failure.errnoCode
-            ),
-                fallbackPath != path,
-                case .acquired(let fd, let canReplaceRefusedSocket) =
-                    transport.acquireSocketPathLock(for: fallbackPath) {
-                reservationPath = fallbackPath
-                reservationLockFD = fd
-                reservationCanReplaceRefusedSocket = canReplaceRefusedSocket
-            }
-        }
-
-        guard reservationLockFD >= 0 else {
-            return path
-        }
-
-        var didReserve = false
-        withListenerState {
-            guard canReserveStartupSocketPathLocked() else {
-                return
-            }
-            socketPath = reservationPath
-            reservedStartupSocketPath = reservationPath
-            reservedStartupSocketPathCanReplaceRefusedSocket = reservationCanReplaceRefusedSocket
-            socketPathLockFD = reservationLockFD
-            didReserve = true
-        }
-        if didReserve {
-            return reservationPath
-        }
-        transport.releaseSocketPathLock(reservationLockFD)
-        return path
+        socketServer.reserveStartupSocketPath(path)
     }
 
     nonisolated func activeSocketPath(preferredPath: String) -> String {
-        let snapshot = listenerStateSnapshot()
-        if snapshot.isRunning
-            || snapshot.acceptLoopAlive
-            || snapshot.listenerStartInProgress
-            || snapshot.pendingRearmGeneration != nil
-            || snapshot.socketPathLockHeld
-            || snapshot.serverSocket >= 0 {
-            return snapshot.socketPath
-        }
-        if let reservedStartupSocketPath = snapshot.reservedStartupSocketPath {
-            return reservedStartupSocketPath
-        }
-        return preferredPath
-    }
-
-    private nonisolated func shouldContinueAcceptLoop(generation: UInt64) -> Bool {
-        withListenerState {
-            isRunning && generation == activeAcceptLoopGeneration
-        }
+        socketServer.activeSocketPath(preferredPath: preferredPath)
     }
 
     nonisolated static func shouldSuppressSocketCommandActivation() -> Bool {
@@ -686,52 +574,6 @@ class TerminalController {
         return currentSorted != nextSorted
     }
 
-    private struct SocketSurfaceKey: Hashable {
-        let workspaceId: UUID
-        let panelId: UUID
-    }
-
-    private final class SocketFastPathState: @unchecked Sendable {
-        private let queue = DispatchQueue(label: "com.cmux.socket-fast-path")
-        private var lastReportedDirectories: [SocketSurfaceKey: String] = [:]
-        private var lastReportedShellStates: [SocketSurfaceKey: Workspace.PanelShellActivityState] = [:]
-        private let maxTrackedDirectories = 4096
-        private let maxTrackedShellStates = 4096
-
-        func shouldPublishDirectory(workspaceId: UUID, panelId: UUID, directory: String) -> Bool {
-            let key = SocketSurfaceKey(workspaceId: workspaceId, panelId: panelId)
-            return queue.sync {
-                if lastReportedDirectories[key] == directory {
-                    return false
-                }
-                if lastReportedDirectories.count >= maxTrackedDirectories {
-                    lastReportedDirectories.removeAll(keepingCapacity: true)
-                }
-                lastReportedDirectories[key] = directory
-                return true
-            }
-        }
-
-        func shouldPublishShellActivity(
-            workspaceId: UUID,
-            panelId: UUID,
-            state: Workspace.PanelShellActivityState
-        ) -> Bool {
-            let key = SocketSurfaceKey(workspaceId: workspaceId, panelId: panelId)
-            return queue.sync {
-                if lastReportedShellStates[key] == state {
-                    return false
-                }
-                if lastReportedShellStates.count >= maxTrackedShellStates {
-                    lastReportedShellStates.removeAll(keepingCapacity: true)
-                }
-                lastReportedShellStates[key] = state
-                return true
-            }
-        }
-    }
-
-    private static let socketFastPathState = SocketFastPathState()
     nonisolated static func explicitSocketScope(
         options: [String: String]
     ) -> (workspaceId: UUID, panelId: UUID)? {
@@ -832,99 +674,9 @@ class TerminalController {
 
     // MARK: - Process Ancestry Check
 
-    /// Get the peer PID of a connected Unix domain socket using LOCAL_PEERPID.
-    private nonisolated func getPeerPid(_ socket: Int32) -> pid_t? {
-        var pid: pid_t = 0
-        var pidSize = socklen_t(MemoryLayout<pid_t>.size)
-        let result = getsockopt(socket, SOL_LOCAL, LOCAL_PEERPID, &pid, &pidSize)
-        if result != 0 || pid <= 0 {
-            return nil
-        }
-        return pid
-    }
-
-    /// Check if the peer has the same UID as this process using LOCAL_PEERCRED.
-    /// This works even after the peer has disconnected (unlike LOCAL_PEERPID).
-    private nonisolated func peerHasSameUID(_ socket: Int32) -> Bool {
-        var cred = xucred()
-        var credLen = socklen_t(MemoryLayout<xucred>.size)
-        let result = getsockopt(socket, SOL_LOCAL, LOCAL_PEERCRED, &cred, &credLen)
-        guard result == 0 else { return false }
-        return cred.cr_uid == getuid()
-    }
-
     /// Check if `pid` is a descendant of this process by walking the process tree.
     nonisolated func isDescendant(_ pid: pid_t) -> Bool {
-        var current = pid
-        // Walk up to 128 levels to avoid infinite loops from kernel bugs
-        for _ in 0..<128 {
-            if current == myPid {
-                return true
-            }
-            if current <= 1 {
-                return false
-            }
-            let parent = parentPid(of: current)
-            if parent == current || parent < 0 {
-                return false
-            }
-            current = parent
-        }
-        return false
-    }
-
-    /// Get the parent PID of a process using sysctl.
-    private nonisolated func parentPid(of pid: pid_t) -> pid_t {
-        var info = kinfo_proc()
-        var size = MemoryLayout<kinfo_proc>.size
-        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, pid]
-        guard sysctl(&mib, 4, &info, &size, nil, 0) == 0 else {
-            return -1
-        }
-        return info.kp_eproc.e_ppid
-    }
-
-    private nonisolated func socketListenerEventData(
-        stage: String,
-        errnoCode: Int32? = nil,
-        extra: [String: Any] = [:]
-    ) -> [String: Any] {
-        let snapshot = listenerStateSnapshot()
-        var data: [String: Any] = [
-            "stage": stage,
-            "path": snapshot.socketPath,
-            "isRunning": snapshot.isRunning ? 1 : 0,
-            "acceptLoopAlive": snapshot.acceptLoopAlive ? 1 : 0,
-            "serverSocket": Int(snapshot.serverSocket),
-            "activeGeneration": snapshot.activeGeneration
-        ]
-        if let errnoCode {
-            data["errno"] = Int(errnoCode)
-            data["errnoDescription"] = String(cString: strerror(errnoCode))
-        }
-        for (key, value) in extra {
-            data[key] = value
-        }
-        return data
-    }
-
-    private nonisolated func reportSocketListenerFailure(
-        message: String,
-        stage: String,
-        errnoCode: Int32? = nil,
-        extra: [String: Any] = [:]
-    ) {
-        let data = socketListenerEventData(stage: stage, errnoCode: errnoCode, extra: extra)
-        sentryBreadcrumb(message, category: "socket", data: data)
-        guard Self.shouldCaptureSocketListenerFailure(
-            message: message,
-            stage: stage,
-            path: data["path"] as? String ?? "",
-            errnoCode: errnoCode
-        ) else {
-            return
-        }
-        sentryCaptureError(message, category: "socket", data: data, contextKey: "socket_listener")
+        transport.isProcessDescendant(pid, of: myPid)
     }
 
     private nonisolated static func shouldCaptureSocketListenerFailure(
@@ -945,19 +697,64 @@ class TerminalController {
         return true
     }
 
-    private nonisolated func bindListenerSocketOnListenerQueue(
-        _ socket: Int32,
-        path: String,
-        canReplaceRefusedSocket: Bool
-    ) -> SocketBindAttemptResult {
-        socketListenerQueue.sync {
-            transport.bindListenerSocket(
-                socket,
-                path: path,
-                canReplaceRefusedSocket: canReplaceRefusedSocket
-            )
-        }
+    /// Builds the package server's host-callback seam. `target` is filled in
+    /// at the end of `init`; no listener event can fire before `start`.
+    private nonisolated static func makeSocketServerEvents(
+        target: ServerEventTarget
+    ) -> SocketControlServerEvents {
+        SocketControlServerEvents(
+            breadcrumb: { message, data in
+                sentryBreadcrumb(message, category: "socket", data: data)
+            },
+            failure: { message, stage, errnoCode, data in
+                sentryBreadcrumb(message, category: "socket", data: data)
+                guard shouldCaptureSocketListenerFailure(
+                    message: message,
+                    stage: stage,
+                    path: data["path"] as? String ?? "",
+                    errnoCode: errnoCode
+                ) else {
+                    return
+                }
+                sentryCaptureError(message, category: "socket", data: data, contextKey: "socket_listener")
+            },
+            listenerDidStart: { path, _ in
+                target.controller?.socketListenerDidStart(path: path)
+            },
+            recordLastSocketPath: { path in
+                SocketControlSettings.recordLastSocketPath(path)
+            },
+            clientAccepted: { socket, peerPid in
+                guard let controller = target.controller else {
+                    close(socket)
+                    return
+                }
+                controller.spawnClientHandler(socket: socket, peerPid: peerPid)
+            },
+            pathMissingDetected: { path, generation in
+                Task { @MainActor in
+                    target.controller?.restartSocketListenerIfPathMissing(path: path, generation: generation)
+                }
+            },
+            rearmRequested: { generation, errnoCode, consecutiveFailures, delayMs in
+                target.controller?.scheduleListenerRearm(
+                    generation: generation,
+                    errnoCode: errnoCode,
+                    consecutiveFailures: consecutiveFailures,
+                    delayMs: delayMs
+                )
+            }
+        )
     }
+
+    /// Inject the auth graph. Call once at the composition root, before the
+    /// socket listener accepts auth commands.
+    @MainActor
+    func attachAuth(coordinator: AuthCoordinator, browserSignIn: HostBrowserSignInFlow) {
+        self.authCoordinator = coordinator
+        self.browserSignInFlow = browserSignIn
+    }
+
 
     func start(
         tabManager: TabManager,
@@ -966,383 +763,66 @@ class TerminalController {
         preserveAcceptFailureStreak: Bool = false
     ) {
         self.tabManager = tabManager
-        self.accessMode = accessMode
-
-        let existing = withListenerState {
-            (
-                isRunning: isRunning,
-                socketPath: self.socketPath,
-                reservedStartupSocketPath: reservedStartupSocketPath,
-                socketPathLockHeld: socketPathLockFD >= 0,
-                hasRetainedInactiveListenerState: !isRunning && (
-                    pendingAcceptLoopRearmGeneration != nil ||
-                        socketPathLockFD >= 0 ||
-                        acceptLoopAlive ||
-                        serverSocket >= 0 ||
-                        listenerReadSource != nil ||
-                        socketPathMonitorSource != nil
-                )
-            )
-        }
-
-        if existing.isRunning && SocketControlSettings.pathsMatch(existing.socketPath, socketPath) {
-            self.accessMode = accessMode
-            applySocketPermissions()
-            return
-        }
-
-        let canConsumeReservedStartupLock = !existing.isRunning
-            && existing.socketPathLockHeld
-            && existing.reservedStartupSocketPath.map { SocketControlSettings.pathsMatch($0, socketPath) } == true
-        if existing.isRunning || (existing.hasRetainedInactiveListenerState && !canConsumeReservedStartupLock) {
-            stop()
-        }
-
-        var activeSocketPath = socketPath
-        var activeSocketPathLockFD: Int32 = -1
-        var activeSocketPathCanReplaceRefusedSocket = false
-        var activeBoundSocketPathIdentity: SocketPathIdentity?
-        withListenerState {
-            if socketPathLockFD >= 0,
-               reservedStartupSocketPath.map({ SocketControlSettings.pathsMatch($0, activeSocketPath) }) == true,
-               !isRunning,
-               !acceptLoopAlive,
-               serverSocket < 0 {
-                activeSocketPathLockFD = socketPathLockFD
-                activeSocketPathCanReplaceRefusedSocket = reservedStartupSocketPathCanReplaceRefusedSocket
-                socketPathLockFD = -1
-            }
-            self.socketPath = activeSocketPath
-            boundSocketPathIdentity = nil
-            reservedStartupSocketPath = nil
-            reservedStartupSocketPathCanReplaceRefusedSocket = false
-            listenerStartInProgress = true
-        }
-        var listenerActivated = false
-        defer {
-            if !listenerActivated {
-                if let activeBoundSocketPathIdentity,
-                   listenerPolicy.shouldUnlinkSocketPathAfterListenerStop(
-                       currentIdentity: transport.pathIdentity(at: activeSocketPath),
-                       boundIdentity: activeBoundSocketPathIdentity
-                   ) {
-                    unlink(activeSocketPath)
-                }
-                transport.releaseSocketPathLock(activeSocketPathLockFD)
-                activeSocketPathLockFD = -1
-                withListenerState {
-                    if boundSocketPathIdentity == activeBoundSocketPathIdentity {
-                        boundSocketPathIdentity = nil
-                    }
-                    listenerStartInProgress = false
-                }
-            }
-        }
-
-        // Create socket
-        let newServerSocket = socket(AF_UNIX, SOCK_STREAM, 0)
-        guard newServerSocket >= 0 else {
-            let errnoCode = errno
-            print("TerminalController: Failed to create socket")
-            reportSocketListenerFailure(
-                message: "socket.listener.start.failed",
-                stage: "create_socket",
-                errnoCode: errnoCode
-            )
-            return
-        }
-
-        func acquireActiveSocketPathLock() -> SocketBindAttemptResult? {
-            if activeSocketPathLockFD >= 0 {
-                return nil
-            }
-            switch transport.acquireSocketPathLock(for: activeSocketPath) {
-            case .acquired(let fd, let canReplaceRefusedSocket):
-                activeSocketPathLockFD = fd
-                activeSocketPathCanReplaceRefusedSocket = canReplaceRefusedSocket
-                return nil
-            case .failed(let failure):
-                return .failure(path: activeSocketPath, failure: failure)
-            }
-        }
-
-        var bindAttempt = acquireActiveSocketPathLock()
-            ?? bindListenerSocketOnListenerQueue(
-                newServerSocket,
-                path: activeSocketPath,
-                canReplaceRefusedSocket: activeSocketPathCanReplaceRefusedSocket
-            )
-        if case .failure(let failedPath, let bindFailure) = bindAttempt,
-           let fallbackPath = listenerPolicy.fallbackSocketPathAfterBindFailure(
-               requestedPath: failedPath,
-               stage: bindFailure.stage,
-               errnoCode: bindFailure.errnoCode
-           ),
-           fallbackPath != failedPath {
-            sentryBreadcrumb(
-                "socket.listener.path.fallback",
-                category: "socket",
-                data: [
-                    "requestedPath": failedPath,
-                    "fallbackPath": fallbackPath,
-                    "stage": bindFailure.stage,
-                    "errno": Int(bindFailure.errnoCode)
-                ]
-            )
-            transport.releaseSocketPathLock(activeSocketPathLockFD)
-            activeSocketPathLockFD = -1
-            activeSocketPathCanReplaceRefusedSocket = false
-            activeSocketPath = fallbackPath
-            withListenerState {
-                self.socketPath = activeSocketPath
-            }
-            bindAttempt = acquireActiveSocketPathLock()
-                ?? bindListenerSocketOnListenerQueue(
-                    newServerSocket,
-                    path: activeSocketPath,
-                    canReplaceRefusedSocket: activeSocketPathCanReplaceRefusedSocket
-                )
-        }
-
-        switch bindAttempt {
-        case .success(let boundPath, let identity):
-            activeSocketPath = boundPath
-            activeBoundSocketPathIdentity = identity
-            withListenerState {
-                self.socketPath = activeSocketPath
-                boundSocketPathIdentity = identity
-            }
-        case .pathTooLong(let failedPath):
-            close(newServerSocket)
-            reportSocketListenerFailure(
-                message: "socket.listener.start.failed",
-                stage: "bind_path_too_long",
-                errnoCode: ENAMETOOLONG,
-                extra: [
-                    "path": failedPath,
-                    "pathLength": failedPath.utf8.count,
-                    "maxPathLength": SocketTransport.unixSocketPathMaxLength
-                ]
-            )
-            return
-        case .failure(let failedPath, let bindFailure):
-            print("TerminalController: Failed to bind socket")
-            close(newServerSocket)
-            reportSocketListenerFailure(
-                message: "socket.listener.start.failed",
-                stage: bindFailure.stage,
-                errnoCode: bindFailure.errnoCode,
-                extra: ["path": failedPath]
-            )
-            return
-        }
-
-        applySocketPermissions()
-
-        if let errnoCode = transport.configureNonBlocking(newServerSocket) {
-            print("TerminalController: Failed to configure socket")
-            close(newServerSocket)
-            reportSocketListenerFailure(
-                message: "socket.listener.start.failed",
-                stage: "configure_nonblocking",
-                errnoCode: errnoCode
-            )
-            return
-        }
-
-        // Listen
-        guard listen(newServerSocket, transport.listenBacklog) >= 0 else {
-            let errnoCode = errno
-            print("TerminalController: Failed to listen on socket")
-            close(newServerSocket)
-            reportSocketListenerFailure(
-                message: "socket.listener.start.failed",
-                stage: "listen",
-                errnoCode: errnoCode
-            )
-            return
-        }
-
-        transport.markSocketPathLockReusable(activeSocketPathLockFD)
-        SocketControlSettings.recordLastSocketPath(activeSocketPath)
-
-        var displacedSocketPathLockFD: Int32 = -1
-        let transferredSocketPathLockFD = activeSocketPathLockFD
-        let generation = withListenerState {
-            isRunning = true
-            pendingAcceptLoopRearmGeneration = nil
-            if !preserveAcceptFailureStreak {
-                acceptSourceConsecutiveFailures = 0
-            }
-            nextAcceptLoopGeneration &+= 1
-            let generation = nextAcceptLoopGeneration
-            activeAcceptLoopGeneration = generation
-            serverSocket = newServerSocket
-            displacedSocketPathLockFD = socketPathLockFD
-            socketPathLockFD = activeSocketPathLockFD
-            listenerStartInProgress = false
-            return generation
-        }
-        if displacedSocketPathLockFD >= 0, displacedSocketPathLockFD != transferredSocketPathLockFD {
-            transport.releaseSocketPathLock(displacedSocketPathLockFD)
-        }
-        activeSocketPathLockFD = -1
-        listenerActivated = true
-        let listenerSocket = newServerSocket
-        print("TerminalController: Listening on \(activeSocketPath)")
-        sentryBreadcrumb(
-            "socket.listener.listening",
-            category: "socket",
-            data: [
-                "path": activeSocketPath,
-                "mode": accessMode.rawValue,
-                "generation": generation,
-                "backlog": transport.listenBacklog
-            ]
+        socketServer.start(
+            socketPath: socketPath,
+            accessMode: accessMode,
+            preserveAcceptFailureStreak: preserveAcceptFailureStreak
         )
-        NotificationCenter.default.post(
-            name: .socketListenerDidStart,
-            object: self,
-            userInfo: ["path": activeSocketPath]
-        )
+    }
 
-        // Wire batched port scanner results back to workspace state.
-        PortScanner.shared.onPortsUpdated = { [weak self] workspaceId, panelId, ports in
-            guard let self, let tabManager = self.tabManager else { return }
-            guard let workspace = tabManager.tabs.first(where: { $0.id == workspaceId }) else { return }
-            let validSurfaceIds = Set(workspace.panels.keys)
-            guard validSurfaceIds.contains(panelId) else { return }
-            workspace.surfaceListeningPorts[panelId] = ports.isEmpty ? nil : ports
-            workspace.recomputeListeningPorts()
-        }
-        PortScanner.shared.onAgentPortsUpdated = { [weak self] workspaceId, ports in
-            guard let self, let tabManager = self.tabManager else { return }
-            guard let workspace = tabManager.tabs.first(where: { $0.id == workspaceId }) else { return }
-            if workspace.agentListeningPorts != ports {
-                workspace.agentListeningPorts = ports
+    /// Invoked by the server at the exact point the legacy `start` posted
+    /// `.socketListenerDidStart`: after the running-state commit, before the
+    /// path monitor and accept source arm. Every start path runs on the main
+    /// thread (`start` is `@MainActor`; rearm fires on the main queue; the
+    /// path-missing restart hops through a `@MainActor` task).
+    private nonisolated func socketListenerDidStart(path: String) {
+        MainActor.assumeIsolated {
+            NotificationCenter.default.post(
+                name: .socketListenerDidStart,
+                object: self,
+                userInfo: ["path": path]
+            )
+
+            // Wire batched port scanner results back to workspace state.
+            PortScanner.shared.onPortsUpdated = { [weak self] workspaceId, panelId, ports in
+                guard let self, let tabManager = self.tabManager else { return }
+                guard let workspace = tabManager.tabs.first(where: { $0.id == workspaceId }) else { return }
+                let validSurfaceIds = Set(workspace.panels.keys)
+                guard validSurfaceIds.contains(panelId) else { return }
+                workspace.surfaceListeningPorts[panelId] = ports.isEmpty ? nil : ports
                 workspace.recomputeListeningPorts()
             }
-        }
-        PortScanner.shared.agentPIDsProvider = { [weak self] workspaceIds in
-            guard let self, let tabManager = self.tabManager else { return [:] }
-            var pidsByWorkspace: [UUID: Set<Int>] = [:]
-            for workspaceId in workspaceIds {
-                guard let workspace = tabManager.tabs.first(where: { $0.id == workspaceId }) else { continue }
-                let pids = Set(workspace.agentPIDs.values.compactMap { $0 > 0 ? Int($0) : nil })
-                if !pids.isEmpty {
-                    pidsByWorkspace[workspaceId] = pids
+            PortScanner.shared.onAgentPortsUpdated = { [weak self] workspaceId, ports in
+                guard let self, let tabManager = self.tabManager else { return }
+                guard let workspace = tabManager.tabs.first(where: { $0.id == workspaceId }) else { return }
+                if workspace.agentListeningPorts != ports {
+                    workspace.agentListeningPorts = ports
+                    workspace.recomputeListeningPorts()
                 }
             }
-            return pidsByWorkspace
+            PortScanner.shared.agentPIDsProvider = { [weak self] workspaceIds in
+                guard let self, let tabManager = self.tabManager else { return [:] }
+                var pidsByWorkspace: [UUID: Set<Int>] = [:]
+                for workspaceId in workspaceIds {
+                    guard let workspace = tabManager.tabs.first(where: { $0.id == workspaceId }) else { continue }
+                    let pids = Set(workspace.agentPIDs.values.compactMap { $0 > 0 ? Int($0) : nil })
+                    if !pids.isEmpty {
+                        pidsByWorkspace[workspaceId] = pids
+                    }
+                }
+                return pidsByWorkspace
+            }
         }
-
-        startSocketPathMonitor(path: activeSocketPath, generation: generation)
-        startAcceptSource(listenerSocket: listenerSocket, generation: generation)
     }
 
     nonisolated func socketListenerHealth(expectedSocketPath: String) -> SocketListenerHealth {
-        let snapshot = listenerStateSnapshot()
-        let pathMatches = snapshot.socketPath == expectedSocketPath
-        let currentIdentity = transport.pathIdentity(at: expectedSocketPath)
-        let pathExists = currentIdentity != nil
-        let pathOwnedByListener = currentIdentity.map { current in
-            pathMatches && (snapshot.boundSocketPathIdentity.map { current == $0 } ?? false)
-        } ?? false
-
-        return SocketListenerHealth(
-            isRunning: snapshot.isRunning,
-            acceptLoopAlive: snapshot.acceptLoopAlive,
-            socketPathMatches: pathMatches,
-            socketPathExists: pathExists,
-            socketPathOwnedByListener: pathOwnedByListener
-        )
-    }
-
-    private nonisolated func startSocketPathMonitor(path: String, generation: UInt64) {
-        let directoryPath = URL(fileURLWithPath: path).deletingLastPathComponent().path
-        let fd = open(directoryPath, O_EVTONLY)
-        guard fd >= 0 else {
-            sentryBreadcrumb(
-                "socket.listener.path_monitor.failed",
-                category: "socket",
-                data: socketListenerEventData(
-                    stage: "path_monitor_open",
-                    errnoCode: errno,
-                    extra: [
-                        "generation": generation,
-                        "directory": directoryPath
-                    ]
-                )
-            )
-            return
-        }
-
-        let source = DispatchSource.makeFileSystemObjectSource(
-            fileDescriptor: fd,
-            eventMask: [.write, .delete, .rename],
-            queue: socketListenerQueue
-        )
-        source.setEventHandler { [weak self] in
-            self?.handleSocketPathDirectoryEvent(path: path, generation: generation)
-        }
-        source.setCancelHandler {
-            close(fd)
-        }
-
-        let previousSource = withListenerState { () -> DispatchSourceFileSystemObject? in
-            guard isRunning,
-                  activeAcceptLoopGeneration == generation,
-                  socketPath == path else {
-                return source
-            }
-            let previous = socketPathMonitorSource
-            socketPathMonitorSource = source
-            return previous
-        }
-
-        if previousSource === source {
-            source.cancel()
-            source.resume()
-            return
-        }
-
-        previousSource?.cancel()
-        source.resume()
-    }
-
-    private nonisolated func handleSocketPathDirectoryEvent(path: String, generation: UInt64) {
-        let pathState = withListenerState { () -> (shouldCheck: Bool, boundIdentity: SocketPathIdentity?) in
-            guard isRunning,
-                  activeAcceptLoopGeneration == generation,
-                  socketPath == path else {
-                return (false, nil)
-            }
-            return (true, boundSocketPathIdentity)
-        }
-        guard pathState.shouldCheck else { return }
-        guard !transport.pathExists(path, matching: pathState.boundIdentity) else { return }
-
-        reportSocketListenerFailure(
-            message: "socket.listener.path.missing",
-            stage: "path_monitor",
-            extra: ["generation": generation]
-        )
-
-        Task { @MainActor [weak self] in
-            self?.restartSocketListenerIfPathMissing(path: path, generation: generation)
-        }
+        socketServer.listenerHealth(expectedSocketPath: expectedSocketPath)
     }
 
     private func restartSocketListenerIfPathMissing(path: String, generation: UInt64) {
         guard let tabManager else { return }
-        let restartMode = accessMode
-        let shouldRestart = withListenerState {
-            isRunning &&
-                activeAcceptLoopGeneration == generation &&
-                socketPath == path &&
-                !transport.pathExists(path, matching: boundSocketPathIdentity)
-        }
-        guard shouldRestart else { return }
+        let restartMode = socketServer.accessMode
+        guard socketServer.shouldRestartForMissingPath(path: path, generation: generation) else { return }
 
         sentryBreadcrumb(
             "socket.listener.restart",
@@ -1359,99 +839,7 @@ class TerminalController {
     }
 
     nonisolated func stop() {
-        let (
-            sourceToCancel,
-            sourceWasSuspended,
-            monitorToCancel,
-            socketToShutdown,
-            socketToClose,
-            socketPathToUnlink,
-            boundSocketPathIdentityToUnlink,
-            socketPathLockFDToClose
-        ) = withListenerState {
-            isRunning = false
-            acceptLoopAlive = false
-            pendingAcceptLoopRearmGeneration = nil
-            reservedStartupSocketPath = nil
-            reservedStartupSocketPathCanReplaceRefusedSocket = false
-            listenerStartInProgress = false
-            nextAcceptLoopGeneration &+= 1
-            activeAcceptLoopGeneration = 0
-            let sourceToCancel = listenerReadSource
-            let sourceWasSuspended = listenerReadSourceSuspended
-            listenerReadSource = nil
-            listenerReadSourceSuspended = false
-            let monitorToCancel = socketPathMonitorSource
-            socketPathMonitorSource = nil
-            let socketToClose = serverSocket
-            serverSocket = -1
-            let identity = boundSocketPathIdentity
-            boundSocketPathIdentity = nil
-            let lockFD = socketPathLockFD
-            socketPathLockFD = -1
-            return (
-                sourceToCancel,
-                sourceWasSuspended,
-                monitorToCancel,
-                socketToClose,
-                sourceToCancel == nil ? socketToClose : Int32(-1),
-                socketPath,
-                identity,
-                lockFD
-            )
-        }
-        if socketToShutdown >= 0 {
-            shutdown(socketToShutdown, SHUT_RDWR)
-        }
-        if sourceWasSuspended {
-            sourceToCancel?.resume()
-        }
-        sourceToCancel?.cancel()
-        monitorToCancel?.cancel()
-        if socketToClose >= 0 {
-            close(socketToClose)
-        }
-        if listenerPolicy.shouldUnlinkSocketPathAfterListenerStop(
-            currentIdentity: transport.pathIdentity(at: socketPathToUnlink),
-            boundIdentity: boundSocketPathIdentityToUnlink
-        ) {
-            unlink(socketPathToUnlink)
-        }
-        transport.releaseSocketPathLock(socketPathLockFDToClose)
-    }
-
-    private nonisolated func unlinkSocketPathIfListenerStillInactive(_ path: String) {
-        let shouldUnlink = withListenerState {
-            listenerPolicy.shouldUnlinkSocketPathAfterAcceptLoopCleanup(
-                pathMatches: socketPath == path,
-                isRunning: isRunning,
-                activeGeneration: activeAcceptLoopGeneration,
-                listenerStartInProgress: listenerStartInProgress
-            )
-        }
-        if shouldUnlink {
-            unlink(path)
-        }
-    }
-
-    private func applySocketPermissions() {
-        let permissions = mode_t(accessMode.socketFilePermissions)
-        let currentSocketPath = withListenerState { socketPath }
-        if chmod(currentSocketPath, permissions) != 0 {
-            let errnoCode = errno
-            print(
-                "TerminalController: Failed to set socket permissions to \(String(permissions, radix: 8)) for \(currentSocketPath)"
-            )
-            sentryBreadcrumb(
-                "socket.listener.permissions.failed",
-                category: "socket",
-                data: socketListenerEventData(
-                    stage: "chmod",
-                    errnoCode: errnoCode,
-                    extra: ["permissions": String(permissions, radix: 8)]
-                )
-            )
-        }
+        socketServer.stop()
     }
 
     private nonisolated func writeSocketResponse(_ response: String, to socket: Int32) -> Bool {
@@ -1528,7 +916,7 @@ class TerminalController {
     }
 
     private nonisolated func authResponseIfNeeded(for command: String, authenticated: inout Bool) -> String? {
-        guard accessMode.requiresPasswordAuth else {
+        guard socketServer.accessMode.requiresPasswordAuth else {
             return nil
         }
         if let v2Response = passwordLoginV2ResponseIfNeeded(for: command, authenticated: &authenticated) {
@@ -1679,8 +1067,8 @@ class TerminalController {
         switch request.method {
         case "auth.status":
             let semaphore = DispatchSemaphore(value: 0)
-            Task { @MainActor in
-                await AuthManager.shared.awaitBootstrapped()
+            Task { @MainActor [weak self] in
+                await self?.authCoordinator?.awaitBootstrapped()
                 semaphore.signal()
             }
             semaphore.wait()
@@ -1689,18 +1077,18 @@ class TerminalController {
             let timeoutSeconds = (request.params["timeout_seconds"] as? Double) ?? 300
             let semaphore = DispatchSemaphore(value: 0)
             nonisolated(unsafe) var signedIn = false
-            Task { @MainActor in
-                signedIn = await AuthManager.shared.beginSignInAndAwait(
+            Task { @MainActor [weak self] in
+                signedIn = await self?.browserSignInFlow?.signIn(
                     timeout: timeoutSeconds
-                )
+                ) ?? false
                 semaphore.signal()
             }
             semaphore.wait()
             return v2Ok(id: request.id, result: v2AuthStatusPayload(timedOut: !signedIn))
         case "auth.sign_out":
             let semaphore = DispatchSemaphore(value: 0)
-            Task { @MainActor in
-                _ = await AuthManager.shared.signOutAndAwait(timeout: 5)
+            Task { @MainActor [weak self] in
+                await self?.browserSignInFlow?.signOut(timeout: 5)
                 semaphore.signal()
             }
             semaphore.wait()
@@ -1781,182 +1169,6 @@ class TerminalController {
         }
     }
 
-    private nonisolated func startAcceptSource(listenerSocket: Int32, generation: UInt64) {
-        let source = DispatchSource.makeReadSource(fileDescriptor: listenerSocket, queue: socketListenerQueue)
-        source.setEventHandler { [weak self] in
-            self?.drainPendingSocketClients(listenerSocket: listenerSocket, generation: generation)
-        }
-        source.setCancelHandler { [weak self] in
-            close(listenerSocket)
-            self?.finishAcceptSourceCancel(listenerSocket: listenerSocket, generation: generation)
-        }
-
-        let shouldResume = withListenerState {
-            guard isRunning, serverSocket == listenerSocket, generation == activeAcceptLoopGeneration else {
-                return false
-            }
-            listenerReadSource = source
-            listenerReadSourceSuspended = false
-            acceptLoopAlive = true
-            return true
-        }
-
-        guard shouldResume else {
-            source.cancel()
-            source.resume()
-            return
-        }
-
-        sentryBreadcrumb(
-            "socket.listener.accept_source.started",
-            category: "socket",
-            data: socketListenerEventData(
-                stage: "accept_source_start",
-                extra: [
-                    "generation": generation,
-                    "listenerSocket": Int(listenerSocket)
-                ]
-            )
-        )
-        source.resume()
-    }
-
-    private nonisolated func finishAcceptSourceCancel(listenerSocket: Int32, generation: UInt64) {
-        withListenerState {
-            guard activeAcceptLoopGeneration == generation, serverSocket == listenerSocket else { return }
-            acceptLoopAlive = false
-            listenerReadSource = nil
-            listenerReadSourceSuspended = false
-        }
-    }
-
-    private nonisolated func drainPendingSocketClients(listenerSocket: Int32, generation: UInt64) {
-        while shouldContinueAcceptLoop(generation: generation) {
-            let clientSocket = accept(listenerSocket, nil, nil)
-
-            guard clientSocket >= 0 else {
-                let errnoCode = errno
-                if errnoCode == EAGAIN || errnoCode == EWOULDBLOCK {
-                    return
-                }
-                if errnoCode == EINTR || errnoCode == ECONNABORTED {
-                    continue
-                }
-                handleAcceptSourceFailure(
-                    listenerSocket: listenerSocket,
-                    generation: generation,
-                    errnoCode: errnoCode
-                )
-                return
-            }
-
-            withListenerState {
-                acceptSourceConsecutiveFailures = 0
-            }
-
-            if let failure = transport.configureAcceptedClientSocket(clientSocket) {
-                if transport.shouldReportAcceptedClientConfigFailure(stage: failure.stage, errnoCode: failure.errnoCode) {
-                    sentryBreadcrumb(
-                        "socket.listener.client_config.failed",
-                        category: "socket",
-                        data: socketListenerEventData(
-                            stage: failure.stage,
-                            errnoCode: failure.errnoCode,
-                            extra: ["generation": generation]
-                        )
-                    )
-                }
-                close(clientSocket)
-                continue
-            }
-
-            // Capture peer PID immediately, before short-lived clients can disconnect.
-            let peerPid = getPeerPid(clientSocket)
-            spawnClientHandler(socket: clientSocket, peerPid: peerPid)
-        }
-    }
-
-    private nonisolated func handleAcceptSourceFailure(
-        listenerSocket: Int32,
-        generation: UInt64,
-        errnoCode: Int32
-    ) {
-        let errnoClass = listenerPolicy.acceptErrorClassification(errnoCode: errnoCode)
-        let consecutiveFailures = withListenerState {
-            guard activeAcceptLoopGeneration == generation, serverSocket == listenerSocket else { return 0 }
-            acceptSourceConsecutiveFailures += 1
-            return acceptSourceConsecutiveFailures
-        }
-        guard consecutiveFailures > 0 else { return }
-
-        let recoveryAction = listenerPolicy.acceptFailureRecoveryAction(
-            errnoCode: errnoCode,
-            consecutiveFailures: consecutiveFailures
-        )
-
-        sentryBreadcrumb(
-            "socket.listener.accept.failed",
-            category: "socket",
-            data: socketListenerEventData(
-                stage: "accept_source",
-                errnoCode: errnoCode,
-                extra: [
-                    "generation": generation,
-                    "consecutiveFailures": consecutiveFailures,
-                    "errnoClass": errnoClass.rawValue,
-                    "recoveryAction": recoveryAction.debugLabel
-                ]
-            )
-        )
-
-        switch recoveryAction {
-        case .retryImmediately:
-            return
-        case .resumeAfterDelay(let delayMs):
-            scheduleAcceptSourceResume(
-                listenerSocket: listenerSocket,
-                generation: generation,
-                errnoCode: errnoCode,
-                consecutiveFailures: consecutiveFailures,
-                delayMs: delayMs
-            )
-            return
-        case .rearmAfterDelay(let delayMs):
-            let cleanup = withListenerState {
-                guard activeAcceptLoopGeneration == generation, serverSocket == listenerSocket else {
-                    return (didCleanup: false, sourceToCancel: nil as DispatchSourceRead?, sourceWasSuspended: false)
-                }
-                pendingAcceptLoopRearmGeneration = generation
-                isRunning = false
-                acceptLoopAlive = false
-                let source = listenerReadSource
-                let sourceWasSuspended = listenerReadSourceSuspended
-                listenerReadSource = nil
-                listenerReadSourceSuspended = false
-                serverSocket = -1
-                shutdown(listenerSocket, SHUT_RDWR)
-                if source == nil {
-                    close(listenerSocket)
-                }
-                return (didCleanup: true, sourceToCancel: source, sourceWasSuspended: sourceWasSuspended)
-            }
-            guard cleanup.didCleanup else {
-                return
-            }
-            if cleanup.sourceWasSuspended {
-                cleanup.sourceToCancel?.resume()
-            }
-            cleanup.sourceToCancel?.cancel()
-
-            scheduleListenerRearm(
-                generation: generation,
-                errnoCode: errnoCode,
-                consecutiveFailures: consecutiveFailures,
-                delayMs: delayMs
-            )
-        }
-    }
-
     private nonisolated func spawnClientHandler(socket clientSocket: Int32, peerPid: pid_t?) {
         Thread.detachNewThread { [weak self] in
             guard let self else {
@@ -1964,60 +1176,6 @@ class TerminalController {
                 return
             }
             self.handleClient(clientSocket, peerPid: peerPid)
-        }
-    }
-
-    private nonisolated func scheduleAcceptSourceResume(
-        listenerSocket: Int32,
-        generation: UInt64,
-        errnoCode: Int32,
-        consecutiveFailures: Int,
-        delayMs: Int
-    ) {
-        let sourceToPause = withListenerState {
-            guard activeAcceptLoopGeneration == generation,
-                  serverSocket == listenerSocket,
-                  let source = listenerReadSource,
-                  !listenerReadSourceSuspended else {
-                return nil as DispatchSourceRead?
-            }
-            source.suspend()
-            listenerReadSourceSuspended = true
-            return source
-        }
-        guard let sourceToPause else {
-            return
-        }
-
-        sentryBreadcrumb(
-            "socket.listener.accept.resume_scheduled",
-            category: "socket",
-            data: socketListenerEventData(
-                stage: "accept_source_resume",
-                errnoCode: errnoCode,
-                extra: [
-                    "generation": generation,
-                    "consecutiveFailures": consecutiveFailures,
-                    "resumeDelayMs": delayMs
-                ]
-            )
-        )
-
-        let deadline = DispatchTime.now() + .milliseconds(delayMs)
-        socketListenerQueue.asyncAfter(deadline: deadline) { [weak self, sourceToPause] in
-            guard let self else { return }
-            self.withListenerState {
-                guard self.activeAcceptLoopGeneration == generation,
-                      self.serverSocket == listenerSocket,
-                      self.isRunning,
-                      let activeSource = self.listenerReadSource,
-                      activeSource === sourceToPause,
-                      self.listenerReadSourceSuspended else {
-                    return
-                }
-                sourceToPause.resume()
-                self.listenerReadSourceSuspended = false
-            }
         }
     }
 
@@ -2030,36 +1188,25 @@ class TerminalController {
         let deadline = DispatchTime.now() + .milliseconds(delayMs)
         DispatchQueue.main.asyncAfter(deadline: deadline) { [weak self] in
             guard let self else { return }
-            guard let tabManager = self.tabManager else { return }
-            guard let restartPath = self.withListenerState({ () -> String? in
-                guard self.pendingAcceptLoopRearmGeneration == generation else { return nil }
-                self.pendingAcceptLoopRearmGeneration = nil
-                return self.socketPath
-            }) else { return }
-
-            let restartMode = self.accessMode
-
-            sentryBreadcrumb(
-                "socket.listener.rearm.requested",
-                category: "socket",
-                data: self.socketListenerEventData(
-                    stage: "accept_rearm",
+            MainActor.assumeIsolated {
+                guard let tabManager = self.tabManager else { return }
+                guard let restartPath = self.socketServer.claimPendingRearm(
+                    generation: generation,
                     errnoCode: errnoCode,
-                    extra: [
-                        "generation": generation,
-                        "consecutiveFailures": consecutiveFailures,
-                        "rearmDelayMs": delayMs
-                    ]
-                )
-            )
+                    consecutiveFailures: consecutiveFailures,
+                    delayMs: delayMs
+                ) else { return }
 
-            self.stop()
-            self.start(
-                tabManager: tabManager,
-                socketPath: restartPath,
-                accessMode: restartMode,
-                preserveAcceptFailureStreak: true
-            )
+                let restartMode = self.socketServer.accessMode
+
+                self.stop()
+                self.start(
+                    tabManager: tabManager,
+                    socketPath: restartPath,
+                    accessMode: restartMode,
+                    preserveAcceptFailureStreak: true
+                )
+            }
         }
     }
 
@@ -2068,10 +1215,10 @@ class TerminalController {
 
         // In cmuxOnly mode, verify the connecting process is a descendant of cmux.
         // In allowAll mode (env-var only), skip the ancestry check.
-        if accessMode == .cmuxOnly {
+        if socketServer.accessMode == .cmuxOnly {
             // Use pre-captured peer PID if available (captured in accept loop before
             // the peer can disconnect), falling back to live lookup.
-            let pid = peerPid ?? getPeerPid(socket)
+            let pid = peerPid ?? transport.peerProcessID(of: socket)
             if let pid {
                 guard isDescendant(pid) else {
                     _ = writeSocketResponse(
@@ -2089,7 +1236,7 @@ class TerminalController {
             // sent data (checked in the read loop below) — a connect-only probe
             // with no data is harmless.
             if pid == nil {
-                guard peerHasSameUID(socket) else {
+                guard transport.peerHasSameUID(socket) else {
                     _ = writeSocketResponse(
                         "ERROR: Unable to verify client process",
                         to: socket
@@ -2103,7 +1250,7 @@ class TerminalController {
         var pending = ""
         var authenticated = false
 
-        while withListenerState({ isRunning }) {
+        while socketServer.isRunning {
             let bytesRead = read(socket, &buffer, buffer.count - 1)
             guard bytesRead > 0 else { break }
 
@@ -2791,7 +1938,7 @@ class TerminalController {
                 id: id,
                 result: [
                     "authenticated": true,
-                    "required": accessMode.requiresPasswordAuth
+                    "required": socketServer.accessMode.requiresPasswordAuth
                 ]
             )
 
@@ -2915,6 +2062,8 @@ class TerminalController {
             return v2Result(id: id, self.v2SurfaceFocus(params: params))
         case "surface.split":
             return v2Result(id: id, self.v2SurfaceSplit(params: params))
+        case "surface.respawn":
+            return v2Result(id: id, self.v2SurfaceRespawn(params: params))
         case "surface.create":
             return v2Result(id: id, self.v2SurfaceCreate(params: params))
         case "surface.close":
@@ -3392,6 +2541,7 @@ class TerminalController {
             "surface.current",
             "surface.focus",
             "surface.split",
+            "surface.respawn",
             "surface.create",
             "surface.close",
             "surface.drag_to_split",
@@ -3576,8 +2726,8 @@ class TerminalController {
         return [
             "protocol": "cmux-socket",
             "version": 2,
-            "socket_path": socketPath,
-            "access_mode": accessMode.rawValue,
+            "socket_path": socketServer.currentSocketPath,
+            "access_mode": socketServer.accessMode.rawValue,
             "methods": methods.sorted()
         ]
     }
@@ -3585,7 +2735,7 @@ class TerminalController {
     private func v2Identify(params: [String: Any]) -> [String: Any] {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return [
-                "socket_path": socketPath,
+                "socket_path": socketServer.currentSocketPath,
                 "app_pid": Int(ProcessInfo.processInfo.processIdentifier),
                 "focused": NSNull(),
                 "caller": NSNull()
@@ -3663,7 +2813,7 @@ class TerminalController {
         }
 
         var result: [String: Any] = [
-            "socket_path": socketPath,
+            "socket_path": socketServer.currentSocketPath,
             "app_pid": Int(ProcessInfo.processInfo.processIdentifier),
             "focused": focused.isEmpty ? NSNull() : focused,
             "caller": v2OrNull(resolvedCaller)
@@ -4485,24 +3635,33 @@ class TerminalController {
         var result: [String: Any] = [:]
         v2MainSync {
             MainActor.assumeIsolated {
-                let manager = AuthManager.shared
+                guard let coordinator = self.authCoordinator else {
+                    result = [
+                        "signed_in": false,
+                        "is_restoring_session": false,
+                        "is_loading": false,
+                        "timed_out": timedOut
+                    ]
+                    return
+                }
+                let isSigningIn = self.browserSignInFlow?.isSigningIn ?? false
                 var status: [String: Any] = [
-                    "signed_in": manager.isAuthenticated,
-                    "is_restoring_session": manager.isRestoringSession,
-                    "is_loading": manager.isLoading,
+                    "signed_in": coordinator.isAuthenticated,
+                    "is_restoring_session": coordinator.isRestoringSession,
+                    "is_loading": coordinator.isLoading || isSigningIn,
                     "timed_out": timedOut
                 ]
-                if let user = manager.currentUser {
+                if let user = coordinator.currentUser {
                     var userDict: [String: Any] = ["id": user.id]
                     if let email = user.primaryEmail { userDict["email"] = email }
                     if let name = user.displayName { userDict["display_name"] = name }
                     status["user"] = userDict
                 }
-                if let teamID = manager.resolvedTeamID {
+                if let teamID = coordinator.resolvedTeamID {
                     status["selected_team_id"] = teamID
                 }
-                if !manager.availableTeams.isEmpty {
-                    status["teams"] = manager.availableTeams.map { team -> [String: Any] in
+                if !coordinator.availableTeams.isEmpty {
+                    status["teams"] = coordinator.availableTeams.map { team -> [String: Any] in
                         var dict: [String: Any] = [
                             "id": team.id,
                             "display_name": team.displayName
@@ -7649,10 +6808,10 @@ class TerminalController {
         }
 
         if let requestedSurfaceId {
-            let shouldPublish = Self.socketFastPathState.shouldPublishShellActivity(
+            let shouldPublish = socketFastPathState.shouldPublishShellActivity(
                 workspaceId: workspaceId,
                 panelId: requestedSurfaceId,
-                state: state
+                state: state.rawValue
             )
             if shouldPublish {
                 DispatchQueue.main.async {
@@ -8897,6 +8056,156 @@ class TerminalController {
         }
         return result
     }
+
+    private func v2SurfaceRespawn(params: [String: Any]) -> V2CallResult {
+        let fallbackTabManager = v2ResolveTabManager(params: params)
+
+        let command = v2OptionalTrimmedRawString(params, "command")
+            ?? v2OptionalTrimmedRawString(params, "initial_command")
+            ?? "exec ${SHELL:-/bin/zsh} -l"
+        let tmuxStartCommand = v2OptionalTrimmedRawString(params, "tmux_start_command") ?? command
+        let workingDirectory = v2OptionalTrimmedRawString(params, "working_directory")
+        let focus: Bool?
+        if v2HasNonNullParam(params, "focus") {
+            guard let parsedFocus = v2Bool(params, "focus") else {
+                return .err(
+                    code: "invalid_params",
+                    message: String(
+                        localized: "rpc.v2.surface.respawn.invalidFocus",
+                        defaultValue: "Missing or invalid focus"
+                    ),
+                    data: nil
+                )
+            }
+            focus = v2FocusAllowed(requested: parsedFocus)
+        } else {
+            focus = nil
+        }
+
+        var result: V2CallResult = .err(
+            code: "internal_error",
+            message: String(
+                localized: "rpc.v2.surface.respawn.failed",
+                defaultValue: "Failed to respawn surface"
+            ),
+            data: nil
+        )
+        v2MainSync {
+            let ws: Workspace
+            let tabManager: TabManager
+            let surfaceId: UUID
+            if v2HasNonNullParam(params, "surface_id") {
+                guard let requestedSurfaceId = v2UUID(params, "surface_id") else {
+                    result = .err(
+                        code: "not_found",
+                        message: String(
+                            localized: "rpc.v2.surface.respawn.surfaceNotFoundForId",
+                            defaultValue: "Surface not found for the given surface_id"
+                        ),
+                        data: nil
+                    )
+                    return
+                }
+                guard let located = AppDelegate.shared?.locateSurface(surfaceId: requestedSurfaceId),
+                      let locatedWorkspace = located.tabManager.tabs.first(where: { $0.id == located.workspaceId }) else {
+                    result = .err(
+                        code: "not_found",
+                        message: String(
+                            localized: "rpc.v2.surface.respawn.surfaceNotFoundForId",
+                            defaultValue: "Surface not found for the given surface_id"
+                        ),
+                        data: ["surface_id": requestedSurfaceId.uuidString]
+                    )
+                    return
+                }
+                ws = locatedWorkspace
+                tabManager = located.tabManager
+                surfaceId = requestedSurfaceId
+            } else {
+                guard let fallbackTabManager = fallbackTabManager else {
+                    result = .err(
+                        code: "unavailable",
+                        message: String(
+                            localized: "rpc.v2.surface.respawn.tabManagerUnavailable",
+                            defaultValue: "Unable to access the target workspace"
+                        ),
+                        data: nil
+                    )
+                    return
+                }
+                guard let resolvedWorkspace = v2ResolveWorkspace(params: params, tabManager: fallbackTabManager) else {
+                    result = .err(
+                        code: "not_found",
+                        message: String(
+                            localized: "rpc.v2.surface.respawn.workspaceNotFound",
+                            defaultValue: "Workspace not found"
+                        ),
+                        data: nil
+                    )
+                    return
+                }
+                guard let focusedSurfaceId = resolvedWorkspace.focusedPanelId else {
+                    result = .err(
+                        code: "not_found",
+                        message: String(
+                            localized: "rpc.v2.surface.respawn.noFocusedSurface",
+                            defaultValue: "No focused surface"
+                        ),
+                        data: nil
+                    )
+                    return
+                }
+                ws = resolvedWorkspace
+                tabManager = fallbackTabManager
+                surfaceId = focusedSurfaceId
+            }
+            guard ws.terminalPanel(for: surfaceId) != nil else {
+                result = .err(
+                    code: "invalid_params",
+                    message: String(
+                        localized: "rpc.v2.surface.respawn.surfaceNotTerminal",
+                        defaultValue: "Surface is not a terminal"
+                    ),
+                    data: ["surface_id": surfaceId.uuidString]
+                )
+                return
+            }
+
+            v2MaybeFocusWindow(for: tabManager)
+            v2MaybeSelectWorkspace(tabManager, workspace: ws)
+
+            guard let replacementPanel = ws.respawnTerminalSurface(
+                panelId: surfaceId,
+                command: command,
+                workingDirectory: workingDirectory,
+                tmuxStartCommand: tmuxStartCommand,
+                focus: focus
+            ) else {
+                result = .err(
+                    code: "internal_error",
+                    message: String(
+                        localized: "rpc.v2.surface.respawn.failed",
+                        defaultValue: "Failed to respawn surface"
+                    ),
+                    data: ["surface_id": surfaceId.uuidString]
+                )
+                return
+            }
+
+            let windowId = v2ResolveWindowId(tabManager: tabManager)
+            result = .ok([
+                "workspace_id": ws.id.uuidString,
+                "workspace_ref": v2Ref(kind: .workspace, uuid: ws.id),
+                "surface_id": surfaceId.uuidString,
+                "surface_ref": v2Ref(kind: .surface, uuid: surfaceId),
+                "type": replacementPanel.panelType.rawValue,
+                "window_id": v2OrNull(windowId?.uuidString),
+                "window_ref": v2Ref(kind: .window, uuid: windowId)
+            ])
+        }
+        return result
+    }
+
     private func v2SurfaceCreate(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
@@ -13592,46 +12901,88 @@ class TerminalController {
     }
 
     private func v2BrowserScreenshot(params: [String: Any]) -> V2CallResult {
-        return v2BrowserWithPanel(params: params) { _, ws, surfaceId, browserPanel in
-            let snapshotResult: Data?? = v2AwaitCallback(timeout: 5.0) { finish in
-                browserPanel.takeSnapshot { image in
-                    finish(image.flatMap { self.v2PNGData(from: $0) })
-                }
+        let resolved: (
+            error: V2CallResult?,
+            workspaceId: UUID?,
+            surfaceId: UUID?,
+            browserPanel: BrowserPanel?
+        ) = v2MainSync {
+            guard let tabManager = v2ResolveTabManager(params: params) else {
+                return (.err(code: "unavailable", message: "TabManager not available", data: nil), nil, nil, nil)
             }
-
-            guard let snapshotResult else {
-                return .err(code: "timeout", message: "Timed out waiting for snapshot", data: nil)
+            guard let ws = v2ResolveWorkspace(params: params, tabManager: tabManager) else {
+                return (.err(code: "not_found", message: "Workspace not found", data: nil), nil, nil, nil)
             }
-            guard let imageData = snapshotResult else {
-                return .err(code: "internal_error", message: "Failed to capture snapshot", data: nil)
+            let resolvedSurface = v2ResolveBrowserSurfaceId(params: params, workspace: ws)
+            if let error = resolvedSurface.error {
+                return (error, nil, nil, nil)
             }
-
-            var result: [String: Any] = [
-                "workspace_id": ws.id.uuidString,
-                "workspace_ref": v2Ref(kind: .workspace, uuid: ws.id),
-                "surface_id": surfaceId.uuidString,
-                "surface_ref": v2Ref(kind: .surface, uuid: surfaceId),
-                "png_base64": imageData.base64EncodedString()
-            ]
-
-            // Best effort: keep screenshot data available even when temp-file writes fail.
-            let screenshotsDirectory = FileManager.default.temporaryDirectory
-                .appendingPathComponent("cmux-browser-screenshots", isDirectory: true)
-            if (try? FileManager.default.createDirectory(at: screenshotsDirectory, withIntermediateDirectories: true)) != nil {
-                bestEffortPruneTemporaryFiles(in: screenshotsDirectory)
-                let timestampMs = Int(Date().timeIntervalSince1970 * 1000)
-                let shortSurfaceId = String(surfaceId.uuidString.prefix(8))
-                let shortRandomId = String(UUID().uuidString.prefix(8))
-                let filename = "surface-\(shortSurfaceId)-\(timestampMs)-\(shortRandomId).png"
-                let imageURL = screenshotsDirectory.appendingPathComponent(filename, isDirectory: false)
-                if (try? imageData.write(to: imageURL, options: .atomic)) != nil {
-                    result["path"] = imageURL.path
-                    result["url"] = imageURL.absoluteString
-                }
+            guard let surfaceId = resolvedSurface.surfaceId else {
+                return (.err(code: "not_found", message: "No focused browser surface", data: nil), nil, nil, nil)
             }
-
-            return .ok(result)
+            guard let browserPanel = ws.browserPanel(for: surfaceId) else {
+                return (
+                    .err(code: "invalid_params", message: "Surface is not a browser", data: ["surface_id": surfaceId.uuidString]),
+                    nil,
+                    nil,
+                    nil
+                )
+            }
+            return (nil, ws.id, surfaceId, browserPanel)
         }
+
+        if let error = resolved.error {
+            return error
+        }
+        guard let workspaceId = resolved.workspaceId,
+              let surfaceId = resolved.surfaceId,
+              let browserPanel = resolved.browserPanel else {
+            return .err(code: "internal_error", message: "Browser operation failed", data: nil)
+        }
+
+        let snapshotResult: Data?? = v2AwaitCallback(timeout: 15.0) { finish in
+            browserPanel.captureAutomationVisibleViewportSnapshot { result in
+                switch result {
+                case .success(let image):
+                    finish(self.v2PNGData(from: image))
+                case .failure:
+                    finish(nil)
+                }
+            }
+        }
+
+        guard let snapshotResult else {
+            return .err(code: "timeout", message: "Timed out waiting for snapshot", data: nil)
+        }
+        guard let imageData = snapshotResult else {
+            return .err(code: "internal_error", message: "Failed to capture snapshot", data: nil)
+        }
+
+        var result: [String: Any] = [
+            "workspace_id": workspaceId.uuidString,
+            "workspace_ref": v2Ref(kind: .workspace, uuid: workspaceId),
+            "surface_id": surfaceId.uuidString,
+            "surface_ref": v2Ref(kind: .surface, uuid: surfaceId),
+            "png_base64": imageData.base64EncodedString()
+        ]
+
+        // Best effort: keep screenshot data available even when temp-file writes fail.
+        let screenshotsDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cmux-browser-screenshots", isDirectory: true)
+        if (try? FileManager.default.createDirectory(at: screenshotsDirectory, withIntermediateDirectories: true)) != nil {
+            bestEffortPruneTemporaryFiles(in: screenshotsDirectory)
+            let timestampMs = Int(Date().timeIntervalSince1970 * 1000)
+            let shortSurfaceId = String(surfaceId.uuidString.prefix(8))
+            let shortRandomId = String(UUID().uuidString.prefix(8))
+            let filename = "surface-\(shortSurfaceId)-\(timestampMs)-\(shortRandomId).png"
+            let imageURL = screenshotsDirectory.appendingPathComponent(filename, isDirectory: false)
+            if (try? imageData.write(to: imageURL, options: .atomic)) != nil {
+                result["path"] = imageURL.path
+                result["url"] = imageURL.absoluteString
+            }
+        }
+
+        return .ok(result)
     }
 
     private func v2BrowserGetText(params: [String: Any]) -> V2CallResult {
@@ -21040,10 +20391,10 @@ class TerminalController {
         }
 
         if let scope = Self.explicitSocketScope(options: parsed.options) {
-            guard Self.socketFastPathState.shouldPublishShellActivity(
+            guard socketFastPathState.shouldPublishShellActivity(
                 workspaceId: scope.workspaceId,
                 panelId: scope.panelId,
-                state: state
+                state: state.rawValue
             ) else {
                 return "OK"
             }
