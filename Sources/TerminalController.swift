@@ -104,30 +104,6 @@ class TerminalController {
     static var socketReloadConfigurationHandlerForTesting: (@MainActor (String) -> Void)?
 #endif
 
-    struct SocketListenerHealth: Sendable {
-        let isRunning: Bool
-        let acceptLoopAlive: Bool
-        let socketPathMatches: Bool
-        let socketPathExists: Bool
-        let socketPathOwnedByListener: Bool
-
-        var failureSignals: [String] {
-            var signals: [String] = []
-            if !isRunning { signals.append("not_running") }
-            if !acceptLoopAlive { signals.append("accept_loop_dead") }
-            if !socketPathMatches { signals.append("socket_path_mismatch") }
-            if !socketPathExists { signals.append("socket_missing") }
-            if socketPathMatches && socketPathExists && !socketPathOwnedByListener {
-                signals.append("socket_identity_mismatch")
-            }
-            return signals
-        }
-
-        var isHealthy: Bool {
-            failureSignals.isEmpty
-        }
-    }
-
     static let shared = TerminalController()
 
     private nonisolated let remotePTYControllerAvailabilityCondition = NSCondition()
