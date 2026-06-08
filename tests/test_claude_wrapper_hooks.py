@@ -16,7 +16,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_WRAPPER = ROOT / "Resources" / "bin" / "claude"
+SOURCE_WRAPPER = ROOT / "Resources" / "bin" / "cmux-claude-wrapper"
 
 
 def make_executable(path: Path, content: str) -> None:
@@ -59,7 +59,7 @@ def run_wrapper(
         fake_home = tmp / "home"
         fake_home.mkdir(parents=True, exist_ok=True)
 
-        wrapper = wrapper_dir / "claude"
+        wrapper = wrapper_dir / "cmux-claude-wrapper"
         shutil.copy2(SOURCE_WRAPPER, wrapper)
         wrapper.chmod(0o755)
 
@@ -197,7 +197,7 @@ exit 0
 
         try:
             proc = subprocess.run(
-                ["claude", *argv],
+                [str(wrapper), *argv],
                 cwd=tmp,
                 env=env,
                 capture_output=True,
@@ -247,7 +247,7 @@ def run_wrapper_terminal_env_probe(
         wrapper_dir.mkdir(parents=True, exist_ok=True)
         real_dir.mkdir(parents=True, exist_ok=True)
 
-        wrapper = wrapper_dir / "claude"
+        wrapper = wrapper_dir / "cmux-claude-wrapper"
         shutil.copy2(SOURCE_WRAPPER, wrapper)
         wrapper.chmod(0o755)
 
@@ -374,7 +374,7 @@ def run_wrapper_auth_env(
         wrapper_dir.mkdir(parents=True, exist_ok=True)
         real_dir.mkdir(parents=True, exist_ok=True)
 
-        wrapper = wrapper_dir / "claude"
+        wrapper = wrapper_dir / "cmux-claude-wrapper"
         shutil.copy2(SOURCE_WRAPPER, wrapper)
         wrapper.chmod(0o755)
 
@@ -467,7 +467,7 @@ exit 0
             env.update(inherited_env)
 
             proc = subprocess.run(
-                ["claude", *argv],
+                [str(wrapper), *argv],
                 cwd=tmp,
                 env=env,
                 capture_output=True,

@@ -184,6 +184,13 @@ enum SessionBlueprintEncoder {
                 command: "",
                 cwd: nil
             )
+        case .agentSession:
+            return .init(
+                splitPath: splitPath,
+                kind: "agentSession",
+                command: panel.agentSession?.providerID.rawValue ?? "",
+                cwd: panel.agentSession?.workingDirectory
+            )
         }
     }
 

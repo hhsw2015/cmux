@@ -1758,6 +1758,7 @@ struct SessionPanelSnapshot: Codable, Sendable {
     /// Used as a fallback restore key when UUIDs drift across reinstalls,
     /// migrations, or imports. Format: see `StableLayoutCoord`.
     var stableCoord: StableLayoutCoord? = nil
+    var agentSession: SessionAgentSessionPanelSnapshot? = nil
     var project: SessionProjectPanelSnapshot?
 }
 

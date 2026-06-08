@@ -208,6 +208,11 @@ extension CmuxSettingsFileStore {
                 ],
             ],
             [
+                "diffViewer": [
+                    "defaultLayout": "unified",
+                ],
+            ],
+            [
                 "shortcuts": [
                     "bindings": shortcutsBindings,
                 ],
