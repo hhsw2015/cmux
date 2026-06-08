@@ -1,5 +1,5 @@
 ---
-name: terminal-control
+name: cmux-terminal-control
 description: >
   Drive and observe terminal applications (TUIs / REPLs / interactive CLIs)
   inside cmux panels using the cmux socket RPCs (`surface.screen_text`,
