@@ -7420,6 +7420,26 @@ final class TerminalSurface: Identifiable, ObservableObject {
         return Self.readText(surface: surface, pointTag: GHOSTTY_POINT_VIEWPORT)
     }
 
+    /// Snapshot of the visible viewport as plain text. Backs the
+    /// `surface.screen_text` socket command so AI agents / automation
+    /// can read what the user sees right now.
+    /// Self-contained: reads ghostty's grid directly via the existing
+    /// `ghostty_surface_render_grid_json` symbol (no herdr / termctrl
+    /// dependency).
+    @MainActor
+    func visibleScreenText() -> String? {
+        guard let result = mobileRenderGridFrame(stateSeq: 0, full: true) else {
+            return nil
+        }
+        var out = String()
+        for row in result.rows {
+            let trimmed = String(row.reversed().drop(while: { $0 == " " }).reversed())
+            out.append(trimmed)
+            out.append("\n")
+        }
+        return out
+    }
+
     @MainActor
     func mobileRenderGridFrame(
         stateSeq: UInt64,

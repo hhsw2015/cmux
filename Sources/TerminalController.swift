@@ -1985,6 +1985,12 @@ class TerminalController {
             return v2Result(id: id, self.v2SurfaceSendText(params: params))
         case "surface.send_key":
             return v2Result(id: id, self.v2SurfaceSendKey(params: params))
+        case "surface.screen_text":
+            return v2Result(id: id, self.v2SurfaceScreenText(params: params))
+        case "surface.wait_for_text":
+            return v2Result(id: id, self.v2SurfaceWaitForText(params: params))
+        case "surface.wait_for_idle":
+            return v2Result(id: id, self.v2SurfaceWaitForIdle(params: params))
         case "surface.report_tty":
             return v2Result(id: id, self.v2SurfaceReportTTY(params: params))
         case "surface.report_pwd":
@@ -8813,6 +8819,146 @@ class TerminalController {
             return .err(code: "unavailable", message: "AppDelegate not available", data: nil)
         }
         return .ok(payload)
+    }
+
+    /// Snapshot of the visible viewport as plain text for the focused
+    /// (or specified) surface. Self-contained — reads ghostty's grid
+    /// directly via `visibleScreenText()` (which uses
+    /// `ghostty_surface_render_grid_json`). No herdr / termctrl dep.
+    /// Mirrors the herdr `pane.screen_text` RPC shape so agents can
+    /// use the same JSON shape against either backend.
+    private func v2SurfaceScreenText(params: [String: Any]) -> V2CallResult {
+        guard let tabManager = v2ResolveTabManager(params: params) else {
+            return .err(code: "unavailable", message: "TabManager not available", data: nil)
+        }
+        var result: V2CallResult = .err(code: "internal_error", message: "Failed to read screen", data: nil)
+        v2MainSync {
+            guard let ws = v2ResolveWorkspace(params: params, tabManager: tabManager) else {
+                result = .err(code: "not_found", message: "Workspace not found", data: nil)
+                return
+            }
+            let surfaceId: UUID?
+            if params["surface_id"] != nil {
+                surfaceId = v2UUID(params, "surface_id")
+                guard surfaceId != nil else {
+                    result = .err(code: "not_found", message: "Surface not found for the given surface_id", data: nil)
+                    return
+                }
+            } else {
+                surfaceId = ws.focusedPanelId
+            }
+            guard let surfaceId else {
+                result = .err(code: "not_found", message: "No focused surface", data: nil)
+                return
+            }
+            guard let terminalPanel = ws.terminalPanel(for: surfaceId) else {
+                result = .err(code: "invalid_params", message: "Surface is not a terminal", data: ["surface_id": surfaceId.uuidString])
+                return
+            }
+            let text = terminalPanel.surface.visibleScreenText() ?? ""
+            result = .ok([
+                "workspace_id": ws.id.uuidString,
+                "surface_id": surfaceId.uuidString,
+                "text": text,
+            ])
+        }
+        return result
+    }
+
+    /// Block until the visible viewport contains a substring/regex match,
+    /// or `timeout_ms` elapses. Polls every 100ms. Self-contained.
+    /// Mirrors herdr `pane.wait_for_text`.
+    private func v2SurfaceWaitForText(params: [String: Any]) -> V2CallResult {
+        let timeoutMs = (params["timeout_ms"] as? NSNumber)?.intValue ?? 30_000
+        let pattern = (params["substring"] as? String) ?? (params["pattern"] as? String) ?? ""
+        let isRegex = (params["regex"] as? Bool) ?? false
+        guard !pattern.isEmpty else {
+            return .err(code: "invalid_params", message: "Missing substring or pattern", data: nil)
+        }
+        let regex: NSRegularExpression?
+        if isRegex {
+            do {
+                regex = try NSRegularExpression(pattern: pattern, options: [])
+            } catch {
+                return .err(code: "invalid_regex", message: error.localizedDescription, data: nil)
+            }
+        } else {
+            regex = nil
+        }
+        let deadline = Date().addingTimeInterval(TimeInterval(timeoutMs) / 1000.0)
+        let pollInterval: TimeInterval = 0.1
+
+        while Date() < deadline {
+            let snapshot = v2SurfaceScreenText(params: params)
+            switch snapshot {
+            case .err(let code, let message, let data):
+                return .err(code: code, message: message, data: data)
+            case .ok(let payload):
+                guard var dict = payload as? [String: Any] else {
+                    return .err(code: "internal_error", message: "screen_text payload not a dict", data: nil)
+                }
+                let text = (dict["text"] as? String) ?? ""
+                let matched: String?
+                if let regex {
+                    let range = NSRange(text.startIndex..<text.endIndex, in: text)
+                    if let m = regex.firstMatch(in: text, options: [], range: range),
+                       let r = Range(m.range, in: text) {
+                        matched = String(text[r])
+                    } else {
+                        matched = nil
+                    }
+                } else if text.contains(pattern) {
+                    matched = pattern
+                } else {
+                    matched = nil
+                }
+                if let matched {
+                    dict["matched"] = matched
+                    return .ok(dict)
+                }
+            }
+            Thread.sleep(forTimeInterval: pollInterval)
+        }
+        return .err(code: "timeout", message: "timed out waiting for screen text match", data: nil)
+    }
+
+    /// Block until the viewport stops changing for `settle_ms`, or
+    /// `deadline_ms` elapses. Two consecutive identical snapshots taken
+    /// `settle_ms` apart count as idle. Self-contained.
+    /// Mirrors herdr `pane.wait_for_idle`.
+    private func v2SurfaceWaitForIdle(params: [String: Any]) -> V2CallResult {
+        let settleMs = (params["settle_ms"] as? NSNumber)?.intValue ?? 500
+        let deadlineMs = (params["deadline_ms"] as? NSNumber)?.intValue ?? 30_000
+        let deadline = Date().addingTimeInterval(TimeInterval(deadlineMs) / 1000.0)
+        let settle = TimeInterval(settleMs) / 1000.0
+        let pollInterval: TimeInterval = 0.1
+        var lastText: String?
+        var stableSince: Date?
+
+        while Date() < deadline {
+            let snapshot = v2SurfaceScreenText(params: params)
+            switch snapshot {
+            case .err(let code, let message, let data):
+                return .err(code: code, message: message, data: data)
+            case .ok(let payload):
+                guard var dict = payload as? [String: Any] else {
+                    return .err(code: "internal_error", message: "screen_text payload not a dict", data: nil)
+                }
+                let text = (dict["text"] as? String) ?? ""
+                let now = Date()
+                if let lt = lastText, lt == text, let since = stableSince {
+                    if now.timeIntervalSince(since) >= settle {
+                        dict["idle_ms"] = Int(now.timeIntervalSince(since) * 1000.0)
+                        return .ok(dict)
+                    }
+                } else {
+                    lastText = text
+                    stableSince = now
+                }
+            }
+            Thread.sleep(forTimeInterval: pollInterval)
+        }
+        return .err(code: "timeout", message: "timed out waiting for surface to go idle", data: nil)
     }
 
     private func v2SurfaceSendText(params: [String: Any]) -> V2CallResult {
