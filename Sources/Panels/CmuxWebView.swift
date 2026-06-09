@@ -692,8 +692,17 @@ final class CmuxWebView: WKWebView {
         }
 
         // Menu/app shortcut routing is only needed for Command equivalents
-        // (New Tab, Close Tab, tab switching, split commands, etc).
+        // (New Tab, Close Tab, tab switching, split commands, etc) — except
+        // configured cmux shortcuts that bind a non-Command modifier
+        // (the default `selectSurfaceByNumber` is `Ctrl+1..9`,
+        // `selectWorkspaceByNumber` can also be remapped without Command).
+        // Without this preflight, focusing a browser tab would let WKWebView
+        // silently swallow `Ctrl+1`, leaving the user unable to switch back
+        // to the sibling terminal surface.
         guard flags.contains(.command) else {
+            if AppDelegate.shared?.handleBrowserSurfaceKeyEquivalent(event) == true {
+                return finish(true)
+            }
             return finish(super.performKeyEquivalent(with: event))
         }
 
