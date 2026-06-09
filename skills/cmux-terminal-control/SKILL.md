@@ -55,6 +55,126 @@ agent suddenly asks an interactive question), switch tracks
 mid-flight — `tui_probe.kind=input_prompt` is your signal to drop
 out of Agent CLI mode and answer the question.
 
+## Use the Python helper library — pick the right layer
+
+The skill ships with `lib/cmux_term/` (a Python package with three
+layers + a batch executor). **Use it.** Choose the layer that matches
+your confidence and step granularity — this is how you get both
+precision AND token efficiency.
+
+```python
+import sys
+sys.path.insert(0, "/Users/<you>/Dev/cmux/skills/cmux-terminal-control/lib")
+from cmux_term import Surface, raw, atomic, batch
+from cmux_term.batch import send_line, send_key, wait_text, wait_idle
+
+s = Surface.from_focused_or_split(direction="right")
+s.wait_ready()
+```
+
+### Three layers — LLM picks per task
+
+| Layer | Verify | Cost / op | Use when |
+|---|---|---|---|
+| **L1 `raw.*`** | none | 1 RPC | Confidence ≥ 95%, repetitive ops, you'll add ONE trailing `expect`. |
+| **L2 `atomic.*` / `s.press`/`s.type`** | yes, every step | ~3 RPC (hash + send + wait_change) | Confidence < 90%, branchy logic, interactive TUI where wrong state corrupts everything downstream. |
+| **L3 `flow.*` / `s.type_line` / `s.vim_edit` / `s.run_script` / `s.run_steps`** | composite | varies (1 RPC for `run_steps`) | Multi-step composites with built-in verify, OR pack N steps into ONE daemon-side RPC. |
+
+### Decision recipe
+
+```
+                +--- 95%+ confident, just text into a quiet prompt
+                |        → raw.send_text + 1 atomic.expect
+                |
+  task starts --+--- < 90% confident OR vim/TUI mid-edit
+                |        → atomic.press / atomic.type per step
+                |
+                +--- > 3 high-confidence shell commands in a row
+                |        → batch.run_steps([...]) — one RPC, daemon fail-fast
+                |
+                +--- known multi-line script (no need to read intermediate state)
+                |        → s.run_script("""...""")
+                |
+                +--- vim open-edit-save
+                         → s.vim_edit(path, content=...) or substitute=...
+```
+
+### Examples
+
+```python
+# Layer 1 — fast batch with one trailing checkpoint
+raw.send_text(s.id, "echo step1\n")
+raw.send_text(s.id, "echo step2\n")
+raw.send_text(s.id, "echo step3\n")
+atomic.expect(s.id, "step3", timeout_ms=5000)
+
+# Layer 2 — verify each step (interactive TUI)
+s.launch("/usr/bin/vi -u NONE file.txt", expect="file.txt")
+s.press("i")                      # raises if screen doesn't change
+s.expect("INSERT")
+s.type("hello world")
+s.press("escape")
+s.exec_ex(":wq")
+s.assert_back_at_shell()
+
+# Layer 3 — composite vim edit (one method, internal verify)
+s.vim_edit("hello.txt", content="line one\nline two")
+s.vim_edit("hello.txt", substitute=("line one", "line ONE"))
+
+# Layer 3 — batch via surface.expect (one round trip, daemon-side fail-fast)
+# IMPORTANT: chain multiple shell commands with `&&` inside ONE step rather
+# than many `send_line` steps. Real shells (zsh + syntax-highlighting,
+# fish, bash with custom prompts) buffer input across keystrokes and will
+# silently concatenate back-to-back send_lines that lack a real prompt
+# settle in between. `&&` collapses N commands into one logical line that
+# the shell evaluates in one go.
+from cmux_term.batch import send_line_steps, wait_text
+s.run_steps([
+    *send_line_steps(
+        "git add . && git -c user.email=a@b -c user.name=t commit -m 'wip' "
+        "&& git log --oneline"
+    ),
+    wait_text("wip", timeout_ms=3000),
+])
+
+# Layer 3 — run a multiline script in one shot
+s.run_script("""
+set -e
+mkdir -p /tmp/proj && cd /tmp/proj
+echo "hello" > a.txt
+git init -q && git add -A && git commit -qm init
+""", expect_after="master")
+
+# Agent CLI track — schedule + observe long-running work
+s.type_line("claude code 'fix the failing test'")
+s.expect("✔ Done", timeout_ms=120000)
+```
+
+**Why a layered API instead of forcing verify-every-step**: every
+verification round-trip costs ~150 B of tokens and ~50-100 ms of wall
+time. For a 50-step shell chain at 95% confidence, verifying every
+step is 50 wasted round trips. Pack into one `run_steps` or `raw`
+chain + trailing `expect` and you do it in 1-3 RPCs. **The LLM is
+responsible for picking the right layer**; the library is responsible
+for making each layer trustworthy.
+
+**Banned**: blindly verifying every byte AND blindly batching everything.
+Pick deliberately. If you're unsure: when in doubt, drop one layer
+deeper (raw → atomic → flow → flow+batch).
+
+The library has been validated end-to-end:
+- 65/65 keys verified byte-for-byte (a-z, 0-9, every symbol, shift+,
+  ctrl+, alt+, F1-F20, all navigation/escape keys)
+- 50/50 composite shell tasks (cd, sed, git, REPL, less, heredoc,
+  Unicode, 200-char stress)
+- 25/25 real TUI tasks (vim insert/normal/ex, fzf interactive, nvim
+  with avante popups + lualine non-standard statusline)
+- 1000-op random keystroke barrage leaves the panel responsive
+- 5/5 stable runs of the smoke test through `python3 cmux_term.py`
+
+If you find a case where the lib fails, **that is a bug to fix in
+the lib, not a reason to drop down to raw RPCs.**
+
 ## When to use which RPC (cheat sheet)
 
 **Computer Use track**:

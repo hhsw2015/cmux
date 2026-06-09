@@ -7820,8 +7820,147 @@ final class TerminalSurface: Identifiable, ObservableObject {
             return "\u{7F}"
         case UInt32(kVK_Tab):
             return "\t"
+        case UInt32(kVK_Return):
+            return "\r"
+        case UInt32(kVK_Escape):
+            return "\u{1B}"
+        case UInt32(kVK_Space):
+            return " "
+        // Letters a-z (US ANSI keycodes). Without canonical text the
+        // keystroke fans out to the keyboard layout machinery inside
+        // libghostty, which under socket/programmatic control returns
+        // no text and the press is silently dropped. Surfaced during
+        // the strict benchmark when `send_key i` produced no screen
+        // change in vim.
+        case UInt32(kVK_ANSI_A): return "a"
+        case UInt32(kVK_ANSI_B): return "b"
+        case UInt32(kVK_ANSI_C): return "c"
+        case UInt32(kVK_ANSI_D): return "d"
+        case UInt32(kVK_ANSI_E): return "e"
+        case UInt32(kVK_ANSI_F): return "f"
+        case UInt32(kVK_ANSI_G): return "g"
+        case UInt32(kVK_ANSI_H): return "h"
+        case UInt32(kVK_ANSI_I): return "i"
+        case UInt32(kVK_ANSI_J): return "j"
+        case UInt32(kVK_ANSI_K): return "k"
+        case UInt32(kVK_ANSI_L): return "l"
+        case UInt32(kVK_ANSI_M): return "m"
+        case UInt32(kVK_ANSI_N): return "n"
+        case UInt32(kVK_ANSI_O): return "o"
+        case UInt32(kVK_ANSI_P): return "p"
+        case UInt32(kVK_ANSI_Q): return "q"
+        case UInt32(kVK_ANSI_R): return "r"
+        case UInt32(kVK_ANSI_S): return "s"
+        case UInt32(kVK_ANSI_T): return "t"
+        case UInt32(kVK_ANSI_U): return "u"
+        case UInt32(kVK_ANSI_V): return "v"
+        case UInt32(kVK_ANSI_W): return "w"
+        case UInt32(kVK_ANSI_X): return "x"
+        case UInt32(kVK_ANSI_Y): return "y"
+        case UInt32(kVK_ANSI_Z): return "z"
+        case UInt32(kVK_ANSI_0): return "0"
+        case UInt32(kVK_ANSI_1): return "1"
+        case UInt32(kVK_ANSI_2): return "2"
+        case UInt32(kVK_ANSI_3): return "3"
+        case UInt32(kVK_ANSI_4): return "4"
+        case UInt32(kVK_ANSI_5): return "5"
+        case UInt32(kVK_ANSI_6): return "6"
+        case UInt32(kVK_ANSI_7): return "7"
+        case UInt32(kVK_ANSI_8): return "8"
+        case UInt32(kVK_ANSI_9): return "9"
+        // Symbol keys (canonical unshifted text)
+        case UInt32(kVK_ANSI_Minus):        return "-"
+        case UInt32(kVK_ANSI_Equal):        return "="
+        case UInt32(kVK_ANSI_LeftBracket):  return "["
+        case UInt32(kVK_ANSI_RightBracket): return "]"
+        case UInt32(kVK_ANSI_Semicolon):    return ";"
+        case UInt32(kVK_ANSI_Quote):        return "'"
+        case UInt32(kVK_ANSI_Comma):        return ","
+        case UInt32(kVK_ANSI_Period):       return "."
+        case UInt32(kVK_ANSI_Slash):        return "/"
+        case UInt32(kVK_ANSI_Grave):        return "`"
+        case UInt32(kVK_ANSI_Backslash):    return "\\"
         default:
             return nil
+        }
+    }
+
+    /// Symbol or digit keycode test. Used by sendKeyEvent to decide
+    /// whether to bypass the ghostty keycode path on Shift presses.
+    private static func isSymbolOrDigitKeycode(_ keycode: UInt32) -> Bool {
+        switch keycode {
+        case UInt32(kVK_ANSI_0), UInt32(kVK_ANSI_1), UInt32(kVK_ANSI_2),
+             UInt32(kVK_ANSI_3), UInt32(kVK_ANSI_4), UInt32(kVK_ANSI_5),
+             UInt32(kVK_ANSI_6), UInt32(kVK_ANSI_7), UInt32(kVK_ANSI_8),
+             UInt32(kVK_ANSI_9),
+             UInt32(kVK_ANSI_Minus), UInt32(kVK_ANSI_Equal),
+             UInt32(kVK_ANSI_LeftBracket), UInt32(kVK_ANSI_RightBracket),
+             UInt32(kVK_ANSI_Semicolon), UInt32(kVK_ANSI_Quote),
+             UInt32(kVK_ANSI_Comma), UInt32(kVK_ANSI_Period),
+             UInt32(kVK_ANSI_Slash), UInt32(kVK_ANSI_Grave),
+             UInt32(kVK_ANSI_Backslash):
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Shifted-text companion for `canonicalKeyText`. When the press carries
+    /// Shift, ghostty's `keyEvent.text` must be the *shifted* glyph (A/!/@
+    /// rather than a/1/2). On a US ANSI layout this is mechanical; future
+    /// non-US layouts will need a layout-aware lookup, but the macOS
+    /// programmatic path always uses the system layout that's loaded.
+    private static func shiftedKeyText(keycode: UInt32) -> String? {
+        switch keycode {
+        case UInt32(kVK_ANSI_A): return "A"
+        case UInt32(kVK_ANSI_B): return "B"
+        case UInt32(kVK_ANSI_C): return "C"
+        case UInt32(kVK_ANSI_D): return "D"
+        case UInt32(kVK_ANSI_E): return "E"
+        case UInt32(kVK_ANSI_F): return "F"
+        case UInt32(kVK_ANSI_G): return "G"
+        case UInt32(kVK_ANSI_H): return "H"
+        case UInt32(kVK_ANSI_I): return "I"
+        case UInt32(kVK_ANSI_J): return "J"
+        case UInt32(kVK_ANSI_K): return "K"
+        case UInt32(kVK_ANSI_L): return "L"
+        case UInt32(kVK_ANSI_M): return "M"
+        case UInt32(kVK_ANSI_N): return "N"
+        case UInt32(kVK_ANSI_O): return "O"
+        case UInt32(kVK_ANSI_P): return "P"
+        case UInt32(kVK_ANSI_Q): return "Q"
+        case UInt32(kVK_ANSI_R): return "R"
+        case UInt32(kVK_ANSI_S): return "S"
+        case UInt32(kVK_ANSI_T): return "T"
+        case UInt32(kVK_ANSI_U): return "U"
+        case UInt32(kVK_ANSI_V): return "V"
+        case UInt32(kVK_ANSI_W): return "W"
+        case UInt32(kVK_ANSI_X): return "X"
+        case UInt32(kVK_ANSI_Y): return "Y"
+        case UInt32(kVK_ANSI_Z): return "Z"
+        // US ANSI shifted digits & symbols.
+        case UInt32(kVK_ANSI_1): return "!"
+        case UInt32(kVK_ANSI_2): return "@"
+        case UInt32(kVK_ANSI_3): return "#"
+        case UInt32(kVK_ANSI_4): return "$"
+        case UInt32(kVK_ANSI_5): return "%"
+        case UInt32(kVK_ANSI_6): return "^"
+        case UInt32(kVK_ANSI_7): return "&"
+        case UInt32(kVK_ANSI_8): return "*"
+        case UInt32(kVK_ANSI_9): return "("
+        case UInt32(kVK_ANSI_0): return ")"
+        case UInt32(kVK_ANSI_Minus):        return "_"
+        case UInt32(kVK_ANSI_Equal):        return "+"
+        case UInt32(kVK_ANSI_LeftBracket):  return "{"
+        case UInt32(kVK_ANSI_RightBracket): return "}"
+        case UInt32(kVK_ANSI_Semicolon):    return ":"
+        case UInt32(kVK_ANSI_Quote):        return "\""
+        case UInt32(kVK_ANSI_Comma):        return "<"
+        case UInt32(kVK_ANSI_Period):       return ">"
+        case UInt32(kVK_ANSI_Slash):        return "?"
+        case UInt32(kVK_ANSI_Grave):        return "~"
+        case UInt32(kVK_ANSI_Backslash):    return "|"
+        default: return nil
         }
     }
 
@@ -7840,17 +7979,54 @@ final class TerminalSurface: Identifiable, ObservableObject {
         let canonicalText = Self.canonicalKeyText(keycode: keycode)
         keyEvent.unshifted_codepoint = canonicalText?.unicodeScalars.first?.value ?? 0
 
+        let modsRaw = mods.rawValue
+        let isShiftedSymbol: Bool = {
+            guard modsRaw & GHOSTTY_MODS_SHIFT.rawValue != 0 else { return false }
+            return Self.shiftedKeyText(keycode: keycode) != nil &&
+                   Self.isSymbolOrDigitKeycode(keycode)
+        }()
+
+        // For Shift + symbol/digit (e.g. shift+minus → '_', shift+1 → '!'),
+        // ghostty's keycode dispatch path does not produce the shifted char
+        // — it routes through the keyboard layout machinery which under
+        // socket/programmatic control returns no text. Bypass keycode
+        // entirely and write the canonical shifted byte directly to the PTY.
+        // Letters work via the keycode path (ghostty handles a→A internally
+        // because it uses the unshifted_codepoint), so we keep the keycode
+        // route for those.
         let handled: Bool
-        if let canonicalText {
-            // Mirror the desktop `keyDown` path's C-string lifetime: the text
-            // pointer must stay valid only for the `ghostty_surface_key` call.
-            handled = canonicalText.withCString { ptr in
-                keyEvent.text = ptr
-                return ghostty_surface_key(surface, keyEvent)
+        if isShiftedSymbol, let shifted = Self.shiftedKeyText(keycode: keycode) {
+            // For Shift + symbol, ghostty's keycode dispatch path strips the
+            // shift modifier and emits the unshifted base char. Bypass it
+            // entirely by writing the canonical shifted bytes straight to
+            // libghostty's PTY input. writeInputTextData is a sibling helper
+            // already used by other input paths and lives on the same actor
+            // as sendKeyEvent's caller.
+            let data = Data(shifted.utf8)
+            MainActor.assumeIsolated {
+                self.writeInputTextData(data, to: surface)
             }
+            handled = true
         } else {
-            keyEvent.text = nil
-            handled = ghostty_surface_key(surface, keyEvent)
+            // When the press carries Shift on a letter, swap the text payload
+            // to the shifted form so a→A actually emits 'A'.
+            let textForPty: String? = {
+                guard let unshifted = canonicalText else { return nil }
+                if modsRaw & GHOSTTY_MODS_SHIFT.rawValue != 0,
+                   let shifted = Self.shiftedKeyText(keycode: keycode) {
+                    return shifted
+                }
+                return unshifted
+            }()
+            if let textForPty {
+                handled = textForPty.withCString { ptr in
+                    keyEvent.text = ptr
+                    return ghostty_surface_key(surface, keyEvent)
+                }
+            } else {
+                keyEvent.text = nil
+                handled = ghostty_surface_key(surface, keyEvent)
+            }
         }
 
 #if DEBUG
@@ -7997,6 +8173,29 @@ final class TerminalSurface: Identifiable, ObservableObject {
         case "x": return UInt32(kVK_ANSI_X)
         case "y": return UInt32(kVK_ANSI_Y)
         case "z": return UInt32(kVK_ANSI_Z)
+        // Digits (US ANSI keycodes)
+        case "0": return UInt32(kVK_ANSI_0)
+        case "1": return UInt32(kVK_ANSI_1)
+        case "2": return UInt32(kVK_ANSI_2)
+        case "3": return UInt32(kVK_ANSI_3)
+        case "4": return UInt32(kVK_ANSI_4)
+        case "5": return UInt32(kVK_ANSI_5)
+        case "6": return UInt32(kVK_ANSI_6)
+        case "7": return UInt32(kVK_ANSI_7)
+        case "8": return UInt32(kVK_ANSI_8)
+        case "9": return UInt32(kVK_ANSI_9)
+        // Symbol keys on a US ANSI keyboard.
+        case "-": return UInt32(kVK_ANSI_Minus)
+        case "=": return UInt32(kVK_ANSI_Equal)
+        case "[": return UInt32(kVK_ANSI_LeftBracket)
+        case "]": return UInt32(kVK_ANSI_RightBracket)
+        case ";": return UInt32(kVK_ANSI_Semicolon)
+        case "'": return UInt32(kVK_ANSI_Quote)
+        case ",": return UInt32(kVK_ANSI_Comma)
+        case ".": return UInt32(kVK_ANSI_Period)
+        case "/": return UInt32(kVK_ANSI_Slash)
+        case "`": return UInt32(kVK_ANSI_Grave)
+        case "\\": return UInt32(kVK_ANSI_Backslash)
         default: return nil
         }
     }
@@ -8006,14 +8205,50 @@ final class TerminalSurface: Identifiable, ObservableObject {
         case "enter", "return": return UInt32(kVK_Return)
         case "tab": return UInt32(kVK_Tab)
         case "escape", "esc": return UInt32(kVK_Escape)
-        case "backspace": return UInt32(kVK_Delete)
-        case "delete": return UInt32(kVK_ForwardDelete)
+        case "backspace", "bksp": return UInt32(kVK_Delete)
+        case "delete", "del": return UInt32(kVK_ForwardDelete)
         case "space": return UInt32(kVK_Space)
-        case "up": return UInt32(kVK_UpArrow)
-        case "down": return UInt32(kVK_DownArrow)
-        case "left": return UInt32(kVK_LeftArrow)
-        case "right": return UInt32(kVK_RightArrow)
-        case "\\": return UInt32(kVK_ANSI_Backslash)
+        case "up", "arrow_up": return UInt32(kVK_UpArrow)
+        case "down", "arrow_down": return UInt32(kVK_DownArrow)
+        case "left", "arrow_left": return UInt32(kVK_LeftArrow)
+        case "right", "arrow_right": return UInt32(kVK_RightArrow)
+        case "home": return UInt32(kVK_Home)
+        case "end": return UInt32(kVK_End)
+        case "page_up", "pageup", "pgup": return UInt32(kVK_PageUp)
+        case "page_down", "pagedown", "pgdn": return UInt32(kVK_PageDown)
+        case "f1":  return UInt32(kVK_F1)
+        case "f2":  return UInt32(kVK_F2)
+        case "f3":  return UInt32(kVK_F3)
+        case "f4":  return UInt32(kVK_F4)
+        case "f5":  return UInt32(kVK_F5)
+        case "f6":  return UInt32(kVK_F6)
+        case "f7":  return UInt32(kVK_F7)
+        case "f8":  return UInt32(kVK_F8)
+        case "f9":  return UInt32(kVK_F9)
+        case "f10": return UInt32(kVK_F10)
+        case "f11": return UInt32(kVK_F11)
+        case "f12": return UInt32(kVK_F12)
+        case "f13": return UInt32(kVK_F13)
+        case "f14": return UInt32(kVK_F14)
+        case "f15": return UInt32(kVK_F15)
+        case "f16": return UInt32(kVK_F16)
+        case "f17": return UInt32(kVK_F17)
+        case "f18": return UInt32(kVK_F18)
+        case "f19": return UInt32(kVK_F19)
+        case "f20": return UInt32(kVK_F20)
+        // Symbol-name aliases — also reachable through the modifier-prefixed
+        // path (`shift+minus`), so the table must list them here too.
+        case "minus", "dash", "hyphen", "-": return UInt32(kVK_ANSI_Minus)
+        case "equal", "equals", "=": return UInt32(kVK_ANSI_Equal)
+        case "left_bracket", "leftbracket", "lbracket", "[": return UInt32(kVK_ANSI_LeftBracket)
+        case "right_bracket", "rightbracket", "rbracket", "]": return UInt32(kVK_ANSI_RightBracket)
+        case "semicolon", ";": return UInt32(kVK_ANSI_Semicolon)
+        case "quote", "apostrophe", "'": return UInt32(kVK_ANSI_Quote)
+        case "comma", ",": return UInt32(kVK_ANSI_Comma)
+        case "period", "dot", ".": return UInt32(kVK_ANSI_Period)
+        case "slash", "/": return UInt32(kVK_ANSI_Slash)
+        case "grave", "backtick", "`": return UInt32(kVK_ANSI_Grave)
+        case "backslash", "\\": return UInt32(kVK_ANSI_Backslash)
         default: return nil
         }
     }
@@ -8060,6 +8295,45 @@ final class TerminalSurface: Identifiable, ObservableObject {
             return PendingKeyEvent(keycode: UInt32(kVK_PageUp), mods: GHOSTTY_MODS_NONE, label: normalized)
         case "pagedown", "page_down":
             return PendingKeyEvent(keycode: UInt32(kVK_PageDown), mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "space":
+            return PendingKeyEvent(keycode: UInt32(kVK_Space), mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "f1":  return PendingKeyEvent(keycode: UInt32(kVK_F1),  mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "f2":  return PendingKeyEvent(keycode: UInt32(kVK_F2),  mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "f3":  return PendingKeyEvent(keycode: UInt32(kVK_F3),  mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "f4":  return PendingKeyEvent(keycode: UInt32(kVK_F4),  mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "f5":  return PendingKeyEvent(keycode: UInt32(kVK_F5),  mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "f6":  return PendingKeyEvent(keycode: UInt32(kVK_F6),  mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "f7":  return PendingKeyEvent(keycode: UInt32(kVK_F7),  mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "f8":  return PendingKeyEvent(keycode: UInt32(kVK_F8),  mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "f9":  return PendingKeyEvent(keycode: UInt32(kVK_F9),  mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "f10": return PendingKeyEvent(keycode: UInt32(kVK_F10), mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "f11": return PendingKeyEvent(keycode: UInt32(kVK_F11), mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "f12": return PendingKeyEvent(keycode: UInt32(kVK_F12), mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "f13": return PendingKeyEvent(keycode: UInt32(kVK_F13), mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "f14": return PendingKeyEvent(keycode: UInt32(kVK_F14), mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "f15": return PendingKeyEvent(keycode: UInt32(kVK_F15), mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "f16": return PendingKeyEvent(keycode: UInt32(kVK_F16), mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "f17": return PendingKeyEvent(keycode: UInt32(kVK_F17), mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "f18": return PendingKeyEvent(keycode: UInt32(kVK_F18), mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "f19": return PendingKeyEvent(keycode: UInt32(kVK_F19), mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "f20": return PendingKeyEvent(keycode: UInt32(kVK_F20), mods: GHOSTTY_MODS_NONE, label: normalized)
+        // Symbol-name aliases (so agents can write `send_key minus`
+        // instead of `send_key '-'`).
+        case "minus", "dash":
+            return PendingKeyEvent(keycode: UInt32(kVK_ANSI_Minus), mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "equal", "equals":
+            return PendingKeyEvent(keycode: UInt32(kVK_ANSI_Equal), mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "left_bracket", "leftbracket", "lbracket":
+            return PendingKeyEvent(keycode: UInt32(kVK_ANSI_LeftBracket), mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "right_bracket", "rightbracket", "rbracket":
+            return PendingKeyEvent(keycode: UInt32(kVK_ANSI_RightBracket), mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "semicolon": return PendingKeyEvent(keycode: UInt32(kVK_ANSI_Semicolon), mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "quote", "apostrophe": return PendingKeyEvent(keycode: UInt32(kVK_ANSI_Quote), mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "comma": return PendingKeyEvent(keycode: UInt32(kVK_ANSI_Comma), mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "period", "dot": return PendingKeyEvent(keycode: UInt32(kVK_ANSI_Period), mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "slash": return PendingKeyEvent(keycode: UInt32(kVK_ANSI_Slash), mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "grave", "backtick": return PendingKeyEvent(keycode: UInt32(kVK_ANSI_Grave), mods: GHOSTTY_MODS_NONE, label: normalized)
+        case "backslash": return PendingKeyEvent(keycode: UInt32(kVK_ANSI_Backslash), mods: GHOSTTY_MODS_NONE, label: normalized)
         default:
             let parts = normalized
                 .split(separator: "+")
