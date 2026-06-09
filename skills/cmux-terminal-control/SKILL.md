@@ -21,6 +21,69 @@ of a panel and drive interaction deterministically. Self-contained — no
 those when targeting a remote/headless herdr daemon instead of a local
 cmux app.
 
+## Goal: 100% precision, low token cost, fast
+
+The skill is held to three hard constraints, **in this priority order**:
+
+1. **Precision = 100%**. Every keystroke you send must land where you
+   expect. If you can't verify it landed, you can't claim it landed.
+2. **Token efficiency**. Avoid full-screen reads. Use daemon-side
+   waits, hashes, region reads, and probes instead.
+3. **Speed**. Millisecond-scale, not second-scale. Never use bare
+   `sleep` — the daemon already provides `wait_for_*` for every wait
+   you need.
+
+If a tactic violates (1), drop it even if it would help (2) and (3).
+
+## Two tracks. Pick the right one before sending a single byte
+
+| Task shape | Track | Why |
+|---|---|---|
+| **Interactive TUI** (vim, lazygit, htop, k9s, fzf, ranger, less) | **Computer Use** track — key-by-key | The TUI has no API. Only the keyboard works. Precision comes from `tui_probe.kind` + cursor position after each keystroke. |
+| **Long-running batch task** (build, test, deploy, AI coding agent like claude/codex/aider) | **Agent CLI scheduler** track — fire and watch | The CLI is itself an agent. Don't drive it; *observe its progress*. Use `screen_diff` to read incremental output, `wait_for_text` for milestone markers, `tui_probe.kind=input_prompt` to detect when it's blocked on a question. |
+
+**The two tracks have inverse priorities**:
+
+- Computer Use: precision >> tokens. Spend ~150 B/keystroke on
+  `wait_for_kind` / `wait_for_cursor` so each step is verified.
+- Agent CLI: tokens >> precision. Cache `screen_hash`, only fetch
+  `screen_diff` when something changed. The CLI handles its own
+  precision.
+
+If you start in one track and the task changes shape (a long-running
+agent suddenly asks an interactive question), switch tracks
+mid-flight — `tui_probe.kind=input_prompt` is your signal to drop
+out of Agent CLI mode and answer the question.
+
+## When to use which RPC (cheat sheet)
+
+**Computer Use track**:
+
+```
+1. send_key i               # one keystroke
+2. wait_for_kind vim_insert # daemon polls until classifier matches
+3. send_text "hello"        # type a word
+4. wait_for_cursor row=0 col=5  # assert position
+5. send_key escape
+6. wait_for_kind vim_normal
+7. ...
+```
+
+**Agent CLI track**:
+
+```
+1. send_text "claude code 'fix the failing test'\n"
+2. while not done:
+3.    h = screen_hash               # ~100 B; cache it
+4.    if h != prev_h:
+5.        d = screen_diff since=seq # ~30-200 B
+6.        check d.dirty for milestones / errors
+7.        if tui_probe.kind == input_prompt:  # CLI asked a question
+8.            send_text "y\n"
+9.    sleep 1                       # poll cadence is yours, daemon doesn't help
+10. wait_for_text "✔ Done"          # final milestone
+```
+
 ## Token Budget (read first)
 
 Each `surface.screen_text` returns the full visible grid (~2 KB for an

@@ -103,6 +103,25 @@ nonisolated private func v2RemotePTYUserFacingErrorMessage(_ message: String) ->
 /// the cmux Swift implementation matches the herdr Rust implementation
 /// 1:1. Mirror file: `herdr/src/api/tui_probe.rs`.
 fileprivate enum TuiStateClassifier {
+    /// Heuristic check: does this line look like a vim/nvim statusline?
+    /// Matches vanilla vim ("All"/"Top"/"Bot" + "N,N" position),
+    /// neovim with lualine/airline ("Top    1:1" / "Bot 25:80" style),
+    /// and tilde-buffer markers. Cursor doesn't have to be on this line —
+    /// in nvim+lualine the cursor sits in the buffer area while statusline
+    /// renders below.
+    static func looksLikeVimStatusLine(_ line: String) -> Bool {
+        if line.count < 4 { return false }
+        // Position markers vim writes: "All" "Top" "Bot" "NN%"
+        let hasPositionWord = line.contains("All") || line.contains("Top") || line.contains("Bot")
+        // Cursor coordinate: vim emits "1,1" or "12,34"; lualine emits "1:1" or "25:80"
+        let hasCoordinate = line.range(of: #"\b\d+[,:]\d+\b"#, options: .regularExpression) != nil
+        // Vim's "[+]" modified marker is a strong signal too
+        let hasModifiedFlag = line.contains("[+]")
+        // Percent marker like "12%" common in lualine "Top  12%" / "Bot 100%"
+        let hasPercent = line.range(of: #"\b\d+%"#, options: .regularExpression) != nil
+        return hasPositionWord || hasCoordinate || hasModifiedFlag || hasPercent
+    }
+
     static func classify(rows: [String], cursorRow: Int?, cursorCol: Int?) -> (kind: String, indicators: [String]) {
         let nonEmpty = rows.filter { !$0.isEmpty }
         guard let last = nonEmpty.last else {
@@ -110,7 +129,9 @@ fileprivate enum TuiStateClassifier {
         }
         let cursorOnLast = cursorRow.map { $0 == rows.count - 1 } ?? false
 
-        // vim insert mode: lower-line marker
+        // vim insert mode: lower-line marker (vanilla vim only — nvim with
+        // lualine usually hides this; we fall through to tilde-buffer +
+        // statusline detection below for those.)
         if last.contains("-- INSERT --") || last.contains("-- VISUAL --") || last.contains("-- REPLACE --") {
             let mode = last.contains("INSERT") ? "vim_insert"
                      : last.contains("VISUAL") ? "vim_visual"
@@ -148,16 +169,18 @@ fileprivate enum TuiStateClassifier {
            lcLast.contains("(yes/no)") {
             return ("input_prompt", [last])
         }
-        // vim normal-mode heuristic: status line near the bottom contains
-        // a position marker like "1,1" / "All" / "Top" / "Bot" / "27%"
+        // vim normal-mode heuristic: a statusline-shaped line in the bottom
+        // 2 visible rows. Last line covers nvim+lualine ("Top  1:1"), 2nd-last
+        // covers vanilla vim with command/insert line below, and the tilde-
+        // buffer test catches a freshly-opened empty file.
+        if looksLikeVimStatusLine(last) && last.count > 4 {
+            return ("vim_normal", [last])
+        }
         if rows.count >= 2 {
             let secondLast = rows[rows.count - 2]
-            if (secondLast.contains("All") || secondLast.contains("Top") ||
-                secondLast.contains("Bot") || secondLast.range(of: #"\d+,\d+"#, options: .regularExpression) != nil)
-                && secondLast.count > 4 {
+            if looksLikeVimStatusLine(secondLast) && secondLast.count > 4 {
                 return ("vim_normal", [secondLast])
             }
-            // tilde-leading empty-buffer rows are vim's blank-line marker
             let tildeRows = rows.filter { $0 == "~" }.count
             if tildeRows >= 3 {
                 return ("vim_normal", ["tilde_buffer"])
@@ -2098,6 +2121,10 @@ class TerminalController {
             return v2Result(id: id, self.v2SurfaceWaitForText(params: params))
         case "surface.wait_for_idle":
             return v2Result(id: id, self.v2SurfaceWaitForIdle(params: params))
+        case "surface.wait_for_kind":
+            return v2Result(id: id, self.v2SurfaceWaitForKind(params: params))
+        case "surface.wait_for_cursor":
+            return v2Result(id: id, self.v2SurfaceWaitForCursor(params: params))
         case "surface.report_tty":
             return v2Result(id: id, self.v2SurfaceReportTTY(params: params))
         case "surface.report_pwd":
@@ -9170,6 +9197,95 @@ class TerminalController {
         return .err(code: "timeout", message: "timed out waiting for surface to go idle", data: nil)
     }
 
+    /// Block until `tui_probe.kind` matches a target value. Polls every
+    /// 100ms. Used by agents that need to confirm a state-machine
+    /// transition (e.g. shell_prompt -> vim_normal after `vi file`)
+    /// before sending the next keystroke. ~50 byte response on success.
+    /// `kind` accepts a single string ("vim_insert") or an array
+    /// (["vim_normal", "vim_insert"]) — match returns on first hit.
+    private func v2SurfaceWaitForKind(params: [String: Any]) -> V2CallResult {
+        let timeoutMs = (params["timeout_ms"] as? NSNumber)?.intValue ?? 5_000
+        let deadline = Date().addingTimeInterval(TimeInterval(timeoutMs) / 1000.0)
+        let pollInterval: TimeInterval = 0.1
+        let targets: Set<String> = {
+            if let s = params["kind"] as? String {
+                return [s]
+            }
+            if let arr = params["kind"] as? [String] {
+                return Set(arr)
+            }
+            return []
+        }()
+        guard !targets.isEmpty else {
+            return .err(code: "invalid_params", message: "kind must be a string or array of strings", data: nil)
+        }
+        var lastKind: String = ""
+        while Date() < deadline {
+            let snap = v2SurfaceTuiProbe(params: params)
+            switch snap {
+            case .err(let code, let message, let data):
+                return .err(code: code, message: message, data: data)
+            case .ok(let payload):
+                guard let dict = payload as? [String: Any] else {
+                    return .err(code: "internal_error", message: "tui_probe payload not a dict", data: nil)
+                }
+                lastKind = (dict["kind"] as? String) ?? ""
+                if targets.contains(lastKind) {
+                    var payload: [String: Any] = ["matched": lastKind]
+                    if let v = dict["cursor_row"] { payload["cursor_row"] = v }
+                    if let v = dict["cursor_col"] { payload["cursor_col"] = v }
+                    return .ok(payload)
+                }
+            }
+            Thread.sleep(forTimeInterval: pollInterval)
+        }
+        return .err(code: "timeout", message: "timed out waiting for kind; last=\(lastKind)", data: ["last_kind": lastKind])
+    }
+
+    /// Block until cursor row/col matches the supplied target. Use with
+    /// `kind` to assert "in vim_normal AND cursor at (0,0)" — i.e. file
+    /// just opened. Polls every 100ms; ~50 byte response on success.
+    /// Any of `row`, `col`, `kind` may be omitted (treated as wildcard).
+    private func v2SurfaceWaitForCursor(params: [String: Any]) -> V2CallResult {
+        let timeoutMs = (params["timeout_ms"] as? NSNumber)?.intValue ?? 5_000
+        let deadline = Date().addingTimeInterval(TimeInterval(timeoutMs) / 1000.0)
+        let pollInterval: TimeInterval = 0.1
+        let targetRow = (params["row"] as? NSNumber)?.intValue
+        let targetCol = (params["col"] as? NSNumber)?.intValue
+        let targetKind = params["kind"] as? String
+        if targetRow == nil && targetCol == nil && targetKind == nil {
+            return .err(code: "invalid_params", message: "at least one of row/col/kind must be set", data: nil)
+        }
+        var lastSnapshot: [String: Any] = [:]
+        while Date() < deadline {
+            let snap = v2SurfaceTuiProbe(params: params)
+            switch snap {
+            case .err(let code, let message, let data):
+                return .err(code: code, message: message, data: data)
+            case .ok(let payload):
+                guard let dict = payload as? [String: Any] else {
+                    return .err(code: "internal_error", message: "tui_probe payload not a dict", data: nil)
+                }
+                lastSnapshot = dict
+                let curRow = (dict["cursor_row"] as? NSNumber)?.intValue
+                let curCol = (dict["cursor_col"] as? NSNumber)?.intValue
+                let curKind = dict["kind"] as? String
+                let rowOk = targetRow == nil || curRow == targetRow
+                let colOk = targetCol == nil || curCol == targetCol
+                let kindOk = targetKind == nil || curKind == targetKind
+                if rowOk && colOk && kindOk {
+                    var payload: [String: Any] = [:]
+                    if let v = curRow { payload["cursor_row"] = v }
+                    if let v = curCol { payload["cursor_col"] = v }
+                    if let v = curKind { payload["kind"] = v }
+                    return .ok(payload)
+                }
+            }
+            Thread.sleep(forTimeInterval: pollInterval)
+        }
+        return .err(code: "timeout", message: "timed out waiting for cursor", data: lastSnapshot)
+    }
+
     /// Daemon-side TUI state classifier. Pulls cursor position + last
     /// 1-3 visible rows and labels the pane with one of:
     /// shell_prompt / vim_normal / vim_insert / vim_command /
@@ -9226,6 +9342,14 @@ class TerminalController {
             if !probe.indicators.isEmpty {
                 payload["indicators"] = probe.indicators
             }
+            // Always surface the last 3 trimmed rows so agents can fall back
+            // to reading the real statusline when our heuristic returns
+            // `unknown` or misclassifies a custom prompt theme. ~120 byte
+            // overhead vs the ~50 byte saving of the previous "indicators
+            // only" form, but it cuts a follow-up `screen_region` round
+            // trip in the common ambiguous case so net token cost drops.
+            let tail3 = rows.suffix(3).map { $0 } as [String]
+            payload["last_lines"] = tail3
             if probe.kind == "unknown", let last = rows.last {
                 payload["last_line"] = last
             }
