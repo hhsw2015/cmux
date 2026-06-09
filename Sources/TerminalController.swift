@@ -2279,6 +2279,8 @@ class TerminalController {
             return v2Result(id: id, self.v2SurfaceWaitForKind(params: params))
         case "surface.wait_for_cursor":
             return v2Result(id: id, self.v2SurfaceWaitForCursor(params: params))
+        case "surface.wait_for_screen_change":
+            return v2Result(id: id, self.v2SurfaceWaitForScreenChange(params: params))
         case "surface.report_tty":
             return v2Result(id: id, self.v2SurfaceReportTTY(params: params))
         case "surface.report_shell_state":
@@ -9472,6 +9474,55 @@ class TerminalController {
         return .err(code: "timeout", message: "timed out waiting for cursor", data: lastSnapshot)
     }
 
+    /// Block until the screen visibly changes. Pass `prev_hash` (from a
+    /// prior `surface.screen_hash` call); the daemon polls every
+    /// `poll_ms` (default 25ms) until the current hash differs, then
+    /// returns the new hash. Provides a byte-level "did the keystroke
+    /// land?" signal that doesn't depend on classifier heuristics or
+    /// cursor reporting — useful for any TUI whose mode/cursor isn't
+    /// reliably exposed (nvim+lualine, custom statuslines, TUI games).
+    /// Default timeout is 1500ms — fail-fast surfaces the press-was-
+    /// silently-dropped class of bug instantly instead of hanging.
+    private func v2SurfaceWaitForScreenChange(params: [String: Any]) -> V2CallResult {
+        guard let prevHash = params["prev_hash"] as? String else {
+            return .err(code: "invalid_params", message: "prev_hash (string) is required", data: nil)
+        }
+        let timeoutMs = (params["timeout_ms"] as? NSNumber)?.intValue ?? 1500
+        let pollMs = (params["poll_ms"] as? NSNumber)?.intValue ?? 25
+        let deadline = Date().addingTimeInterval(TimeInterval(timeoutMs) / 1000.0)
+        let pollInterval = TimeInterval(pollMs) / 1000.0
+
+        var lastHash = prevHash
+        var lastSeq: UInt64 = 0
+        while Date() < deadline {
+            let snap = v2SurfaceScreenHash(params: params)
+            switch snap {
+            case .err(let code, let message, let data):
+                return .err(code: code, message: message, data: data)
+            case .ok(let payload):
+                guard let dict = payload as? [String: Any],
+                      let h = dict["hash"] as? String else {
+                    return .err(code: "internal_error", message: "screen_hash payload missing hash", data: nil)
+                }
+                lastHash = h
+                lastSeq = (dict["state_seq"] as? NSNumber)?.uint64Value ?? 0
+                if h != prevHash {
+                    return .ok([
+                        "hash": h,
+                        "state_seq": NSNumber(value: lastSeq),
+                        "changed": true,
+                    ])
+                }
+            }
+            Thread.sleep(forTimeInterval: pollInterval)
+        }
+        return .err(
+            code: "timeout",
+            message: "screen did not change within \(timeoutMs)ms — the keystroke was silently dropped",
+            data: ["last_hash": lastHash, "prev_hash": prevHash]
+        )
+    }
+
     /// Daemon-side TUI state classifier. Pulls cursor position + last
     /// 1-3 visible rows and labels the pane with one of:
     /// shell_prompt / vim_normal / vim_insert / vim_command /
@@ -9599,7 +9650,6 @@ class TerminalController {
                 result = .err(code: "internal_error", message: "Failed to read screen", data: nil)
                 return
             }
-            let stateSeq = frameInfo.frame.stateSeq
             let curRows: [String] = frameInfo.rows.map { row in
                 String(row.reversed().drop(while: { $0 == " " }).reversed())
             }
@@ -9607,21 +9657,30 @@ class TerminalController {
             let workspaceUUID = ws.id.uuidString
 
             let cache = self.screenDiffCacheGet(surfaceId: surfaceId)
-            let unchangedSeq = cache?.stateSeq == stateSeq && cache?.rows == curRows
-            if unchangedSeq && sinceSeq != 0 {
+            let activeScreen = String(describing: frameInfo.frame.activeScreen)
+            let prevActive = cache?.activeScreen
+            let altSwitched = prevActive != nil && prevActive != activeScreen
+
+            // Issue our own monotonic seq, independent of libghostty's
+            // stateSeq (which can stick at 0 on a freshly-created surface,
+            // breaking the "since_seq=0 means first call" contract).
+            // Reuse the cached seq when content is identical so a no-change
+            // probe returns {changed:false} with the same seq the agent
+            // already has.
+            let prevSeq = cache?.stateSeq ?? 0
+            let contentUnchanged = cache?.rows == curRows && !altSwitched
+            let nextSeq: UInt64 = contentUnchanged ? prevSeq : prevSeq &+ 1
+
+            if contentUnchanged && sinceSeq != 0 && sinceSeq == prevSeq {
                 result = .ok([
                     "workspace_id": workspaceUUID,
                     "surface_id": surfaceId.uuidString,
-                    "state_seq": NSNumber(value: stateSeq),
+                    "state_seq": NSNumber(value: nextSeq),
                     "changed": false,
                     "rows": total,
                 ])
                 return
             }
-
-            let activeScreen = String(describing: frameInfo.frame.activeScreen)
-            let prevActive = cache?.activeScreen
-            let altSwitched = prevActive != nil && prevActive != activeScreen
 
             let canDiff = sinceSeq != 0 && cache != nil && !altSwitched && cache?.rows.count == total
             var changedIndices: [Int] = []
@@ -9633,7 +9692,8 @@ class TerminalController {
 
             let dirtyRatioLimit = max(1, (total * 60) / 100)
             let useFull = !canDiff || changedIndices.count > dirtyRatioLimit
-            self.screenDiffCacheSet(surfaceId: surfaceId, rows: curRows, stateSeq: stateSeq, activeScreen: activeScreen)
+            self.screenDiffCacheSet(surfaceId: surfaceId, rows: curRows, stateSeq: nextSeq, activeScreen: activeScreen)
+            let stateSeq = nextSeq
 
             if useFull {
                 let full = curRows.joined(separator: "\n") + (curRows.isEmpty ? "" : "\n")
