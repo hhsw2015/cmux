@@ -96,6 +96,98 @@ nonisolated private func v2RemotePTYUserFacingErrorMessage(_ message: String) ->
     return "remote PTY operation failed"
 }
 
+/// Heuristic classifier that turns the visible terminal grid into a
+/// coarse-grained TUI state label (shell prompt / vim mode / pager /
+/// menu / input prompt / running command / unknown). Lives as a
+/// fileprivate struct so it can be unit-tested via `@testable` and so
+/// the cmux Swift implementation matches the herdr Rust implementation
+/// 1:1. Mirror file: `herdr/src/api/tui_probe.rs`.
+fileprivate enum TuiStateClassifier {
+    static func classify(rows: [String], cursorRow: Int?, cursorCol: Int?) -> (kind: String, indicators: [String]) {
+        let nonEmpty = rows.filter { !$0.isEmpty }
+        guard let last = nonEmpty.last else {
+            return ("unknown", [])
+        }
+        let cursorOnLast = cursorRow.map { $0 == rows.count - 1 } ?? false
+
+        // vim insert mode: lower-line marker
+        if last.contains("-- INSERT --") || last.contains("-- VISUAL --") || last.contains("-- REPLACE --") {
+            let mode = last.contains("INSERT") ? "vim_insert"
+                     : last.contains("VISUAL") ? "vim_visual"
+                     : "vim_replace"
+            return (mode, [last])
+        }
+        // vim ex command: last line starts with ":" and cursor on last line
+        if cursorOnLast && (last.hasPrefix(":") || last.hasPrefix("/") || last.hasPrefix("?")) && last.count <= 200 {
+            return ("vim_command", [last])
+        }
+        // less / man pager footers
+        if last.hasSuffix("(END)") || last == ":" || last.hasPrefix(":") && last.count == 1 {
+            return ("less_pager", [last])
+        }
+        if last.contains("--More--") || last.hasPrefix("Manual page") {
+            return ("less_pager", [last])
+        }
+        // shell prompt patterns. Cursor on last line + ends with one of $/%/#/>
+        if cursorOnLast {
+            let trimmed = last
+            if trimmed.hasSuffix("$ ") || trimmed.hasSuffix("$") ||
+               trimmed.hasSuffix("% ") || trimmed.hasSuffix("%") ||
+               trimmed.hasSuffix("# ") || trimmed.hasSuffix("#") ||
+               trimmed.hasSuffix("> ") {
+                return ("shell_prompt", [trimmed])
+            }
+            if trimmed.hasSuffix(">>> ") || trimmed.hasSuffix("In [") {
+                return ("repl_prompt", [trimmed])
+            }
+        }
+        // input prompts (password, confirmation)
+        let lcLast = last.lowercased()
+        if lcLast.contains("password:") || lcLast.contains("passphrase:") ||
+           lcLast.hasSuffix("? ") || lcLast.contains("(y/n)") || lcLast.contains("[y/n]") ||
+           lcLast.contains("(yes/no)") {
+            return ("input_prompt", [last])
+        }
+        // vim normal-mode heuristic: status line near the bottom contains
+        // a position marker like "1,1" / "All" / "Top" / "Bot" / "27%"
+        if rows.count >= 2 {
+            let secondLast = rows[rows.count - 2]
+            if (secondLast.contains("All") || secondLast.contains("Top") ||
+                secondLast.contains("Bot") || secondLast.range(of: #"\d+,\d+"#, options: .regularExpression) != nil)
+                && secondLast.count > 4 {
+                return ("vim_normal", [secondLast])
+            }
+            // tilde-leading empty-buffer rows are vim's blank-line marker
+            let tildeRows = rows.filter { $0 == "~" }.count
+            if tildeRows >= 3 {
+                return ("vim_normal", ["tilde_buffer"])
+            }
+        }
+        // running command: cursor not on last line OR last line is empty
+        // and there is some content above
+        if !cursorOnLast && nonEmpty.count > 1 {
+            return ("running_command", [])
+        }
+        return ("unknown", [last])
+    }
+}
+
+/// Per-surface row cache for `surface.screen_diff`. Lets the daemon
+/// answer "what changed since the seq the agent gave us?" without the
+/// agent shipping the previous text back. Keyed by surface UUID,
+/// trimmed automatically when the cache exceeds 64 entries (the user
+/// is unlikely to have more than that many panels at once).
+fileprivate final class ScreenDiffCacheEntry {
+    let rows: [String]
+    let stateSeq: UInt64
+    let activeScreen: String
+    init(rows: [String], stateSeq: UInt64, activeScreen: String) {
+        self.rows = rows
+        self.stateSeq = stateSeq
+        self.activeScreen = activeScreen
+    }
+}
+
 /// Unix socket-based controller for programmatic terminal control
 /// Allows automated testing and external control of terminal tabs
 @MainActor
@@ -124,6 +216,11 @@ class TerminalController {
     nonisolated let socketServer: SocketControlServer
     // Per-surface dedupe for high-frequency report_* socket telemetry.
     private nonisolated let socketFastPathState = SocketFastPathState()
+    /// Per-surface row cache for `surface.screen_diff`. Bounded to 64
+    /// entries; oldest evicted when the cap is reached.
+    private var screenDiffCache: [UUID: ScreenDiffCacheEntry] = [:]
+    private var screenDiffCacheOrder: [UUID] = []
+    private static let screenDiffCacheLimit = 64
     private nonisolated let myPid = getpid()
     private nonisolated static let socketCommandFocusAllowanceStackKey = "cmux.socketCommandFocusAllowanceStack"
     private nonisolated static let socketListenerFailureCaptureCooldown: TimeInterval = 60
@@ -1987,6 +2084,16 @@ class TerminalController {
             return v2Result(id: id, self.v2SurfaceSendKey(params: params))
         case "surface.screen_text":
             return v2Result(id: id, self.v2SurfaceScreenText(params: params))
+        case "surface.screen_hash":
+            return v2Result(id: id, self.v2SurfaceScreenHash(params: params))
+        case "surface.screen_region":
+            return v2Result(id: id, self.v2SurfaceScreenRegion(params: params))
+        case "surface.screen_diff":
+            return v2Result(id: id, self.v2SurfaceScreenDiff(params: params))
+        case "surface.tui_probe":
+            return v2Result(id: id, self.v2SurfaceTuiProbe(params: params))
+        case "surface.expect":
+            return v2Result(id: id, self.v2SurfaceExpect(params: params))
         case "surface.wait_for_text":
             return v2Result(id: id, self.v2SurfaceWaitForText(params: params))
         case "surface.wait_for_idle":
@@ -8865,6 +8972,108 @@ class TerminalController {
         return result
     }
 
+    /// Cheap "did the screen change?" probe. Returns the current
+    /// libghostty `state_seq` plus a SHA-256 digest of the trimmed
+    /// visible text. Agents cache the pair and skip a full
+    /// `screen_text` fetch when the digest is unchanged. Response is
+    /// ~120 bytes regardless of viewport size, vs ~2 KB for a full grid.
+    private func v2SurfaceScreenHash(params: [String: Any]) -> V2CallResult {
+        guard let tabManager = v2ResolveTabManager(params: params) else {
+            return .err(code: "unavailable", message: "TabManager not available", data: nil)
+        }
+        var result: V2CallResult = .err(code: "internal_error", message: "Failed to read screen", data: nil)
+        v2MainSync {
+            guard let ws = v2ResolveWorkspace(params: params, tabManager: tabManager) else {
+                result = .err(code: "not_found", message: "Workspace not found", data: nil)
+                return
+            }
+            let surfaceId: UUID?
+            if params["surface_id"] != nil {
+                surfaceId = v2UUID(params, "surface_id")
+                guard surfaceId != nil else {
+                    result = .err(code: "not_found", message: "Surface not found for the given surface_id", data: nil)
+                    return
+                }
+            } else {
+                surfaceId = ws.focusedPanelId
+            }
+            guard let surfaceId else {
+                result = .err(code: "not_found", message: "No focused surface", data: nil)
+                return
+            }
+            guard let terminalPanel = ws.terminalPanel(for: surfaceId) else {
+                result = .err(code: "invalid_params", message: "Surface is not a terminal", data: ["surface_id": surfaceId.uuidString])
+                return
+            }
+            guard let probe = terminalPanel.surface.visibleScreenHash() else {
+                result = .err(code: "internal_error", message: "Failed to read screen hash", data: nil)
+                return
+            }
+            result = .ok([
+                "workspace_id": ws.id.uuidString,
+                "surface_id": surfaceId.uuidString,
+                "state_seq": NSNumber(value: probe.stateSeq),
+                "hash": probe.hash,
+                "rows": probe.rows,
+                "columns": probe.columns,
+            ])
+        }
+        return result
+    }
+
+    /// Region-limited screen read for `surface.screen_region`. Pass
+    /// `last_rows` to fetch just the bottom N rows (shell prompt /
+    /// status line) or `first_rows` for the top N (TUI title bar).
+    /// With neither, returns the full grid (same as `screen_text`).
+    private func v2SurfaceScreenRegion(params: [String: Any]) -> V2CallResult {
+        guard let tabManager = v2ResolveTabManager(params: params) else {
+            return .err(code: "unavailable", message: "TabManager not available", data: nil)
+        }
+        let lastRows = (params["last_rows"] as? NSNumber)?.intValue
+        let firstRows = (params["first_rows"] as? NSNumber)?.intValue
+        if let l = lastRows, l < 0 {
+            return .err(code: "invalid_params", message: "last_rows must be >= 0", data: nil)
+        }
+        if let f = firstRows, f < 0 {
+            return .err(code: "invalid_params", message: "first_rows must be >= 0", data: nil)
+        }
+        var result: V2CallResult = .err(code: "internal_error", message: "Failed to read screen", data: nil)
+        v2MainSync {
+            guard let ws = v2ResolveWorkspace(params: params, tabManager: tabManager) else {
+                result = .err(code: "not_found", message: "Workspace not found", data: nil)
+                return
+            }
+            let surfaceId: UUID?
+            if params["surface_id"] != nil {
+                surfaceId = v2UUID(params, "surface_id")
+                guard surfaceId != nil else {
+                    result = .err(code: "not_found", message: "Surface not found for the given surface_id", data: nil)
+                    return
+                }
+            } else {
+                surfaceId = ws.focusedPanelId
+            }
+            guard let surfaceId else {
+                result = .err(code: "not_found", message: "No focused surface", data: nil)
+                return
+            }
+            guard let terminalPanel = ws.terminalPanel(for: surfaceId) else {
+                result = .err(code: "invalid_params", message: "Surface is not a terminal", data: ["surface_id": surfaceId.uuidString])
+                return
+            }
+            let text = terminalPanel.surface.visibleScreenRegion(lastRows: lastRows, firstRows: firstRows) ?? ""
+            var payload: [String: Any] = [
+                "workspace_id": ws.id.uuidString,
+                "surface_id": surfaceId.uuidString,
+                "text": text,
+            ]
+            if let lastRows { payload["last_rows"] = lastRows }
+            if let firstRows { payload["first_rows"] = firstRows }
+            result = .ok(payload)
+        }
+        return result
+    }
+
     /// Block until the visible viewport contains a substring/regex match,
     /// or `timeout_ms` elapses. Polls every 100ms. Self-contained.
     /// Mirrors herdr `pane.wait_for_text`.
@@ -8959,6 +9168,276 @@ class TerminalController {
             Thread.sleep(forTimeInterval: pollInterval)
         }
         return .err(code: "timeout", message: "timed out waiting for surface to go idle", data: nil)
+    }
+
+    /// Daemon-side TUI state classifier. Pulls cursor position + last
+    /// 1-3 visible rows and labels the pane with one of:
+    /// shell_prompt / vim_normal / vim_insert / vim_command /
+    /// less_pager / menu_select / input_prompt / running_command / unknown.
+    /// Lets agents make routing decisions on a 60-byte enum instead of
+    /// re-reading and re-parsing the full grid.
+    private func v2SurfaceTuiProbe(params: [String: Any]) -> V2CallResult {
+        guard let tabManager = v2ResolveTabManager(params: params) else {
+            return .err(code: "unavailable", message: "TabManager not available", data: nil)
+        }
+        var result: V2CallResult = .err(code: "internal_error", message: "Failed to read screen", data: nil)
+        v2MainSync {
+            guard let ws = v2ResolveWorkspace(params: params, tabManager: tabManager) else {
+                result = .err(code: "not_found", message: "Workspace not found", data: nil)
+                return
+            }
+            let surfaceId: UUID?
+            if params["surface_id"] != nil {
+                surfaceId = v2UUID(params, "surface_id")
+                guard surfaceId != nil else {
+                    result = .err(code: "not_found", message: "Surface not found for the given surface_id", data: nil)
+                    return
+                }
+            } else {
+                surfaceId = ws.focusedPanelId
+            }
+            guard let surfaceId else {
+                result = .err(code: "not_found", message: "No focused surface", data: nil)
+                return
+            }
+            guard let terminalPanel = ws.terminalPanel(for: surfaceId) else {
+                result = .err(code: "invalid_params", message: "Surface is not a terminal", data: ["surface_id": surfaceId.uuidString])
+                return
+            }
+            guard let frameInfo = terminalPanel.surface.mobileRenderGridFrame(stateSeq: 0, full: true) else {
+                result = .err(code: "internal_error", message: "Failed to read screen", data: nil)
+                return
+            }
+            let rows: [String] = frameInfo.rows.map { row in
+                String(row.reversed().drop(while: { $0 == " " }).reversed())
+            }
+            let cursorRow = frameInfo.frame.cursor?.row
+            let cursorCol = frameInfo.frame.cursor?.column
+            let probe = TuiStateClassifier.classify(rows: rows, cursorRow: cursorRow, cursorCol: cursorCol)
+            var payload: [String: Any] = [
+                "workspace_id": ws.id.uuidString,
+                "surface_id": surfaceId.uuidString,
+                "kind": probe.kind,
+                "rows": rows.count,
+                "columns": frameInfo.frame.columns,
+            ]
+            if let cursorRow { payload["cursor_row"] = cursorRow }
+            if let cursorCol { payload["cursor_col"] = cursorCol }
+            if !probe.indicators.isEmpty {
+                payload["indicators"] = probe.indicators
+            }
+            if probe.kind == "unknown", let last = rows.last {
+                payload["last_line"] = last
+            }
+            result = .ok(payload)
+        }
+        return result
+    }
+
+    fileprivate func screenDiffCacheGet(surfaceId: UUID) -> ScreenDiffCacheEntry? {
+        return self.screenDiffCache[surfaceId]
+    }
+
+    fileprivate func screenDiffCacheSet(surfaceId: UUID, rows: [String], stateSeq: UInt64, activeScreen: String) {
+        let entry = ScreenDiffCacheEntry(rows: rows, stateSeq: stateSeq, activeScreen: activeScreen)
+        if self.screenDiffCache[surfaceId] == nil {
+            self.screenDiffCacheOrder.append(surfaceId)
+        }
+        self.screenDiffCache[surfaceId] = entry
+        while self.screenDiffCacheOrder.count > Self.screenDiffCacheLimit {
+            let evict = self.screenDiffCacheOrder.removeFirst()
+            self.screenDiffCache.removeValue(forKey: evict)
+        }
+    }
+
+    /// Incremental screen read for `surface.screen_diff`. First call
+    /// (`since_seq` omitted or 0) returns full text + new state_seq.
+    /// Subsequent calls with the previous seq return only changed rows.
+    /// Falls back to a full snapshot when the alt-screen toggles or when
+    /// > 60% of rows changed (large repaints become full reloads, which
+    /// is cheaper than per-row diffing once you cross that threshold).
+    private func v2SurfaceScreenDiff(params: [String: Any]) -> V2CallResult {
+        guard let tabManager = v2ResolveTabManager(params: params) else {
+            return .err(code: "unavailable", message: "TabManager not available", data: nil)
+        }
+        let sinceSeq = (params["since_seq"] as? NSNumber)?.uint64Value ?? 0
+        var result: V2CallResult = .err(code: "internal_error", message: "Failed to read screen", data: nil)
+        v2MainSync {
+            guard let ws = v2ResolveWorkspace(params: params, tabManager: tabManager) else {
+                result = .err(code: "not_found", message: "Workspace not found", data: nil)
+                return
+            }
+            let surfaceId: UUID?
+            if params["surface_id"] != nil {
+                surfaceId = v2UUID(params, "surface_id")
+                guard surfaceId != nil else {
+                    result = .err(code: "not_found", message: "Surface not found for the given surface_id", data: nil)
+                    return
+                }
+            } else {
+                surfaceId = ws.focusedPanelId
+            }
+            guard let surfaceId else {
+                result = .err(code: "not_found", message: "No focused surface", data: nil)
+                return
+            }
+            guard let terminalPanel = ws.terminalPanel(for: surfaceId) else {
+                result = .err(code: "invalid_params", message: "Surface is not a terminal", data: ["surface_id": surfaceId.uuidString])
+                return
+            }
+            guard let frameInfo = terminalPanel.surface.mobileRenderGridFrame(stateSeq: 0, full: true) else {
+                result = .err(code: "internal_error", message: "Failed to read screen", data: nil)
+                return
+            }
+            let stateSeq = frameInfo.frame.stateSeq
+            let curRows: [String] = frameInfo.rows.map { row in
+                String(row.reversed().drop(while: { $0 == " " }).reversed())
+            }
+            let total = curRows.count
+            let workspaceUUID = ws.id.uuidString
+
+            let cache = self.screenDiffCacheGet(surfaceId: surfaceId)
+            let unchangedSeq = cache?.stateSeq == stateSeq && cache?.rows == curRows
+            if unchangedSeq && sinceSeq != 0 {
+                result = .ok([
+                    "workspace_id": workspaceUUID,
+                    "surface_id": surfaceId.uuidString,
+                    "state_seq": NSNumber(value: stateSeq),
+                    "changed": false,
+                    "rows": total,
+                ])
+                return
+            }
+
+            let activeScreen = String(describing: frameInfo.frame.activeScreen)
+            let prevActive = cache?.activeScreen
+            let altSwitched = prevActive != nil && prevActive != activeScreen
+
+            let canDiff = sinceSeq != 0 && cache != nil && !altSwitched && cache?.rows.count == total
+            var changedIndices: [Int] = []
+            if canDiff, let prevRows = cache?.rows {
+                for i in 0..<total where prevRows[i] != curRows[i] {
+                    changedIndices.append(i)
+                }
+            }
+
+            let dirtyRatioLimit = max(1, (total * 60) / 100)
+            let useFull = !canDiff || changedIndices.count > dirtyRatioLimit
+            self.screenDiffCacheSet(surfaceId: surfaceId, rows: curRows, stateSeq: stateSeq, activeScreen: activeScreen)
+
+            if useFull {
+                let full = curRows.joined(separator: "\n") + (curRows.isEmpty ? "" : "\n")
+                result = .ok([
+                    "workspace_id": workspaceUUID,
+                    "surface_id": surfaceId.uuidString,
+                    "state_seq": NSNumber(value: stateSeq),
+                    "changed": true,
+                    "full": true,
+                    "alt_screen_switched": altSwitched,
+                    "rows": total,
+                    "text": full,
+                ])
+                return
+            }
+
+            var dirtyPayload: [[String: Any]] = []
+            for i in changedIndices {
+                dirtyPayload.append(["y": i, "text": curRows[i]])
+            }
+            result = .ok([
+                "workspace_id": workspaceUUID,
+                "surface_id": surfaceId.uuidString,
+                "state_seq": NSNumber(value: stateSeq),
+                "changed": !changedIndices.isEmpty,
+                "full": false,
+                "rows": total,
+                "dirty": dirtyPayload,
+            ])
+        }
+        return result
+    }
+
+    /// Run a scripted sequence of send/wait steps inside the daemon.
+    /// One RPC, N steps -> agent saves N round trips and N partial reads.
+    /// `steps` is an array of `{send: "..."}`, `{send_key: "enter"}`,
+    /// `{wait_text: "$ ", timeout_ms: 3000}`, `{wait_idle: {settle_ms,
+    /// deadline_ms}}`, `{sleep_ms: 200}`. Returns the index of the last
+    /// completed step, the final tail of the screen, and per-step error
+    /// info if any step failed (with `stop_on_error` honored).
+    private func v2SurfaceExpect(params: [String: Any]) -> V2CallResult {
+        guard let steps = params["steps"] as? [[String: Any]] else {
+            return .err(code: "invalid_params", message: "steps must be an array", data: nil)
+        }
+        let stopOnError = (params["stop_on_error"] as? Bool) ?? true
+        let tailRows = (params["tail_rows"] as? NSNumber)?.intValue ?? 5
+
+        var stepResults: [[String: Any]] = []
+        var lastError: V2CallResult?
+        var completed = 0
+
+        for (index, step) in steps.enumerated() {
+            let outcome: V2CallResult
+            if let txt = step["send"] as? String {
+                var p = params
+                p["text"] = txt
+                outcome = self.v2SurfaceSendText(params: p)
+            } else if let key = step["send_key"] as? String {
+                var p = params
+                p["key"] = key
+                outcome = self.v2SurfaceSendKey(params: p)
+            } else if let needle = step["wait_text"] as? String {
+                var p = params
+                p["substring"] = needle
+                if let t = step["timeout_ms"] as? NSNumber { p["timeout_ms"] = t }
+                outcome = self.v2SurfaceWaitForText(params: p)
+            } else if let waitIdle = step["wait_idle"] as? [String: Any] {
+                var p = params
+                if let s = waitIdle["settle_ms"] as? NSNumber { p["settle_ms"] = s }
+                if let d = waitIdle["deadline_ms"] as? NSNumber { p["deadline_ms"] = d }
+                outcome = self.v2SurfaceWaitForIdle(params: p)
+            } else if let sleepMs = step["sleep_ms"] as? NSNumber {
+                Thread.sleep(forTimeInterval: TimeInterval(sleepMs.doubleValue) / 1000.0)
+                outcome = .ok([:])
+            } else {
+                outcome = .err(code: "invalid_params", message: "step \(index) has no recognized verb (send / send_key / wait_text / wait_idle / sleep_ms)", data: ["step_index": index])
+            }
+
+            switch outcome {
+            case .ok:
+                stepResults.append(["index": index, "ok": true])
+                completed += 1
+            case .err(let code, let message, _):
+                stepResults.append(["index": index, "ok": false, "code": code, "message": message])
+                lastError = outcome
+                if stopOnError {
+                    var payload = self.expectFinalPayload(params: params, completed: completed, total: steps.count, stepResults: stepResults, tailRows: tailRows)
+                    payload["error"] = ["index": index, "code": code, "message": message]
+                    return .ok(payload)
+                }
+            }
+        }
+
+        var payload = self.expectFinalPayload(params: params, completed: completed, total: steps.count, stepResults: stepResults, tailRows: tailRows)
+        if let err = lastError, case .err(let code, let message, _) = err {
+            payload["error"] = ["code": code, "message": message]
+        }
+        return .ok(payload)
+    }
+
+    private func expectFinalPayload(params: [String: Any], completed: Int, total: Int, stepResults: [[String: Any]], tailRows: Int) -> [String: Any] {
+        var p = params
+        if tailRows > 0 { p["last_rows"] = tailRows }
+        let tail = self.v2SurfaceScreenRegion(params: p)
+        var tailText = ""
+        if case .ok(let val) = tail, let dict = val as? [String: Any] {
+            tailText = (dict["text"] as? String) ?? ""
+        }
+        return [
+            "completed": completed,
+            "total": total,
+            "steps": stepResults,
+            "tail": tailText,
+        ]
     }
 
     private func v2SurfaceSendText(params: [String: Any]) -> V2CallResult {

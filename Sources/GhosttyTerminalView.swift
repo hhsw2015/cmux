@@ -7,6 +7,7 @@ import Metal
 import QuartzCore
 import Combine
 import CoreText
+import CryptoKit
 import Darwin
 import Carbon.HIToolbox
 import os
@@ -7433,6 +7434,59 @@ final class TerminalSurface: Identifiable, ObservableObject {
         }
         var out = String()
         for row in result.rows {
+            let trimmed = String(row.reversed().drop(while: { $0 == " " }).reversed())
+            out.append(trimmed)
+            out.append("\n")
+        }
+        return out
+    }
+
+    /// Cheap "did the screen change?" probe for `surface.screen_hash`.
+    /// Returns the libghostty `stateSeq` plus a SHA-256 of the trimmed
+    /// visible text. Agents cache the pair and skip a full
+    /// `screen_text` fetch when the hash is unchanged.
+    @MainActor
+    func visibleScreenHash() -> (stateSeq: UInt64, hash: String, rows: Int, columns: Int)? {
+        guard let result = mobileRenderGridFrame(stateSeq: 0, full: true) else {
+            return nil
+        }
+        var hasher = SHA256()
+        for row in result.rows {
+            let trimmed = String(row.reversed().drop(while: { $0 == " " }).reversed())
+            if let data = trimmed.data(using: .utf8) {
+                hasher.update(data: data)
+            }
+            hasher.update(data: Data([0x0A]))
+        }
+        let digest = hasher.finalize()
+        let hex = digest.map { String(format: "%02x", $0) }.joined()
+        return (result.frame.stateSeq, hex, result.frame.rows, result.frame.columns)
+    }
+
+    /// Region-limited read for `surface.screen_region`. Avoids returning the
+    /// full grid when the caller only cares about the last N rows
+    /// (shell prompt, vim status line) or the first N (TUI title bar).
+    /// `lastRows`/`firstRows` are clamped; if both are nil the full visible
+    /// grid is returned (same as `visibleScreenText`).
+    @MainActor
+    func visibleScreenRegion(lastRows: Int? = nil, firstRows: Int? = nil) -> String? {
+        guard let result = mobileRenderGridFrame(stateSeq: 0, full: true) else {
+            return nil
+        }
+        let total = result.rows.count
+        if total == 0 { return "" }
+        let slice: ArraySlice<String>
+        if let last = lastRows, last > 0 {
+            let start = max(0, total - last)
+            slice = result.rows[start..<total]
+        } else if let first = firstRows, first > 0 {
+            let end = min(total, first)
+            slice = result.rows[0..<end]
+        } else {
+            slice = ArraySlice(result.rows)
+        }
+        var out = String()
+        for row in slice {
             let trimmed = String(row.reversed().drop(while: { $0 == " " }).reversed())
             out.append(trimmed)
             out.append("\n")

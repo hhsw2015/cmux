@@ -21,6 +21,54 @@ of a panel and drive interaction deterministically. Self-contained — no
 those when targeting a remote/headless herdr daemon instead of a local
 cmux app.
 
+## Token Budget (read first)
+
+Each `surface.screen_text` returns the full visible grid (~2 KB for an
+80×24 panel). Naive polling burns context fast. **Push waiting into the
+daemon, read full screen only when you must.**
+
+**Banned patterns** (do not write):
+
+- `screen_text` in a `while` loop comparing to expected substring.
+  Use `wait_for_text` — daemon polls internally, returns one bool.
+- `screen_text` followed by `sleep` followed by `screen_text`.
+  Use `wait_for_idle` — daemon settles for you.
+- `screen_text` *just to check* if the screen changed.
+  Use `surface.screen_hash` — returns 32-byte digest + seq, ~50 byte response.
+- Reading the full grid when you only care about the last line
+  (shell prompt, vim status bar, less footer).
+  Use `surface.screen_region` with `last_rows`.
+
+**Recommended pattern**:
+
+1. Send input → `wait_for_text` (or `wait_for_idle`) — never `sleep`.
+2. Cache previous `screen_hash`. On each tick, ask for the hash; if
+   unchanged, do nothing. Only fetch full text when hash differs.
+3. Read full `screen_text` only at decision points or for final
+   verification, not every iteration.
+4. For multi-step scripted flows, use `surface.expect` (one RPC,
+   N steps inside the daemon) instead of N round trips.
+
+**Rule of thumb**: an automated TUI session should average
+≤ 200 bytes of RPC response per agent step. If you are reading a full
+screen grid every step, the loop is wrong.
+
+## Generic TUI Categories
+
+Every interactive terminal program falls into one of these shapes; pick
+the right primitive accordingly:
+
+| Shape | Examples | Wait primitive | Read primitive |
+|---|---|---|---|
+| **Line-based REPL / shell** | bash, zsh, python, ipython, psql | `wait_for_text` on prompt regex (`\$ $` / `>>> `) | `screen_region {last_rows: 5}` |
+| **Full-screen modal** | vim, less, man, k9s | `wait_for_text` on status-line marker (`-- INSERT --`, `(END)`) | `screen_region {last_rows: 1}` for status, `screen_text` for body |
+| **Menu / picker** | fzf, lazygit, gh, htop | `wait_for_idle` after arrow keys | `screen_text` once, `screen_hash` between keystrokes |
+| **Input prompt / confirmation** | sudo, ssh password, `(y/n)` | `wait_for_text` on the literal prompt string | none — send and `wait_for_idle` |
+| **Long-running stream** | docker logs, kubectl logs, tail -f | `wait_for_text` on a known marker line | `screen_region {last_rows: 10}` |
+
+When unsure: probe with `surface.screen_region {last_rows: 3}` first.
+A single line tells you 80% of the time which category you are in.
+
 ## Prerequisites
 
 - cmux app running (the one that owns the local panels you want to drive).
@@ -60,15 +108,91 @@ cmux rpc surface.screen_text "{\"surface_id\":\"$SURF\"}"
 
 ## Choose The Correct Observation
 
-| You want | Use |
-|---|---|
-| Current visible viewport text (alternate-screen TUI) | `surface.screen_text` |
-| Wait until a string appears on screen | `surface.wait_for_text` |
-| Wait until output settles (no new bytes for `settle_ms`) | `surface.wait_for_idle` |
+| You want | Use | Typical bytes |
+|---|---|---|
+| Current visible viewport text (alternate-screen TUI) | `surface.screen_text` | ~2 KB |
+| Just the bottom N rows (prompt / status line) | `surface.screen_region {last_rows: N}` | ~80 B/row |
+| Just changed rows since last seq | `surface.screen_diff {since_seq}` | 30-200 B |
+| Did the screen change since last poll? | `surface.screen_hash` | ~100 B |
+| What kind of TUI is this? (shell / vim / less / menu / prompt) | `surface.tui_probe` | ~150 B |
+| Wait until a string appears on screen | `surface.wait_for_text` | ~50 B |
+| Wait until output settles (no new bytes for `settle_ms`) | `surface.wait_for_idle` | ~50 B |
+| Run a multi-step send/wait flow in one round trip | `surface.expect` | ~200 B (final only) |
 
 > Do **not** treat scrollback as the visible state of an alternate-screen
 > TUI. `surface.screen_text` reads the libghostty grid directly — that is
 > the one source of truth for "what the user sees right now".
+
+### Long-Running Loops: Use `screen_diff`, Not `screen_text`
+
+For agents that read streamed output (LLM completion, `tail -f`,
+`docker logs`), call `screen_diff` with the previous `state_seq` each
+tick:
+
+```bash
+SEQ=0
+while ! done; do
+  RESP=$(cmux rpc surface.screen_diff "{\"surface_id\":\"$SURF\",\"since_seq\":$SEQ}")
+  SEQ=$(echo "$RESP" | jq -r .state_seq)
+  if [ "$(echo "$RESP" | jq -r .changed)" = "true" ]; then
+    if [ "$(echo "$RESP" | jq -r .full)" = "true" ]; then
+      echo "$RESP" | jq -r .text       # full reload (alt-screen toggle)
+    else
+      echo "$RESP" | jq -r '.dirty[] | "\(.y): \(.text)"'   # only changed rows
+    fi
+  fi
+done
+```
+
+A 1000-iteration polling loop on an idle pane costs ~30 KB total with
+`screen_diff` vs ~2 MB with `screen_text`. Same precision (you see every
+character that hits the screen), 60x cheaper.
+
+### Routing Decisions: Use `tui_probe`, Not `screen_text` Parsing
+
+If your agent needs to know "am I at a shell prompt yet?" or "is vim in
+insert mode?", call `tui_probe` and switch on the `kind` field:
+
+```bash
+KIND=$(cmux rpc surface.tui_probe "{\"surface_id\":\"$SURF\"}" | jq -r .kind)
+case "$KIND" in
+  shell_prompt)    cmux rpc surface.send_text "..." ;;
+  vim_normal)      cmux rpc surface.send_key "{...,\"key\":\"i\"}" ;;
+  vim_insert)      cmux rpc surface.send_text "..." ;;
+  less_pager)      cmux rpc surface.send_key "{...,\"key\":\"q\"}" ;;
+  input_prompt)    cmux rpc surface.send_text "y\n" ;;
+  running_command) cmux rpc surface.wait_for_idle "..." ;;
+  unknown)         cmux rpc surface.screen_text "..." ;;  # fallback
+esac
+```
+
+Possible `kind` values: `shell_prompt`, `repl_prompt`, `vim_normal`,
+`vim_insert`, `vim_visual`, `vim_replace`, `vim_command`, `less_pager`,
+`input_prompt`, `running_command`, `unknown`. The classifier is
+heuristic; always have a fallback for `unknown`.
+
+### Multi-Step Flows: Use `surface.expect`, Not Loops
+
+```bash
+cmux rpc surface.expect "$(jq -nc \
+  --arg sid "$SURF" \
+  '{
+    surface_id: $sid,
+    steps: [
+      {send: "ls\n"},
+      {wait_text: "$ ", timeout_ms: 3000},
+      {send: "cd /tmp\n"},
+      {wait_text: "$ ", timeout_ms: 3000}
+    ],
+    stop_on_error: true,
+    tail_rows: 5
+  }')"
+```
+
+Returns `{completed, total, steps[], tail, error?}`. Four steps in one
+RPC instead of four RPCs + four waits. Saves ~70% over the naive
+loop, and the daemon never returns until the whole sequence finishes
+(or one step fails with `stop_on_error: true`).
 
 ## Drive Input Precisely
 
