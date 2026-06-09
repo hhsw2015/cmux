@@ -770,6 +770,11 @@ enum TerminalNotificationClickAction: Codable, Hashable, Sendable {
     }
 }
 
+enum TerminalNotificationKind: String, Codable, Hashable {
+    case user
+    case bus
+}
+
 struct TerminalNotification: Identifiable, Hashable {
     let id: UUID
     let tabId: UUID
@@ -782,6 +787,7 @@ struct TerminalNotification: Identifiable, Hashable {
     var isRead: Bool
     var paneFlash: Bool = true
     var clickAction: TerminalNotificationClickAction?
+    var kind: TerminalNotificationKind = .user
 
     init(
         id: UUID,
@@ -794,7 +800,8 @@ struct TerminalNotification: Identifiable, Hashable {
         createdAt: Date,
         isRead: Bool,
         paneFlash: Bool = true,
-        clickAction: TerminalNotificationClickAction? = nil
+        clickAction: TerminalNotificationClickAction? = nil,
+        kind: TerminalNotificationKind = .user
     ) {
         self.id = id
         self.tabId = tabId
@@ -807,6 +814,7 @@ struct TerminalNotification: Identifiable, Hashable {
         self.isRead = isRead
         self.paneFlash = paneFlash
         self.clickAction = clickAction
+        self.kind = kind
     }
 
     func matches(tabId targetTabId: UUID, surfaceId targetSurfaceId: UUID?) -> Bool {
@@ -1245,6 +1253,33 @@ final class TerminalNotificationStore: ObservableObject {
 
     func focusedReadIndicatorSurfaceId(forTabId tabId: UUID) -> UUID? {
         focusedReadIndicatorByTabId[tabId]
+    }
+
+    /// Append a `kind=.bus` notification: pure data record, no policy
+    /// hook evaluation, no UI side effects, no cooldown logic.
+    /// Used by the agent bus (see docs/design/agent-bus.md). Returns
+    /// the persisted notification with its assigned id + createdAt.
+    @discardableResult
+    func recordBusNotification(
+        body: String,
+        title: String = "agent.bus"
+    ) -> TerminalNotification {
+        let n = TerminalNotification(
+            id: UUID(),
+            tabId: UUID(),                 // bus is workspace-agnostic
+            surfaceId: nil,
+            panelId: nil,
+            title: title,
+            subtitle: "",
+            body: body,
+            createdAt: Date(),
+            isRead: true,                  // pre-read so UI doesn't badge
+            paneFlash: false,
+            clickAction: nil,
+            kind: .bus
+        )
+        notifications.append(n)
+        return n
     }
 
     func addNotification(
@@ -1867,7 +1902,8 @@ final class TerminalNotificationStore: ObservableObject {
             createdAt: notification.createdAt,
             isRead: notification.isRead,
             paneFlash: notification.paneFlash,
-            clickAction: notification.clickAction
+            clickAction: notification.clickAction,
+            kind: notification.kind
         )
     }
 
@@ -1947,7 +1983,8 @@ final class TerminalNotificationStore: ObservableObject {
                 createdAt: notification.createdAt,
                 isRead: notification.isRead,
                 paneFlash: notification.paneFlash,
-                clickAction: notification.clickAction
+                clickAction: notification.clickAction,
+                kind: notification.kind
             )
         }
         if didMoveNotification {

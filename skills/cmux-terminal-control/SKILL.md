@@ -35,25 +35,189 @@ The skill is held to three hard constraints, **in this priority order**:
 
 If a tactic violates (1), drop it even if it would help (2) and (3).
 
-## Two tracks. Pick the right one before sending a single byte
+## Multi-agent coordination: cmux Agent Bus
 
-| Task shape | Track | Why |
-|---|---|---|
-| **Interactive TUI** (vim, lazygit, htop, k9s, fzf, ranger, less) | **Computer Use** track — key-by-key | The TUI has no API. Only the keyboard works. Precision comes from `tui_probe.kind` + cursor position after each keystroke. |
-| **Long-running batch task** (build, test, deploy, AI coding agent like claude/codex/aider) | **Agent CLI scheduler** track — fire and watch | The CLI is itself an agent. Don't drive it; *observe its progress*. Use `screen_diff` to read incremental output, `wait_for_text` for milestone markers, `tui_probe.kind=input_prompt` to detect when it's blocked on a question. |
+For team-of-agents work (one dispatcher + N workers, agents talking
+to each other, pipeline / peer review patterns), use the **cmux Agent
+Bus**. See `docs/design/agent-bus.md` for the full spec.
 
-**The two tracks have inverse priorities**:
+It's a JSON-envelope channel layered on cmux's existing
+`notification.create` / `notification.wait` RPCs:
 
-- Computer Use: precision >> tokens. Spend ~150 B/keystroke on
-  `wait_for_kind` / `wait_for_cursor` so each step is verified.
-- Agent CLI: tokens >> precision. Cache `screen_hash`, only fetch
-  `screen_diff` when something changed. The CLI handles its own
-  precision.
+- Each agent gets a stable `agent_id` (auto-assigned by `AgentSession`).
+- Agents publish typed messages via `cmux rpc notification.create`
+  with `title="agent.bus"` and a JSON body starting with `{"$bus":1,...}`.
+- The cmux daemon stores them with `kind="bus"` (no UI alert).
+- Dispatchers wait via `cmux rpc notification.wait kind=bus body_contains=...`,
+  which is a single blocking RPC that returns when a matching message
+  arrives — true push from the client's POV.
 
-If you start in one track and the task changes shape (a long-running
-agent suddenly asks an interactive question), switch tracks
-mid-flight — `tui_probe.kind=input_prompt` is your signal to drop
-out of Agent CLI mode and answer the question.
+Python helpers in `cmux_term.bus`:
+- `publish_command(...)` — exact shell command for an agent's Bash tool.
+- `AgentBus().wait(from_=..., kind=..., ref=..., timeout_ms=...)` —
+  block for one message.
+- `AgentBus().wait_any(agents=[...], kind="done")` — first finisher wins.
+- `AgentBus().wait_all(agents=[...], kind="done")` — all must finish.
+
+`AgentSession.delegate(prompt, notify="bus")` is the default; the lib
+appends the bus protocol prose teaching the agent how to publish.
+Token budget per round-trip: ~1 RPC for delegate, ~1 RPC per
+delivered bus message, plus the cost of reading any artifacts the
+agent wrote to disk. Independent of agent panel scroll length.
+
+```python
+from cmux_term import ClaudeAgent, AgentBus, Surface
+
+# 3 parallel workers
+parent = Surface.from_focused_or_split().id
+fleet = [ClaudeAgent.spawn(parent, cwd=f"/tmp/work/{i}") for i in range(3)]
+refs  = [a.delegate(f"task #{i}: ...", notify="bus") for i, a in enumerate(fleet)]
+
+bus = AgentBus()
+msgs = bus.wait_all(agents=[a.agent_id for a in fleet],
+                    kind="done", timeout_ms=10*60_000)
+for m in msgs:
+    # artifacts on disk are the source of truth; bus only signals
+    print(f"{m.from_} done: {m.summary}; artifacts={m.artifacts}")
+```
+
+## Track 1 (PRIMARY): delegate to an Agent CLI
+
+**For non-trivial work, this is almost always the right answer.**
+
+Your role is **dispatcher + acceptor**, NOT executor. The agent does
+the work, the agent reviews its own work, the agent notifies you, you
+accept the result. Your context window is precious — every token spent
+reading sub-agent output during execution is a token you can't spend
+dispatching the next task.
+
+Core principles:
+
+1. **Push, not poll.** The agent fires a cmux notification when done;
+   you wait on the notification queue. Polling the screen costs tokens
+   linearly with task length — push costs O(1).
+2. **Sub-agent self-reviews.** Tell the agent to run its own tests,
+   verify its output, and only signal done when satisfied. Never use
+   your own context to scrape its progress.
+3. **Big results go through files.** If the result is more than a
+   sentence, have the agent write it to a file and tell you the path.
+   Then read the file when (and only when) you need it.
+4. **Verify on disk + spot-check, not by re-reading the conversation.**
+   When the notification fires, check the artifact (file content, exit
+   code, git log). If you must inspect terminal state, use cheap reads
+   (`screen_tail(8)`, `last_lines(3)`) — never `screen_text()` mid-run.
+
+```python
+from cmux_term import Surface, ClaudeAgent
+
+# Find any surface to split from (e.g. the focused one)
+parent = Surface.from_focused_or_split(direction="right")
+
+# Spawn claude in a NEW dedicated panel rooted at /tmp/project.
+# Under the hood: surface.split with working_directory=cwd, then we
+# inject `claude --dangerously-skip-permissions`. Avoids the
+# zsh-keystroke-eating gauntlet on fresh shells.
+a = ClaudeAgent.spawn(parent, cwd="/tmp/project")
+token = a.delegate(
+    "Refactor utils/parser.py to use dataclasses, add tests, "
+    "run pytest until green. Don't ask for confirmation.",
+    notify="cmux",  # agent fires cmux notification when done — push, not poll
+)
+# Single push wait — we burn ~0 tokens until the notification arrives.
+a.wait_for_done(
+    token,
+    notify="cmux",
+    timeout_ms=10 * 60_000,
+    check_disk="/tmp/project/utils/parser.py",
+)
+
+# verify on disk via subprocess — never via screen scraping
+import subprocess
+r = subprocess.run(["pytest"], cwd="/tmp/project", capture_output=True, text=True)
+assert r.returncode == 0
+```
+
+### Big results — file handoff, not scrollback scraping
+
+When the agent's deliverable is more than a few lines (research notes,
+analysis, refactor plan), tell it to dump to a file:
+
+```python
+token = a.delegate(
+    "Survey every callsite of `LegacyFoo` in this repo and write a "
+    "migration plan to ./MIGRATION.md (≥1 paragraph per call site). "
+    "When done, signal me.",
+    notify="cmux",
+)
+a.wait_for_done(token, notify="cmux", check_disk="./MIGRATION.md")
+plan = open("./MIGRATION.md").read()  # NOW we read — once, not throughout
+```
+
+This keeps your context flat regardless of how much the sub-agent
+produced.
+
+### Two interaction modes — pick by task shape, not by reflex
+
+**Interactive (default)** — chat back and forth, steer turn by turn.
+Each turn: delegate/chat → wait_for_done → check artifact → next turn:
+
+```python
+a = ClaudeAgent.spawn(parent, cwd="/tmp/project")
+t1 = a.delegate("draft a CLI for csv → json", notify="cmux")
+a.wait_for_done(t1, notify="cmux")
+t2 = a.chat("good. now add a --pretty flag and a test", notify="cmux")
+a.wait_for_done(t2, notify="cmux")
+```
+
+Use when:
+- Mid-complexity, you want to steer in real time.
+- Requirements are fluid; you'll know what to ask for after seeing
+  the first draft.
+- The agent is likely to ask clarifying questions.
+
+**Goal mode (optional)** — install a long-running objective, walk away:
+
+```python
+a.set_goal("Get the test suite to 90%+ coverage, then exit. "
+           "Pick the most uncovered modules first.")
+a.wait_for_text("Goal complete", timeout_ms=30 * 60_000)
+```
+
+Use when:
+- The task is heavy and well-specified.
+- You want token cost on YOUR side near zero.
+- You'd otherwise be sitting there pressing "continue" for an hour.
+
+**You can mix freely.** Goal mode does NOT lock out interaction:
+- `a.chat("hint: look at the JSON parser first")` mid-run still steers it.
+- `a.update_goal("...")` overwrites the active goal with a new one.
+- `a.clear_goal()` drops autonomy and returns to plain chat.
+
+Don't reach for /goal reflexively. Many useful tasks finish in 1-3
+turns and benefit from staying interactive.
+
+### When NOT to use this track
+
+- Smoke tests / one-off scripts — too much CLI cold-start overhead.
+- Tasks where you genuinely need byte-level control (driving vim,
+  navigating fzf, scrubbing through htop). For those, fall to Track 2.
+
+## Track 2 (FALLBACK): drive a TUI directly
+
+Use only when there's no agent that could do this for you. Examples:
+- Driving vim/nvim/less/lazygit by keypress.
+- Walking through an interactive picker (fzf, gh, k9s).
+- Watching a long-running stream (`tail -f`, `docker logs`) for a marker.
+
+This is the verify-each-step world covered by `raw`/`atomic`/`flow`.
+The 3-layer guidance below applies only to this track. Default to
+**atomic** for unfamiliar TUIs; promote to **raw** only when you're
+confident; reach for **flow.batch** when you have a known multi-step
+shell chain.
+
+If a Track 2 task is *getting complicated*, that's usually a sign you
+should escalate to Track 1: have the agent write a script that does
+the work, then run that script.
 
 ## Use the Python helper library — pick the right layer
 

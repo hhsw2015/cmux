@@ -20,8 +20,10 @@ Decision guide:
 Public re-exports so callers can `from cmux_term import Surface, raw, atomic`:
 """
 
-from . import atomic, batch, flow, raw
+from . import agent, atomic, batch, bus, flow, raw
 from ._rpc import CmuxError, TimeoutError, rpc
+from .agent import AgentFleet, AgentSession, AiderAgent, ClaudeAgent, CodexAgent
+from .bus import AgentBus, AgentBusMessage
 from .flow import Surface
 
 __all__ = [
@@ -31,6 +33,15 @@ __all__ = [
     "raw",
     "atomic",
     "batch",
+    "bus",
     "flow",
+    "agent",
     "rpc",
+    "AgentSession",
+    "AgentFleet",
+    "ClaudeAgent",
+    "CodexAgent",
+    "AiderAgent",
+    "AgentBus",
+    "AgentBusMessage",
 ]
