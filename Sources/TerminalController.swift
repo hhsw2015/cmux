@@ -1209,6 +1209,20 @@ class TerminalController {
         case "debug.sidebar.simulate_drag":
             return v2Result(id: request.id, v2DebugSidebarSimulateDrag(params: request.params))
 #endif
+        case "notification.wait":
+            return v2Result(id: request.id, v2NotificationWait(params: request.params))
+        case "surface.wait_for_screen_change":
+            return v2Result(id: request.id, v2SurfaceWaitForScreenChange(params: request.params))
+        case "surface.wait_for_idle":
+            return v2Result(id: request.id, v2SurfaceWaitForIdle(params: request.params))
+        case "surface.wait_for_text":
+            return v2Result(id: request.id, v2SurfaceWaitForText(params: request.params))
+        case "surface.wait_for_kind":
+            return v2Result(id: request.id, v2SurfaceWaitForKind(params: request.params))
+        case "surface.wait_for_cursor":
+            return v2Result(id: request.id, v2SurfaceWaitForCursor(params: request.params))
+        case "surface.expect":
+            return v2Result(id: request.id, v2SurfaceExpect(params: request.params))
         case let method where method.hasPrefix("vm."):
             return socketWorkerCloudVMResponse(method: method, id: request.id, params: request.params)
         default:
@@ -9294,7 +9308,7 @@ class TerminalController {
     /// Block until the visible viewport contains a substring/regex match,
     /// or `timeout_ms` elapses. Polls every 100ms. Self-contained.
     /// Mirrors herdr `pane.wait_for_text`.
-    private func v2SurfaceWaitForText(params: [String: Any]) -> V2CallResult {
+    nonisolated private func v2SurfaceWaitForText(params: [String: Any]) -> V2CallResult {
         let timeoutMs = (params["timeout_ms"] as? NSNumber)?.intValue ?? 30_000
         let pattern = (params["substring"] as? String) ?? (params["pattern"] as? String) ?? ""
         let isRegex = (params["regex"] as? Bool) ?? false
@@ -9315,7 +9329,7 @@ class TerminalController {
         let pollInterval: TimeInterval = 0.1
 
         while Date() < deadline {
-            let snapshot = v2SurfaceScreenText(params: params)
+            let snapshot = v2MainSync { self.v2SurfaceScreenText(params: params) }
             switch snapshot {
             case .err(let code, let message, let data):
                 return .err(code: code, message: message, data: data)
@@ -9352,7 +9366,7 @@ class TerminalController {
     /// `deadline_ms` elapses. Two consecutive identical snapshots taken
     /// `settle_ms` apart count as idle. Self-contained.
     /// Mirrors herdr `pane.wait_for_idle`.
-    private func v2SurfaceWaitForIdle(params: [String: Any]) -> V2CallResult {
+    nonisolated private func v2SurfaceWaitForIdle(params: [String: Any]) -> V2CallResult {
         let settleMs = (params["settle_ms"] as? NSNumber)?.intValue ?? 500
         let deadlineMs = (params["deadline_ms"] as? NSNumber)?.intValue ?? 30_000
         let deadline = Date().addingTimeInterval(TimeInterval(deadlineMs) / 1000.0)
@@ -9362,7 +9376,7 @@ class TerminalController {
         var stableSince: Date?
 
         while Date() < deadline {
-            let snapshot = v2SurfaceScreenText(params: params)
+            let snapshot = v2MainSync { self.v2SurfaceScreenText(params: params) }
             switch snapshot {
             case .err(let code, let message, let data):
                 return .err(code: code, message: message, data: data)
@@ -9393,7 +9407,7 @@ class TerminalController {
     /// before sending the next keystroke. ~50 byte response on success.
     /// `kind` accepts a single string ("vim_insert") or an array
     /// (["vim_normal", "vim_insert"]) — match returns on first hit.
-    private func v2SurfaceWaitForKind(params: [String: Any]) -> V2CallResult {
+    nonisolated private func v2SurfaceWaitForKind(params: [String: Any]) -> V2CallResult {
         let timeoutMs = (params["timeout_ms"] as? NSNumber)?.intValue ?? 5_000
         let deadline = Date().addingTimeInterval(TimeInterval(timeoutMs) / 1000.0)
         let pollInterval: TimeInterval = 0.1
@@ -9411,7 +9425,7 @@ class TerminalController {
         }
         var lastKind: String = ""
         while Date() < deadline {
-            let snap = v2SurfaceTuiProbe(params: params)
+            let snap = v2MainSync { self.v2SurfaceTuiProbe(params: params) }
             switch snap {
             case .err(let code, let message, let data):
                 return .err(code: code, message: message, data: data)
@@ -9436,7 +9450,7 @@ class TerminalController {
     /// `kind` to assert "in vim_normal AND cursor at (0,0)" — i.e. file
     /// just opened. Polls every 100ms; ~50 byte response on success.
     /// Any of `row`, `col`, `kind` may be omitted (treated as wildcard).
-    private func v2SurfaceWaitForCursor(params: [String: Any]) -> V2CallResult {
+    nonisolated private func v2SurfaceWaitForCursor(params: [String: Any]) -> V2CallResult {
         let timeoutMs = (params["timeout_ms"] as? NSNumber)?.intValue ?? 5_000
         let deadline = Date().addingTimeInterval(TimeInterval(timeoutMs) / 1000.0)
         let pollInterval: TimeInterval = 0.1
@@ -9448,7 +9462,7 @@ class TerminalController {
         }
         var lastSnapshot: [String: Any] = [:]
         while Date() < deadline {
-            let snap = v2SurfaceTuiProbe(params: params)
+            let snap = v2MainSync { self.v2SurfaceTuiProbe(params: params) }
             switch snap {
             case .err(let code, let message, let data):
                 return .err(code: code, message: message, data: data)
@@ -9485,7 +9499,7 @@ class TerminalController {
     /// reliably exposed (nvim+lualine, custom statuslines, TUI games).
     /// Default timeout is 1500ms — fail-fast surfaces the press-was-
     /// silently-dropped class of bug instantly instead of hanging.
-    private func v2SurfaceWaitForScreenChange(params: [String: Any]) -> V2CallResult {
+    nonisolated private func v2SurfaceWaitForScreenChange(params: [String: Any]) -> V2CallResult {
         guard let prevHash = params["prev_hash"] as? String else {
             return .err(code: "invalid_params", message: "prev_hash (string) is required", data: nil)
         }
@@ -9497,7 +9511,7 @@ class TerminalController {
         var lastHash = prevHash
         var lastSeq: UInt64 = 0
         while Date() < deadline {
-            let snap = v2SurfaceScreenHash(params: params)
+            let snap = v2MainSync { self.v2SurfaceScreenHash(params: params) }
             switch snap {
             case .err(let code, let message, let data):
                 return .err(code: code, message: message, data: data)
@@ -9736,7 +9750,7 @@ class TerminalController {
     /// deadline_ms}}`, `{sleep_ms: 200}`. Returns the index of the last
     /// completed step, the final tail of the screen, and per-step error
     /// info if any step failed (with `stop_on_error` honored).
-    private func v2SurfaceExpect(params: [String: Any]) -> V2CallResult {
+    nonisolated private func v2SurfaceExpect(params: [String: Any]) -> V2CallResult {
         guard let steps = params["steps"] as? [[String: Any]] else {
             return .err(code: "invalid_params", message: "steps must be an array", data: nil)
         }
@@ -9752,15 +9766,16 @@ class TerminalController {
             if let txt = step["send"] as? String {
                 var p = params
                 p["text"] = txt
-                outcome = self.v2SurfaceSendText(params: p)
+                outcome = v2MainSync { self.v2SurfaceSendText(params: p) }
             } else if let key = step["send_key"] as? String {
                 var p = params
                 p["key"] = key
-                outcome = self.v2SurfaceSendKey(params: p)
+                outcome = v2MainSync { self.v2SurfaceSendKey(params: p) }
             } else if let needle = step["wait_text"] as? String {
                 var p = params
                 p["substring"] = needle
                 if let t = step["timeout_ms"] as? NSNumber { p["timeout_ms"] = t }
+                // wait_text already handles its own main hops internally
                 outcome = self.v2SurfaceWaitForText(params: p)
             } else if let waitIdle = step["wait_idle"] as? [String: Any] {
                 var p = params
@@ -9796,10 +9811,10 @@ class TerminalController {
         return .ok(payload)
     }
 
-    private func expectFinalPayload(params: [String: Any], completed: Int, total: Int, stepResults: [[String: Any]], tailRows: Int) -> [String: Any] {
+    nonisolated private func expectFinalPayload(params: [String: Any], completed: Int, total: Int, stepResults: [[String: Any]], tailRows: Int) -> [String: Any] {
         var p = params
         if tailRows > 0 { p["last_rows"] = tailRows }
-        let tail = self.v2SurfaceScreenRegion(params: p)
+        let tail = v2MainSync { self.v2SurfaceScreenRegion(params: p) }
         var tailText = ""
         if case .ok(let val) = tail, let dict = val as? [String: Any] {
             tailText = (dict["text"] as? String) ?? ""
@@ -11207,52 +11222,83 @@ class TerminalController {
     ///   - since_iso: ISO8601 timestamp; only return notifications created AFTER this
     ///   - timeout_ms: max wait (default 60_000, max 1_800_000)
     /// Returns the matched notification dict, or err code "timeout".
-    private func v2NotificationWait(params: [String: Any]) -> V2CallResult {
+    /// Block until a notification matching the filter is posted.
+    /// Event-driven via NotificationCenter — no polling, no Thread.sleep
+    /// loop, no main-thread hops while idle. The store posts
+    /// `.cmuxNotificationAppended` on every append; we wake on that and
+    /// scan the store once. A 30-minute idle wait costs zero CPU.
+    /// Marked `nonisolated` so it runs on the socket worker — its only
+    /// main-thread interaction is via `v2MainSync` for the snapshot scan.
+    nonisolated private func v2NotificationWait(params: [String: Any]) -> V2CallResult {
         let bodyContains = params["body_contains"] as? String
         let titleContains = params["title_contains"] as? String
         let sinceIso = params["since_iso"] as? String
-        // kind: "user" | "bus" | "all" (default: "all" to preserve
-        // existing behavior — callers that don't filter still see
-        // bus messages they may have published themselves).
         let kindFilter = (params["kind"] as? String)?.lowercased()
         let timeoutMs = max(100, min(1_800_000, (params["timeout_ms"] as? NSNumber)?.intValue ?? 60_000))
-        let pollMs = 200
         let deadline = Date().addingTimeInterval(Double(timeoutMs) / 1000.0)
 
         let isoFmt = ISO8601DateFormatter()
         let sinceDate: Date? = sinceIso.flatMap { isoFmt.date(from: $0) }
 
+        let matches: (TerminalNotification) -> Bool = { n in
+            switch kindFilter {
+            case "user": if n.kind != .user { return false }
+            case "bus":  if n.kind != .bus  { return false }
+            case "all", nil, "":
+                break
+            default:
+                return false
+            }
+            if let bodyNeedle = bodyContains, !n.body.contains(bodyNeedle) { return false }
+            if let titleNeedle = titleContains, !n.title.contains(titleNeedle) { return false }
+            if let sinceDate, n.createdAt <= sinceDate { return false }
+            return true
+        }
+
+        // 1. Subscribe BEFORE the initial scan — otherwise a message
+        //    that lands between scan and subscribe is lost.
+        let semaphore = DispatchSemaphore(value: 0)
+        let observer = NotificationCenter.default.addObserver(
+            forName: .cmuxNotificationAppended,
+            object: nil,
+            queue: nil
+        ) { _ in
+            semaphore.signal()
+        }
+        defer { NotificationCenter.default.removeObserver(observer) }
+
+        // 2. Scan existing notifications first — handles the case where
+        //    the message we want already arrived before we subscribed.
+        var initialHit: [String: Any]?
+        v2MainSync {
+            for n in TerminalNotificationStore.shared.notifications where matches(n) {
+                initialHit = notificationPayload(n, opened: nil, includeReadState: true)
+                break
+            }
+        }
+        if let m = initialHit { return .ok(m) }
+
+        // 3. Block on the semaphore. A signal means a notification was
+        //    appended; scan once and either return or wait again. Any
+        //    fired notifications that don't match still consume one
+        //    signal — that's fine, the loop just goes back to wait.
         while Date() < deadline {
-            var matched: [String: Any]? = nil
+            let remaining = deadline.timeIntervalSinceNow
+            if remaining <= 0 { break }
+            let waitNs = Int64(remaining * 1_000_000_000)
+            let waitResult = semaphore.wait(timeout: .now() + .nanoseconds(Int(waitNs)))
+            if waitResult == .timedOut { break }
+            // Drain any extra signals that piled up in case multiple
+            // notifications fired before we woke.
+            while semaphore.wait(timeout: .now()) == .success { }
+            var hit: [String: Any]?
             v2MainSync {
-                outer: for n in TerminalNotificationStore.shared.notifications {
-                    switch kindFilter {
-                    case "user":
-                        if n.kind != .user { continue outer }
-                    case "bus":
-                        if n.kind != .bus { continue outer }
-                    case "all", nil, "":
-                        break
-                    default:
-                        continue outer
-                    }
-                    if let bodyNeedle = bodyContains, !n.body.contains(bodyNeedle) {
-                        continue outer
-                    }
-                    if let titleNeedle = titleContains, !n.title.contains(titleNeedle) {
-                        continue outer
-                    }
-                    if let sinceDate {
-                        guard n.createdAt > sinceDate else { continue outer }
-                    }
-                    matched = notificationPayload(n, opened: nil, includeReadState: true)
+                for n in TerminalNotificationStore.shared.notifications where matches(n) {
+                    hit = notificationPayload(n, opened: nil, includeReadState: true)
                     break
                 }
             }
-            if let m = matched {
-                return .ok(m)
-            }
-            Thread.sleep(forTimeInterval: Double(pollMs) / 1000.0)
+            if let h = hit { return .ok(h) }
         }
         return .err(code: "timeout", message: "no matching notification within timeout", data: nil)
     }
