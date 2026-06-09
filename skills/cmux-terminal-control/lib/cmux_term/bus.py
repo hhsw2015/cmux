@@ -247,6 +247,7 @@ class AgentBus:
                 # Other transport errors: brief sleep then retry
                 time.sleep(0.2)
                 continue
+<<<<<<< HEAD
             nid = n.get("id")
             if nid in self._seen:
                 # Already saw it; nudge daemon along.
@@ -270,6 +271,18 @@ class AgentBus:
             if dismiss and nid:
                 try:
                     rpc("notification.dismiss", {"id": nid})
+=======
+            if n.get("id") in self._seen:
+                continue
+            m = AgentBusMessage(n)
+            if not self._matches_filters(m, from_=from_, to=to, kind=kind, ref=ref):
+                self._seen.add(m.id)
+                continue
+            self._seen.add(m.id)
+            if dismiss and m.id:
+                try:
+                    rpc("notification.dismiss", {"id": m.id})
+>>>>>>> d33b9b83c (feat(agent-bus): cmux-native multi-agent message bus)
                 except CmuxError:
                     pass
             return m
@@ -284,6 +297,7 @@ class AgentBus:
                  kind: Optional[str] = "done",
                  timeout_ms: int = 600_000,
                  dismiss: bool = True) -> AgentBusMessage:
+<<<<<<< HEAD
         """Return the first message from ANY of `agents` matching `kind`.
 
         Strategy: ALWAYS dismiss the message we just received (including
@@ -291,6 +305,9 @@ class AgentBus:
         keep returning the same head-of-queue entry on every iteration.
         Client-side `_seen` is just an extra guard.
         """
+=======
+        """Return the first message from ANY of `agents` matching `kind`."""
+>>>>>>> d33b9b83c (feat(agent-bus): cmux-native multi-agent message bus)
         agents = list(agents)
         if not agents:
             raise CmuxError("wait_any: no agents specified")
@@ -308,6 +325,7 @@ class AgentBus:
                 if "timeout" in str(e).lower():
                     continue
                 raise
+<<<<<<< HEAD
             nid = n.get("id")
             if nid in self._seen:
                 # Already handled in this process — but daemon still
@@ -334,6 +352,21 @@ class AgentBus:
                     rpc("notification.dismiss", {"id": nid})
                 except CmuxError:
                     pass
+=======
+            if n.get("id") in self._seen:
+                continue
+            m = AgentBusMessage(n)
+            if m.from_ in agents and (kind is None or m.kind == kind):
+                self._seen.add(m.id)
+                if dismiss and m.id:
+                    try:
+                        rpc("notification.dismiss", {"id": m.id})
+                    except CmuxError:
+                        pass
+                return m
+            # Not for us; mark seen so we don't re-consider
+            self._seen.add(m.id)
+>>>>>>> d33b9b83c (feat(agent-bus): cmux-native multi-agent message bus)
         raise TimeoutError(f"wait_any({agents!r}, kind={kind!r}): {timeout_ms}ms elapsed")
 
     def wait_all(self, *, agents: Iterable[str],

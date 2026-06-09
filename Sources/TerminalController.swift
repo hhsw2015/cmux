@@ -2322,7 +2322,9 @@ class TerminalController {
         case "notification.create_for_target":
             return v2Result(id: id, self.v2NotificationCreateForTarget(params: params))
         case "notification.list":
-            return v2Ok(id: id, result: self.v2NotificationList())
+            return v2Ok(id: id, result: self.v2NotificationList(params: params))
+        case "notification.wait":
+            return v2Result(id: id, self.v2NotificationWait(params: params))
         case "notification.clear":
             return v2Result(id: id, self.v2NotificationClear())
         case "notification.dismiss":
@@ -11001,14 +11003,21 @@ class TerminalController {
     // MARK: - V2 Notification Methods
 
     func v2NotificationCreate(params: [String: Any]) -> V2CallResult {
+        let title = (params["title"] as? String) ?? "Notification"
+        let subtitle = (params["subtitle"] as? String) ?? ""
+        let body = (params["body"] as? String) ?? ""
+
+        // Agent bus path — see docs/design/agent-bus.md.
+        // Two-factor detection: explicit title + JSON prefix.
+        if title == "agent.bus", body.hasPrefix("{\"$bus\":1") {
+            return v2NotificationCreateBus(body: body, title: title)
+        }
+
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
 
         let explicitSurfaceId = v2UUID(params, "surface_id")
-        let title = (params["title"] as? String) ?? "Notification"
-        let subtitle = (params["subtitle"] as? String) ?? ""
-        let body = (params["body"] as? String) ?? ""
 
         var result: V2CallResult = .err(code: "internal_error", message: "Failed to notify", data: nil)
         v2MainSync {
@@ -11035,6 +11044,64 @@ class TerminalController {
             result = .ok(["workspace_id": ws.id.uuidString, "surface_id": v2OrNull(surfaceId?.uuidString)])
         }
         return result
+    }
+
+    /// Bus message ingress. See docs/design/agent-bus.md.
+    /// Validates the JSON envelope, records as kind=.bus, no UI side
+    /// effects, returns the persisted id + created_at.
+    private func v2NotificationCreateBus(body: String, title: String) -> V2CallResult {
+        let byteCount = body.utf8.count
+        if byteCount > 4096 {
+            return .err(
+                code: "payload_too_large",
+                message: "agent.bus body \(byteCount) bytes exceeds 4096 limit",
+                data: ["bytes": byteCount]
+            )
+        }
+        guard validateBusEnvelope(body) else {
+            return .err(
+                code: "invalid_params",
+                message: "agent.bus body did not parse as a valid envelope (need $bus=1, from, kind)",
+                data: nil
+            )
+        }
+        var stored: TerminalNotification?
+        v2MainSync {
+            stored = TerminalNotificationStore.shared.recordBusNotification(
+                body: body, title: title
+            )
+        }
+        guard let stored else {
+            return .err(code: "internal_error", message: "failed to record bus message", data: nil)
+        }
+        return .ok([
+            "id": stored.id.uuidString,
+            "created_at": Self.notificationCreatedAtString(stored.createdAt),
+            "kind": "bus",
+        ])
+    }
+
+    /// Strict validator for the agent bus JSON envelope.
+    /// Required: top-level dict, $bus == 1 (Int), from (String, ≤64,
+    /// matching `[A-Za-z0-9_.:-]+`), kind ∈ allowed enum.
+    private func validateBusEnvelope(_ body: String) -> Bool {
+        guard let data = body.data(using: .utf8) else { return false }
+        guard let any = try? JSONSerialization.jsonObject(with: data) else {
+            return false
+        }
+        guard let dict = any as? [String: Any] else { return false }
+        guard let busVer = dict["$bus"] as? Int, busVer == 1 else { return false }
+        guard let from = dict["from"] as? String,
+              !from.isEmpty,
+              from.utf8.count <= 64,
+              from.range(of: "^[A-Za-z0-9_.:-]+$", options: .regularExpression) != nil
+        else { return false }
+        guard let kind = dict["kind"] as? String else { return false }
+        let allowed: Set<String> = [
+            "done", "progress", "needs_input", "error", "log", "cancel", "note", "ack",
+        ]
+        guard allowed.contains(kind) else { return false }
+        return true
     }
 
     func v2NotificationCreateForSurface(params: [String: Any]) -> V2CallResult {
@@ -11108,14 +11175,86 @@ class TerminalController {
         return result
     }
 
-    func v2NotificationList() -> [String: Any] {
+    func v2NotificationList(params: [String: Any] = [:]) -> [String: Any] {
+        // Backward compatible: default returns ONLY user-facing
+        // notifications. Bus messages opt-in via include_bus=true,
+        // OR kind="bus" / "all". Existing callers see no change.
+        let includeBus = (params["include_bus"] as? Bool) ?? false
+        let kindFilter = (params["kind"] as? String)?.lowercased()
         var items: [[String: Any]] = []
         v2MainSync {
-            items = TerminalNotificationStore.shared.notifications.map { n in
+            items = TerminalNotificationStore.shared.notifications.compactMap { n in
+                let allow: Bool = {
+                    switch kindFilter {
+                    case "user": return n.kind == .user
+                    case "bus":  return n.kind == .bus
+                    case "all":  return true
+                    default:     return n.kind == .user || includeBus
+                    }
+                }()
+                guard allow else { return nil }
                 return notificationPayload(n, opened: nil, includeReadState: true)
             }
         }
         return ["notifications": items]
+    }
+
+    /// Blocking wait for a notification matching the given filter.
+    /// Replaces client-side polling — true push/pull boundary stays daemon-side.
+    /// Params:
+    ///   - body_contains: only return notifications whose body contains this substring
+    ///   - title_contains: only return notifications whose title contains this substring
+    ///   - since_iso: ISO8601 timestamp; only return notifications created AFTER this
+    ///   - timeout_ms: max wait (default 60_000, max 1_800_000)
+    /// Returns the matched notification dict, or err code "timeout".
+    private func v2NotificationWait(params: [String: Any]) -> V2CallResult {
+        let bodyContains = params["body_contains"] as? String
+        let titleContains = params["title_contains"] as? String
+        let sinceIso = params["since_iso"] as? String
+        // kind: "user" | "bus" | "all" (default: "all" to preserve
+        // existing behavior — callers that don't filter still see
+        // bus messages they may have published themselves).
+        let kindFilter = (params["kind"] as? String)?.lowercased()
+        let timeoutMs = max(100, min(1_800_000, (params["timeout_ms"] as? NSNumber)?.intValue ?? 60_000))
+        let pollMs = 200
+        let deadline = Date().addingTimeInterval(Double(timeoutMs) / 1000.0)
+
+        let isoFmt = ISO8601DateFormatter()
+        let sinceDate: Date? = sinceIso.flatMap { isoFmt.date(from: $0) }
+
+        while Date() < deadline {
+            var matched: [String: Any]? = nil
+            v2MainSync {
+                outer: for n in TerminalNotificationStore.shared.notifications {
+                    switch kindFilter {
+                    case "user":
+                        if n.kind != .user { continue outer }
+                    case "bus":
+                        if n.kind != .bus { continue outer }
+                    case "all", nil, "":
+                        break
+                    default:
+                        continue outer
+                    }
+                    if let bodyNeedle = bodyContains, !n.body.contains(bodyNeedle) {
+                        continue outer
+                    }
+                    if let titleNeedle = titleContains, !n.title.contains(titleNeedle) {
+                        continue outer
+                    }
+                    if let sinceDate {
+                        guard n.createdAt > sinceDate else { continue outer }
+                    }
+                    matched = notificationPayload(n, opened: nil, includeReadState: true)
+                    break
+                }
+            }
+            if let m = matched {
+                return .ok(m)
+            }
+            Thread.sleep(forTimeInterval: Double(pollMs) / 1000.0)
+        }
+        return .err(code: "timeout", message: "no matching notification within timeout", data: nil)
     }
 
     func v2NotificationDismiss(params: [String: Any]) -> V2CallResult {
@@ -11322,6 +11461,7 @@ class TerminalController {
             "body": notification.body,
             "created_at": Self.notificationCreatedAtString(notification.createdAt),
             "tab_title": v2OrNull(AppDelegate.shared?.tabTitle(for: notification.tabId)),
+            "kind": notification.kind.rawValue,
         ]
         if includeReadState {
             payload["is_read"] = notification.isRead

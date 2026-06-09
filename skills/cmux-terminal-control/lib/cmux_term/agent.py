@@ -543,6 +543,7 @@ class ClaudeAgent(AgentSession):
 
     LAUNCH_CMD = "claude --dangerously-skip-permissions"
     READY_MARKERS = (
+<<<<<<< HEAD
         # Wrapping-tolerant substrings. Claude Code shows these once
         # ready; partial matches are intentional — the bottom status
         # line `⏵⏵ bypass permissions on (shift+tab to cycle)` wraps
@@ -552,6 +553,12 @@ class ClaudeAgent(AgentSession):
         "? for shortcuts",
         "for shortcuts",
         "Welcome back",
+=======
+        # When Claude Code finishes its splash and presents the input prompt:
+        "bypass permissions on",
+        "? for shortcuts",
+        "Try \"",
+>>>>>>> d33b9b83c (feat(agent-bus): cmux-native multi-agent message bus)
     )
     # First-time trust prompt for unfamiliar workdir. We auto-confirm.
     TRUST_PROMPT_MARKER = "Yes, I trust this folder"
@@ -560,8 +567,11 @@ class ClaudeAgent(AgentSession):
 
     @classmethod
     def spawn(cls, surface, *, cwd=None, extra_args="",
+<<<<<<< HEAD
               direction: str = "right",
               initial_divider_position: Optional[float] = None,
+=======
+>>>>>>> d33b9b83c (feat(agent-bus): cmux-native multi-agent message bus)
               ready_timeout_ms: int = 60_000) -> "ClaudeAgent":
         """Spawn Claude in a fresh terminal panel.
 
@@ -580,13 +590,20 @@ class ClaudeAgent(AgentSession):
         parent_sid = surface.id if hasattr(surface, "id") else surface
         params = {
             "surface_id": parent_sid,
+<<<<<<< HEAD
             "direction": direction,
+=======
+            "direction": "right",
+>>>>>>> d33b9b83c (feat(agent-bus): cmux-native multi-agent message bus)
             "type": "terminal",
         }
         if cwd:
             params["working_directory"] = cwd
+<<<<<<< HEAD
         if initial_divider_position is not None:
             params["initial_divider_position"] = float(initial_divider_position)
+=======
+>>>>>>> d33b9b83c (feat(agent-bus): cmux-native multi-agent message bus)
         result = rpc("surface.split", params)
         sid = result["surface_id"]
         # Settle so the new surface fully wires up before we poll/send.
