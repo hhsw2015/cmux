@@ -247,16 +247,29 @@ class AgentBus:
                 # Other transport errors: brief sleep then retry
                 time.sleep(0.2)
                 continue
-            if n.get("id") in self._seen:
+            nid = n.get("id")
+            if nid in self._seen:
+                # Already saw it; nudge daemon along.
+                if nid:
+                    try:
+                        rpc("notification.dismiss", {"id": nid})
+                    except CmuxError:
+                        pass
                 continue
             m = AgentBusMessage(n)
+            self._seen.add(nid)
             if not self._matches_filters(m, from_=from_, to=to, kind=kind, ref=ref):
-                self._seen.add(m.id)
+                # Non-matching: dismiss daemon-side so we don't keep
+                # bumping into it.
+                if nid:
+                    try:
+                        rpc("notification.dismiss", {"id": nid})
+                    except CmuxError:
+                        pass
                 continue
-            self._seen.add(m.id)
-            if dismiss and m.id:
+            if dismiss and nid:
                 try:
-                    rpc("notification.dismiss", {"id": m.id})
+                    rpc("notification.dismiss", {"id": nid})
                 except CmuxError:
                     pass
             return m
@@ -271,7 +284,13 @@ class AgentBus:
                  kind: Optional[str] = "done",
                  timeout_ms: int = 600_000,
                  dismiss: bool = True) -> AgentBusMessage:
-        """Return the first message from ANY of `agents` matching `kind`."""
+        """Return the first message from ANY of `agents` matching `kind`.
+
+        Strategy: ALWAYS dismiss the message we just received (including
+        non-matching ones) so the daemon's `notification.wait` doesn't
+        keep returning the same head-of-queue entry on every iteration.
+        Client-side `_seen` is just an extra guard.
+        """
         agents = list(agents)
         if not agents:
             raise CmuxError("wait_any: no agents specified")
@@ -289,19 +308,32 @@ class AgentBus:
                 if "timeout" in str(e).lower():
                     continue
                 raise
-            if n.get("id") in self._seen:
+            nid = n.get("id")
+            if nid in self._seen:
+                # Already handled in this process — but daemon still
+                # has it. Dismiss to advance daemon's view.
+                if nid:
+                    try:
+                        rpc("notification.dismiss", {"id": nid})
+                    except CmuxError:
+                        pass
                 continue
             m = AgentBusMessage(n)
+            self._seen.add(nid)
             if m.from_ in agents and (kind is None or m.kind == kind):
-                self._seen.add(m.id)
-                if dismiss and m.id:
+                if dismiss and nid:
                     try:
-                        rpc("notification.dismiss", {"id": m.id})
+                        rpc("notification.dismiss", {"id": nid})
                     except CmuxError:
                         pass
                 return m
-            # Not for us; mark seen so we don't re-consider
-            self._seen.add(m.id)
+            # Non-matching: dismiss it daemon-side so subsequent waits
+            # don't keep finding it again.
+            if nid:
+                try:
+                    rpc("notification.dismiss", {"id": nid})
+                except CmuxError:
+                    pass
         raise TimeoutError(f"wait_any({agents!r}, kind={kind!r}): {timeout_ms}ms elapsed")
 
     def wait_all(self, *, agents: Iterable[str],

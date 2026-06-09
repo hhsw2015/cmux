@@ -543,10 +543,15 @@ class ClaudeAgent(AgentSession):
 
     LAUNCH_CMD = "claude --dangerously-skip-permissions"
     READY_MARKERS = (
-        # When Claude Code finishes its splash and presents the input prompt:
-        "bypass permissions on",
+        # Wrapping-tolerant substrings. Claude Code shows these once
+        # ready; partial matches are intentional — the bottom status
+        # line `⏵⏵ bypass permissions on (shift+tab to cycle)` wraps
+        # at narrow panel widths so we match the unique mid-string
+        # `bypass permissions` without the trailing `on`.
+        "bypass permissions",
         "? for shortcuts",
-        "Try \"",
+        "for shortcuts",
+        "Welcome back",
     )
     # First-time trust prompt for unfamiliar workdir. We auto-confirm.
     TRUST_PROMPT_MARKER = "Yes, I trust this folder"
@@ -555,6 +560,7 @@ class ClaudeAgent(AgentSession):
 
     @classmethod
     def spawn(cls, surface, *, cwd=None, extra_args="",
+              direction: str = "right",
               ready_timeout_ms: int = 60_000) -> "ClaudeAgent":
         """Spawn Claude in a fresh terminal panel.
 
@@ -573,7 +579,7 @@ class ClaudeAgent(AgentSession):
         parent_sid = surface.id if hasattr(surface, "id") else surface
         params = {
             "surface_id": parent_sid,
-            "direction": "right",
+            "direction": direction,
             "type": "terminal",
         }
         if cwd:

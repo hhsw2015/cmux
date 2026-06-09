@@ -13,11 +13,19 @@ class TimeoutError(CmuxError):
 
 
 def rpc(method: str, params: dict, *, timeout: int = 15) -> dict:
+    import os as _os
+    env = dict(_os.environ)
+    # Tell the cmux CLI to wait at least as long as our subprocess
+    # timeout — otherwise long blocking RPCs (notification.wait) hit
+    # the CLI's default 15s response timeout before the daemon even
+    # has a chance to reply.
+    env["CMUXTERM_CLI_RESPONSE_TIMEOUT_SEC"] = str(max(15, timeout))
     proc = subprocess.run(
         ["cmux", "rpc", method, json.dumps(params)],
         capture_output=True,
         text=True,
         timeout=timeout,
+        env=env,
     )
     out = proc.stdout
     if proc.returncode != 0 and not out.strip():

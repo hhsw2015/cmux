@@ -72,6 +72,20 @@ public enum ControlCommandExecutionPolicy: Sendable, Equatable {
         // v2MainSync). Running on .mainActor would deadlock the UI for the
         // entire simulation, defeating the profiling workload.
         "debug.sidebar.simulate_drag",
+        // surface.wait_* and notification.wait block for up to ~30 minutes
+        // (agent-bus dispatcher waits, TUI test settles). They mutate no UI
+        // state — they only loop, snapshot via v2MainSync, and Thread.sleep.
+        // Running on .mainActor would freeze the entire UI and queue every
+        // other RPC behind them — observed during agent-bus rollout. Worker
+        // lane is correct because the actual scan steps inside still hop to
+        // main via v2MainSync, but the long sleep loop runs off-main.
+        "surface.wait_for_screen_change",
+        "surface.wait_for_idle",
+        "surface.wait_for_text",
+        "surface.wait_for_kind",
+        "surface.wait_for_cursor",
+        "surface.expect",
+        "notification.wait",
     ]
 
     /// Socket-worker methods that are also safe to invoke from the main

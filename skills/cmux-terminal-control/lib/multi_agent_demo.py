@@ -73,19 +73,23 @@ def main() -> None:
     bus = AgentBus()
     refs = {}
 
-    for agent_id, inp, op_desc, out_name, op_key in tasks:
+    # First worker splits right off dispatcher; subsequent workers
+    # split DOWN off the previous worker so we don't keep narrowing
+    # the rightmost column. Result: dispatcher | (a) (b) (c) stacked.
+    last_panel = parent
+    for i, (agent_id, inp, op_desc, out_name, op_key) in enumerate(tasks):
+        direction = "right" if i == 0 else "down"
         a = ClaudeAgent(
             surface_id="",  # placeholder; real id set after spawn
             cwd=WORKDIR,
             agent_id=agent_id,
         )
-        # Spawn brand-new panel (not reusing dispatcher's) so each
-        # worker has isolated context.
-        spawned = ClaudeAgent.spawn(parent, cwd=WORKDIR)
+        spawned = ClaudeAgent.spawn(last_panel, cwd=WORKDIR, direction=direction)
         # Adopt: copy spawned panel into our agent_id-stable wrapper
         # (so bus messages carry our chosen id).
         a.surface_id = spawned.surface_id
         a._spawned = True
+        last_panel = spawned.surface_id
         fleet.add(a)
         workers.append((agent_id, a, inp, out_name, op_key))
 

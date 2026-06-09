@@ -14,6 +14,14 @@ struct ControlCommandExecutionPolicyTests {
             "browser.download.wait", "system.top", "system.memory",
             "workspace.remote.pty_bridge", "sidebar.custom.reload",
             "debug.sidebar.simulate_drag", "mobile.attach_ticket.create",
+            // long-blocking surface/notification waits — must NOT run on main
+            "surface.wait_for_screen_change",
+            "surface.wait_for_idle",
+            "surface.wait_for_text",
+            "surface.wait_for_kind",
+            "surface.wait_for_cursor",
+            "surface.expect",
+            "notification.wait",
         ] {
             #expect(ControlCommandExecutionPolicy(forMethod: method).runsOnSocketWorker, "\(method)")
         }

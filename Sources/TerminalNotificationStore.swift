@@ -775,6 +775,15 @@ enum TerminalNotificationKind: String, Codable, Hashable {
     case bus
 }
 
+extension Notification.Name {
+    /// Posted (on whatever queue the publish lands on) every time a new
+    /// notification — bus or user — is appended to the store. The
+    /// userInfo dict carries the notification id under
+    /// `TerminalNotificationStore.appendedNotificationIdKey`. Used by
+    /// `notification.wait` to do event-driven blocking instead of polling.
+    static let cmuxNotificationAppended = Notification.Name("cmux.notification.appended")
+}
+
 struct TerminalNotification: Identifiable, Hashable {
     let id: UUID
     let tabId: UUID
@@ -1255,10 +1264,15 @@ final class TerminalNotificationStore: ObservableObject {
         focusedReadIndicatorByTabId[tabId]
     }
 
+    /// userInfo key for `cmuxNotificationAppended`.
+    static let appendedNotificationIdKey = "cmux.notification.id"
+
     /// Append a `kind=.bus` notification: pure data record, no policy
     /// hook evaluation, no UI side effects, no cooldown logic.
     /// Used by the agent bus (see docs/design/agent-bus.md). Returns
     /// the persisted notification with its assigned id + createdAt.
+    /// Posts `.cmuxNotificationAppended` so blocking waiters wake up
+    /// without polling.
     @discardableResult
     func recordBusNotification(
         body: String,
@@ -1279,6 +1293,11 @@ final class TerminalNotificationStore: ObservableObject {
             kind: .bus
         )
         notifications.append(n)
+        NotificationCenter.default.post(
+            name: .cmuxNotificationAppended,
+            object: nil,
+            userInfo: [Self.appendedNotificationIdKey: n.id]
+        )
         return n
     }
 
@@ -1584,6 +1603,11 @@ final class TerminalNotificationStore: ObservableObject {
         setWorkspaceManualUnread(false, forTabId: notification.tabId)
         notifications = updated
         commitCooldownReservation(cooldownReservation, at: now)
+        NotificationCenter.default.post(
+            name: .cmuxNotificationAppended,
+            object: nil,
+            userInfo: [Self.appendedNotificationIdKey: notification.id]
+        )
 #if DEBUG
         cmuxDebugLog(
             "notification.store.record workspace=\(notification.tabId.uuidString.prefix(8)) surface=\(notification.surfaceId?.uuidString.prefix(8) ?? "nil") removed=\(idsToClear.count) unread=\(!notification.isRead ? 1 : 0) paneFlash=\(notification.paneFlash ? 1 : 0) suppressExternal=\(shouldSuppressExternalDelivery ? 1 : 0) total=\(notifications.count)"
