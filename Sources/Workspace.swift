@@ -7605,8 +7605,9 @@ final class WorkspaceRemoteSessionController {
             }
             return normalizedSSHOptions(configuration.sshOptions)
         }()
-        var args: [String] = Self.sshSupervisionArguments(effectiveSSHOptions: effectiveSSHOptions)
-        if !Self.hasSSHOptionKey(effectiveSSHOptions, key: "StrictHostKeyChecking") {
+        let configuredKeys = WorkspaceRemoteSSHBatchCommandBuilder.configuredSSHOptionKeys(effectiveSSHOptions)
+        var args: [String] = WorkspaceRemoteSSHBatchCommandBuilder.sshSupervisionArguments(configuredKeys: configuredKeys)
+        if !configuredKeys.contains("stricthostkeychecking") {
             args += ["-o", "StrictHostKeyChecking=accept-new"]
         }
         if batchMode {
