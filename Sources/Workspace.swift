@@ -7588,6 +7588,16 @@ final class WorkspaceRemoteSessionController {
         return message.isEmpty ? "remote daemon bootstrap failed" : message
     }
 
+    /// Connection-supervision options applied to every daemon-transport ssh
+    /// invocation ahead of the user's own SSH options.
+    static func sshSupervisionArguments(effectiveSSHOptions: [String]) -> [String] {
+        [
+            "-o", "ConnectTimeout=6",
+            "-o", "ServerAliveInterval=20",
+            "-o", "ServerAliveCountMax=2",
+        ]
+    }
+
     private func sshCommonArguments(batchMode: Bool, dropControlPath: Bool = false) -> [String] {
         let effectiveSSHOptions: [String] = {
             if batchMode {
@@ -7595,11 +7605,7 @@ final class WorkspaceRemoteSessionController {
             }
             return normalizedSSHOptions(configuration.sshOptions)
         }()
-        var args: [String] = [
-            "-o", "ConnectTimeout=6",
-            "-o", "ServerAliveInterval=20",
-            "-o", "ServerAliveCountMax=2",
-        ]
+        var args: [String] = Self.sshSupervisionArguments(effectiveSSHOptions: effectiveSSHOptions)
         if !hasSSHOptionKey(effectiveSSHOptions, key: "StrictHostKeyChecking") {
             args += ["-o", "StrictHostKeyChecking=accept-new"]
         }

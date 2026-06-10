@@ -3235,6 +3235,43 @@ final class WorkspaceRemoteConnectionTests: XCTestCase {
             "unavailable"
         )
     }
+
+    func testSSHSupervisionArgumentsApplyDefaultsWhenUnconfigured() {
+        let args = WorkspaceRemoteSessionController.sshSupervisionArguments(effectiveSSHOptions: [])
+        XCTAssertEqual(args, [
+            "-o", "ConnectTimeout=6",
+            "-o", "ServerAliveInterval=20",
+            "-o", "ServerAliveCountMax=6",
+        ])
+    }
+
+    func testSSHSupervisionArgumentsYieldToUserConfiguredOptions() {
+        // OpenSSH uses the first value obtained for an option, so a default
+        // emitted ahead of the user's options makes the user's value dead
+        // weight. A user-supplied option must suppress the conflicting
+        // default entirely.
+        let args = WorkspaceRemoteSessionController.sshSupervisionArguments(
+            effectiveSSHOptions: [
+                "ServerAliveInterval=15",
+                "serveralivecountmax 12",
+                "ConnectTimeout=30",
+            ]
+        )
+        XCTAssertFalse(args.contains("ServerAliveInterval=20"), "default must yield to user ServerAliveInterval, got \(args)")
+        XCTAssertFalse(args.contains("ServerAliveCountMax=6"), "default must yield to user ServerAliveCountMax, got \(args)")
+        XCTAssertFalse(args.contains("ServerAliveCountMax=2"), "default must yield to user ServerAliveCountMax, got \(args)")
+        XCTAssertFalse(args.contains("ConnectTimeout=6"), "default must yield to user ConnectTimeout, got \(args)")
+    }
+
+    func testSSHSupervisionArgumentsApplyRemainingDefaultsWhenPartiallyConfigured() {
+        let args = WorkspaceRemoteSessionController.sshSupervisionArguments(
+            effectiveSSHOptions: ["ServerAliveCountMax=12"]
+        )
+        XCTAssertEqual(args, [
+            "-o", "ConnectTimeout=6",
+            "-o", "ServerAliveInterval=20",
+        ])
+    }
 }
 
 final class CLINotifyProcessIntegrationTests: XCTestCase {
