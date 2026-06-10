@@ -538,6 +538,7 @@ extension Workspace {
             }
         }
         let hibernationState = (panel as? TerminalPanel)?.agentHibernationState
+        let surfaceHibernationState = (panel as? TerminalPanel)?.surfaceHibernationState
         let effectiveRestorableAgent = hibernationState?.agent ?? restoredAgentSnapshotsByPanelId[panelId]
 
         let panelTitle = panelTitle(panelId: panelId)
@@ -632,22 +633,42 @@ extension Workspace {
 #else
             let allowDebugFallbackScrollback = false
 #endif
-            let capturedScrollback = includeScrollback && shouldPersistScrollback && hibernationState == nil
-                ? terminalScrollbackReader(
-                    terminalPanel,
-                    SessionPersistencePolicy.resolvedMaxScrollbackLinesPerTerminal(defaults: defaults)
+            let resolvedScrollback: String?
+            if let surfaceHibernationState {
+                resolvedScrollback = surfaceHibernationState.scrollback
+                if let resolvedScrollback {
+                    restoredTerminalScrollbackByPanelId[panelId] = resolvedScrollback
+                } else {
+                    restoredTerminalScrollbackByPanelId.removeValue(forKey: panelId)
+                }
+            } else {
+                let capturedScrollback: String?
+                if includeScrollback, shouldPersistScrollback, hibernationState == nil {
+                    capturedScrollback = terminalScrollbackReader(
+                        terminalPanel,
+                        SessionPersistencePolicy.resolvedMaxScrollbackLinesPerTerminal(defaults: defaults)
+                    )
+                } else {
+                    capturedScrollback = nil
+                }
+                let hasRestoredScrollbackFallback = restoredTerminalScrollbackByPanelId[panelId] != nil
+                resolvedScrollback = terminalSnapshotScrollback(
+                    panelId: panelId,
+                    capturedScrollback: capturedScrollback,
+                    includeScrollback: includeScrollback,
+                    allowFallbackScrollback: shouldPersistScrollback || allowDebugFallbackScrollback || hasRestoredScrollbackFallback,
+                    defaults: defaults
                 )
-                : nil
-            let hasRestoredScrollbackFallback = restoredTerminalScrollbackByPanelId[panelId] != nil
-            let resolvedScrollback = terminalSnapshotScrollback(
-                panelId: panelId,
-                capturedScrollback: capturedScrollback,
-                includeScrollback: includeScrollback,
-                allowFallbackScrollback: shouldPersistScrollback || allowDebugFallbackScrollback || hasRestoredScrollbackFallback,
-                defaults: defaults
-            )
+            }
+            // A hibernated panel's captured directory travels with the panel
+            // (e.g. across workspace moves), so prefer it over workspace
+            // metadata, which may be missing or stale for the freed surface.
+            let hibernatedWorkingDirectory = surfaceHibernationState?.workingDirectory?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
             terminalSnapshot = SessionTerminalPanelSnapshot(
-                workingDirectory: directory,
+                workingDirectory: hibernatedWorkingDirectory?.isEmpty == false
+                    ? hibernatedWorkingDirectory
+                    : directory,
                 scrollback: resolvedScrollback,
                 agent: effectiveRestorableAgent,
                 tmuxStartCommand: restorableTmuxStartCommand,
@@ -2547,7 +2568,10 @@ extension Workspace {
         to panel: TerminalPanel,
         reason: WorkspacePendingTerminalInputReason = .configurationCommand
     ) {
-        if panel.surface.surface != nil {
+        // Hibernated panels never produce a surface-ready notification until
+        // they are restored; sending through the panel restores first and
+        // queues the input.
+        if panel.surface.surface != nil || panel.isAgentHibernated || panel.isSurfaceHibernated {
             panel.sendInput(text)
             return
         }
@@ -12186,6 +12210,10 @@ final class Workspace: Identifiable, ObservableObject {
     private var pendingReparentFocusSuppressionViews: [ObjectIdentifier: GhosttySurfaceScrollView] = [:]
     private var portalRenderingEnabled = true
     private var agentHibernationAutoResumePresentationVisible = true
+    /// When this workspace last stopped rendering (unmounted), or nil while it
+    /// is mounted. Starts non-nil so restored-but-never-mounted workspaces age
+    /// toward surface hibernation from creation time.
+    private(set) var portalRenderingDisabledAt: Date? = Date()
     private var isAttemptingLayoutFollowUp = false
     private var isNormalizingPinnedTabOrder = false
     private var pendingNonFocusSplitFocusReassert: PendingNonFocusSplitFocusReassert?
@@ -13360,6 +13388,11 @@ final class Workspace: Identifiable, ObservableObject {
         let previousState = panelShellActivityStates[panelId] ?? .unknown
         guard previousState != state else { return }
         panelShellActivityStates[panelId] = state
+        AgentHibernationController.shared.recordShellActivityTransition(
+            workspaceId: id,
+            panelId: panelId,
+            state: state
+        )
         if let restoredAgent = restoredAgentSnapshotsByPanelId[panelId] {
             updateRestoredAgentResumeState(
                 panelId: panelId,
@@ -13460,7 +13493,8 @@ final class Workspace: Identifiable, ObservableObject {
         lastActivityAt: Date
     ) {
         guard let terminalPanel = panels[panelId] as? TerminalPanel,
-              !terminalPanel.isAgentHibernated else {
+              !terminalPanel.isAgentHibernated,
+              !terminalPanel.isSurfaceHibernated else {
             return
         }
         guard agent.resumeCommand != nil else { return }
@@ -13512,6 +13546,62 @@ final class Workspace: Identifiable, ObservableObject {
             didResume = resumeAgentHibernation(panelId: panelId, focus: false) || didResume
         }
         return didResume
+    }
+
+    /// Capture scrollback and working directory, then free the panel's runtime
+    /// surface while keeping the panel in the layout. The shell ends; restoring
+    /// starts a fresh one with the captured state replayed.
+    @discardableResult
+    func enterSurfaceHibernation(panelId: UUID, lastActivityAt: Date) -> Bool {
+        guard let terminalPanel = panels[panelId] as? TerminalPanel,
+              !terminalPanel.isAgentHibernated,
+              !terminalPanel.isSurfaceHibernated else {
+            return false
+        }
+        let scrollback = SessionPersistencePolicy.truncatedScrollback(
+            TerminalController.shared.readTerminalTextForSnapshot(
+                terminalPanel: terminalPanel,
+                includeScrollback: true,
+                lineLimit: SessionPersistencePolicy.maxScrollbackLinesPerTerminal
+            )
+        )
+        let panelDirectory = panelDirectories[panelId]?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let fallbackDirectory = terminalPanel.directory.trimmingCharacters(in: .whitespacesAndNewlines)
+        let workingDirectory = panelDirectory?.isEmpty == false
+            ? panelDirectory
+            : (fallbackDirectory.isEmpty ? nil : fallbackDirectory)
+        terminalPanel.enterSurfaceHibernation(
+            scrollback: scrollback,
+            workingDirectory: workingDirectory,
+            lastActivityAt: lastActivityAt
+        )
+        return true
+    }
+
+    @discardableResult
+    func restoreSurfaceHibernation(panelId: UUID, focus: Bool) -> Bool {
+        guard let terminalPanel = panels[panelId] as? TerminalPanel,
+              terminalPanel.isSurfaceHibernated,
+              terminalPanel.prepareSurfaceHibernationRestore() else {
+            return false
+        }
+        if focus {
+            focusPanel(panelId)
+        }
+        return true
+    }
+
+    @discardableResult
+    func restoreVisibleSurfaceHibernatedPanels(panelIds: Set<UUID>) -> Bool {
+        var didRestore = false
+        for panelId in panelIds {
+            guard let terminalPanel = panels[panelId] as? TerminalPanel,
+                  terminalPanel.isSurfaceHibernated else {
+                continue
+            }
+            didRestore = restoreSurfaceHibernation(panelId: panelId, focus: false) || didRestore
+        }
+        return didRestore
     }
 
     private func restoredAgentResumeStateForAcceptedSnapshot(panelId: UUID) -> RestoredAgentResumeState {
@@ -18182,6 +18272,7 @@ final class Workspace: Identifiable, ObservableObject {
         let changed = portalRenderingEnabled != enabled
         portalRenderingEnabled = enabled
         if enabled {
+            portalRenderingDisabledAt = nil
             if changed {
                 beginEventDrivenLayoutFollowUp(
                     reason: reason,
@@ -18189,6 +18280,9 @@ final class Workspace: Identifiable, ObservableObject {
                 )
             }
         } else {
+            if portalRenderingDisabledAt == nil {
+                portalRenderingDisabledAt = Date()
+            }
             clearLayoutFollowUp()
             hideAllTerminalPortalViews()
             hideAllBrowserPortalViews()
@@ -18900,6 +18994,14 @@ final class Workspace: Identifiable, ObservableObject {
         return visiblePanelIds
     }
 
+    /// Panels rendered in the current layout, for hibernation protection.
+    /// Unlike the agent auto-resume set, this is independent of the
+    /// input-active presentation flag: a terminal the user can see — e.g. in a
+    /// visible but non-key window — must never be evicted.
+    func surfaceHibernationProtectedPanelIdsForCurrentLayout() -> Set<UUID> {
+        renderedVisiblePanelIdsForCurrentLayout()
+    }
+
     func agentHibernationVisiblePanelIdsForCurrentLayout() -> Set<UUID> {
         guard agentHibernationAutoResumePresentationVisible else { return [] }
         return renderedVisiblePanelIdsForCurrentLayout()
@@ -18911,6 +19013,11 @@ final class Workspace: Identifiable, ObservableObject {
         var didChange = agentHibernationAutoResumePresentationVisible
             ? resumeVisibleAgentHibernationPanels(panelIds: visiblePanelIds)
             : false
+        // Surface restore is silent (no resume command to approve), and a
+        // hibernated panel has no placeholder UI, so any rendered panel must
+        // restore even when the workspace is visible but not input-active —
+        // otherwise it would sit blank in a non-key window.
+        didChange = restoreVisibleSurfaceHibernatedPanels(panelIds: visiblePanelIds) || didChange
 
         for panel in panels.values {
             guard let terminalPanel = panel as? TerminalPanel else { continue }
@@ -19893,6 +20000,9 @@ extension Workspace: BonsplitDelegate {
         if let terminalPanel = panel as? TerminalPanel {
             if terminalPanel.isAgentHibernated, shouldResumeHibernatedAgent {
                 _ = resumeAgentHibernation(panelId: panelId, focus: false)
+            }
+            if terminalPanel.isSurfaceHibernated {
+                _ = restoreSurfaceHibernation(panelId: panelId, focus: false)
             }
             AgentHibernationController.shared.recordTerminalFocus(workspaceId: id, panelId: panelId)
         }

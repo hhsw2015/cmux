@@ -1785,6 +1785,9 @@ class TerminalController {
         case "agent_hibernation":
             return agentHibernation(args)
 
+        case "surface_hibernation":
+            return surfaceHibernation(args)
+
         case "clear_agent_pid":
             return clearAgentPID(args)
 
@@ -20887,6 +20890,23 @@ class TerminalController {
         }
     }
 
+    private func surfaceHibernation(_ args: String) -> String {
+        let parsed = parseOptions(args)
+        let subcommand = parsed.positional.first?.lowercased()
+        let usage = "surface_hibernation <on|off>"
+
+        switch subcommand {
+        case "on", "enable", "enabled", "true":
+            SurfaceHibernationSettings.setValues(enabled: true)
+            return "OK"
+        case "off", "disable", "disabled", "false":
+            SurfaceHibernationSettings.setValues(enabled: false)
+            return "OK"
+        default:
+            return "ERROR: Usage: \(usage)"
+        }
+    }
+
     /// Unregister an agent PID. Usage: clear_agent_pid <key> [--tab=<id>] [--panel=<id>] [--clear-status]
     private func clearAgentPID(_ args: String) -> String {
         let parsed = parseOptions(args)
@@ -22997,7 +23017,9 @@ class TerminalController {
         #if DEBUG
         let sendStart = ProcessInfo.processInfo.systemUptime
         #endif
-        let sendResult = terminalPanel.surface.sendInputResult(text)
+        // Send through the panel so a hibernated surface restores and queues
+        // instead of reporting surfaceUnavailable.
+        let sendResult = terminalPanel.sendInputResult(text)
         switch sendResult {
         case .sent:
             terminalPanel.surface.forceRefresh(reason: "mobileHost.terminalInput")
@@ -23056,7 +23078,9 @@ class TerminalController {
             return .err(code: "invalid_params", message: "Image payload was empty or exceeded the size limit", data: nil)
         }
 
-        let sendResult = terminalPanel.surface.sendInputResult(escapedPath)
+        // Send through the panel so a hibernated surface restores and queues
+        // instead of reporting surfaceUnavailable.
+        let sendResult = terminalPanel.sendInputResult(escapedPath)
         switch sendResult {
         case .sent:
             terminalPanel.surface.forceRefresh(reason: "mobileHost.terminalPasteImage")

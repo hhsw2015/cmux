@@ -5323,16 +5323,20 @@ enum TerminalSurfaceFocusPlacement: Equatable {
     case rightSidebarDock
 }
 
+// Runs on the typing hot path. Every caller is already on the main actor
+// (TerminalSurface methods and AppKit event handlers), so record directly —
+// two dictionary writes — instead of spawning a per-keystroke Task. Not
+// throttled: the unconfirmed-input safety check compares the latest input
+// timestamp against the latest agent lifecycle change, so suppressing a
+// "repeat" keystroke could hide input typed right after an idle lifecycle
+// report and let hibernation kill an active agent.
+@MainActor
 private func recordAgentHibernationTerminalInput(workspaceId: UUID, panelId: UUID) {
     guard AgentHibernationTrackingGate.isEnabled() else { return }
-    let recordedAt = Date()
-    Task { @MainActor in
-        AgentHibernationController.shared.recordTerminalInput(
-            workspaceId: workspaceId,
-            panelId: panelId,
-            recordedAt: recordedAt
-        )
-    }
+    AgentHibernationController.shared.recordTerminalInput(
+        workspaceId: workspaceId,
+        panelId: panelId
+    )
 }
 
 final class TerminalSurface: Identifiable, ObservableObject {
@@ -5473,6 +5477,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
     let tmuxStartCommand: String?
     let initialInput: String?
     private var nextRuntimeInitialInput: String?
+    private var nextRuntimeWorkingDirectory: String?
     private let initialEnvironmentOverrides: [String: String]
     var requestedWorkingDirectory: String? { workingDirectory }
     let focusPlacement: TerminalSurfaceFocusPlacement
@@ -5505,7 +5510,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
     private var pendingSocketInputBytes: Int = 0
     private let maxPendingSocketInputBytes = 1_048_576
     private var backgroundSurfaceStartQueued = false
-    private var runtimeSurfaceSuspendedForAgentHibernation = false
+    private var runtimeSurfaceSuspendedForHibernation = false
     private var headlessStartupWindow: NSWindow?
     private var surfaceCallbackContext: Unmanaged<GhosttySurfaceCallbackContext>?
     /// When non-nil, the surface is created in `GHOSTTY_SURFACE_IO_MANUAL`
@@ -5554,6 +5559,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
     private(set) var clipboardReadGeneration = 0
 #if DEBUG
     private var needsConfirmCloseOverrideForTesting: Bool?
+    private var foregroundProcessHasChildrenOverrideForTesting: Bool?
     private var runtimeSurfaceFreedOutOfBandForTesting = false
     private var runtimeSurfaceCreateAttemptCountForTesting = 0
     private let debugForceRefreshCountLock = NSLock()
@@ -6132,7 +6138,7 @@ final class TerminalSurface: Identifiable, ObservableObject {
     }
 
     private func allowsRuntimeSurfaceCreation() -> Bool {
-        portalLifecycleState == .live && !runtimeSurfaceSuspendedForAgentHibernation
+        portalLifecycleState == .live && !runtimeSurfaceSuspendedForHibernation
     }
 
     private var hasDeferredStartupWork: Bool {
@@ -6240,8 +6246,8 @@ final class TerminalSurface: Identifiable, ObservableObject {
     }
 
     @MainActor
-    func suspendRuntimeSurfaceForAgentHibernation(reason: String) {
-        runtimeSurfaceSuspendedForAgentHibernation = true
+    func suspendRuntimeSurfaceForHibernation(reason: String) {
+        runtimeSurfaceSuspendedForHibernation = true
         backgroundSurfaceStartQueued = false
         closeHeadlessStartupWindowIfNeeded()
         let callbackContext = surfaceCallbackContext
@@ -6312,6 +6318,11 @@ final class TerminalSurface: Identifiable, ObservableObject {
     @MainActor
     func debugAdditionalEnvironmentForTesting() -> [String: String] {
         additionalEnvironment
+    }
+
+    @MainActor
+    func debugNextRuntimeWorkingDirectoryForTesting() -> String? {
+        nextRuntimeWorkingDirectory
     }
 
     func debugForceRefreshCount() -> Int {
@@ -6772,7 +6783,15 @@ final class TerminalSurface: Identifiable, ObservableObject {
             }
         }
 
+        // Consume the override before attempting creation: if the captured
+        // directory turned invalid and creation fails, a retry must not loop
+        // on the same value.
+        let runtimeWorkingDirectory = nextRuntimeWorkingDirectory
+        nextRuntimeWorkingDirectory = nil
         let resolvedWorkingDirectory: String? = {
+            if let runtimeWorkingDirectory, !runtimeWorkingDirectory.isEmpty {
+                return runtimeWorkingDirectory
+            }
             if let workingDirectory, !workingDirectory.isEmpty {
                 return workingDirectory
             }
@@ -7287,9 +7306,32 @@ final class TerminalSurface: Identifiable, ObservableObject {
     }
 
     @MainActor
-    func prepareAgentHibernationResume(initialInput: String?) {
-        runtimeSurfaceSuspendedForAgentHibernation = false
+    func prepareHibernationResume(initialInput: String?) {
+        runtimeSurfaceSuspendedForHibernation = false
         prepareNextRuntimeInitialInput(initialInput)
+    }
+
+    /// Stage scrollback replay and a working-directory override for the next
+    /// runtime surface created after hibernation. Both are one-shot: the
+    /// replay file environment is consumed by the next `createSurface` and the
+    /// directory override is cleared once applied.
+    @MainActor
+    func stageHibernationRestore(scrollback: String?, workingDirectory: String?) {
+        let replayEnvironment = SessionScrollbackReplayStore.replayEnvironment(for: scrollback)
+        if let replayPath = replayEnvironment[SessionScrollbackReplayStore.environmentKey] {
+            additionalEnvironment[SessionScrollbackReplayStore.environmentKey] = replayPath
+        }
+        // The directory may have been deleted or its volume unmounted while
+        // the panel was hibernated; staging it anyway would make the shell
+        // spawn fail. Fall back to the default resolution instead.
+        let trimmedDirectory = workingDirectory?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let trimmedDirectory, !trimmedDirectory.isEmpty {
+            var isDirectory: ObjCBool = false
+            if FileManager.default.fileExists(atPath: trimmedDirectory, isDirectory: &isDirectory),
+               isDirectory.boolValue {
+                nextRuntimeWorkingDirectory = trimmedDirectory
+            }
+        }
     }
 
     func setOcclusion(_ visible: Bool) {
@@ -7305,6 +7347,23 @@ final class TerminalSurface: Identifiable, ObservableObject {
 #endif
         guard let surface = surface else { return false }
         return ghostty_surface_needs_confirm_quit(surface)
+    }
+
+    /// Whether the surface's foreground process (the shell, when sitting at a
+    /// prompt) has live child processes. Background jobs started with `&`
+    /// produce no prompt-state or output signal, so this is the guard that
+    /// keeps surface hibernation from SIGHUPing them.
+    @MainActor
+    func foregroundProcessHasChildren() -> Bool {
+#if DEBUG
+        if let foregroundProcessHasChildrenOverrideForTesting {
+            return foregroundProcessHasChildrenOverrideForTesting
+        }
+#endif
+        guard let surface else { return false }
+        let rawPid = ghostty_surface_foreground_pid(surface)
+        guard rawPid > 0, rawPid <= UInt64(Int32.max) else { return false }
+        return CmuxTopProcessSnapshot.hasChildProcesses(parentPID: Int(rawPid))
     }
 
     func noteClipboardReadCompleted() {
@@ -8453,6 +8512,11 @@ final class TerminalSurface: Identifiable, ObservableObject {
     @MainActor
     func setNeedsConfirmCloseOverrideForTesting(_ value: Bool?) {
         needsConfirmCloseOverrideForTesting = value
+    }
+
+    @MainActor
+    func setForegroundProcessHasChildrenOverrideForTesting(_ value: Bool?) {
+        foregroundProcessHasChildrenOverrideForTesting = value
     }
 
     @MainActor

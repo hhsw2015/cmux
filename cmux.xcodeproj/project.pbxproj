@@ -685,6 +685,8 @@
 		C5AB1E0030000000000A0001 /* StableLayoutCoordTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5AB1E0030000000000A0002 /* StableLayoutCoordTests.swift */; };
 		F20F85FC5900550685FA33AD /* StackAuth in Frameworks */ = {isa = PBXBuildFile; productRef = A8BD195031FC4B82B4354297 /* StackAuth */; };
 		D35B71010000000000000001 /* StartupBreadcrumbLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D35B71010000000000000002 /* StartupBreadcrumbLog.swift */; };
+		D36A00050000000000000001 /* SurfaceHibernationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = D36A00050000000000000002 /* SurfaceHibernationPolicy.swift */; };
+		D36A00060000000000000001 /* SurfaceHibernationPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D36A00060000000000000002 /* SurfaceHibernationPolicyTests.swift */; };
 		A5001303 /* SurfaceSearchOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001301 /* SurfaceSearchOverlay.swift */; };
 		C9A5720BC9A5720BC9A5720B /* TabItemView+WorkspaceGroups.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9A5720CC9A5720CC9A5720C /* TabItemView+WorkspaceGroups.swift */; };
 		C3677003000000000000001 /* TabManager+CompatibilityTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3677003000000000000002 /* TabManager+CompatibilityTypes.swift */; };
@@ -1516,6 +1518,8 @@
 		C5AB1E0020000000000A0002 /* StableLayoutCoordStamper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = StableLayoutCoordStamper.swift; path = "Sources/StableLayout/StableLayoutCoordStamper.swift"; sourceTree = SOURCE_ROOT; };
 		C5AB1E0030000000000A0002 /* StableLayoutCoordTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = StableLayoutCoordTests.swift; path = "cmuxTests/StableLayoutCoordTests.swift"; sourceTree = SOURCE_ROOT; };
 		D35B71010000000000000002 /* StartupBreadcrumbLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/StartupBreadcrumbLog.swift; sourceTree = "<group>"; };
+		D36A00050000000000000002 /* SurfaceHibernationPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/SurfaceHibernationPolicy.swift; sourceTree = "<group>"; };
+		D36A00060000000000000002 /* SurfaceHibernationPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SurfaceHibernationPolicyTests.swift; sourceTree = "<group>"; };
 		A5001301 /* SurfaceSearchOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Find/SurfaceSearchOverlay.swift; sourceTree = "<group>"; };
 		C9A5720CC9A5720CC9A5720C /* TabItemView+WorkspaceGroups.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TabItemView+WorkspaceGroups.swift"; sourceTree = "<group>"; };
 		C3677003000000000000002 /* TabManager+CompatibilityTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TabManager+CompatibilityTypes.swift"; sourceTree = "<group>"; };
@@ -1916,6 +1920,7 @@
 				C0DE32470000000000000002 /* ContentViewIdentifierCopyCommands.swift */,
 				9960CC3992F3C44489E7627C /* WorkspaceRuntimeSettings.swift */,
 				D36A00010000000000000002 /* AgentHibernationController.swift */,
+				D36A00050000000000000002 /* SurfaceHibernationPolicy.swift */,
 				243632BA1DBBA36FD46E0610 /* SidebarAppearanceSupport.swift */,
 				D50D9BCE46701FBA91C2EFB6 /* SidebarWorkspaceSnapshotRefreshPolicy.swift */,
 				D35450020000000000000002 /* SidebarWorkspaceRowHoverTracker.swift */,
@@ -2403,6 +2408,7 @@
 				A9E050000000000000000001 /* AgentSessionWebRendererTests.swift */,
 				A9E040000000000000000001 /* CodexAppServerSessionTests.swift */,
 				D36A00020000000000000002 /* AgentHibernationTests.swift */,
+				D36A00060000000000000002 /* SurfaceHibernationPolicyTests.swift */,
 				F5410001A1B2C3D4E5F60718 /* RestorableAgentHookProviderResumeTests.swift */,
 				F5410005A1B2C3D4E5F60718 /* RestorableAgentHookProviderHermesTests.swift */,
 				F5410003A1B2C3D4E5F60718 /* RestorableAgentNonInteractiveTests.swift */,
@@ -3382,6 +3388,7 @@
 				C5AB1E0040000000000A0001 /* StableLayoutCoordResolver.swift in Sources in Sources */,
 				C5AB1E0020000000000A0001 /* StableLayoutCoordStamper.swift in Sources in Sources */,
 				D35B71010000000000000001 /* StartupBreadcrumbLog.swift in Sources */,
+				D36A00050000000000000001 /* SurfaceHibernationPolicy.swift in Sources */,
 				A5001303 /* SurfaceSearchOverlay.swift in Sources */,
 				C9A5720BC9A5720BC9A5720B /* TabItemView+WorkspaceGroups.swift in Sources */,
 				C3677003000000000000001 /* TabManager+CompatibilityTypes.swift in Sources */,
@@ -3748,6 +3755,7 @@
 				C420Z000C420Z000C42SP103 /* SSHCommandParserTests.swift in Sources in Sources */,
 				F6355600A1B2C3D4E5F60718 /* SSHStartupSignalLifecycleTests.swift in Sources */,
 				C5AB1E0030000000000A0001 /* StableLayoutCoordTests.swift in Sources in Sources */,
+				D36A00060000000000000001 /* SurfaceHibernationPolicyTests.swift in Sources */,
 				2BB56A710BB1FC50367E5BCF /* TabManagerSessionSnapshotTests.swift in Sources */,
 				B6BF3DC98DB1495E57900199 /* TabManagerUnitTests.swift in Sources */,
 				C7A507000000000000000002 /* TaskManagerResourcesTests.swift in Sources */,

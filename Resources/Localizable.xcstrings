@@ -150276,6 +150276,159 @@
         }
       }
     },
+    "settings.terminal.surfaceHibernation": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Surface Hibernation"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーフェス休止"
+          }
+        }
+      }
+    },
+    "settings.terminal.surfaceHibernation.subtitleOn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idle shell terminals in hidden workspaces release their renderer and restart with scrollback and directory restored on the next visit."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "非表示ワークスペースのアイドルなシェル端末はレンダラーを解放し、次に表示したときにスクロールバックと作業ディレクトリを復元して再起動します。"
+          }
+        }
+      }
+    },
+    "settings.terminal.surfaceHibernation.subtitleOff": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal surfaces stay live until you close them or quit cmux."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルサーフェスは、閉じるか cmux を終了するまでライブのままです。"
+          }
+        }
+      }
+    },
+    "settings.terminal.surfaceHibernation.idleSeconds": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cap Reclaim After Idle Seconds"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上限による回収までのアイドル秒数"
+          }
+        }
+      }
+    },
+    "settings.terminal.surfaceHibernation.idleSeconds.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A background shell terminal must be quiet for this long before the live-surface cap may reclaim it."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライブサーフェス数の上限がバックグラウンドのシェル端末を回収できるようになるまで、この秒数のあいだ静止している必要があります。"
+          }
+        }
+      }
+    },
+    "settings.terminal.surfaceHibernation.unmountedIdleSeconds": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hibernate Hidden Workspaces After Seconds"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "非表示ワークスペースを休止するまでの秒数"
+          }
+        }
+      }
+    },
+    "settings.terminal.surfaceHibernation.unmountedIdleSeconds.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shell terminals in workspaces hidden and quiet for this long hibernate even under the live-surface cap."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この秒数のあいだ非表示かつ静止しているワークスペースのシェル端末は、ライブサーフェス数が上限未満でも休止します。"
+          }
+        }
+      }
+    },
+    "settings.terminal.surfaceHibernation.maxLiveSurfaces": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Max Live Terminal Surfaces"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライブターミナルサーフェスの最大数"
+          }
+        }
+      }
+    },
+    "settings.terminal.surfaceHibernation.maxLiveSurfaces.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every live surface counts toward the cap; only idle, non-busy, hidden ones are reclaimed, oldest first."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべてのライブサーフェスが上限のカウント対象です。回収されるのはアイドルでビジーでない非表示のものだけで、古い順に休止します。"
+          }
+        }
+      }
+    },
     "settings.terminal.agentHibernation.subtitleOff": {
       "extractionState": "manual",
       "localizations": {
