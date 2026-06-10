@@ -79,14 +79,15 @@ enum WorkspaceRemoteSSHBatchCommandBuilder {
     /// a teardown anyway, so a faster kill buys nothing but a visible
     /// disconnect/reattach cycle.
     static func sshSupervisionArguments(effectiveSSHOptions: [String]) -> [String] {
+        let configuredKeys = Set(effectiveSSHOptions.compactMap(sshOptionKey))
         var args: [String] = []
-        if !hasSSHOptionKey(effectiveSSHOptions, key: "ConnectTimeout") {
+        if !configuredKeys.contains("connecttimeout") {
             args += ["-o", "ConnectTimeout=6"]
         }
-        if !hasSSHOptionKey(effectiveSSHOptions, key: "ServerAliveInterval") {
+        if !configuredKeys.contains("serveraliveinterval") {
             args += ["-o", "ServerAliveInterval=20"]
         }
-        if !hasSSHOptionKey(effectiveSSHOptions, key: "ServerAliveCountMax") {
+        if !configuredKeys.contains("serveralivecountmax") {
             args += ["-o", "ServerAliveCountMax=6"]
         }
         return args
