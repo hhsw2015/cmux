@@ -365,7 +365,19 @@ enum AgentResumeCommandBuilder {
                 workingDirectory: cwd
             )
             : commandParts
-
+        // Render the claude executable as the wrapper shim token so the executed
+        // command routes through cmux's `claude` wrapper (re-injecting the hook
+        // --settings) even inside the `$SHELL -lic` restore launcher, where the
+        // shell integration's PATH shim / `claude()` function are not active and an
+        // `env`-prefixed invocation would otherwise hit the user's real binary.
+        // The token is POSIX-only, and the launcher dispatches through the user's
+        // shell (fish/csh/tcsh included), so token-bearing commands are wrapped in
+        // `/bin/sh -c '…'` to parse everywhere; the cwd guard stays outside so
+        // cd-prefix rewriting keeps composing.
+        // https://github.com/manaflow-ai/cmux/issues/5639
+        let renderedCommand: String = kind == .claude
+            ? AgentResumeArgv.renderedPortableClaudeResumeShellCommand(parts: sanitizedCommandParts, quote: shellSingleQuoted)
+            : sanitizedCommandParts.map(shellSingleQuoted).joined(separator: " ")
         var shellCommand: String
         if !environmentParts.isEmpty {
             // Format as KEY='value' so shell treats inline assignment as env,
@@ -378,10 +390,9 @@ enum AgentResumeCommandBuilder {
                 }
                 return shellSingleQuoted(part)
             }.joined(separator: " ")
-            let cmdSuffix = sanitizedCommandParts.map(shellSingleQuoted).joined(separator: " ")
-            shellCommand = "\(envPrefix) \(cmdSuffix)"
+            shellCommand = "\(envPrefix) \(renderedCommand)"
         } else {
-            shellCommand = sanitizedCommandParts.map(shellSingleQuoted).joined(separator: " ")
+            shellCommand = renderedCommand
         }
         return TerminalStartupWorkingDirectoryPrefix.prefix(shellCommand, workingDirectory: cwd)
     }
