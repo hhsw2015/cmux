@@ -69,13 +69,32 @@ enum WorkspaceRemoteSSHBatchCommandBuilder {
         )
     }
 
+    /// Connection-supervision defaults shared by every daemon-transport and
+    /// batch ssh invocation. OpenSSH uses the first value obtained for an
+    /// option, so each default is emitted only when the user has not
+    /// configured that option themselves — otherwise the user's value would
+    /// be dead weight. The keepalive budget (interval 20s x count 6 =
+    /// 2 minutes) tolerates transient link stalls instead of tearing down the
+    /// transport at the first 40s hiccup; the persistent PTY daemon survives
+    /// a teardown anyway, so a faster kill buys nothing but a visible
+    /// disconnect/reattach cycle.
+    static func sshSupervisionArguments(effectiveSSHOptions: [String]) -> [String] {
+        var args: [String] = []
+        if !hasSSHOptionKey(effectiveSSHOptions, key: "ConnectTimeout") {
+            args += ["-o", "ConnectTimeout=6"]
+        }
+        if !hasSSHOptionKey(effectiveSSHOptions, key: "ServerAliveInterval") {
+            args += ["-o", "ServerAliveInterval=20"]
+        }
+        if !hasSSHOptionKey(effectiveSSHOptions, key: "ServerAliveCountMax") {
+            args += ["-o", "ServerAliveCountMax=6"]
+        }
+        return args
+    }
+
     private static func batchArguments(configuration: WorkspaceRemoteConfiguration) -> [String] {
         let effectiveSSHOptions = backgroundSSHOptions(configuration.sshOptions)
-        var args: [String] = [
-            "-o", "ConnectTimeout=6",
-            "-o", "ServerAliveInterval=20",
-            "-o", "ServerAliveCountMax=2",
-        ]
+        var args: [String] = sshSupervisionArguments(effectiveSSHOptions: effectiveSSHOptions)
         if !hasSSHOptionKey(effectiveSSHOptions, key: "StrictHostKeyChecking") {
             args += ["-o", "StrictHostKeyChecking=accept-new"]
         }

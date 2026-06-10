@@ -7589,26 +7589,13 @@ final class WorkspaceRemoteSessionController {
     }
 
     /// Connection-supervision options applied to every daemon-transport ssh
-    /// invocation ahead of the user's own SSH options. OpenSSH uses the first
-    /// value obtained for an option, so each default is emitted only when the
-    /// user has not configured that option themselves — otherwise the user's
-    /// value would be dead weight. The keepalive budget
-    /// (interval 20s x count 6 = 2 minutes) tolerates transient link stalls
-    /// instead of tearing down the transport at the first 40s hiccup; the
-    /// persistent PTY daemon survives a teardown anyway, so a faster kill
-    /// buys nothing but a visible disconnect/reattach cycle.
+    /// invocation ahead of the user's own SSH options. Canonical logic lives
+    /// in `WorkspaceRemoteSSHBatchCommandBuilder.sshSupervisionArguments` so
+    /// every SSH command-building path shares one definition.
     static func sshSupervisionArguments(effectiveSSHOptions: [String]) -> [String] {
-        var args: [String] = []
-        if !hasSSHOptionKey(effectiveSSHOptions, key: "ConnectTimeout") {
-            args += ["-o", "ConnectTimeout=6"]
-        }
-        if !hasSSHOptionKey(effectiveSSHOptions, key: "ServerAliveInterval") {
-            args += ["-o", "ServerAliveInterval=20"]
-        }
-        if !hasSSHOptionKey(effectiveSSHOptions, key: "ServerAliveCountMax") {
-            args += ["-o", "ServerAliveCountMax=6"]
-        }
-        return args
+        WorkspaceRemoteSSHBatchCommandBuilder.sshSupervisionArguments(
+            effectiveSSHOptions: effectiveSSHOptions
+        )
     }
 
     private func sshCommonArguments(batchMode: Bool, dropControlPath: Bool = false) -> [String] {

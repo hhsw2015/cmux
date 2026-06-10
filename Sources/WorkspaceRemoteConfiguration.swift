@@ -202,15 +202,11 @@ nonisolated enum SSHPTYAttachStartupCommandBuilder {
     private static func sshForegroundAuthCommand(_ auth: ForegroundAuth) -> String {
         var arguments = ["ssh"]
         let options = sshOptionsWithRestoreControlDefaults(auth.sshOptions)
-        if !hasSSHOptionKey(options, key: "ConnectTimeout") {
-            arguments += ["-o", "ConnectTimeout=6"]
-        }
-        if !hasSSHOptionKey(options, key: "ServerAliveInterval") {
-            arguments += ["-o", "ServerAliveInterval=20"]
-        }
-        if !hasSSHOptionKey(options, key: "ServerAliveCountMax") {
-            arguments += ["-o", "ServerAliveCountMax=2"]
-        }
+        // Same supervision defaults (and keepalive budget) as
+        // WorkspaceRemoteSSHBatchCommandBuilder.sshSupervisionArguments.
+        arguments += WorkspaceRemoteSSHBatchCommandBuilder.sshSupervisionArguments(
+            effectiveSSHOptions: options
+        )
         if let port = auth.port {
             arguments += ["-p", String(port)]
         }

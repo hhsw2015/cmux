@@ -2997,6 +2997,65 @@ final class WorkspaceRemoteConnectionTests: XCTestCase {
         XCTAssertTrue(arguments.contains(where: { $0 == "ControlPath /tmp/cmux-ssh-%C" || $0 == "ControlPath=/tmp/cmux-ssh-%C" }))
     }
 
+    func testDaemonTransportArgumentsYieldToUserKeepaliveOptions() {
+        let configuration = WorkspaceRemoteConfiguration(
+            destination: "cmux-macmini",
+            port: nil,
+            identityFile: nil,
+            sshOptions: [
+                "ServerAliveInterval=15",
+                "ServerAliveCountMax=12",
+                "ConnectTimeout=30",
+            ],
+            localProxyPort: nil,
+            relayPort: nil,
+            relayID: nil,
+            relayToken: nil,
+            localSocketPath: nil,
+            terminalStartupCommand: "ssh cmux-macmini"
+        )
+
+        let arguments = WorkspaceRemoteSSHBatchCommandBuilder.daemonTransportArguments(
+            configuration: configuration,
+            remotePath: "/remote/cmuxd-remote"
+        )
+
+        // The user's keepalive options must be the only values on the command
+        // line — a conflicting default emitted ahead of them would win
+        // (OpenSSH uses the first value obtained for an option).
+        XCTAssertFalse(arguments.contains("ServerAliveInterval=20"), "default must yield to user ServerAliveInterval, got \(arguments)")
+        XCTAssertFalse(arguments.contains("ServerAliveCountMax=6"), "default must yield to user ServerAliveCountMax, got \(arguments)")
+        XCTAssertFalse(arguments.contains("ServerAliveCountMax=2"), "default must yield to user ServerAliveCountMax, got \(arguments)")
+        XCTAssertFalse(arguments.contains("ConnectTimeout=6"), "default must yield to user ConnectTimeout, got \(arguments)")
+        XCTAssertTrue(arguments.contains("ServerAliveInterval=15"))
+        XCTAssertTrue(arguments.contains("ServerAliveCountMax=12"))
+        XCTAssertTrue(arguments.contains("ConnectTimeout=30"))
+    }
+
+    func testDaemonTransportArgumentsApplyKeepaliveDefaultsWhenUnconfigured() {
+        let configuration = WorkspaceRemoteConfiguration(
+            destination: "cmux-macmini",
+            port: nil,
+            identityFile: nil,
+            sshOptions: [],
+            localProxyPort: nil,
+            relayPort: nil,
+            relayID: nil,
+            relayToken: nil,
+            localSocketPath: nil,
+            terminalStartupCommand: "ssh cmux-macmini"
+        )
+
+        let arguments = WorkspaceRemoteSSHBatchCommandBuilder.daemonTransportArguments(
+            configuration: configuration,
+            remotePath: "/remote/cmuxd-remote"
+        )
+
+        XCTAssertTrue(arguments.contains("ConnectTimeout=6"))
+        XCTAssertTrue(arguments.contains("ServerAliveInterval=20"))
+        XCTAssertTrue(arguments.contains("ServerAliveCountMax=6"))
+    }
+
     func testReverseRelayControlMasterArgumentsReuseConfiguredControlSocket() throws {
         let configuration = WorkspaceRemoteConfiguration(
             destination: "cmux-macmini",
