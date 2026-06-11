@@ -69,14 +69,45 @@ enum WorkspaceRemoteSSHBatchCommandBuilder {
         )
     }
 
+    /// Connection-supervision defaults shared by every daemon-transport and
+    /// batch ssh invocation. OpenSSH uses the first value obtained for an
+    /// option, so each default is emitted only when the user has not
+    /// configured that option themselves — otherwise the user's value would
+    /// be dead weight. The keepalive budget (interval 20s x count 6 =
+    /// 2 minutes) tolerates transient link stalls instead of tearing down the
+    /// transport at the first 40s hiccup; the persistent PTY daemon survives
+    /// a teardown anyway, so a faster kill buys nothing but a visible
+    /// disconnect/reattach cycle.
+    static func sshSupervisionArguments(effectiveSSHOptions: [String]) -> [String] {
+        sshSupervisionArguments(configuredKeys: configuredSSHOptionKeys(effectiveSSHOptions))
+    }
+
+    /// Set-accepting core so callers that already parsed the option keys
+    /// (one-pass parsing per the repo's review rules) can reuse their Set.
+    static func sshSupervisionArguments(configuredKeys: Set<String>) -> [String] {
+        var args: [String] = []
+        if !configuredKeys.contains("connecttimeout") {
+            args += ["-o", "ConnectTimeout=6"]
+        }
+        if !configuredKeys.contains("serveraliveinterval") {
+            args += ["-o", "ServerAliveInterval=20"]
+        }
+        if !configuredKeys.contains("serveralivecountmax") {
+            args += ["-o", "ServerAliveCountMax=6"]
+        }
+        return args
+    }
+
+    /// Lowercased option keys present in `options`, parsed in one pass.
+    static func configuredSSHOptionKeys(_ options: [String]) -> Set<String> {
+        Set(options.compactMap(sshOptionKey))
+    }
+
     private static func batchArguments(configuration: WorkspaceRemoteConfiguration) -> [String] {
         let effectiveSSHOptions = backgroundSSHOptions(configuration.sshOptions)
-        var args: [String] = [
-            "-o", "ConnectTimeout=6",
-            "-o", "ServerAliveInterval=20",
-            "-o", "ServerAliveCountMax=2",
-        ]
-        if !hasSSHOptionKey(effectiveSSHOptions, key: "StrictHostKeyChecking") {
+        let configuredKeys = configuredSSHOptionKeys(effectiveSSHOptions)
+        var args: [String] = sshSupervisionArguments(configuredKeys: configuredKeys)
+        if !configuredKeys.contains("stricthostkeychecking") {
             args += ["-o", "StrictHostKeyChecking=accept-new"]
         }
         args += ["-o", "BatchMode=yes"]

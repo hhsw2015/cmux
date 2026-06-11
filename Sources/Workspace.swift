@@ -8197,6 +8197,16 @@ final class WorkspaceRemoteSessionController {
         return message.isEmpty ? "remote daemon bootstrap failed" : message
     }
 
+    /// Connection-supervision options applied to every daemon-transport ssh
+    /// invocation ahead of the user's own SSH options. Canonical logic lives
+    /// in `WorkspaceRemoteSSHBatchCommandBuilder.sshSupervisionArguments` so
+    /// every SSH command-building path shares one definition.
+    static func sshSupervisionArguments(effectiveSSHOptions: [String]) -> [String] {
+        WorkspaceRemoteSSHBatchCommandBuilder.sshSupervisionArguments(
+            effectiveSSHOptions: effectiveSSHOptions
+        )
+    }
+
     private func sshCommonArguments(batchMode: Bool, dropControlPath: Bool = false) -> [String] {
         let effectiveSSHOptions: [String] = {
             if batchMode {
@@ -8204,12 +8214,9 @@ final class WorkspaceRemoteSessionController {
             }
             return normalizedSSHOptions(configuration.sshOptions)
         }()
-        var args: [String] = [
-            "-o", "ConnectTimeout=6",
-            "-o", "ServerAliveInterval=20",
-            "-o", "ServerAliveCountMax=2",
-        ]
-        if !hasSSHOptionKey(effectiveSSHOptions, key: "StrictHostKeyChecking") {
+        let configuredKeys = WorkspaceRemoteSSHBatchCommandBuilder.configuredSSHOptionKeys(effectiveSSHOptions)
+        var args: [String] = WorkspaceRemoteSSHBatchCommandBuilder.sshSupervisionArguments(configuredKeys: configuredKeys)
+        if !configuredKeys.contains("stricthostkeychecking") {
             args += ["-o", "StrictHostKeyChecking=accept-new"]
         }
         if batchMode {
@@ -8229,7 +8236,7 @@ final class WorkspaceRemoteSessionController {
         return args
     }
 
-    private func hasSSHOptionKey(_ options: [String], key: String) -> Bool {
+    private static func hasSSHOptionKey(_ options: [String], key: String) -> Bool {
         let loweredKey = key.lowercased()
         for option in options {
             let token = sshOptionKey(option)
@@ -8257,12 +8264,12 @@ final class WorkspaceRemoteSessionController {
             batchSSHControlOptionKeys.insert("controlpath")
         }
         return normalizedSSHOptions(options).filter { option in
-            guard let key = sshOptionKey(option) else { return false }
+            guard let key = Self.sshOptionKey(option) else { return false }
             return !batchSSHControlOptionKeys.contains(key)
         }
     }
 
-    private func sshOptionKey(_ option: String) -> String? {
+    private static func sshOptionKey(_ option: String) -> String? {
         let trimmed = option.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         return trimmed
@@ -9081,7 +9088,7 @@ final class WorkspaceRemoteSessionController {
 
         let scpSSHOptions = backgroundSSHOptions(configuration.sshOptions)
         var scpArgs: [String] = ["-q"]
-        if !hasSSHOptionKey(scpSSHOptions, key: "StrictHostKeyChecking") {
+        if !Self.hasSSHOptionKey(scpSSHOptions, key: "StrictHostKeyChecking") {
             scpArgs += ["-o", "StrictHostKeyChecking=accept-new"]
         }
         scpArgs += ["-o", "ControlMaster=no"]
@@ -9137,7 +9144,7 @@ final class WorkspaceRemoteSessionController {
                 let remotePath = Self.remoteDropPath(for: normalizedLocalURL)
                 uploadedRemotePaths.append(remotePath)
                 var scpArgs: [String] = ["-q", "-o", "ControlMaster=no"]
-                if !hasSSHOptionKey(scpSSHOptions, key: "StrictHostKeyChecking") {
+                if !Self.hasSSHOptionKey(scpSSHOptions, key: "StrictHostKeyChecking") {
                     scpArgs += ["-o", "StrictHostKeyChecking=accept-new"]
                 }
                 if let port = configuration.port {
