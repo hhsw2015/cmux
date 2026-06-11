@@ -2650,6 +2650,20 @@ final class CmuxDiffViewerURLSchemeHandler: NSObject, WKURLSchemeHandler {
         lock.unlock()
     }
 
+    /// Whether the token currently has a registered (or manifest-restorable)
+    /// session. Used to trust-gate native bridge calls from diff viewer pages.
+    func hasActiveSession(token: String, now: Date = Date()) -> Bool {
+        guard Self.isValidToken(token) else { return false }
+        lock.lock()
+        pruneExpiredSessionsLocked(now: now)
+        let isRegistered = sessions[token] != nil
+        lock.unlock()
+        if isRegistered {
+            return true
+        }
+        return registerFromManifest(token: token, now: now)
+    }
+
     func registeredFile(for url: URL, now: Date = Date()) -> RegisteredFile? {
         guard url.scheme == Self.scheme,
               let token = url.host,
@@ -4140,6 +4154,10 @@ final class BrowserPanel: Panel, ObservableObject {
                 forURLScheme: CmuxDiffViewerURLSchemeHandler.scheme
             )
         }
+        // Review-comment persistence + TextBox attach for diff viewer pages.
+        // The handler itself rejects every frame that is not a registered diff
+        // viewer session, so installing it on all browser webviews is safe.
+        DiffCommentsBridge.installIfNeeded(on: configuration.userContentController)
 
         // Enable developer extras (DevTools)
         configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
@@ -4210,6 +4228,7 @@ final class BrowserPanel: Panel, ObservableObject {
     }
 
     private func bindWebView(_ webView: CmuxWebView) {
+        DiffCommentsBridge.associate(panelId: id, workspaceId: workspaceId, with: webView)
         webView.onMouseBackButton = { [weak self] in
             self?.goBack()
         }

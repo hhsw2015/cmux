@@ -347,6 +347,7 @@ final class TerminalPanel: Panel, ObservableObject {
 #endif
     }
 
+
     @discardableResult
     func toggleTextBoxInput() -> Bool {
         if isTextBoxActive {
