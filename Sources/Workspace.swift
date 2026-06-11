@@ -7853,7 +7853,7 @@ final class WorkspaceRemoteSessionController {
         // Only add StrictHostKeyChecking default if not resolved from ssh -G and not
         // explicitly set in configuration.sshOptions.
         if !resolved.hasStrictHostKeyChecking
-            && !hasSSHOptionKey(configuration.sshOptions, key: "StrictHostKeyChecking") {
+            && !Self.hasSSHOptionKey(configuration.sshOptions, key: "StrictHostKeyChecking") {
             args += ["-o", "StrictHostKeyChecking=accept-new"]
         }
         args += [
