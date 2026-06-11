@@ -36,7 +36,11 @@ enum WorkspaceRemoteHostReachabilityProbe {
         timeout: TimeInterval = defaultTimeout,
         completion: @escaping (WorkspaceRemoteHostProbeOutcome) -> Void
     ) {
-        probeQueue.async {
+        // Endpoint resolution shells out to `ssh -G` and can block for up to
+        // its timeout; run it on the concurrent utility pool so simultaneous
+        // probes from multiple workspaces don't serialize behind it (the
+        // serial probeQueue is reserved for NWConnection callbacks).
+        DispatchQueue.global(qos: .utility).async {
             guard let endpoint = resolveEndpoint(
                 destination: destination,
                 port: port,
@@ -58,16 +62,25 @@ enum WorkspaceRemoteHostReachabilityProbe {
     /// Resolve the effective `(host, port)` for an SSH destination using
     /// `ssh -G`. Returns nil when the endpoint cannot be probed directly
     /// (ProxyCommand transports, unparsable output, or resolution failure).
+    ///
+    /// `sshConfigFile` is a test seam: passing a path (such as `/dev/null`)
+    /// pins resolution to that config via `ssh -F`, keeping tests hermetic
+    /// against the ambient `~/.ssh/config`. Production callers leave it nil
+    /// so the user's real config (aliases, HostName, ProxyJump) is honored.
     static func resolveEndpoint(
         destination: String,
         port: Int?,
         identityFile: String?,
-        sshOptions: [String]
+        sshOptions: [String],
+        sshConfigFile: String? = nil
     ) -> Endpoint? {
         let trimmedDestination = destination.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedDestination.isEmpty, !trimmedDestination.hasPrefix("-") else { return nil }
 
         var arguments = ["-G"]
+        if let sshConfigFile, !sshConfigFile.isEmpty {
+            arguments += ["-F", sshConfigFile]
+        }
         if let port, port > 0 {
             arguments += ["-p", String(port)]
         }
@@ -89,7 +102,12 @@ enum WorkspaceRemoteHostReachabilityProbe {
             // Reachability of the first hop is the right signal for "can this
             // network reach the SSH entry point at all".
             guard let jump = parseJumpSpec(proxyJump) else { return nil }
-            guard let jumpOutput = runSSHConfigResolution(arguments: ["-G", jump.destination]) else {
+            var jumpArguments = ["-G"]
+            if let sshConfigFile, !sshConfigFile.isEmpty {
+                jumpArguments += ["-F", sshConfigFile]
+            }
+            jumpArguments.append(jump.destination)
+            guard let jumpOutput = runSSHConfigResolution(arguments: jumpArguments) else {
                 return nil
             }
             let jumpResolved = parseSSHConfigOutput(jumpOutput)
@@ -218,14 +236,17 @@ enum WorkspaceRemoteHostReachabilityProbe {
             return
         }
         let connection = NWConnection(host: NWEndpoint.Host(host), port: nwPort, using: .tcp)
-        let lock = NSLock()
+        // Both finish paths (state updates via `connection.start(queue:)` and
+        // the timeout below) run on the serial `probeQueue`, so the
+        // first-finisher latch needs no separate synchronization.
         var finished = false
         func finish(_ outcome: WorkspaceRemoteHostProbeOutcome) {
-            lock.lock()
-            let alreadyFinished = finished
+            guard !finished else { return }
             finished = true
-            lock.unlock()
-            guard !alreadyFinished else { return }
+            // NWConnection retains its handler and the handler's context
+            // captures the connection; clear it before canceling so each
+            // backoff-retry probe doesn't leak a connection.
+            connection.stateUpdateHandler = nil
             connection.cancel()
             completion(outcome)
         }

@@ -1,4 +1,6 @@
+import CmuxMobileShell
 import CmuxMobileSupport
+import CmuxMobileWorkspace
 import SwiftUI
 #if os(iOS)
 @preconcurrency import UIKit
@@ -14,13 +16,24 @@ struct DisconnectedWorkspaceShellView: View {
     let hasKnownPairedMac: Bool
     let showAddDevice: () -> Void
     let signOut: () -> Void
+    /// The setup gate to highlight in the "Trouble connecting?" help (iOS only).
+    /// The root passes `.macUnreachable` for a returning device whose stored Mac
+    /// just failed to reconnect, and `.signedInNeverPaired` for a device that has
+    /// never paired, so the help marks the user's real recovery step.
+    var setupHelpHighlight: MobileSetupGuidanceState = .signedInNeverPaired
+    /// The shell store, forwarded to the reused Settings sheet so the user can
+    /// still switch to another paired Mac from the no-devices/offline state
+    /// (this screen is the terminal not-connected state, reached after a stored
+    /// Mac reconnect fails). `nil` in previews.
+    var store: CMUXMobileShellStore?
 
     @Environment(\.tailscaleStatusMonitor) private var tailscaleStatusMonitor
 
-    /// The Founders Edition page (Mac download + TestFlight enrollment) the
-    /// onboarding "Download via TestFlight" link points at while TestFlight is
-    /// still private.
-    private static let testFlightURL = URL(string: "https://github.com/manaflow-ai/cmux#founders-edition")!
+    @State private var showingSettings = false
+
+    #if os(iOS)
+    @State private var isShowingSetupHelp = false
+    #endif
 
     var body: some View {
         NavigationStack {
@@ -48,26 +61,29 @@ struct DisconnectedWorkspaceShellView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.blue)
                 .accessibilityIdentifier("MobileShowAddDeviceButton")
-                Link(
-                    L10n.string("mobile.testflight.link", defaultValue: "Download via TestFlight"),
-                    destination: Self.testFlightURL
-                )
+                #if os(iOS)
+                Button {
+                    isShowingSetupHelp = true
+                } label: {
+                    Text(L10n.string("mobile.devices.setupHelp", defaultValue: "Trouble connecting?"))
+                }
                 .font(.callout)
-                .accessibilityIdentifier("MobileTestFlightLink")
+                .accessibilityIdentifier("MobileDisconnectedSetupHelpButton")
+                #endif
             }
             .navigationTitle(L10n.string("mobile.workspaces.title", defaultValue: "Workspaces"))
             .mobileInlineNavigationTitle()
             .toolbar {
                 #if os(iOS)
                 ToolbarItem(placement: .topBarLeading) {
-                    signOutButton
+                    settingsMenu
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     addDeviceToolbarButton
                 }
                 #else
                 ToolbarItem {
-                    signOutButton
+                    settingsMenu
                 }
                 ToolbarItem {
                     addDeviceToolbarButton
@@ -76,13 +92,60 @@ struct DisconnectedWorkspaceShellView: View {
             }
             .accessibilityIdentifier("MobileDisconnectedWorkspaceShell")
         }
+        #if os(iOS)
+        .sheet(isPresented: $isShowingSetupHelp) {
+            // A user on the never-paired/offline screen can reach the same
+            // explicit setup-gate guidance shown in onboarding and Settings, so
+            // the dead end is never silent. The highlighted gate reflects whether
+            // this device has paired a Mac before (offline recovery) or not.
+            SetupHelpView(highlight: setupHelpHighlight) { isShowingSetupHelp = false }
+        }
+        .sheet(isPresented: $showingSettings) {
+            // Reuse the same Settings sheet the workspace list opens from its
+            // 3-dots menu so the no-devices screen's chrome matches. There is no
+            // connected host or QR to rescan here, but the store is forwarded so
+            // a user whose active Mac went offline can still switch to another
+            // paired Mac; the sheet also surfaces the account + Sign Out.
+            MobileSettingsView(
+                connectedHostName: "",
+                rescanQR: nil,
+                signOut: signOut,
+                store: store
+            )
+        }
+        #endif
     }
 
-    private var signOutButton: some View {
-        Button(action: signOut) {
-            Text(L10n.string("mobile.signOut", defaultValue: "Sign Out"))
+    /// The top-left 3-dots overflow, matching ``WorkspaceListView``'s
+    /// `settingsMenu` so switching between the connected and no-devices screens
+    /// is not jarring. On iOS it opens the full Settings sheet (which holds Sign
+    /// Out); on macOS it is an inline menu with Sign Out as an item.
+    private var settingsMenu: some View {
+        #if os(iOS)
+        Button {
+            showingSettings = true
+        } label: {
+            Image(systemName: "ellipsis.circle")
         }
-        .accessibilityIdentifier("MobileSignOutButton")
+        .accessibilityLabel(L10n.string("mobile.workspaces.settings", defaultValue: "Settings"))
+        .accessibilityIdentifier("MobileWorkspaceSettingsMenu")
+        #else
+        Menu {
+            Button(role: .destructive) {
+                signOut()
+            } label: {
+                Label(
+                    L10n.string("mobile.signOut", defaultValue: "Sign Out"),
+                    systemImage: "rectangle.portrait.and.arrow.right"
+                )
+            }
+            .accessibilityIdentifier("MobileWorkspaceSignOutMenuItem")
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+        .accessibilityLabel(L10n.string("mobile.workspaces.settings", defaultValue: "Settings"))
+        .accessibilityIdentifier("MobileWorkspaceSettingsMenu")
+        #endif
     }
 
     private var addDeviceToolbarButton: some View {
