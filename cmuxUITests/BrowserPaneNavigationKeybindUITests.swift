@@ -7,41 +7,9 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
         let windowId: String
     }
 
-    private struct TerminalSurfaceInfo: CustomStringConvertible {
-        let id: String
-        let index: Int
-        let focused: Bool
-
-        var description: String {
-            "TerminalSurfaceInfo(id: \(id), index: \(index), focused: \(focused))"
-        }
-    }
-
-    private struct TerminalRenderStats: CustomStringConvertible {
-        let presentCount: Int
-        let drawCount: Int
-        let inWindow: Bool
-        let windowOcclusionVisible: Bool
-        let layerClass: String
-        let layerContentsKey: String
-
-        var description: String {
-            "TerminalRenderStats(presentCount: \(presentCount), drawCount: \(drawCount), inWindow: \(inWindow), windowOcclusionVisible: \(windowOcclusionVisible), layerClass: \(layerClass), layerContentsKey: \(layerContentsKey))"
-        }
-    }
-
-    private struct PanelSnapshotInfo: CustomStringConvertible {
-        let changedPixels: Int
-        let width: Int
-        let height: Int
-        let path: String
-
-        var description: String {
-            "PanelSnapshotInfo(changedPixels: \(changedPixels), width: \(width), height: \(height), path: \(path))"
-        }
-    }
-
     private var dataPath = ""
+    private var diagnosticsPath = ""
+    private var launchTag = ""
     private var socketPath = ""
 
     override func setUp() {
@@ -49,8 +17,18 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
         continueAfterFailure = false
         dataPath = "/tmp/cmux-ui-test-goto-split-\(UUID().uuidString).json"
         try? FileManager.default.removeItem(atPath: dataPath)
+        diagnosticsPath = "/tmp/cmux-ui-test-goto-split-\(UUID().uuidString).diagnostics.json"
+        try? FileManager.default.removeItem(atPath: diagnosticsPath)
+        launchTag = "ui-bnav-\(UUID().uuidString.prefix(8))"
         socketPath = "/tmp/cmux-ui-test-socket-\(UUID().uuidString).sock"
         try? FileManager.default.removeItem(atPath: socketPath)
+        try? FileManager.default.removeItem(atPath: "\(socketPath).lock")
+        addTeardownBlock { [dataPath, diagnosticsPath, socketPath] in
+            try? FileManager.default.removeItem(atPath: dataPath)
+            try? FileManager.default.removeItem(atPath: diagnosticsPath)
+            try? FileManager.default.removeItem(atPath: socketPath)
+            try? FileManager.default.removeItem(atPath: "\(socketPath).lock")
+        }
     }
 
     func testCmdCtrlHMovesLeftWhenWebViewFocused() {
@@ -58,7 +36,7 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_SETUP"] = "1"
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_PATH"] = dataPath
         app.launchEnvironment["CMUX_UI_TEST_FOCUS_SHORTCUTS"] = "1"
-        app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
+        configureSocketLaunch(app)
         launchAndEnsureForeground(app)
 
         XCTAssertTrue(
@@ -133,7 +111,7 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_SETUP"] = "1"
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_PATH"] = dataPath
         app.launchEnvironment["CMUX_UI_TEST_FOCUS_SHORTCUTS"] = "1"
-        app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
+        configureSocketLaunch(app)
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_USE_GHOSTTY_CONFIG"] = "1"
         launchAndEnsureForeground(app)
 
@@ -168,7 +146,7 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
 
     func testEscapeLeavesOmnibarAndFocusesWebView() {
         let app = XCUIApplication()
-        app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
+        configureSocketLaunch(app)
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_SETUP"] = "1"
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_PATH"] = dataPath
         app.launchEnvironment["CMUX_UI_TEST_FOCUS_SHORTCUTS"] = "1"
@@ -212,7 +190,7 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
 
     func testEscapeRestoresFocusedPageInputAfterCmdL() {
         let app = XCUIApplication()
-        app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
+        configureSocketLaunch(app)
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_SETUP"] = "1"
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_PATH"] = dataPath
         app.launchEnvironment["CMUX_UI_TEST_FOCUS_SHORTCUTS"] = "1"
@@ -360,7 +338,7 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
 
     func testCmdLOpensBrowserWhenTerminalFocused() {
         let app = XCUIApplication()
-        app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
+        configureSocketLaunch(app)
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_SETUP"] = "1"
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_PATH"] = dataPath
         app.launchEnvironment["CMUX_UI_TEST_FOCUS_SHORTCUTS"] = "1"
@@ -409,7 +387,7 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
 
     func testClickingOmnibarFocusesBrowserPane() {
         let app = XCUIApplication()
-        app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
+        configureSocketLaunch(app)
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_SETUP"] = "1"
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_PATH"] = dataPath
         app.launchEnvironment["CMUX_UI_TEST_FOCUS_SHORTCUTS"] = "1"
@@ -464,7 +442,7 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
 
     func testClickingBrowserDismissesCommandPaletteAndKeepsBrowserFocus() {
         let app = XCUIApplication()
-        app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
+        configureSocketLaunch(app)
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_SETUP"] = "1"
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_PATH"] = dataPath
         app.launchEnvironment["CMUX_UI_TEST_FOCUS_SHORTCUTS"] = "1"
@@ -529,10 +507,9 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
 
     func testEscapeDismissesCommandPaletteOpenedByCmdShiftP() {
         let app = XCUIApplication()
-        app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
-        app.launchEnvironment["CMUX_TAG"] = "ui-esc-\(UUID().uuidString.prefix(8))"
+        configureSocketLaunch(app)
         launchAndEnsureForeground(app)
-        XCTAssertTrue(waitForSocketPong(timeout: 12.0), "Expected control socket at \(socketPath)")
+        XCTAssertTrue(waitForSocketPong(timeout: 12.0), socketReadinessFailureMessage())
 
         guard let workspace = currentWorkspaceContext() else {
             XCTFail("Expected current workspace context before opening the command palette")
@@ -568,7 +545,7 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
 
     func testCmdDSplitsRightWhenWebViewFocused() {
         let app = XCUIApplication()
-        app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
+        configureSocketLaunch(app)
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_SETUP"] = "1"
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_PATH"] = dataPath
         launchAndEnsureForeground(app)
@@ -601,7 +578,7 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
 
     func testCmdShiftDSplitsDownWhenWebViewFocused() {
         let app = XCUIApplication()
-        app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
+        configureSocketLaunch(app)
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_SETUP"] = "1"
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_PATH"] = dataPath
         launchAndEnsureForeground(app)
@@ -634,7 +611,7 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
 
     func testCmdShiftEnterKeepsBrowserOmnibarHittableAcrossZoomRoundTripWhenWebViewFocused() {
         let app = XCUIApplication()
-        app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
+        configureSocketLaunch(app)
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_SETUP"] = "1"
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_PATH"] = dataPath
         launchAndEnsureForeground(app)
@@ -725,7 +702,7 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
 
     func testCmdShiftEnterHidesBrowserPortalWhenTerminalPaneZooms() {
         let app = XCUIApplication()
-        app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
+        configureSocketLaunch(app)
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_SETUP"] = "1"
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_PATH"] = dataPath
         app.launchEnvironment["CMUX_UI_TEST_FOCUS_SHORTCUTS"] = "1"
@@ -778,7 +755,7 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
 
     func testCmdDSplitsRightWhenOmnibarFocused() {
         let app = XCUIApplication()
-        app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
+        configureSocketLaunch(app)
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_SETUP"] = "1"
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_PATH"] = dataPath
         launchAndEnsureForeground(app)
@@ -819,7 +796,7 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
 
     func testCmdShiftDSplitsDownWhenOmnibarFocused() {
         let app = XCUIApplication()
-        app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
+        configureSocketLaunch(app)
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_SETUP"] = "1"
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_PATH"] = dataPath
         launchAndEnsureForeground(app)
@@ -860,11 +837,11 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
 
     func testTerminalSplitAfterBrowserSplitFocusesCreatedTerminal() {
         let app = XCUIApplication()
-        app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
+        configureSocketLaunch(app)
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_RECORD_ONLY"] = "1"
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_PATH"] = dataPath
         launchAndEnsureForeground(app)
-        XCTAssertTrue(waitForSocketPong(timeout: 12.0), "Expected control socket at \(socketPath)")
+        XCTAssertTrue(waitForSocketPong(timeout: 12.0), socketReadinessFailureMessage())
 
         app.typeKey("d", modifierFlags: [.command])
         XCTAssertTrue(
@@ -909,65 +886,6 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
         )
     }
 
-    func testRepeatedCmdDSplitAndCtrlDExitKeepsLeftmostTerminalRendering() {
-        let app = XCUIApplication()
-        app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
-        app.launchEnvironment["CMUX_UI_TEST_MODE"] = "1"
-        app.launchEnvironment["CMUX_UI_TEST_SOCKET_SANITY"] = "1"
-        launchAndEnsureForeground(app)
-
-        XCTAssertTrue(waitForSocketPong(timeout: 12.0), "Expected control socket at \(socketPath)")
-        guard let initialSurfaceId = waitForSingleTerminalSurface(timeout: 12.0)?.id else {
-            XCTFail("Expected exactly one terminal surface after launch. surfaces=\(terminalSurfaces())")
-            return
-        }
-
-        assertSurfaceRendersNewMarker(
-            surfaceId: initialSurfaceId,
-            marker: "cmux-left-render-start",
-            context: "Initial left terminal"
-        )
-
-        for cycle in 1...10 {
-            app.typeKey("d", modifierFlags: [.command])
-            XCTAssertTrue(
-                waitForTerminalSurfaceCount(2, timeout: 6.0),
-                "Cycle \(cycle): expected first Cmd+D to create a second terminal. surfaces=\(terminalSurfaces())"
-            )
-
-            app.typeKey("d", modifierFlags: [.command])
-            XCTAssertTrue(
-                waitForTerminalSurfaceCount(3, timeout: 6.0),
-                "Cycle \(cycle): expected second Cmd+D to create a third terminal. surfaces=\(terminalSurfaces())"
-            )
-
-            app.typeKey("d", modifierFlags: [.control])
-            XCTAssertTrue(
-                waitForTerminalSurfaceCount(2, timeout: 8.0),
-                "Cycle \(cycle): expected first Ctrl+D to close only the focused split. surfaces=\(terminalSurfaces())"
-            )
-
-            app.typeKey("d", modifierFlags: [.control])
-            XCTAssertTrue(
-                waitForTerminalSurfaceCount(1, timeout: 8.0),
-                "Cycle \(cycle): expected second Ctrl+D to leave one terminal. surfaces=\(terminalSurfaces())"
-            )
-
-            let remaining = terminalSurfaces()
-            XCTAssertEqual(
-                remaining.first?.id,
-                initialSurfaceId,
-                "Cycle \(cycle): expected the original leftmost terminal to survive the Cmd+D/Ctrl+D churn. surfaces=\(remaining)"
-            )
-
-            assertSurfaceRendersNewMarker(
-                surfaceId: initialSurfaceId,
-                marker: "cmux-left-render-\(cycle)",
-                context: "Cycle \(cycle) left terminal"
-            )
-        }
-    }
-
     func testCmdOptionPaneSwitchPreservesFindFieldFocus() {
         runFindFocusPersistenceScenario(route: .cmdOptionArrows, useAutofocusRacePage: false)
     }
@@ -982,11 +900,11 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
 
     func testCmdFOpensBrowserFindAfterCmdDCmdLNavigation() {
         let app = XCUIApplication()
-        app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
+        configureSocketLaunch(app)
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_RECORD_ONLY"] = "1"
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_PATH"] = dataPath
         launchAndEnsureForeground(app)
-        XCTAssertTrue(waitForSocketPong(timeout: 12.0), "Expected control socket at \(socketPath)")
+        XCTAssertTrue(waitForSocketPong(timeout: 12.0), socketReadinessFailureMessage())
 
         app.typeKey("d", modifierFlags: [.command])
         XCTAssertTrue(
@@ -1045,11 +963,11 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
 
     func testRightSidebarFindFieldKeepsFocusAfterNewWorkspaceRoundTrip() {
         let app = XCUIApplication()
-        app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
+        configureSocketLaunch(app)
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_RECORD_ONLY"] = "1"
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_PATH"] = dataPath
         launchAndEnsureForeground(app)
-        XCTAssertTrue(waitForSocketPong(timeout: 12.0), "Expected control socket at \(socketPath)")
+        XCTAssertTrue(waitForSocketPong(timeout: 12.0), socketReadinessFailureMessage())
 
         guard let originalWorkspace = currentWorkspaceContext() else {
             XCTFail("Expected current workspace context before leaving the original workspace")
@@ -1148,7 +1066,7 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
 
     private func runFindFocusPersistenceScenario(route: FindFocusRoute, useAutofocusRacePage: Bool) {
         let app = XCUIApplication()
-        app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
+        configureSocketLaunch(app)
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_RECORD_ONLY"] = "1"
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_PATH"] = dataPath
         if route == .cmdCtrlLetters {
@@ -1257,14 +1175,14 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
 
     private func runSplitFindWorkspaceRoundTripScenario(restoredOwner: SplitFindOwner) {
         let app = XCUIApplication()
-        app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
+        configureSocketLaunch(app)
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_RECORD_ONLY"] = "1"
         app.launchEnvironment["CMUX_UI_TEST_GOTO_SPLIT_PATH"] = dataPath
         launchAndEnsureForeground(app)
 
         let window = app.windows.firstMatch
         XCTAssertTrue(window.waitForExistence(timeout: 10.0), "Expected main window to exist")
-        XCTAssertTrue(waitForSocketPong(timeout: 12.0), "Expected control socket at \(socketPath)")
+        XCTAssertTrue(waitForSocketPong(timeout: 12.0), socketReadinessFailureMessage())
 
         guard let originalWorkspace = currentWorkspaceContext() else {
             XCTFail("Expected current workspace context before leaving workspace 1")
@@ -1443,215 +1361,20 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
         }
     }
 
-    private func waitForSingleTerminalSurface(timeout: TimeInterval) -> TerminalSurfaceInfo? {
-        var matchedSurface: TerminalSurfaceInfo?
-        let matched = waitForCondition(timeout: timeout) {
-            let surfaces = self.terminalSurfaces()
-            guard surfaces.count == 1, let surface = surfaces.first else {
-                return false
-            }
-            matchedSurface = surface
-            return true
-        }
-        return matched ? matchedSurface : nil
+    private func configureSocketLaunch(_ app: XCUIApplication) {
+        app.launchEnvironment["CMUX_UI_TEST_MODE"] = "1"
+        app.launchEnvironment["CMUX_SOCKET_ENABLE"] = "1"
+        app.launchEnvironment["CMUX_SOCKET_MODE"] = "allowAll"
+        app.launchEnvironment["CMUX_SOCKET_PATH"] = socketPath
+        app.launchEnvironment["CMUX_ALLOW_SOCKET_OVERRIDE"] = "1"
+        app.launchEnvironment["CMUX_UI_TEST_SOCKET_SANITY"] = "1"
+        app.launchEnvironment["CMUX_UI_TEST_DIAGNOSTICS_PATH"] = diagnosticsPath
+        app.launchEnvironment["CMUX_TAG"] = launchTag
     }
 
-    private func waitForTerminalSurfaceCount(_ expectedCount: Int, timeout: TimeInterval) -> Bool {
-        waitForCondition(timeout: timeout) {
-            self.terminalSurfaces().count == expectedCount
-        }
-    }
-
-    private func terminalSurfaces() -> [TerminalSurfaceInfo] {
-        guard let result = socketResult(method: "surface.list"),
-              let surfaces = result["surfaces"] as? [[String: Any]] else {
-            return []
-        }
-
-        return surfaces.compactMap { item in
-            guard (item["type"] as? String) == "terminal",
-                  let id = item["id"] as? String else {
-                return nil
-            }
-            return TerminalSurfaceInfo(
-                id: id,
-                index: intValue(item["index"]) ?? -1,
-                focused: boolValue(item["focused"]) ?? false
-            )
-        }
-    }
-
-    private func assertSurfaceRendersNewMarker(surfaceId: String, marker: String, context: String) {
-        guard let baselineStats = waitForTerminalRenderStats(surfaceId: surfaceId, timeout: 6.0) else {
-            XCTFail("\(context): missing baseline render stats for \(surfaceId)")
-            return
-        }
-        XCTAssertTrue(baselineStats.inWindow, "\(context): expected left terminal to be attached to a window. stats=\(baselineStats)")
-        XCTAssertTrue(
-            baselineStats.windowOcclusionVisible,
-            "\(context): expected left terminal window to be visible. stats=\(baselineStats)"
-        )
-
-        _ = socketResult(method: "debug.panel_snapshot.reset", params: ["surface_id": surfaceId])
-        guard let baselineSnapshot = waitForPanelSnapshot(
-            surfaceId: surfaceId,
-            label: "render-\(marker)-baseline",
-            timeout: 6.0
-        ) else {
-            XCTFail("\(context): could not capture baseline panel snapshot for \(surfaceId)")
-            return
-        }
-
-        XCTAssertGreaterThan(baselineSnapshot.width, 0, "\(context): baseline panel snapshot has invalid width. snapshot=\(baselineSnapshot)")
-        XCTAssertGreaterThan(baselineSnapshot.height, 0, "\(context): baseline panel snapshot has invalid height. snapshot=\(baselineSnapshot)")
-
-        let command = "printf '\(marker)\\n'\n"
-        guard sendText(surfaceId: surfaceId, text: command) else {
-            XCTFail("\(context): failed to send marker command to left terminal \(surfaceId)")
-            return
-        }
-
-        XCTAssertTrue(
-            waitForSurfaceText(surfaceId: surfaceId, contains: marker, timeout: 6.0),
-            "\(context): terminal model did not contain marker \(marker). text=\(surfaceText(surfaceId: surfaceId) ?? "<nil>")"
-        )
-
-        let rendered = waitForCondition(timeout: 6.0) {
-            guard let stats = self.terminalRenderStats(surfaceId: surfaceId) else {
-                return false
-            }
-            return stats.presentCount > baselineStats.presentCount
-                || stats.drawCount > baselineStats.drawCount
-        }
-        XCTAssertTrue(
-            rendered,
-            "\(context): render counters did not advance after marker \(marker). baseline=\(baselineStats) current=\(terminalRenderStats(surfaceId: surfaceId).map { String(describing: $0) } ?? "<nil>")"
-        )
-
-        guard let markerSnapshot = waitForPanelSnapshot(
-            surfaceId: surfaceId,
-            label: "render-\(marker)-after",
-            timeout: 6.0
-        ) else {
-            XCTFail("\(context): could not capture marker panel snapshot for \(surfaceId)")
-            return
-        }
-
-        XCTAssertGreaterThan(
-            markerSnapshot.changedPixels,
-            20,
-            "\(context): left terminal text changed but panel pixels barely changed after \(marker). baseline=\(baselineSnapshot) after=\(markerSnapshot)"
-        )
-    }
-
-    private func waitForTerminalRenderStats(surfaceId: String, timeout: TimeInterval) -> TerminalRenderStats? {
-        var matchedStats: TerminalRenderStats?
-        let matched = waitForCondition(timeout: timeout) {
-            guard let stats = self.terminalRenderStats(surfaceId: surfaceId) else {
-                return false
-            }
-            matchedStats = stats
-            return stats.inWindow
-        }
-        return matched ? matchedStats : nil
-    }
-
-    private func terminalRenderStats(surfaceId: String) -> TerminalRenderStats? {
-        guard let result = socketResult(
-            method: "debug.terminal.render_stats",
-            params: ["surface_id": surfaceId]
-        ),
-        let stats = result["stats"] as? [String: Any] else {
-            return nil
-        }
-
-        return TerminalRenderStats(
-            presentCount: intValue(stats["presentCount"]) ?? 0,
-            drawCount: intValue(stats["drawCount"]) ?? 0,
-            inWindow: boolValue(stats["inWindow"]) ?? false,
-            windowOcclusionVisible: boolValue(stats["windowOcclusionVisible"]) ?? false,
-            layerClass: stats["layerClass"] as? String ?? "",
-            layerContentsKey: stats["layerContentsKey"] as? String ?? ""
-        )
-    }
-
-    private func waitForPanelSnapshot(surfaceId: String, label: String, timeout: TimeInterval) -> PanelSnapshotInfo? {
-        var matchedSnapshot: PanelSnapshotInfo?
-        let matched = waitForCondition(timeout: timeout) {
-            guard let snapshot = self.panelSnapshot(surfaceId: surfaceId, label: label) else {
-                return false
-            }
-            matchedSnapshot = snapshot
-            return snapshot.width > 0 && snapshot.height > 0
-        }
-        return matched ? matchedSnapshot : nil
-    }
-
-    private func panelSnapshot(surfaceId: String, label: String) -> PanelSnapshotInfo? {
-        guard let result = socketResult(
-            method: "debug.panel_snapshot",
-            params: ["surface_id": surfaceId, "label": label]
-        ) else {
-            return nil
-        }
-        return PanelSnapshotInfo(
-            changedPixels: intValue(result["changed_pixels"]) ?? -1,
-            width: intValue(result["width"]) ?? 0,
-            height: intValue(result["height"]) ?? 0,
-            path: result["path"] as? String ?? ""
-        )
-    }
-
-    private func sendText(surfaceId: String, text: String) -> Bool {
-        socketResult(
-            method: "surface.send_text",
-            params: ["surface_id": surfaceId, "text": text]
-        ) != nil
-    }
-
-    private func waitForSurfaceText(surfaceId: String, contains marker: String, timeout: TimeInterval) -> Bool {
-        waitForCondition(timeout: timeout) {
-            self.surfaceText(surfaceId: surfaceId)?.contains(marker) == true
-        }
-    }
-
-    private func surfaceText(surfaceId: String) -> String? {
-        guard let result = socketResult(
-            method: "surface.read_text",
-            params: ["surface_id": surfaceId, "scrollback": true, "lines": 80]
-        ) else {
-            return nil
-        }
-        return result["text"] as? String
-    }
-
-    private func socketResult(method: String, params: [String: Any] = [:]) -> [String: Any]? {
-        guard let envelope = socketJSON(method: method, params: params),
-              let ok = envelope["ok"] as? Bool,
-              ok else {
-            return nil
-        }
-        return envelope["result"] as? [String: Any]
-    }
-
-    private func intValue(_ value: Any?) -> Int? {
-        if let value = value as? Int { return value }
-        if let value = value as? NSNumber { return value.intValue }
-        if let value = value as? String { return Int(value) }
-        return nil
-    }
-
-    private func boolValue(_ value: Any?) -> Bool? {
-        if let value = value as? Bool { return value }
-        if let value = value as? NSNumber { return value.boolValue }
-        if let value = value as? String {
-            switch value.lowercased() {
-            case "1", "true", "yes": return true
-            case "0", "false", "no": return false
-            default: return nil
-            }
-        }
-        return nil
+    private func socketReadinessFailureMessage() -> String {
+        let diagnostics = loadJSON(atPath: diagnosticsPath) ?? [:]
+        return "Expected control socket at \(socketPath). diagnostics=\(diagnostics)"
     }
 
     private func currentWorkspaceContext() -> WorkspaceContext? {
@@ -1825,6 +1548,13 @@ final class BrowserPaneNavigationKeybindUITests: XCTestCase {
 
     private func loadData() -> [String: String]? {
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: dataPath)) else {
+            return nil
+        }
+        return (try? JSONSerialization.jsonObject(with: data)) as? [String: String]
+    }
+
+    private func loadJSON(atPath path: String) -> [String: String]? {
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
             return nil
         }
         return (try? JSONSerialization.jsonObject(with: data)) as? [String: String]

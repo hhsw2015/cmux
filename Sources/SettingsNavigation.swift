@@ -7,6 +7,7 @@ enum SettingsNavigationTarget: String, CaseIterable, Identifiable {
     case textBox
     case mobile
     case sidebarAppearance
+    case customSidebars
     case betaFeatures
     case zmx
     case hosts
@@ -37,6 +38,8 @@ enum SettingsNavigationTarget: String, CaseIterable, Identifiable {
             return String(localized: "settings.section.workspaceColors", defaultValue: "Workspace Colors")
         case .sidebarAppearance:
             return String(localized: "settings.section.sidebarAppearance", defaultValue: "Sidebar")
+        case .customSidebars:
+            return String(localized: "settings.section.customSidebars", defaultValue: "Custom Sidebars")
         case .betaFeatures:
             return String(localized: "settings.section.betaFeatures", defaultValue: "Beta Features")
         case .zmx:
@@ -76,6 +79,8 @@ enum SettingsNavigationTarget: String, CaseIterable, Identifiable {
             return "paintpalette"
         case .sidebarAppearance:
             return "sidebar.left"
+        case .customSidebars:
+            return "sidebar.squares.left"
         case .betaFeatures:
             return "exclamationmark.triangle"
         case .zmx:
@@ -115,6 +120,8 @@ enum SettingsNavigationTarget: String, CaseIterable, Identifiable {
             return "\(title) palette tabs"
         case .sidebarAppearance:
             return "\(title) sidebar details branches badges material terminal background"
+        case .customSidebars:
+            return "\(title) sidebar custom extension webview html javascript"
         case .betaFeatures:
             return "\(title) beta experimental unstable feed dock right sidebar"
         case .zmx:

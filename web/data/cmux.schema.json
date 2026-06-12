@@ -436,40 +436,29 @@
             }
           }
         },
-        "surfaceHibernation": {
+        "rendererRealization": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Surface Hibernation settings. cmux frees the terminal renderer (Metal buffers, render threads, PTY) of idle plain-shell terminals in hidden workspaces after capturing scrollback, then starts a fresh shell in the captured working directory with the scrollback replayed when the terminal is visited again. Terminals running a foreground process, with background jobs or listening ports, agent terminals, remote terminals, and terminals with pending startup work are never reclaimed. Also enforces a least-recently-used cap on simultaneously live terminal surfaces.",
+          "description": "Reclaim off-screen terminal GPU renderer memory. cmux releases the Metal renderer (IOSurface) of a terminal that has stayed off-screen and idle while keeping its process and terminal state alive, then rebuilds the renderer instantly when the tab is visited again. Non-destructive and on by default.",
           "properties": {
             "enabled": {
               "type": "boolean",
               "default": true,
-              "descriptionKey": "schemaDescriptions.terminal.surfaceHibernation.enabled",
-              "description": "Enable Surface Hibernation."
+              "description": "Reclaim off-screen terminal renderer memory."
             },
             "idleSeconds": {
               "type": "integer",
-              "minimum": 30,
+              "minimum": 5,
               "maximum": 604800,
-              "default": 300,
-              "descriptionKey": "schemaDescriptions.terminal.surfaceHibernation.idleSeconds",
-              "description": "Minimum seconds without input or focus before the live-surface cap may reclaim a background shell terminal. A short confirmation settle window (~60s) still applies on top of this."
+              "default": 30,
+              "description": "Minimum seconds a terminal must stay off-screen before its GPU renderer memory is reclaimed."
             },
-            "unmountedIdleSeconds": {
-              "type": "integer",
-              "minimum": 60,
-              "maximum": 2592000,
-              "default": 1800,
-              "descriptionKey": "schemaDescriptions.terminal.surfaceHibernation.unmountedIdleSeconds",
-              "description": "Seconds a workspace must stay unmounted (hidden) — with its terminal quiet — before its idle shell surfaces hibernate even when the live-surface cap is not exceeded."
-            },
-            "maxLiveSurfaces": {
+            "maxWarmRenderers": {
               "type": "integer",
               "minimum": 1,
               "maximum": 256,
               "default": 12,
-              "descriptionKey": "schemaDescriptions.terminal.surfaceHibernation.maxLiveSurfaces",
-              "description": "Maximum simultaneously live terminal surfaces to keep before cmux hibernates eligible background terminals, oldest first. Every live surface counts toward the limit; only idle, non-busy, non-visible ones are reclaimed."
+              "description": "Most recently visible terminals to keep renderer-ready so switching stays instant. Extra off-screen renderers are reclaimed oldest first."
             }
           }
         },
@@ -479,35 +468,6 @@
           "maximum": 20,
           "default": 10,
           "description": "Maximum number of lines the rich terminal TextBox input can grow to before it scrolls."
-        },
-        "quickTerminalPosition": {
-          "type": "string",
-          "enum": ["top", "bottom", "left", "right", "center"],
-          "default": "top",
-          "descriptionKey": "schemaDescriptions.terminal.quickTerminalPosition",
-          "description": "Screen edge or center position for the floating quick terminal."
-        },
-        "quickTerminalPrimarySizeRatio": {
-          "type": "number",
-          "minimum": 0.2,
-          "maximum": 1,
-          "default": 0.38,
-          "descriptionKey": "schemaDescriptions.terminal.quickTerminalPrimarySizeRatio",
-          "description": "Quick terminal size along its slide-in axis, as a fraction of the visible screen."
-        },
-        "quickTerminalSecondarySizeRatio": {
-          "type": "number",
-          "minimum": 0.2,
-          "maximum": 1,
-          "default": 1,
-          "descriptionKey": "schemaDescriptions.terminal.quickTerminalSecondarySizeRatio",
-          "description": "Quick terminal size across the opposite axis, as a fraction of the visible screen."
-        },
-        "quickTerminalAutoHide": {
-          "type": "boolean",
-          "default": true,
-          "descriptionKey": "schemaDescriptions.terminal.quickTerminalAutoHide",
-          "description": "Hide the quick terminal automatically when it loses key focus."
         },
         "resumeCommands": {
           "type": "array",
@@ -1158,13 +1118,13 @@
               "reloadConfiguration",
               "showHideAllWindows",
               "globalSearch",
-              "toggleQuickTerminal",
               "newWindow",
               "closeWindow",
               "toggleFullScreen",
               "quit",
               "toggleSidebar",
               "newTab",
+              "newBrowserWorkspace",
               "openFolder",
               "reopenPreviousSession",
               "goToWorkspace",

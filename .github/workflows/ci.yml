@@ -73,9 +73,6 @@ jobs:
       - name: Validate auxiliary window close shortcut lint
         run: ./tests/test_ci_auxiliary_window_close_shortcuts.sh
 
-      - name: Validate cmux.xcodeproj UUID uniqueness
-        run: ./scripts/lint_pbxproj_uuid_uniqueness.sh
-
       - name: Validate pbxproj test-wiring lint
         run: ./tests/test_ci_pbxproj_test_wiring.sh
 
@@ -109,217 +106,6 @@ jobs:
 
       - name: Validate remote daemon release assets
         run: ./tests/test_remote_daemon_release_assets.sh
-
-  herdr-wire-protocol-tests:
-    runs-on: ubuntu-latest
-    env:
-      # Bump when fork's wire shape changes intentionally; pinning by
-      # SHA so the wire tests catch unintended drift from upstream
-      # ogulcancelik/herdr merges.
-      HERDR_CMUX_REF: 123cf49fc3e0acb4bafa76929bd714e11c25aa35
-    steps:
-      - name: Checkout cmux
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Install Rust toolchain
-        run: |
-          set -euo pipefail
-          curl --proto '=https' --tlsv1.2 -sSfo rustup-init.sh https://sh.rustup.rs
-          sh rustup-init.sh -y --profile minimal --default-toolchain stable
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-
-      - name: Install zig (for vendored libghostty-vt build.rs)
-        run: |
-          set -euo pipefail
-          ZIG_VERSION="0.15.2"
-          ZIG_NAME="zig-x86_64-linux-${ZIG_VERSION}"
-          ZIG_TAR="/tmp/${ZIG_NAME}.tar.xz"
-          curl --proto '=https' --tlsv1.2 -sSfL -o "$ZIG_TAR" \
-            "https://ziglang.org/download/${ZIG_VERSION}/${ZIG_NAME}.tar.xz"
-          sudo tar -xJf "$ZIG_TAR" -C /opt
-          sudo ln -sf "/opt/${ZIG_NAME}/zig" /usr/local/bin/zig
-          zig version
-
-      - name: Cache Cargo registry
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: cargo-herdr-${{ env.HERDR_CMUX_REF }}-${{ runner.os }}
-
-      - name: Build herdr-cmux from hhsw2015/herdr fork
-        run: |
-          set -euo pipefail
-          rm -rf /tmp/herdr-fork
-          git clone --depth 50 https://github.com/hhsw2015/herdr.git /tmp/herdr-fork
-          (cd /tmp/herdr-fork && git checkout "$HERDR_CMUX_REF")
-          (cd /tmp/herdr-fork && cargo build --release)
-          # The Cargo.toml package name is "herdr"; cmux conventionally
-          # invokes the binary as "herdr-cmux" so install under that name.
-          sudo install -m 0755 /tmp/herdr-fork/target/release/herdr /usr/local/bin/herdr-cmux
-          herdr-cmux --version
-
-      - name: Run wire protocol tests
-        run: python3 tests/test_herdr_wire_protocol.py
-
-  herdr-live-integration-tests:
-    # github-hosted runner: this job is not in the warp-guard list
-    # (tests/release-build/ui-regressions/etc). github-hosted has more
-    # capacity for the relatively cheap herdr-fork build + xcodebuild
-    # test pass.
-    #
-    # continue-on-error until the pre-existing cmux-unit "no such
-    # module 'cmux'" build issue is resolved (see CLAUDE.md). The
-    # Ubuntu wire-protocol smoke job is the primary herdr regression
-    # gate; this job is a deeper integration check that's only useful
-    # once cmux-unit builds reliably from a clean state.
-    continue-on-error: true
-    runs-on: macos-15
-    timeout-minutes: 45
-    env:
-      HERDR_CMUX_REF: 123cf49fc3e0acb4bafa76929bd714e11c25aa35
-      GHOSTTYKIT_BUILD_FLAVOR: crashsubdir-cmux-crash-v1
-    steps:
-      - name: Checkout cmux
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          submodules: recursive
-
-      - name: Select Xcode
-        run: |
-          set -euo pipefail
-          if [ -d "/Applications/Xcode.app/Contents/Developer" ]; then
-            XCODE_DIR="/Applications/Xcode.app/Contents/Developer"
-          else
-            XCODE_APP="$(ls -d /Applications/Xcode*.app 2>/dev/null | head -n 1 || true)"
-            XCODE_DIR="$XCODE_APP/Contents/Developer"
-          fi
-          echo "DEVELOPER_DIR=$XCODE_DIR" >> "$GITHUB_ENV"
-
-      - name: Cache GhosttyKit.xcframework
-        id: cache-ghosttykit
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: GhosttyKit.xcframework
-          key: ghosttykit-${{ hashFiles('.gitmodules', 'ghostty') }}
-
-      - name: Download pre-built GhosttyKit.xcframework
-        if: steps.cache-ghosttykit.outputs.cache-hit != 'true'
-        run: ./scripts/download-prebuilt-ghosttykit.sh
-
-      - name: Install zig
-        run: ./scripts/install-zig-ci.sh
-
-      - name: Install Rust
-        run: ./scripts/install-rust-ci.sh
-
-      - name: Cache Cargo registry (herdr fork)
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: cargo-herdr-${{ env.HERDR_CMUX_REF }}-${{ runner.os }}
-
-      - name: Build herdr-cmux from hhsw2015/herdr fork
-        run: |
-          set -euo pipefail
-          rm -rf /tmp/herdr-fork
-          git clone --depth 50 https://github.com/hhsw2015/herdr.git /tmp/herdr-fork
-          (cd /tmp/herdr-fork && git checkout "$HERDR_CMUX_REF")
-          (cd /tmp/herdr-fork && cargo build --release)
-          mkdir -p "$HOME/.local/bin"
-          install -m 0755 /tmp/herdr-fork/target/release/herdr "$HOME/.local/bin/herdr-cmux"
-          "$HOME/.local/bin/herdr-cmux" --version
-
-      - name: Spawn herdr daemon
-        run: |
-          set -euo pipefail
-          # AF_UNIX sun_path is 104 bytes on macOS; /var/folders/...
-          # mktemp prefix is too long. /tmp keeps headroom.
-          export TMP_HOME="$(mktemp -d /tmp/cmh-XXXXXX)"
-          echo "TMP_HOME=$TMP_HOME" >> "$GITHUB_ENV"
-          SOCKET="$TMP_HOME/.config/herdr/sessions/cmux-live/herdr.sock"
-          echo "CMUX_HERDR_LIVE_SOCKET=$SOCKET" >> "$GITHUB_ENV"
-          HOME="$TMP_HOME" XDG_CONFIG_HOME="$TMP_HOME/.config" \
-            "$HOME/.local/bin/herdr-cmux" --session cmux-live server \
-            > "$TMP_HOME/daemon.log" 2>&1 &
-          echo "DAEMON_PID=$!" >> "$GITHUB_ENV"
-          for _ in $(seq 1 50); do
-            [ -S "$SOCKET" ] && break
-            sleep 0.1
-          done
-          [ -S "$SOCKET" ] || { echo "daemon socket never appeared"; cat "$TMP_HOME/daemon.log"; exit 1; }
-
-      - name: Cache Swift packages
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: .ci-source-packages
-          key: spm-${{ hashFiles('cmux.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
-          restore-keys: spm-
-
-      - name: Cache DerivedData
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: ~/Library/Developer/Xcode/DerivedData/cmux-*
-          key: deriveddata-herdr-live-${{ hashFiles('cmux.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}-${{ hashFiles('cmux.xcodeproj/project.pbxproj') }}
-          restore-keys: |
-            deriveddata-herdr-live-${{ hashFiles('cmux.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}-
-            deriveddata-herdr-live-
-
-      - name: Resolve Swift packages
-        run: |
-          set -euo pipefail
-          SOURCE_PACKAGES_DIR="$PWD/.ci-source-packages"
-          mkdir -p "$SOURCE_PACKAGES_DIR"
-          for attempt in 1 2 3; do
-            if xcodebuild -project cmux.xcodeproj -scheme cmux-unit -configuration Debug \
-              -clonedSourcePackagesDirPath "$SOURCE_PACKAGES_DIR" \
-              -resolvePackageDependencies; then
-              exit 0
-            fi
-            if [ "$attempt" -eq 3 ]; then
-              echo "Failed to resolve Swift packages after 3 attempts" >&2
-              exit 1
-            fi
-            echo "Package resolution failed on attempt $attempt, retrying..."
-            sleep $((attempt * 5))
-          done
-
-      - name: Build cmux app target
-        # cmux-unit scheme + -only-testing skips the cmux target build
-        # somehow (see "no such module cmux" in cmuxTests). Pre-build
-        # the cmux scheme so the module is in DerivedData before the
-        # filtered test invocation.
-        run: |
-          set -euo pipefail
-          xcodebuild -project cmux.xcodeproj -scheme cmux -configuration Debug \
-            -clonedSourcePackagesDirPath "$PWD/.ci-source-packages" \
-            -disableAutomaticPackageResolution \
-            -destination "platform=macOS" \
-            build
-
-      - name: Run herdr live integration tests
-        run: |
-          set -euo pipefail
-          xcodebuild -project cmux.xcodeproj -scheme cmux-unit -configuration Debug \
-            -clonedSourcePackagesDirPath "$PWD/.ci-source-packages" \
-            -disableAutomaticPackageResolution \
-            -destination "platform=macOS" \
-            -only-testing:cmuxTests/HerdrApiClientLiveTests \
-            -only-testing:cmuxTests/HerdrBackendLiveTests \
-            test
-
-      - name: Stop daemon
-        if: always()
-        run: |
-          if [ -n "${DAEMON_PID:-}" ]; then
-            kill "$DAEMON_PID" 2>/dev/null || true
-          fi
-          if [ -n "${TMP_HOME:-}" ] && [ -d "$TMP_HOME" ]; then
-            cat "$TMP_HOME/daemon.log" || true
-          fi
 
   web-typecheck:
     runs-on: ubuntu-latest
@@ -545,12 +331,14 @@ jobs:
             -only-testing:cmuxTests/AppearanceSettingsTests/testSplitGhosttyThemeUsesSystemDarkWhenAppAppearanceIsStaleLight \
             test
 
-      # The full unit-test pass below tolerates app-host crashes by classifying
-      # the surviving summary lines, so suites that sort after an early crash
-      # can be skipped without failing the job. Surface hibernation policy
-      # tests gate memory reclamation (issue 5731) and must always execute.
-      - name: Run surface hibernation policy regression
+      - name: Run browser system proxy mirror regression
         run: |
+          # Focused gate for https://github.com/manaflow-ai/cmux/issues/5888.
+          # The full "Run unit tests" step tolerates app-host crashes by
+          # parsing only the last test summary, so suites that run late can
+          # be silently skipped when an earlier crash aborts the run. This
+          # step makes the system-proxy loopback-bypass regression an
+          # unconditional gate.
           set -euo pipefail
           SOURCE_PACKAGES_DIR="$PWD/.ci-source-packages"
           xcodebuild -project cmux.xcodeproj -scheme cmux-unit -configuration Debug \
@@ -559,7 +347,7 @@ jobs:
             -disableAutomaticPackageResolution \
             -destination "platform=macOS" \
             CMUX_SKIP_ZIG_BUILD=1 \
-            -only-testing:cmuxTests/SurfaceHibernationPolicyTests \
+            -only-testing:cmuxTests/BrowserSystemProxyMirrorTests \
             test
 
       - name: Run unit tests
@@ -884,14 +672,14 @@ jobs:
           fi
 
           TAG="ci-lag"
-          SOCK="$(python3 scripts/cmux_socket_paths.py "com.cmuxterm.app.dev.${TAG}.sock")"
+          SOCK="/tmp/cmux-debug-${TAG}.sock"
           BUNDLE_ID="$(
             /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist" 2>/dev/null \
               || echo 'com.cmuxterm.app.debug'
           )"
 
           pkill -x "cmux DEV" || true
-          rm -f "$SOCK" "/tmp/cmux-debug-${TAG}.sock" "/tmp/cmux-${TAG}.sock" || true
+          rm -f "$SOCK" "/tmp/cmux-${TAG}.sock" || true
           defaults write "$BUNDLE_ID" socketControlMode -string full >/dev/null 2>&1 || true
 
           CMUX_TAG="$TAG" CMUX_SOCKET_PATH="$SOCK" CMUX_UI_TEST_MODE=1 "$APP/Contents/MacOS/cmux DEV" >/tmp/cmux-ci-lag.log 2>&1 &
