@@ -43,11 +43,11 @@ nonisolated func remotePTYSessionListErrorIsUnsupportedDaemon(_ error: Error) ->
         .range(of: "pty.list failed (method_not_found)", options: [.caseInsensitive]) != nil
 }
 
-nonisolated private func v2RemotePTYUserFacingErrorMessage(_ error: Error) -> String {
+nonisolated func v2RemotePTYUserFacingErrorMessage(_ error: Error) -> String {
     v2RemotePTYUserFacingErrorMessage(error.localizedDescription)
 }
 
-nonisolated private func v2RemotePTYUserFacingErrorMessage(_ message: String) -> String {
+nonisolated func v2RemotePTYUserFacingErrorMessage(_ message: String) -> String {
     let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty else { return "remote PTY operation failed" }
     let lowered = trimmed.lowercased()
@@ -90,7 +90,7 @@ class TerminalController {
 
     private nonisolated let remotePTYControllerAvailabilityCondition = NSCondition()
     private nonisolated(unsafe) var remotePTYControllerAvailabilityGeneration: UInt64 = 0
-    private var tabManager: TabManager?
+    var tabManager: TabManager?
     /// The shared auth coordinator + browser sign-in flow, injected once via
     /// `attachAuth` at app startup (AppDelegate `configure`) before the socket
     /// listener starts. Socket auth commands read these on the main actor.
@@ -107,8 +107,12 @@ class TerminalController {
     // Accepted-connection consumer; runs until process exit (singleton).
     private nonisolated let socketConnectionsTask: Task<Void, Never>
     // Per-surface dedupe for high-frequency report_* socket telemetry.
-    private nonisolated let socketFastPathState = SocketFastPathState()
+    nonisolated let socketFastPathState = SocketFastPathState()
     private nonisolated let myPid = getpid()
+
+    /// Coordinator that owns the typed RPC dispatch lane for upstream-migrated
+    /// domains. The fork's legacy `v2*` switch still answers everything else.
+    let controlCommandCoordinator = ControlCommandCoordinator()
     private nonisolated static let socketCommandFocusAllowanceStackKey = "cmux.socketCommandFocusAllowanceStack"
     private nonisolated static let socketListenerFailureCaptureCooldown: TimeInterval = 60
     private nonisolated static let v2BrowserDownloadWaitDefaultTimeoutMs = 10_000
@@ -186,6 +190,7 @@ class TerminalController {
         "workspace.previous",
         "workspace.last",
         "workspace.group.focus",
+        "workspace.top_tab.create",
         "surface.focus",
         "pane.focus",
         "pane.last",
@@ -286,6 +291,7 @@ class TerminalController {
             }
         }
         serverEventTarget.controller = self
+        controlCommandCoordinator.context = self
         browserDownloadObserver = NotificationCenter.default.addObserver(
             forName: .browserDownloadEventDidArrive,
             object: nil,
@@ -1488,6 +1494,11 @@ class TerminalController {
 
         let policyParams = cmd == "right_sidebar" ? ["args": args] : [:]
         return withSocketCommandPolicy(commandKey: cmd, isV2: false, params: policyParams) {
+            // P41: V1 sidebar/browser-panel commands answer here first.
+            if let coordinatorV1 = controlCommandCoordinator.handleSidebarV1(command: cmd, args: args)
+                ?? controlCommandCoordinator.handleBrowserPanelV1(command: cmd, args: args) {
+                return coordinatorV1
+            }
             switch cmd {
         case "ping":
             return "PONG"
@@ -1892,6 +1903,12 @@ class TerminalController {
 
             v2MainSync { self.v2RefreshKnownRefs() }
 
+            // P41: domains migrated into ControlCommandCoordinator answer here
+            // first; everything else falls through to the legacy switch below.
+            if let coordinatorResult = controlCommandCoordinator.handle(request) {
+                return Self.v2Encoder.response(id: request.id, coordinatorResult)
+            }
+
             switch method {
         case "system.ping":
             return v2Ok(id: id, result: ["pong": true])
@@ -2073,6 +2090,12 @@ class TerminalController {
             return v2Result(id: id, self.v2TabAction(params: params))
         case "tab.action":
             return v2Result(id: id, self.v2TabAction(params: params))
+        case "workspace.top_tab.create":
+            return v2Result(id: id, self.v2WorkspaceTopTabCreate(params: params))
+        case "workspace.top_tab.close":
+            return v2Result(id: id, self.v2WorkspaceTopTabClose(params: params))
+        case "workspace.top_tab.rename":
+            return v2Result(id: id, self.v2WorkspaceTopTabRename(params: params))
         case "surface.drag_to_split":
             return v2Result(id: id, self.v2SurfaceDragToSplit(params: params))
         case "surface.split_off":
@@ -2451,7 +2474,7 @@ class TerminalController {
         }
     }
 
-    private nonisolated func v2Capabilities() -> [String: Any] {
+    nonisolated func v2Capabilities() -> [String: Any] {
         var methods: [String] = [
             "system.ping",
             "system.capabilities",
@@ -2741,7 +2764,7 @@ class TerminalController {
         ]
     }
 
-    private func v2Identify(params: [String: Any]) -> [String: Any] {
+    func v2Identify(params: [String: Any]) -> [String: Any] {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return [
                 "socket_path": socketServer.currentSocketPath,
@@ -2849,7 +2872,7 @@ class TerminalController {
         let focusedWindowId: UUID?
     }
 
-    private func v2WindowSelectorDetails(params: [String: Any]) -> [String: Any]? {
+    func v2WindowSelectorDetails(params: [String: Any]) -> [String: Any]? {
         guard let rawWindowId = params["window_id"] else { return nil }
         if let string = rawWindowId as? String {
             return ["window_id": string]
@@ -2915,7 +2938,7 @@ class TerminalController {
         )
     }
 
-    private func v2WindowNotFoundResult(params: [String: Any], windowId: UUID) -> V2CallResult {
+    func v2WindowNotFoundResult(params: [String: Any], windowId: UUID) -> V2CallResult {
         .err(
             code: "not_found",
             message: "Window not found. Run `cmux list-windows` to see available windows, then retry with --window <id|ref|index>.",
@@ -2923,7 +2946,7 @@ class TerminalController {
         )
     }
 
-    private func v2SystemTree(params: [String: Any]) -> V2CallResult {
+    func v2SystemTree(params: [String: Any]) -> V2CallResult {
         let workspaceFilter = v2UUID(params, "workspace_id")
         if params["workspace_id"] != nil && workspaceFilter == nil {
             return .err(code: "invalid_params", message: "Missing or invalid workspace_id", data: nil)
@@ -3015,7 +3038,7 @@ class TerminalController {
     }
 
 #if DEBUG
-    private func v2DebugSessionSnapshotBenchmark(params: [String: Any]) -> V2CallResult {
+    func v2DebugSessionSnapshotBenchmark(params: [String: Any]) -> V2CallResult {
         let includeScrollback = v2Bool(params, "include_scrollback")
             ?? v2Bool(params, "scrollback")
             ?? false
@@ -3035,7 +3058,7 @@ class TerminalController {
         return .ok(payload)
     }
 
-    private func v2DebugSessionSnapshotSeedScrollback(params: [String: Any]) -> V2CallResult {
+    func v2DebugSessionSnapshotSeedScrollback(params: [String: Any]) -> V2CallResult {
         let charactersPerTerminal = v2Int(params, "characters_per_terminal")
             ?? v2Int(params, "chars_per_terminal")
             ?? 0
@@ -3129,7 +3152,7 @@ class TerminalController {
         )
     }
 
-    private nonisolated func v2SystemTop(params: [String: Any]) -> V2CallResult {
+    nonisolated func v2SystemTop(params: [String: Any]) -> V2CallResult {
         let base = v2MainSync {
             self.v2RefreshKnownRefs()
             return self.v2SystemTopBasePayload(params: params)
@@ -3163,7 +3186,7 @@ class TerminalController {
         return .ok(payload)
     }
 
-    private nonisolated func v2SystemMemory(params: [String: Any]) -> V2CallResult {
+    nonisolated func v2SystemMemory(params: [String: Any]) -> V2CallResult {
         var baseParams = params
         baseParams["include_processes"] = false
         let base = v2MainSync {
@@ -3236,7 +3259,7 @@ class TerminalController {
         return .ok(payload)
     }
 
-    private func v2SystemTopBasePayload(params: [String: Any]) -> V2CallResult {
+    func v2SystemTopBasePayload(params: [String: Any]) -> V2CallResult {
         let workspaceFilter = v2UUID(params, "workspace_id")
         if params["workspace_id"] != nil && workspaceFilter == nil {
             return .err(code: "invalid_params", message: "Missing or invalid workspace_id", data: nil)
@@ -3331,7 +3354,7 @@ class TerminalController {
         ])
     }
 
-    private func v2TopWindowNode(
+    func v2TopWindowNode(
         summary: AppDelegate.MainWindowSummary,
         index: Int,
         workspaceNodes: [[String: Any]]
@@ -3350,7 +3373,7 @@ class TerminalController {
         ]
     }
 
-    private func v2TopWorkspaceNode(
+    func v2TopWorkspaceNode(
         workspace: Workspace,
         index: Int,
         selected: Bool
@@ -3468,7 +3491,7 @@ class TerminalController {
         ]
     }
 
-    private func v2TopTagNodes(for workspace: Workspace) -> [[String: Any]] {
+    func v2TopTagNodes(for workspace: Workspace) -> [[String: Any]] {
         var tags: [[String: Any]] = []
         var seenKeys = Set<String>()
 
@@ -3514,7 +3537,7 @@ class TerminalController {
         return tags
     }
 
-    private func v2TreeWindowNode(
+    func v2TreeWindowNode(
         summary: AppDelegate.MainWindowSummary,
         index: Int,
         workspaceNodes: [[String: Any]]
@@ -3532,7 +3555,7 @@ class TerminalController {
         ]
     }
 
-    private func v2TreeWorkspaceNode(
+    func v2TreeWorkspaceNode(
         workspace: Workspace,
         index: Int,
         selected: Bool
@@ -3628,7 +3651,7 @@ class TerminalController {
     // MARK: - V2 Helpers (encoding + result plumbing)
     // MARK: - V2 Helpers (encoding + result plumbing)
 
-    private nonisolated func v2AuthStatusPayload(timedOut: Bool) -> [String: Any] {
+    nonisolated func v2AuthStatusPayload(timedOut: Bool) -> [String: Any] {
         var result: [String: Any] = [:]
         v2MainSync {
             MainActor.assumeIsolated {
@@ -3718,7 +3741,7 @@ class TerminalController {
         }
     }
 
-    private nonisolated func v2Ok(id: Any?, result: Any) -> String {
+    nonisolated func v2Ok(id: Any?, result: Any) -> String {
         guard let idValue = Self.v2WireId(id),
               let payload = JSONValue(foundationObject: result) else {
             return ControlResponseEncoder.encodeFailureResponse
@@ -3829,7 +3852,7 @@ class TerminalController {
         case err(code: String, message: String, data: Any?)
     }
 
-    private nonisolated func v2Result(id: Any?, _ res: V2CallResult) -> String {
+    nonisolated func v2Result(id: Any?, _ res: V2CallResult) -> String {
         switch res {
         case .ok(let payload):
             return v2Ok(id: id, result: payload)
@@ -3838,7 +3861,7 @@ class TerminalController {
         }
     }
 
-    private nonisolated func v2UnsupportedWorkspaceAliasError(method: String, params: [String: Any]) -> V2CallResult? {
+    nonisolated func v2UnsupportedWorkspaceAliasError(method: String, params: [String: Any]) -> V2CallResult? {
         guard method.hasPrefix("workspace."), params.keys.contains("window") else { return nil }
         return .err(
             code: "invalid_params",
@@ -3854,14 +3877,14 @@ class TerminalController {
         )
     }
 
-    private nonisolated func v2Encode(_ object: Any) -> String {
+    nonisolated func v2Encode(_ object: Any) -> String {
         guard let value = JSONValue(foundationObject: object) else {
             return ControlResponseEncoder.encodeFailureResponse
         }
         return Self.v2Encoder.encode(value)
     }
 
-    private func v2EnsureHandleRef(kind: ControlHandleKind, uuid: UUID) -> String {
+    func v2EnsureHandleRef(kind: ControlHandleKind, uuid: UUID) -> String {
         v2Handles.ensureRef(kind: kind, uuid: uuid)
     }
 
@@ -3901,7 +3924,7 @@ class TerminalController {
         return surfaceRef.replacingOccurrences(of: "surface:", with: "tab:")
     }
 
-    private func v2BrowserDisabledExternalOpenResult(
+    func v2BrowserDisabledExternalOpenResult(
         rawURL: String? = nil,
         url: URL?,
         tabManager: TabManager?
@@ -3944,7 +3967,7 @@ class TerminalController {
         return result
     }
 
-    private func v2RefreshKnownRefs() {
+    func v2RefreshKnownRefs() {
         guard let app = AppDelegate.shared else { return }
 
         let windows = app.listMainWindowSummaries()
@@ -4010,7 +4033,7 @@ class TerminalController {
     }
 
     @MainActor
-    private func v2LocateTabManager(forGroupId groupId: UUID) -> TabManager? {
+    func v2LocateTabManager(forGroupId groupId: UUID) -> TabManager? {
         guard let app = AppDelegate.shared else { return nil }
         for summary in app.listMainWindowSummaries() {
             guard let tm = app.tabManagerFor(windowId: summary.windowId) else { continue }
@@ -4026,13 +4049,13 @@ class TerminalController {
         return v2MainSync { AppDelegate.shared?.windowId(for: tabManager) }
     }
 
-    private func v2ResolveWorkspaceOwner(_ workspaceId: UUID) -> TabManager? {
+    func v2ResolveWorkspaceOwner(_ workspaceId: UUID) -> TabManager? {
         v2MainSync { AppDelegate.shared?.tabManagerFor(tabId: workspaceId) }
     }
 
     // MARK: - V2 Window Methods
 
-    private func v2WindowList(params _: [String: Any]) -> V2CallResult {
+    func v2WindowList(params _: [String: Any]) -> V2CallResult {
         let windows = v2MainSync { AppDelegate.shared?.listMainWindowSummaries() } ?? []
         let payload: [[String: Any]] = windows.enumerated().map { index, item in
             return [
@@ -4049,7 +4072,7 @@ class TerminalController {
         return .ok(["windows": payload])
     }
 
-    private func v2WindowCurrent(params: [String: Any]) -> V2CallResult {
+    func v2WindowCurrent(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -4062,7 +4085,7 @@ class TerminalController {
         ])
     }
 
-    private func v2WindowFocus(params: [String: Any]) -> V2CallResult {
+    func v2WindowFocus(params: [String: Any]) -> V2CallResult {
         guard let windowId = v2UUID(params, "window_id") else {
             return .err(code: "invalid_params", message: "Missing or invalid window_id", data: nil)
         }
@@ -4078,7 +4101,7 @@ class TerminalController {
             ])
     }
 
-    private func v2WindowCreate(params _: [String: Any]) -> V2CallResult {
+    func v2WindowCreate(params _: [String: Any]) -> V2CallResult {
         guard let windowId = v2MainSync({ AppDelegate.shared?.createMainWindow() }) else {
             return .err(code: "internal_error", message: "Failed to create window", data: nil)
         }
@@ -4092,7 +4115,7 @@ class TerminalController {
         ])
     }
 
-    private func v2WindowClose(params: [String: Any]) -> V2CallResult {
+    func v2WindowClose(params: [String: Any]) -> V2CallResult {
         guard let windowId = v2UUID(params, "window_id") else {
             return .err(code: "invalid_params", message: "Missing or invalid window_id", data: nil)
         }
@@ -4108,7 +4131,7 @@ class TerminalController {
             ])
     }
 
-    private func v2WindowDisplays(params _: [String: Any]) -> V2CallResult {
+    func v2WindowDisplays(params _: [String: Any]) -> V2CallResult {
         let displays = v2MainSync { AppDelegate.shared?.availableDisplays() } ?? []
         let payload: [[String: Any]] = displays.map { display in
             [
@@ -4127,7 +4150,7 @@ class TerminalController {
         return .ok(["displays": payload])
     }
 
-    private func v2WindowDisplay(params: [String: Any]) -> V2CallResult {
+    func v2WindowDisplay(params: [String: Any]) -> V2CallResult {
         guard let displayQuery = (params["display"] as? String)?
                 .trimmingCharacters(in: .whitespacesAndNewlines),
               !displayQuery.isEmpty else {
@@ -4171,7 +4194,7 @@ class TerminalController {
         ])
     }
 
-    private func v2DisplayNotFound(_ requested: String) -> V2CallResult {
+    func v2DisplayNotFound(_ requested: String) -> V2CallResult {
         let names = v2MainSync { AppDelegate.shared?.availableDisplays().map(\.name) } ?? []
         return .err(
             code: "not_found",
@@ -4182,7 +4205,7 @@ class TerminalController {
 
     // MARK: - V2 Workspace Methods
 
-    private func v2WorkspaceSummaryPayload(
+    func v2WorkspaceSummaryPayload(
         workspace: Workspace,
         index: Int?,
         selected: Bool
@@ -4208,7 +4231,7 @@ class TerminalController {
         return payload
     }
 
-    private func v2WorkspaceList(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceList(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -4232,7 +4255,7 @@ class TerminalController {
         ])
     }
 
-    private nonisolated func v2CustomSidebarValidate(params: [String: Any]) -> V2CallResult {
+    nonisolated func v2CustomSidebarValidate(params: [String: Any]) -> V2CallResult {
         let name = v2CustomSidebarName(params: params)
         if let name, name.isEmpty {
             return .err(
@@ -4248,7 +4271,7 @@ class TerminalController {
         return .ok(v2CustomSidebarReportPayload(report))
     }
 
-    private nonisolated func v2CustomSidebarReload(params: [String: Any]) -> V2CallResult {
+    nonisolated func v2CustomSidebarReload(params: [String: Any]) -> V2CallResult {
         let name = v2CustomSidebarName(params: params)
         if let name, name.isEmpty {
             return .err(
@@ -4278,7 +4301,7 @@ class TerminalController {
         return .ok(payload)
     }
 
-    private nonisolated func v2CustomSidebarSelect(params: [String: Any]) -> V2CallResult {
+    nonisolated func v2CustomSidebarSelect(params: [String: Any]) -> V2CallResult {
         guard let name = v2CustomSidebarName(params: params), !name.isEmpty else {
             return .err(
                 code: "invalid_params",
@@ -4316,17 +4339,17 @@ class TerminalController {
         return .ok(payload)
     }
 
-    private nonisolated func v2CustomSidebarName(params: [String: Any]) -> String? {
+    nonisolated func v2CustomSidebarName(params: [String: Any]) -> String? {
         guard let raw = params["name"] as? String else { return nil }
         return raw.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private nonisolated func v2CustomSidebarValidationReport(name: String?) -> CustomSidebarValidationReport {
+    nonisolated func v2CustomSidebarValidationReport(name: String?) -> CustomSidebarValidationReport {
         let directory = CmuxExtensionSidebarSelection.customSidebarsDirectory
         return CustomSidebarValidator().validate(directory: directory, name: name)
     }
 
-    private nonisolated func v2CustomSidebarReportPayload(_ report: CustomSidebarValidationReport) -> [String: Any] {
+    nonisolated func v2CustomSidebarReportPayload(_ report: CustomSidebarValidationReport) -> [String: Any] {
         [
             "directory": CmuxExtensionSidebarSelection.customSidebarsDirectory.path,
             "valid_count": report.validCount,
@@ -4343,7 +4366,7 @@ class TerminalController {
         ]
     }
 
-    private func v2ExtensionSidebarSnapshot(params: [String: Any]) -> V2CallResult {
+    func v2ExtensionSidebarSnapshot(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -4380,7 +4403,7 @@ class TerminalController {
     }
 
     @MainActor
-    private func v2ExtensionSidebarWorkspacePayload(
+    func v2ExtensionSidebarWorkspacePayload(
         workspace: Workspace,
         index: Int,
         selected: Bool,
@@ -4425,12 +4448,12 @@ class TerminalController {
         ]
     }
 
-    private func v2ExtensionSidebarRootPath(for workspace: Workspace) -> String? {
+    func v2ExtensionSidebarRootPath(for workspace: Workspace) -> String? {
         let trimmed = workspace.currentDirectory.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }
 
-    private func v2WorkspaceCreate(
+    func v2WorkspaceCreate(
         params: [String: Any],
         tabManager resolvedTabManager: TabManager? = nil
     ) -> V2CallResult {
@@ -4517,7 +4540,7 @@ class TerminalController {
             "surface_ref": v2Ref(kind: .surface, uuid: initialSurfaceId)
         ])
     }
-    private func v2WorkspaceSelect(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceSelect(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -4551,7 +4574,92 @@ class TerminalController {
                 "workspace_ref": v2Ref(kind: .workspace, uuid: wsId)
             ])
     }
-    private func v2WorkspaceCurrent(params: [String: Any]) -> V2CallResult {
+    /// Create a new top tab (layoutTab) inside a workspace — equivalent
+    /// to Cmd+T in the cmux UI, equivalent to `tmux new-window` in the
+    /// tmux mental model. The new top tab gets its own bonsplit tree
+    /// (independent split layout) and its own initial terminal surface.
+    /// Returns `surface_id` of the new tab's initial terminal so the
+    /// caller can immediately split inside it / launch a process there.
+    /// Param `focus` (default true) selects the new top tab visibly.
+    func v2WorkspaceTopTabCreate(params: [String: Any]) -> V2CallResult {
+        guard let tabManager = v2ResolveTabManager(params: params) else {
+            return .err(code: "unavailable", message: "TabManager not available", data: nil)
+        }
+        let focus = v2FocusAllowed(requested: v2Bool(params, "focus") ?? true)
+        let initialInput = v2OptionalTrimmedRawString(params, "initial_input")
+        var result: V2CallResult = .err(code: "internal_error", message: "Failed to create top tab", data: nil)
+        v2MainSync {
+            guard let workspace = v2ResolveWorkspace(params: params, tabManager: tabManager) else {
+                result = .err(code: "not_found", message: "Workspace not found", data: nil)
+                return
+            }
+            workspace.clearSplitZoom()
+            guard let panel = workspace.newTopLevelTerminalTab(focus: focus, initialInput: initialInput) else {
+                return   // result already err
+            }
+            let windowId = v2ResolveWindowId(tabManager: tabManager)
+            result = .ok([
+                "window_id": v2OrNull(windowId?.uuidString),
+                "window_ref": v2Ref(kind: .window, uuid: windowId),
+                "workspace_id": workspace.id.uuidString,
+                "workspace_ref": v2Ref(kind: .workspace, uuid: workspace.id),
+                "surface_id": panel.id.uuidString,
+                "surface_ref": v2Ref(kind: .surface, uuid: panel.id),
+            ])
+        }
+        return result
+    }
+
+    /// Rename a top tab (layoutTab) — the title shown in the
+    /// top-tab-bar. Pass any surface id from the tab + the new title.
+    func v2WorkspaceTopTabRename(params: [String: Any]) -> V2CallResult {
+        guard let tabManager = v2ResolveTabManager(params: params) else {
+            return .err(code: "unavailable", message: "TabManager not available", data: nil)
+        }
+        guard let surfaceId = v2UUID(params, "surface_id") else {
+            return .err(code: "invalid_params", message: "Missing surface_id", data: nil)
+        }
+        guard let titleRaw = v2String(params, "title"),
+              !titleRaw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return .err(code: "invalid_params", message: "Missing or invalid title", data: nil)
+        }
+        let title = titleRaw.trimmingCharacters(in: .whitespacesAndNewlines)
+        var result: V2CallResult = .err(code: "not_found", message: "Surface not found in any top tab", data: nil)
+        v2MainSync {
+            guard let workspace = v2ResolveWorkspace(params: params, tabManager: tabManager) else {
+                return
+            }
+            if workspace.renameTopLevelLayoutTabContaining(panelId: surfaceId, title: title) {
+                result = .ok(["title": title])
+            }
+        }
+        return result
+    }
+
+    /// Close a top tab (layoutTab) by passing any surface id that
+    /// belongs to it. Mirrors the user clicking the top-tab "x" but
+    /// for orchestrator-driven cleanup. Returns ok={closed:true} or
+    /// not_found.
+    func v2WorkspaceTopTabClose(params: [String: Any]) -> V2CallResult {
+        guard let tabManager = v2ResolveTabManager(params: params) else {
+            return .err(code: "unavailable", message: "TabManager not available", data: nil)
+        }
+        guard let surfaceId = v2UUID(params, "surface_id") else {
+            return .err(code: "invalid_params", message: "Missing surface_id", data: nil)
+        }
+        var result: V2CallResult = .err(code: "not_found", message: "Surface not found in any top tab", data: nil)
+        v2MainSync {
+            guard let workspace = v2ResolveWorkspace(params: params, tabManager: tabManager) else {
+                return
+            }
+            if workspace.closeTopLevelLayoutTabContaining(panelId: surfaceId) {
+                result = .ok(["closed": true])
+            }
+        }
+        return result
+    }
+
+    func v2WorkspaceCurrent(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -4580,7 +4688,7 @@ class TerminalController {
             "workspace": wsPayload ?? NSNull()
         ])
     }
-    private func v2WorkspaceClose(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceClose(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -4632,7 +4740,7 @@ class TerminalController {
         )
     }
 
-    private func v2WorkspaceMoveToWindow(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceMoveToWindow(params: [String: Any]) -> V2CallResult {
         guard let wsId = v2UUID(params, "workspace_id") else {
             return .err(code: "invalid_params", message: "Missing or invalid workspace_id", data: nil)
         }
@@ -4670,7 +4778,7 @@ class TerminalController {
         }
         return result
     }
-    private func v2WorkspaceReorder(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceReorder(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -4719,7 +4827,7 @@ class TerminalController {
         return .ok(payload)
     }
 
-    private func v2WorkspaceReorderMany(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceReorderMany(params: [String: Any]) -> V2CallResult {
         let rawOrder = v2WorkspaceReorderManyOrder(params)
         if let invalid = rawOrder.invalidValue {
             return .err(
@@ -4796,7 +4904,7 @@ class TerminalController {
         ])
     }
 
-    private func v2ResolveWorkspaceReorderManyTabManager(params: [String: Any], workspaceIds: [UUID]) -> TabManager? {
+    func v2ResolveWorkspaceReorderManyTabManager(params: [String: Any], workspaceIds: [UUID]) -> TabManager? {
         if v2HasNonNullParam(params, "window_id") {
             return v2ResolveTabManager(params: params)
         }
@@ -4808,7 +4916,7 @@ class TerminalController {
         return v2ResolveTabManager(params: params)
     }
 
-    private func v2WorkspaceReorderManyOrder(_ params: [String: Any]) -> (order: [String], invalidValue: String?) {
+    func v2WorkspaceReorderManyOrder(_ params: [String: Any]) -> (order: [String], invalidValue: String?) {
         if let raw = params["workspace_ids"], !(raw is NSNull) {
             if let workspaceIds = raw as? [String] {
                 return v2NormalizeWorkspaceReorderManyOrder(workspaceIds)
@@ -4849,7 +4957,7 @@ class TerminalController {
         return v2NormalizeWorkspaceReorderManyOrder(refs)
     }
 
-    private func v2NormalizeWorkspaceReorderManyOrder(_ rawItems: [String]) -> (order: [String], invalidValue: String?) {
+    func v2NormalizeWorkspaceReorderManyOrder(_ rawItems: [String]) -> (order: [String], invalidValue: String?) {
         var order: [String] = []
         order.reserveCapacity(rawItems.count)
         for raw in rawItems {
@@ -4862,7 +4970,7 @@ class TerminalController {
         return (order, nil)
     }
 
-    private func v2WorkspaceReorderManyInvalidValueDescription(
+    func v2WorkspaceReorderManyInvalidValueDescription(
         _ value: Any,
         fallback: String
     ) -> String {
@@ -4874,7 +4982,7 @@ class TerminalController {
         return encoded
     }
 
-    private func v2WorkspaceReorderPlanPayload(
+    func v2WorkspaceReorderPlanPayload(
         _ plan: WorkspaceReorderPlanItem,
         windowId: UUID?
     ) -> [String: Any] {
@@ -4923,7 +5031,7 @@ class TerminalController {
         )
     }
 
-    private func v2WorkspacePromptSubmit(params: [String: Any]) -> V2CallResult {
+    func v2WorkspacePromptSubmit(params: [String: Any]) -> V2CallResult {
         guard let workspaceId = v2UUID(params, "workspace_id") else {
             return .err(code: "invalid_params", message: "Missing or invalid workspace_id", data: nil)
         }
@@ -4975,7 +5083,7 @@ class TerminalController {
     // MARK: - Workspace Groups (v2)
 
     @MainActor
-    private func v2WorkspaceGroupPayload(_ group: WorkspaceGroup, tabManager: TabManager) -> [String: Any] {
+    func v2WorkspaceGroupPayload(_ group: WorkspaceGroup, tabManager: TabManager) -> [String: Any] {
         let memberIds = tabManager.tabs.compactMap { $0.groupId == group.id ? $0.id : nil }
         return [
             "id": group.id.uuidString,
@@ -4993,7 +5101,7 @@ class TerminalController {
         ]
     }
 
-    private func v2WorkspaceGroupList(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceGroupList(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -5009,7 +5117,7 @@ class TerminalController {
         ])
     }
 
-    private func v2WorkspaceGroupCreate(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceGroupCreate(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -5142,7 +5250,7 @@ class TerminalController {
         ])
     }
 
-    private func v2WorkspaceGroupUngroup(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceGroupUngroup(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -5164,7 +5272,7 @@ class TerminalController {
         return .ok(["group_id": gid.uuidString])
     }
 
-    private func v2WorkspaceGroupDelete(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceGroupDelete(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -5190,7 +5298,7 @@ class TerminalController {
         ])
     }
 
-    private func v2WorkspaceGroupRename(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceGroupRename(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -5208,7 +5316,7 @@ class TerminalController {
             : .err(code: "not_found", message: "Group not found", data: ["group_id": gid.uuidString])
     }
 
-    private func v2WorkspaceGroupSetCollapsed(params: [String: Any], isCollapsed: Bool) -> V2CallResult {
+    func v2WorkspaceGroupSetCollapsed(params: [String: Any], isCollapsed: Bool) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -5225,7 +5333,7 @@ class TerminalController {
             : .err(code: "not_found", message: "Group not found", data: ["group_id": gid.uuidString])
     }
 
-    private func v2WorkspaceGroupSetPinned(params: [String: Any], isPinned: Bool) -> V2CallResult {
+    func v2WorkspaceGroupSetPinned(params: [String: Any], isPinned: Bool) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -5242,7 +5350,7 @@ class TerminalController {
             : .err(code: "not_found", message: "Group not found", data: ["group_id": gid.uuidString])
     }
 
-    private func v2WorkspaceGroupAdd(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceGroupAdd(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -5282,7 +5390,7 @@ class TerminalController {
             ])
     }
 
-    private func v2WorkspaceGroupRemove(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceGroupRemove(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -5301,7 +5409,7 @@ class TerminalController {
             : .err(code: "not_found", message: "Workspace not in a group", data: ["workspace_id": wsId.uuidString])
     }
 
-    private func v2WorkspaceGroupSetAnchor(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceGroupSetAnchor(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -5326,7 +5434,7 @@ class TerminalController {
             ])
     }
 
-    private func v2WorkspaceGroupNewWorkspace(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceGroupNewWorkspace(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -5381,7 +5489,7 @@ class TerminalController {
         ])
     }
 
-    private func v2WorkspaceGroupSetColor(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceGroupSetColor(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -5401,7 +5509,7 @@ class TerminalController {
             : .err(code: "not_found", message: "Group not found", data: ["group_id": gid.uuidString])
     }
 
-    private func v2WorkspaceGroupSetIcon(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceGroupSetIcon(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -5423,7 +5531,7 @@ class TerminalController {
             : .err(code: "not_found", message: "Group not found", data: ["group_id": gid.uuidString])
     }
 
-    private func v2WorkspaceGroupMove(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceGroupMove(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -5463,7 +5571,7 @@ class TerminalController {
             : .err(code: "invalid_params", message: "Missing or unresolvable target position", data: ["group_id": gid.uuidString])
     }
 
-    private func v2WorkspaceGroupFocus(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceGroupFocus(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -5494,7 +5602,7 @@ class TerminalController {
         ])
     }
 
-    private func v2WorkspaceRename(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceRename(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -5530,7 +5638,7 @@ class TerminalController {
             "title": title
         ])
     }
-    private func v2WorkspaceNext(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceNext(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -5555,7 +5663,7 @@ class TerminalController {
         return result
     }
 
-    private func v2WorkspacePrevious(params: [String: Any]) -> V2CallResult {
+    func v2WorkspacePrevious(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -5580,7 +5688,7 @@ class TerminalController {
         return result
     }
 
-    private func v2WorkspaceLast(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceLast(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -5605,7 +5713,7 @@ class TerminalController {
         return result
     }
 
-    private func v2WorkspaceEqualizeSplits(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceEqualizeSplits(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -5629,7 +5737,7 @@ class TerminalController {
         return result
     }
 
-    private func v2WorkspaceRemoteConfigure(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceRemoteConfigure(params: [String: Any]) -> V2CallResult {
         let requestedWorkspaceId = v2UUID(params, "workspace_id")
         if v2HasNonNullParam(params, "workspace_id"), requestedWorkspaceId == nil {
             return .err(code: "invalid_params", message: "Missing or invalid workspace_id", data: nil)
@@ -5831,7 +5939,7 @@ class TerminalController {
         return result
     }
 
-    private func v2WorkspaceRemoteDisconnect(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceRemoteDisconnect(params: [String: Any]) -> V2CallResult {
         let requestedWorkspaceId = v2UUID(params, "workspace_id")
         if v2HasNonNullParam(params, "workspace_id"), requestedWorkspaceId == nil {
             return .err(code: "invalid_params", message: "Missing or invalid workspace_id", data: nil)
@@ -5869,7 +5977,7 @@ class TerminalController {
         return result
     }
 
-    private func v2WorkspaceRemoteReconnect(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceRemoteReconnect(params: [String: Any]) -> V2CallResult {
         let requestedWorkspaceId = v2UUID(params, "workspace_id")
         if v2HasNonNullParam(params, "workspace_id"), requestedWorkspaceId == nil {
             return .err(code: "invalid_params", message: "Missing or invalid workspace_id", data: nil)
@@ -5915,7 +6023,7 @@ class TerminalController {
         return result
     }
 
-    private func v2WorkspaceRemoteForegroundAuthReady(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceRemoteForegroundAuthReady(params: [String: Any]) -> V2CallResult {
         let requestedWorkspaceId = v2UUID(params, "workspace_id")
         if v2HasNonNullParam(params, "workspace_id"), requestedWorkspaceId == nil {
             return .err(code: "invalid_params", message: "Missing or invalid workspace_id", data: nil)
@@ -5955,7 +6063,7 @@ class TerminalController {
         return result
     }
 
-    private func v2WorkspaceRemoteStatus(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceRemoteStatus(params: [String: Any]) -> V2CallResult {
         let requestedWorkspaceId = v2UUID(params, "workspace_id")
         if v2HasNonNullParam(params, "workspace_id"), requestedWorkspaceId == nil {
             return .err(code: "invalid_params", message: "Missing or invalid workspace_id", data: nil)
@@ -5990,7 +6098,7 @@ class TerminalController {
         return result
     }
 
-    private nonisolated func v2RequestedRemotePTYWorkspaceID(params: [String: Any]) -> (
+    nonisolated func v2RequestedRemotePTYWorkspaceID(params: [String: Any]) -> (
         workspaceId: UUID?,
         error: V2CallResult?
     ) {
@@ -6010,7 +6118,7 @@ class TerminalController {
         return (workspaceId, nil)
     }
 
-    private nonisolated func v2RequestedRemotePTYSurfaceID(params: [String: Any]) -> (
+    nonisolated func v2RequestedRemotePTYSurfaceID(params: [String: Any]) -> (
         surfaceId: UUID?,
         error: V2CallResult?
     ) {
@@ -6030,7 +6138,7 @@ class TerminalController {
         return (surfaceId, nil)
     }
 
-    private nonisolated func v2ResolveRemotePTYTarget(
+    fileprivate nonisolated func v2ResolveRemotePTYTarget(
         params: [String: Any],
         requestedWorkspaceId: UUID?,
         preferredSurfaceId: UUID? = nil
@@ -6150,7 +6258,7 @@ class TerminalController {
         remotePTYControllerAvailabilityCondition.unlock()
     }
 
-    private nonisolated func v2ResolveRemotePTYTargetWaitingForController(
+    fileprivate nonisolated func v2ResolveRemotePTYTargetWaitingForController(
         params: [String: Any],
         requestedWorkspaceId: UUID?,
         preferredSurfaceId: UUID?,
@@ -6192,7 +6300,7 @@ class TerminalController {
         }
     }
 
-    private nonisolated func v2RemotePTYWorkspaceData(workspaceId: UUID) -> [String: Any] {
+    nonisolated func v2RemotePTYWorkspaceData(workspaceId: UUID) -> [String: Any] {
         var workspaceRef: Any = NSNull()
         v2MainSync {
             workspaceRef = v2Ref(kind: .workspace, uuid: workspaceId)
@@ -6203,7 +6311,7 @@ class TerminalController {
         ]
     }
 
-    private nonisolated func v2RemotePTYTargetPayload(_ target: RemotePTYSocketTarget) -> [String: Any] {
+    fileprivate nonisolated func v2RemotePTYTargetPayload(_ target: RemotePTYSocketTarget) -> [String: Any] {
         [
             "window_id": v2OrNull(target.windowId?.uuidString),
             "window_ref": target.windowRef,
@@ -6213,7 +6321,7 @@ class TerminalController {
         ]
     }
 
-    private nonisolated func v2WorkspaceRemotePTYSessions(params: [String: Any]) -> V2CallResult {
+    nonisolated func v2WorkspaceRemotePTYSessions(params: [String: Any]) -> V2CallResult {
         if v2HasNonNullParam(params, "all_workspaces"), v2Bool(params, "all_workspaces") == nil {
             return .err(code: "invalid_params", message: "Missing or invalid all_workspaces", data: nil)
         }
@@ -6306,7 +6414,7 @@ class TerminalController {
         }
     }
 
-    private nonisolated func v2RemotePTYSessionPayload(
+    fileprivate nonisolated func v2RemotePTYSessionPayload(
         _ session: [String: Any],
         target: RemotePTYSocketTarget
     ) -> [String: Any] {
@@ -6319,7 +6427,7 @@ class TerminalController {
         return payload
     }
 
-    private nonisolated func v2WorkspaceRemotePTYClose(params: [String: Any]) -> V2CallResult {
+    nonisolated func v2WorkspaceRemotePTYClose(params: [String: Any]) -> V2CallResult {
         let workspaceSelection = v2RequestedRemotePTYWorkspaceID(params: params)
         if let error = workspaceSelection.error { return error }
         guard let sessionID = v2RawString(params, "session_id")?
@@ -6362,7 +6470,7 @@ class TerminalController {
         }
     }
 
-    private nonisolated func v2WorkspaceRemotePTYDetach(params: [String: Any]) -> V2CallResult {
+    nonisolated func v2WorkspaceRemotePTYDetach(params: [String: Any]) -> V2CallResult {
         let workspaceSelection = v2RequestedRemotePTYWorkspaceID(params: params)
         if let error = workspaceSelection.error { return error }
         guard let sessionID = v2RawString(params, "session_id")?
@@ -6422,7 +6530,7 @@ class TerminalController {
         }
     }
 
-    private nonisolated func v2WorkspaceRemotePTYBridge(params: [String: Any]) -> V2CallResult {
+    nonisolated func v2WorkspaceRemotePTYBridge(params: [String: Any]) -> V2CallResult {
         let workspaceSelection = v2RequestedRemotePTYWorkspaceID(params: params)
         if let error = workspaceSelection.error { return error }
         guard let sessionID = v2RawString(params, "session_id")?
@@ -6494,7 +6602,7 @@ class TerminalController {
         }
     }
 
-    private nonisolated func v2WorkspaceRemotePTYResize(params: [String: Any]) -> V2CallResult {
+    nonisolated func v2WorkspaceRemotePTYResize(params: [String: Any]) -> V2CallResult {
         let workspaceSelection = v2RequestedRemotePTYWorkspaceID(params: params)
         if let error = workspaceSelection.error { return error }
         guard let sessionID = v2RawString(params, "session_id")?
@@ -6563,7 +6671,7 @@ class TerminalController {
         }
     }
 
-    private func v2WorkspaceRemotePTYAttachEnd(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceRemotePTYAttachEnd(params: [String: Any]) -> V2CallResult {
         guard let workspaceId = v2UUID(params, "workspace_id") else {
             return .err(code: "invalid_params", message: "Missing or invalid workspace_id", data: nil)
         }
@@ -6622,7 +6730,7 @@ class TerminalController {
         return result
     }
 
-    private func v2WorkspaceRemoteTerminalSessionEnd(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceRemoteTerminalSessionEnd(params: [String: Any]) -> V2CallResult {
         guard let workspaceId = v2UUID(params, "workspace_id") else {
             return .err(code: "invalid_params", message: "Missing or invalid workspace_id", data: nil)
         }
@@ -6665,7 +6773,7 @@ class TerminalController {
         return result
     }
 
-    private func v2SurfaceReportTTY(params: [String: Any]) -> V2CallResult {
+    func v2SurfaceReportTTY(params: [String: Any]) -> V2CallResult {
         guard let workspaceId = v2UUID(params, "workspace_id") else {
             return .err(code: "invalid_params", message: "Missing or invalid workspace_id", data: nil)
         }
@@ -6747,7 +6855,7 @@ class TerminalController {
         return result
     }
 
-    private func v2SurfaceReportShellState(params: [String: Any]) -> V2CallResult {
+    func v2SurfaceReportShellState(params: [String: Any]) -> V2CallResult {
         guard let workspaceId = v2UUID(params, "workspace_id") else {
             return .err(code: "invalid_params", message: "Missing or invalid workspace_id", data: nil)
         }
@@ -6823,7 +6931,7 @@ class TerminalController {
         ])
     }
 
-    private func v2SurfacePortsKick(params: [String: Any]) -> V2CallResult {
+    func v2SurfacePortsKick(params: [String: Any]) -> V2CallResult {
         guard let workspaceId = v2UUID(params, "workspace_id") else {
             return .err(code: "invalid_params", message: "Missing or invalid workspace_id", data: nil)
         }
@@ -6946,7 +7054,7 @@ class TerminalController {
         return nil
     }
 
-    private func v2WorkspaceAction(params: [String: Any]) -> V2CallResult {
+    func v2WorkspaceAction(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -7139,7 +7247,7 @@ class TerminalController {
         return result
     }
 
-    private func v2TabAction(params: [String: Any]) -> V2CallResult {
+    func v2TabAction(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -7452,7 +7560,7 @@ class TerminalController {
         return tabManager.tabs.first(where: { $0.id == wsId })
     }
 
-    private func v2SurfaceList(params: [String: Any]) -> V2CallResult {
+    func v2SurfaceList(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -7521,7 +7629,7 @@ class TerminalController {
         return .ok(out)
     }
 
-    private func v2SurfaceCurrent(params: [String: Any]) -> V2CallResult {
+    func v2SurfaceCurrent(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -7555,7 +7663,7 @@ class TerminalController {
         return .ok(payload)
     }
 
-    private func v2SurfaceResumeSet(params: [String: Any]) -> V2CallResult {
+    func v2SurfaceResumeSet(params: [String: Any]) -> V2CallResult {
         if let error = v2SurfaceResumeTargetValidationError(params: params) {
             return error
         }
@@ -7602,7 +7710,7 @@ class TerminalController {
         return result
     }
 
-    private func v2SurfaceResumeBindingWithApproval(_ binding: SurfaceResumeBindingSnapshot) -> SurfaceResumeBindingSnapshot {
+    func v2SurfaceResumeBindingWithApproval(_ binding: SurfaceResumeBindingSnapshot) -> SurfaceResumeBindingSnapshot {
         let existingRecord = SurfaceResumeApprovalStore.matchingRecord(for: binding)
         var effectiveBinding = SurfaceResumeApprovalStore.applyingStoredApproval(to: binding)
         if let promptlessCLIManualBinding = SurfaceResumeApprovalStore.applyingPromptlessCLIManualApprovalIfNeeded(
@@ -7625,7 +7733,7 @@ class TerminalController {
         return effectiveBinding
     }
 
-    private func v2ShouldPromptForSurfaceResumeApproval(
+    func v2ShouldPromptForSurfaceResumeApproval(
         binding: SurfaceResumeBindingSnapshot,
         existingRecord: SurfaceResumeApprovalRecord?
     ) -> Bool {
@@ -7637,7 +7745,7 @@ class TerminalController {
         )
     }
 
-    private func v2PromptForSurfaceResumeApproval(
+    func v2PromptForSurfaceResumeApproval(
         binding: SurfaceResumeBindingSnapshot
     ) -> SurfaceResumeApprovalPolicy {
         let alert = NSAlert()
@@ -7669,7 +7777,7 @@ class TerminalController {
         }
     }
 
-    private func v2SurfaceResumeGet(params: [String: Any]) -> V2CallResult {
+    func v2SurfaceResumeGet(params: [String: Any]) -> V2CallResult {
         if let error = v2SurfaceResumeTargetValidationError(params: params) {
             return error
         }
@@ -7694,7 +7802,7 @@ class TerminalController {
         return result
     }
 
-    private func v2SurfaceResumeClear(params: [String: Any]) -> V2CallResult {
+    func v2SurfaceResumeClear(params: [String: Any]) -> V2CallResult {
         if let error = v2SurfaceResumeTargetValidationError(params: params) {
             return error
         }
@@ -7744,14 +7852,14 @@ class TerminalController {
         return result
     }
 
-    private func v2PublicSurfaceResumeSource(_ params: [String: Any]) -> String? {
+    func v2PublicSurfaceResumeSource(_ params: [String: Any]) -> String? {
         let source = v2OptionalTrimmedRawString(params, "source")
         return source == "process-detected" ? "manual" : source
     }
 
     private static let v2WindowUnavailableMessage = "cmux window is not available. Reopen the window and try again."
 
-    private func v2SurfaceResumeTargetValidationError(params: [String: Any]) -> V2CallResult? {
+    func v2SurfaceResumeTargetValidationError(params: [String: Any]) -> V2CallResult? {
         for key in ["window_id", "workspace_id", "surface_id", "tab_id"] {
             if v2HasNonNullParam(params, key), v2UUID(params, key) == nil {
                 return .err(code: "invalid_params", message: "Missing or invalid \(key)", data: nil)
@@ -7761,7 +7869,7 @@ class TerminalController {
     }
 
     @MainActor
-    private func v2ResolveSurfaceResumeTarget(
+    func v2ResolveSurfaceResumeTarget(
         params: [String: Any],
         fallbackTabManager: TabManager
     ) -> (tabManager: TabManager, workspace: Workspace, surfaceId: UUID)? {
@@ -7807,7 +7915,7 @@ class TerminalController {
         return (fallbackTabManager, workspace, surfaceId)
     }
 
-    private func v2SurfaceResumeResult(
+    func v2SurfaceResumeResult(
         tabManager: TabManager,
         workspace: Workspace,
         surfaceId: UUID,
@@ -7830,7 +7938,7 @@ class TerminalController {
         ]
     }
 
-    private func v2SurfaceResumeBindingPayload(_ binding: SurfaceResumeBindingSnapshot?) -> Any {
+    func v2SurfaceResumeBindingPayload(_ binding: SurfaceResumeBindingSnapshot?) -> Any {
         guard let binding else { return NSNull() }
         let effectiveBinding = SurfaceResumeApprovalStore.applyingStoredApproval(to: binding)
         return [
@@ -7848,7 +7956,7 @@ class TerminalController {
         ]
     }
 
-    private func v2SurfaceFocus(params: [String: Any]) -> V2CallResult {
+    func v2SurfaceFocus(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -7884,7 +7992,7 @@ class TerminalController {
         return result
     }
 
-    private func v2AgentSessionOptions(params: [String: Any]) -> (
+    func v2AgentSessionOptions(params: [String: Any]) -> (
         providerID: AgentSessionProviderID,
         rendererKind: AgentSessionRendererKind,
         error: V2CallResult?
@@ -7941,7 +8049,7 @@ class TerminalController {
         return (providerID, rendererKind, nil)
     }
 
-    private func v2SurfaceSplit(params: [String: Any]) -> V2CallResult {
+    func v2SurfaceSplit(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -8048,7 +8156,7 @@ class TerminalController {
         return result
     }
 
-    private func v2SurfaceRespawn(params: [String: Any]) -> V2CallResult {
+    func v2SurfaceRespawn(params: [String: Any]) -> V2CallResult {
         let fallbackTabManager = v2ResolveTabManager(params: params)
 
         let command = v2OptionalTrimmedRawString(params, "command")
@@ -8197,7 +8305,7 @@ class TerminalController {
         return result
     }
 
-    private func v2SurfaceCreate(params: [String: Any]) -> V2CallResult {
+    func v2SurfaceCreate(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -8290,7 +8398,7 @@ class TerminalController {
         return result
     }
 
-    private func v2SurfaceClose(params: [String: Any]) -> V2CallResult {
+    func v2SurfaceClose(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -8327,7 +8435,7 @@ class TerminalController {
         return result
     }
 
-    private func v2SurfaceMove(params: [String: Any]) -> V2CallResult {
+    func v2SurfaceMove(params: [String: Any]) -> V2CallResult {
         guard let surfaceId = v2UUID(params, "surface_id") else {
             return .err(code: "invalid_params", message: "Missing or invalid surface_id", data: nil)
         }
@@ -8476,7 +8584,7 @@ class TerminalController {
         return result
     }
 
-    private func v2SurfaceReorder(params: [String: Any]) -> V2CallResult {
+    func v2SurfaceReorder(params: [String: Any]) -> V2CallResult {
         guard let surfaceId = v2UUID(params, "surface_id") else {
             return .err(code: "invalid_params", message: "Missing or invalid surface_id", data: nil)
         }
@@ -8543,7 +8651,7 @@ class TerminalController {
 
         return result
     }
-    private func v2SurfaceRefresh(params: [String: Any]) -> V2CallResult {
+    func v2SurfaceRefresh(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -8566,7 +8674,7 @@ class TerminalController {
         return result
     }
 
-    private func v2SurfaceHealth(params: [String: Any]) -> V2CallResult {
+    func v2SurfaceHealth(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -8606,7 +8714,7 @@ class TerminalController {
         return .ok(payload)
     }
 
-    private func v2DebugTerminals(params _: [String: Any]) -> V2CallResult {
+    func v2DebugTerminals(params _: [String: Any]) -> V2CallResult {
         var payload: [String: Any]?
 
         v2MainSync {
@@ -8867,7 +8975,7 @@ class TerminalController {
         return .ok(payload)
     }
 
-    private func v2SurfaceSendText(params: [String: Any]) -> V2CallResult {
+    func v2SurfaceSendText(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -8933,7 +9041,7 @@ class TerminalController {
         return result
     }
 
-    private func v2SurfaceSendKey(params: [String: Any]) -> V2CallResult {
+    func v2SurfaceSendKey(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -8989,7 +9097,7 @@ class TerminalController {
         return result
     }
 
-    private func v2SurfaceClearHistory(params: [String: Any]) -> V2CallResult {
+    func v2SurfaceClearHistory(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -9039,7 +9147,7 @@ class TerminalController {
         return result
     }
 
-    private func v2SurfaceReadText(params: [String: Any]) -> V2CallResult {
+    func v2SurfaceReadText(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -9130,7 +9238,7 @@ class TerminalController {
         let message: String
     }
 
-    private func readTerminalTextRawSnapshot(
+    func readTerminalTextRawSnapshot(
         terminalPanel: TerminalPanel,
         includeScrollback: Bool
     ) -> TerminalTextRawSnapshot? {
@@ -9403,7 +9511,7 @@ class TerminalController {
         )
     }
 
-    private func v2SurfaceTriggerFlash(params: [String: Any]) -> V2CallResult {
+    func v2SurfaceTriggerFlash(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -9436,7 +9544,7 @@ class TerminalController {
 
     // MARK: - V2 Pane Methods
 
-    private func v2PaneList(params: [String: Any]) -> V2CallResult {
+    func v2PaneList(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -9514,7 +9622,7 @@ class TerminalController {
         }
         return .ok(payload)
     }
-    private func v2PaneFocus(params: [String: Any]) -> V2CallResult {
+    func v2PaneFocus(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -9546,7 +9654,7 @@ class TerminalController {
         return result
     }
 
-    private func v2PaneSurfaces(params: [String: Any]) -> V2CallResult {
+    func v2PaneSurfaces(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -9597,7 +9705,7 @@ class TerminalController {
         }
         return .ok(payload)
     }
-    private func v2PaneCreate(params: [String: Any]) -> V2CallResult {
+    func v2PaneCreate(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -9694,7 +9802,7 @@ class TerminalController {
         return result
     }
 
-    private func v2PaneResize(params: [String: Any]) -> V2CallResult {
+    func v2PaneResize(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -9834,7 +9942,7 @@ class TerminalController {
         return result
     }
 
-    private func v2PaneSwap(params: [String: Any]) -> V2CallResult {
+    func v2PaneSwap(params: [String: Any]) -> V2CallResult {
         guard let sourcePaneUUID = v2UUID(params, "pane_id") else {
             return .err(code: "invalid_params", message: "Missing or invalid pane_id", data: nil)
         }
@@ -9923,7 +10031,7 @@ class TerminalController {
         return result
     }
 
-    private func v2PaneBreak(params: [String: Any]) -> V2CallResult {
+    func v2PaneBreak(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -10009,7 +10117,7 @@ class TerminalController {
         return result
     }
 
-    private func v2PaneJoin(params: [String: Any]) -> V2CallResult {
+    func v2PaneJoin(params: [String: Any]) -> V2CallResult {
         guard let targetPaneUUID = v2UUID(params, "target_pane_id") else {
             return .err(code: "invalid_params", message: "Missing or invalid target_pane_id", data: nil)
         }
@@ -10039,7 +10147,7 @@ class TerminalController {
         return v2SurfaceMove(params: moveParams)
     }
 
-    private func v2PaneLast(params: [String: Any]) -> V2CallResult {
+    func v2PaneLast(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -10078,7 +10186,7 @@ class TerminalController {
 
     // MARK: - V2 Notification Methods
 
-    private func v2NotificationCreate(params: [String: Any]) -> V2CallResult {
+    func v2NotificationCreate(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -10115,7 +10223,7 @@ class TerminalController {
         return result
     }
 
-    private func v2NotificationCreateForSurface(params: [String: Any]) -> V2CallResult {
+    func v2NotificationCreateForSurface(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -10149,7 +10257,7 @@ class TerminalController {
         return result
     }
 
-    private func v2NotificationCreateForTarget(params: [String: Any]) -> V2CallResult {
+    func v2NotificationCreateForTarget(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -10186,7 +10294,7 @@ class TerminalController {
         return result
     }
 
-    private func v2NotificationList() -> [String: Any] {
+    func v2NotificationList() -> [String: Any] {
         var items: [[String: Any]] = []
         v2MainSync {
             items = TerminalNotificationStore.shared.notifications.map { n in
@@ -10196,7 +10304,7 @@ class TerminalController {
         return ["notifications": items]
     }
 
-    private func v2NotificationDismiss(params: [String: Any]) -> V2CallResult {
+    func v2NotificationDismiss(params: [String: Any]) -> V2CallResult {
         let id = v2UUID(params, "id")
         let allRead = v2Bool(params, "all_read") ?? false
         let selectorCount = (id == nil ? 0 : 1) + (allRead ? 1 : 0)
@@ -10252,7 +10360,7 @@ class TerminalController {
         return .ok(payload)
     }
 
-    private func v2NotificationMarkRead(params: [String: Any]) -> V2CallResult {
+    func v2NotificationMarkRead(params: [String: Any]) -> V2CallResult {
         let id = v2UUID(params, "id")
         let tabId = v2UUID(params, "tab_id") ?? v2UUID(params, "workspace_id")
         let hasSurfaceSelector = v2HasNonNullParam(params, "surface_id")
@@ -10328,7 +10436,7 @@ class TerminalController {
         return .ok(result)
     }
 
-    private func v2NotificationOpen(params: [String: Any]) -> V2CallResult {
+    func v2NotificationOpen(params: [String: Any]) -> V2CallResult {
         guard let id = v2UUID(params, "id") else {
             return .err(
                 code: "invalid_params",
@@ -10367,7 +10475,7 @@ class TerminalController {
         return .ok(payload)
     }
 
-    private func v2NotificationJumpToUnread() -> V2CallResult {
+    func v2NotificationJumpToUnread() -> V2CallResult {
         var openedNotification: TerminalNotification?
         var payload: [String: Any] = [:]
         v2MainSync {
@@ -10410,12 +10518,12 @@ class TerminalController {
         return payload
     }
 
-    private func v2NotificationClear() -> V2CallResult {
+    func v2NotificationClear() -> V2CallResult {
         TerminalMutationBus.shared.enqueueClearAllNotifications()
         return .ok([:])
     }
 
-    private func v2FeedbackOpen(params: [String: Any]) -> V2CallResult {
+    func v2FeedbackOpen(params: [String: Any]) -> V2CallResult {
         let workspaceId = v2UUID(params, "workspace_id")
         let windowId = v2UUID(params, "window_id")
         let shouldActivate = v2FocusAllowed(requested: v2Bool(params, "activate") ?? false)
@@ -10442,7 +10550,7 @@ class TerminalController {
         return .ok(["opened": true])
     }
 
-    private func v2SessionRestorePrevious() -> V2CallResult {
+    func v2SessionRestorePrevious() -> V2CallResult {
         var restored = false
         v2MainSync {
             restored = AppDelegate.shared?.reopenPreviousSession(shouldActivate: false) ?? false
@@ -10460,7 +10568,7 @@ class TerminalController {
         return .ok(["restored": true])
     }
 
-    private func v2SettingsOpen(params: [String: Any]) -> V2CallResult {
+    func v2SettingsOpen(params: [String: Any]) -> V2CallResult {
         let targetRaw = v2String(params, "target")
         let shouldActivate = v2FocusAllowed(requested: v2Bool(params, "activate") ?? true)
 
@@ -10487,7 +10595,7 @@ class TerminalController {
         ])
     }
 
-    private nonisolated func v2FeedbackSubmit(params: [String: Any]) -> V2CallResult {
+    nonisolated func v2FeedbackSubmit(params: [String: Any]) -> V2CallResult {
         guard let email = params["email"] as? String else {
             return .err(code: "invalid_params", message: "Missing email", data: ["field": "email"])
         }
@@ -10537,7 +10645,7 @@ class TerminalController {
 
     // MARK: - V2 Feed (workstream) handlers
 
-    private nonisolated func v2FeedPush(params: [String: Any]) -> V2CallResult {
+    nonisolated func v2FeedPush(params: [String: Any]) -> V2CallResult {
         let waitTimeout: TimeInterval
         if let rawTimeout = params["wait_timeout_seconds"] {
             let seconds: Double?
@@ -10610,7 +10718,7 @@ class TerminalController {
         return .ok(FeedSocketEncoding.payload(for: result))
     }
 
-    private nonisolated func v2ApplyIMessageModeSideEffects(for event: WorkstreamEvent) {
+    nonisolated func v2ApplyIMessageModeSideEffects(for event: WorkstreamEvent) {
         guard event.hookEventName == .userPromptSubmit || event.hookEventName == .stop || event.hookEventName == .subagentStop,
               let rawWorkspaceId = event.workspaceId?.trimmingCharacters(in: .whitespacesAndNewlines),
               !rawWorkspaceId.isEmpty
@@ -10645,7 +10753,7 @@ class TerminalController {
         }
     }
 
-    private nonisolated func v2FeedPermissionReply(params: [String: Any]) -> V2CallResult {
+    nonisolated func v2FeedPermissionReply(params: [String: Any]) -> V2CallResult {
         guard let requestId = params["request_id"] as? String else {
             return .err(
                 code: "invalid_params",
@@ -10669,7 +10777,7 @@ class TerminalController {
         return .ok(["delivered": true])
     }
 
-    private nonisolated func v2FeedQuestionReply(params: [String: Any]) -> V2CallResult {
+    nonisolated func v2FeedQuestionReply(params: [String: Any]) -> V2CallResult {
         guard let requestId = params["request_id"] as? String else {
             return .err(
                 code: "invalid_params",
@@ -10691,7 +10799,7 @@ class TerminalController {
         return .ok(["delivered": true])
     }
 
-    private nonisolated func v2FeedExitPlanReply(params: [String: Any]) -> V2CallResult {
+    nonisolated func v2FeedExitPlanReply(params: [String: Any]) -> V2CallResult {
         guard let requestId = params["request_id"] as? String else {
             return .err(
                 code: "invalid_params",
@@ -10716,7 +10824,7 @@ class TerminalController {
         return .ok(["delivered": true])
     }
 
-    private func v2FeedJump(params: [String: Any]) -> V2CallResult {
+    func v2FeedJump(params: [String: Any]) -> V2CallResult {
         guard let workstreamId = params["workstream_id"] as? String else {
             return .err(
                 code: "invalid_params",
@@ -10734,7 +10842,7 @@ class TerminalController {
         ])
     }
 
-    private func v2FeedList(params: [String: Any]) -> V2CallResult {
+    func v2FeedList(params: [String: Any]) -> V2CallResult {
         let pendingOnly = (params["pending_only"] as? Bool) ?? false
         let items = FeedCoordinator.shared.snapshot(pendingOnly: pendingOnly)
         return .ok([
@@ -10744,7 +10852,7 @@ class TerminalController {
 
     // MARK: - V2 App Focus Methods
 
-    private func v2AppFocusOverride(params: [String: Any]) -> V2CallResult {
+    func v2AppFocusOverride(params: [String: Any]) -> V2CallResult {
         // Accept either:
         // - state: "active" | "inactive" | "clear"
         // - focused: true/false/null
@@ -10773,7 +10881,7 @@ class TerminalController {
         return .ok(["override": overrideVal])
     }
 
-    private func v2AppSimulateActive() -> V2CallResult {
+    func v2AppSimulateActive() -> V2CallResult {
         v2MainSync {
             AppDelegate.shared?.applicationDidBecomeActive(
                 Notification(name: NSApplication.didBecomeActiveNotification)
@@ -10784,7 +10892,7 @@ class TerminalController {
 
     // MARK: - V2 Browser Methods
 
-    private func v2BrowserWithPanel(
+    func v2BrowserWithPanel(
         params: [String: Any],
         _ body: (_ tabManager: TabManager, _ workspace: Workspace, _ surfaceId: UUID, _ browserPanel: BrowserPanel) -> V2CallResult
     ) -> V2CallResult {
@@ -10817,7 +10925,7 @@ class TerminalController {
         return result
     }
 
-    private func v2ResolveBrowserSurfaceId(
+    func v2ResolveBrowserSurfaceId(
         params: [String: Any],
         workspace: Workspace
     ) -> (surfaceId: UUID?, error: V2CallResult?) {
@@ -10843,7 +10951,7 @@ class TerminalController {
         return (workspace.focusedPanelId, nil)
     }
 
-    private func v2JSONLiteral(_ value: Any) -> String {
+    func v2JSONLiteral(_ value: Any) -> String {
         if let data = try? JSONSerialization.data(withJSONObject: [value], options: []),
            let text = String(data: data, encoding: .utf8),
            text.count >= 2 {
@@ -10855,7 +10963,7 @@ class TerminalController {
         return "null"
     }
 
-    private func v2NormalizeJSValue(_ value: Any?) -> Any {
+    func v2NormalizeJSValue(_ value: Any?) -> Any {
         guard let value else { return NSNull() }
         if value is V2BrowserUndefinedSentinel {
             return [
@@ -10940,7 +11048,7 @@ class TerminalController {
         return .success(outcome.0)
     }
 
-    private func v2AwaitCallback<T>(
+    func v2AwaitCallback<T>(
         timeout: TimeInterval,
         start: (@escaping (T) -> Void) -> Void
     ) -> T? {
@@ -11016,7 +11124,7 @@ class TerminalController {
         return result
     }
 
-    private func v2WaitForBrowserCondition(
+    func v2WaitForBrowserCondition(
         _ webView: WKWebView,
         surfaceId: UUID,
         conditionScript: String,
@@ -11101,25 +11209,25 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserSelector(_ params: [String: Any]) -> String? {
+    func v2BrowserSelector(_ params: [String: Any]) -> String? {
         v2String(params, "selector")
             ?? v2String(params, "sel")
             ?? v2String(params, "element_ref")
             ?? v2String(params, "ref")
     }
 
-    private func v2BrowserNotSupported(_ method: String, details: String) -> V2CallResult {
+    func v2BrowserNotSupported(_ method: String, details: String) -> V2CallResult {
         .err(code: "not_supported", message: "\(method) is not supported on WKWebView", data: ["details": details])
     }
 
-    private func v2BrowserAllocateElementRef(surfaceId: UUID, selector: String) -> String {
+    func v2BrowserAllocateElementRef(surfaceId: UUID, selector: String) -> String {
         let ref = "@e\(v2BrowserNextElementOrdinal)"
         v2BrowserNextElementOrdinal += 1
         v2BrowserElementRefs[ref] = V2BrowserElementRefEntry(surfaceId: surfaceId, selector: selector)
         return ref
     }
 
-    private func v2BrowserResolveSelector(_ rawSelector: String, surfaceId: UUID) -> String? {
+    func v2BrowserResolveSelector(_ rawSelector: String, surfaceId: UUID) -> String? {
         let trimmed = rawSelector.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
 
@@ -11136,7 +11244,7 @@ class TerminalController {
         return trimmed
     }
 
-    private func v2BrowserCurrentFrameSelector(surfaceId: UUID) -> String? {
+    func v2BrowserCurrentFrameSelector(surfaceId: UUID) -> String? {
         v2BrowserFrameSelectorBySurface[surfaceId]
     }
 
@@ -11250,7 +11358,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserRecordUnsupportedRequest(surfaceId: UUID, request: [String: Any]) {
+    func v2BrowserRecordUnsupportedRequest(surfaceId: UUID, request: [String: Any]) {
         var logs = v2BrowserUnsupportedNetworkRequestsBySurface[surfaceId] ?? []
         logs.append(request)
         if logs.count > 256 {
@@ -11259,7 +11367,7 @@ class TerminalController {
         v2BrowserUnsupportedNetworkRequestsBySurface[surfaceId] = logs
     }
 
-    private func v2BrowserPendingDialogs(surfaceId: UUID) -> [[String: Any]] {
+    func v2BrowserPendingDialogs(surfaceId: UUID) -> [[String: Any]] {
         let queue = v2BrowserDialogQueueBySurface[surfaceId] ?? []
         return queue.enumerated().map { index, d in
             [
@@ -11295,7 +11403,7 @@ class TerminalController {
         return first
     }
 
-    private func v2BrowserEnsureInitScriptsApplied(surfaceId: UUID, browserPanel: BrowserPanel) {
+    func v2BrowserEnsureInitScriptsApplied(surfaceId: UUID, browserPanel: BrowserPanel) {
         let scripts = v2BrowserInitScriptsBySurface[surfaceId] ?? []
         let styles = v2BrowserInitStylesBySurface[surfaceId] ?? []
         guard !scripts.isEmpty || !styles.isEmpty else { return }
@@ -11328,7 +11436,7 @@ class TerminalController {
         }
     }
 
-    private func v2PNGData(from image: NSImage) -> Data? {
+    func v2PNGData(from image: NSImage) -> Data? {
         guard let tiff = image.tiffRepresentation,
               let rep = NSBitmapImageRep(data: tiff) else { return nil }
         return rep.representation(using: .png, properties: [:])
@@ -11365,7 +11473,7 @@ class TerminalController {
 
     // MARK: - Markdown
 
-    private func v2MarkdownOpen(params: [String: Any]) -> V2CallResult {
+    func v2MarkdownOpen(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -11455,7 +11563,7 @@ class TerminalController {
 
     // MARK: - Project
 
-    private func v2ProjectOpen(params: [String: Any]) -> V2CallResult {
+    func v2ProjectOpen(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -11510,7 +11618,7 @@ class TerminalController {
 
     // MARK: - Project state driving (debug RPC for autonomous iteration)
 
-    private func v2ResolveProjectPanel(params: [String: Any]) -> (Workspace, ProjectPanel)? {
+    func v2ResolveProjectPanel(params: [String: Any]) -> (Workspace, ProjectPanel)? {
         guard let tabManager = v2ResolveTabManager(params: params) else { return nil }
         var result: (Workspace, ProjectPanel)?
         v2MainSync {
@@ -11523,7 +11631,7 @@ class TerminalController {
         return result
     }
 
-    private func v2ProjectSetTab(params: [String: Any]) -> V2CallResult {
+    func v2ProjectSetTab(params: [String: Any]) -> V2CallResult {
         guard let (_, panel) = v2ResolveProjectPanel(params: params) else {
             return .err(code: "not_found", message: "Project surface not found", data: nil)
         }
@@ -11535,7 +11643,7 @@ class TerminalController {
         return .ok(["tab": tab.rawValue])
     }
 
-    private func v2ProjectSetScheme(params: [String: Any]) -> V2CallResult {
+    func v2ProjectSetScheme(params: [String: Any]) -> V2CallResult {
         guard let (_, panel) = v2ResolveProjectPanel(params: params) else {
             return .err(code: "not_found", message: "Project surface not found", data: nil)
         }
@@ -11544,7 +11652,7 @@ class TerminalController {
         return .ok(["scheme": name ?? ""])
     }
 
-    private func v2ProjectSetConfiguration(params: [String: Any]) -> V2CallResult {
+    func v2ProjectSetConfiguration(params: [String: Any]) -> V2CallResult {
         guard let (_, panel) = v2ResolveProjectPanel(params: params) else {
             return .err(code: "not_found", message: "Project surface not found", data: nil)
         }
@@ -11553,7 +11661,7 @@ class TerminalController {
         return .ok(["configuration": name ?? ""])
     }
 
-    private func v2ProjectSetSelectedTarget(params: [String: Any]) -> V2CallResult {
+    func v2ProjectSetSelectedTarget(params: [String: Any]) -> V2CallResult {
         guard let (_, panel) = v2ResolveProjectPanel(params: params) else {
             return .err(code: "not_found", message: "Project surface not found", data: nil)
         }
@@ -11572,7 +11680,7 @@ class TerminalController {
         return .ok(["target_name": name ?? "", "target_id": resolvedID ?? ""])
     }
 
-    private func v2ProjectSetSelectedFile(params: [String: Any]) -> V2CallResult {
+    func v2ProjectSetSelectedFile(params: [String: Any]) -> V2CallResult {
         guard let (_, panel) = v2ResolveProjectPanel(params: params) else {
             return .err(code: "not_found", message: "Project surface not found", data: nil)
         }
@@ -11581,7 +11689,7 @@ class TerminalController {
         return .ok(["selected_file": path ?? ""])
     }
 
-    private func v2ProjectSetSettingsFilter(params: [String: Any]) -> V2CallResult {
+    func v2ProjectSetSettingsFilter(params: [String: Any]) -> V2CallResult {
         guard let (_, panel) = v2ResolveProjectPanel(params: params) else {
             return .err(code: "not_found", message: "Project surface not found", data: nil)
         }
@@ -11590,7 +11698,7 @@ class TerminalController {
         return .ok(["filter": text])
     }
 
-    private func v2ProjectGetState(params: [String: Any]) -> V2CallResult {
+    func v2ProjectGetState(params: [String: Any]) -> V2CallResult {
         guard let (_, panel) = v2ResolveProjectPanel(params: params) else {
             return .err(code: "not_found", message: "Project surface not found", data: nil)
         }
@@ -11631,7 +11739,7 @@ class TerminalController {
 
     // MARK: - Browser
 
-    private func v2BrowserOpenSplit(params: [String: Any]) -> V2CallResult {
+    func v2BrowserOpenSplit(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -11763,7 +11871,7 @@ class TerminalController {
         return result
     }
 
-    private func v2IsDiffViewerURL(_ url: URL?) -> Bool {
+    func v2IsDiffViewerURL(_ url: URL?) -> Bool {
         guard let url else { return false }
         if url.scheme?.lowercased() == CmuxDiffViewerURLSchemeHandler.scheme {
             return true
@@ -11773,7 +11881,7 @@ class TerminalController {
             url.fragment == "cmux-diff-viewer"
     }
 
-    private func v2RegisterDiffViewerURLIfNeeded(params: [String: Any], url: URL?) -> V2CallResult? {
+    func v2RegisterDiffViewerURLIfNeeded(params: [String: Any], url: URL?) -> V2CallResult? {
         guard let url,
               url.scheme == CmuxDiffViewerURLSchemeHandler.scheme else {
             return nil
@@ -11803,7 +11911,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserNavigate(params: [String: Any]) -> V2CallResult {
+    func v2BrowserNavigate(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -11833,19 +11941,19 @@ class TerminalController {
         return result
     }
 
-    private func v2BrowserBack(params: [String: Any]) -> V2CallResult {
+    func v2BrowserBack(params: [String: Any]) -> V2CallResult {
         return v2BrowserNavSimple(params: params, action: "back")
     }
 
-    private func v2BrowserForward(params: [String: Any]) -> V2CallResult {
+    func v2BrowserForward(params: [String: Any]) -> V2CallResult {
         return v2BrowserNavSimple(params: params, action: "forward")
     }
 
-    private func v2BrowserReload(params: [String: Any]) -> V2CallResult {
+    func v2BrowserReload(params: [String: Any]) -> V2CallResult {
         return v2BrowserNavSimple(params: params, action: "reload")
     }
 
-    private func v2BrowserNotFoundDiagnostics(
+    func v2BrowserNotFoundDiagnostics(
         surfaceId: UUID,
         browserPanel: BrowserPanel,
         selector: String
@@ -11938,7 +12046,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserElementNotFoundResult(
+    func v2BrowserElementNotFoundResult(
         actionName: String,
         selector: String,
         attempts: Int,
@@ -11965,7 +12073,7 @@ class TerminalController {
         return .err(code: "not_found", message: message, data: data)
     }
 
-    private func v2BrowserAppendPostSnapshot(
+    func v2BrowserAppendPostSnapshot(
         params: [String: Any],
         surfaceId: UUID,
         payload: inout [String: Any]
@@ -12015,7 +12123,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserSelectorAction(
+    func v2BrowserSelectorAction(
         params: [String: Any],
         actionName: String,
         scriptBuilder: (_ selectorLiteral: String) -> String
@@ -12098,7 +12206,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserEval(params: [String: Any]) -> V2CallResult {
+    func v2BrowserEval(params: [String: Any]) -> V2CallResult {
         guard let script = v2String(params, "script") else {
             return .err(code: "invalid_params", message: "Missing script", data: nil)
         }
@@ -12118,7 +12226,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserSnapshot(params: [String: Any]) -> V2CallResult {
+    func v2BrowserSnapshot(params: [String: Any]) -> V2CallResult {
         let interactiveOnly = v2Bool(params, "interactive") ?? false
         let includeCursor = v2Bool(params, "cursor") ?? false
         let compact = v2Bool(params, "compact") ?? false
@@ -12399,7 +12507,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserWait(params: [String: Any]) -> V2CallResult {
+    func v2BrowserWait(params: [String: Any]) -> V2CallResult {
         let timeoutMs = max(1, v2Int(params, "timeout_ms") ?? 5_000)
         let selectorRaw = v2BrowserSelector(params)
 
@@ -12494,7 +12602,7 @@ class TerminalController {
         return .err(code: "timeout", message: "Condition not met before timeout", data: ["timeout_ms": timeoutMs])
     }
 
-    private func v2BrowserClick(params: [String: Any]) -> V2CallResult {
+    func v2BrowserClick(params: [String: Any]) -> V2CallResult {
         v2BrowserSelectorAction(params: params, actionName: "click") { selectorLiteral in
             """
             (() => {
@@ -12510,7 +12618,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserDblClick(params: [String: Any]) -> V2CallResult {
+    func v2BrowserDblClick(params: [String: Any]) -> V2CallResult {
         v2BrowserSelectorAction(params: params, actionName: "dblclick") { selectorLiteral in
             """
             (() => {
@@ -12529,7 +12637,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserHover(params: [String: Any]) -> V2CallResult {
+    func v2BrowserHover(params: [String: Any]) -> V2CallResult {
         v2BrowserSelectorAction(params: params, actionName: "hover") { selectorLiteral in
             """
             (() => {
@@ -12544,7 +12652,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserFocusElement(params: [String: Any]) -> V2CallResult {
+    func v2BrowserFocusElement(params: [String: Any]) -> V2CallResult {
         v2BrowserSelectorAction(params: params, actionName: "focus") { selectorLiteral in
             """
             (() => {
@@ -12643,7 +12751,7 @@ class TerminalController {
     }
     """
 
-    private func v2BrowserType(params: [String: Any]) -> V2CallResult {
+    func v2BrowserType(params: [String: Any]) -> V2CallResult {
         guard let text = v2String(params, "text") else {
             return .err(code: "invalid_params", message: "Missing text", data: nil)
         }
@@ -12682,7 +12790,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserFill(params: [String: Any]) -> V2CallResult {
+    func v2BrowserFill(params: [String: Any]) -> V2CallResult {
         // `fill` must allow empty strings so callers can clear existing input values.
         guard let text = v2RawString(params, "text") ?? v2RawString(params, "value") else {
             return .err(code: "invalid_params", message: "Missing text/value", data: nil)
@@ -12721,7 +12829,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserPress(params: [String: Any]) -> V2CallResult {
+    func v2BrowserPress(params: [String: Any]) -> V2CallResult {
         guard let key = v2String(params, "key") else {
             return .err(code: "invalid_params", message: "Missing key", data: nil)
         }
@@ -12774,7 +12882,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserKeyDown(params: [String: Any]) -> V2CallResult {
+    func v2BrowserKeyDown(params: [String: Any]) -> V2CallResult {
         guard let key = v2String(params, "key") else {
             return .err(code: "invalid_params", message: "Missing key", data: nil)
         }
@@ -12806,7 +12914,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserKeyUp(params: [String: Any]) -> V2CallResult {
+    func v2BrowserKeyUp(params: [String: Any]) -> V2CallResult {
         guard let key = v2String(params, "key") else {
             return .err(code: "invalid_params", message: "Missing key", data: nil)
         }
@@ -12838,7 +12946,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserCheck(params: [String: Any], checked: Bool) -> V2CallResult {
+    func v2BrowserCheck(params: [String: Any], checked: Bool) -> V2CallResult {
         v2BrowserSelectorAction(params: params, actionName: checked ? "check" : "uncheck") { selectorLiteral in
             """
             (() => {
@@ -12857,7 +12965,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserSelect(params: [String: Any]) -> V2CallResult {
+    func v2BrowserSelect(params: [String: Any]) -> V2CallResult {
         let selectedValue = v2String(params, "value") ?? v2String(params, "text")
         guard let selectedValue else {
             return .err(code: "invalid_params", message: "Missing value", data: nil)
@@ -12879,7 +12987,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserScroll(params: [String: Any]) -> V2CallResult {
+    func v2BrowserScroll(params: [String: Any]) -> V2CallResult {
         let dx = v2Int(params, "dx") ?? 0
         let dy = v2Int(params, "dy") ?? 0
         let selectorRaw = v2BrowserSelector(params)
@@ -12942,7 +13050,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserScrollIntoView(params: [String: Any]) -> V2CallResult {
+    func v2BrowserScrollIntoView(params: [String: Any]) -> V2CallResult {
         v2BrowserSelectorAction(params: params, actionName: "scroll_into_view") { selectorLiteral in
             """
             (() => {
@@ -12955,7 +13063,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserScreenshot(params: [String: Any]) -> V2CallResult {
+    func v2BrowserScreenshot(params: [String: Any]) -> V2CallResult {
         let resolved: (
             error: V2CallResult?,
             workspaceId: UUID?,
@@ -13040,7 +13148,7 @@ class TerminalController {
         return .ok(result)
     }
 
-    private func v2BrowserGetText(params: [String: Any]) -> V2CallResult {
+    func v2BrowserGetText(params: [String: Any]) -> V2CallResult {
         v2BrowserSelectorAction(params: params, actionName: "get.text") { selectorLiteral in
             """
             (() => {
@@ -13052,7 +13160,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserGetHTML(params: [String: Any]) -> V2CallResult {
+    func v2BrowserGetHTML(params: [String: Any]) -> V2CallResult {
         v2BrowserSelectorAction(params: params, actionName: "get.html") { selectorLiteral in
             """
             (() => {
@@ -13064,7 +13172,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserGetValue(params: [String: Any]) -> V2CallResult {
+    func v2BrowserGetValue(params: [String: Any]) -> V2CallResult {
         v2BrowserSelectorAction(params: params, actionName: "get.value") { selectorLiteral in
             """
             (() => {
@@ -13077,7 +13185,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserGetAttr(params: [String: Any]) -> V2CallResult {
+    func v2BrowserGetAttr(params: [String: Any]) -> V2CallResult {
         guard let attr = v2String(params, "attr") ?? v2String(params, "name") else {
             return .err(code: "invalid_params", message: "Missing attr/name", data: nil)
         }
@@ -13093,7 +13201,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserGetTitle(params: [String: Any]) -> V2CallResult {
+    func v2BrowserGetTitle(params: [String: Any]) -> V2CallResult {
         v2BrowserWithPanel(params: params) { _, ws, surfaceId, browserPanel in
             .ok([
                 "workspace_id": ws.id.uuidString,
@@ -13105,7 +13213,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserGetCount(params: [String: Any]) -> V2CallResult {
+    func v2BrowserGetCount(params: [String: Any]) -> V2CallResult {
         guard let selectorRaw = v2BrowserSelector(params) else {
             return .err(code: "invalid_params", message: "Missing selector", data: nil)
         }
@@ -13131,7 +13239,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserGetBox(params: [String: Any]) -> V2CallResult {
+    func v2BrowserGetBox(params: [String: Any]) -> V2CallResult {
         v2BrowserSelectorAction(params: params, actionName: "get.box") { selectorLiteral in
             """
             (() => {
@@ -13144,7 +13252,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserGetStyles(params: [String: Any]) -> V2CallResult {
+    func v2BrowserGetStyles(params: [String: Any]) -> V2CallResult {
         let property = v2String(params, "property")
         return v2BrowserSelectorAction(params: params, actionName: "get.styles") { selectorLiteral in
             if let property {
@@ -13177,7 +13285,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserIsVisible(params: [String: Any]) -> V2CallResult {
+    func v2BrowserIsVisible(params: [String: Any]) -> V2CallResult {
         v2BrowserSelectorAction(params: params, actionName: "is.visible") { selectorLiteral in
             """
             (() => {
@@ -13192,7 +13300,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserIsEnabled(params: [String: Any]) -> V2CallResult {
+    func v2BrowserIsEnabled(params: [String: Any]) -> V2CallResult {
         v2BrowserSelectorAction(params: params, actionName: "is.enabled") { selectorLiteral in
             """
             (() => {
@@ -13205,7 +13313,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserIsChecked(params: [String: Any]) -> V2CallResult {
+    func v2BrowserIsChecked(params: [String: Any]) -> V2CallResult {
         v2BrowserSelectorAction(params: params, actionName: "is.checked") { selectorLiteral in
             """
             (() => {
@@ -13219,7 +13327,7 @@ class TerminalController {
     }
 
 
-    private func v2BrowserNavSimple(params: [String: Any], action: String) -> V2CallResult {
+    func v2BrowserNavSimple(params: [String: Any], action: String) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -13259,7 +13367,7 @@ class TerminalController {
     /// GUI "act on the focused browser" semantics: an explicit `surface_id` browser wins,
     /// otherwise the workspace's focused browser, otherwise the sole browser in the workspace.
     @MainActor
-    private func v2ResolveBrowserPanelForFocusedAction(
+    func v2ResolveBrowserPanelForFocusedAction(
         workspace: Workspace,
         params: [String: Any]
     ) -> (panel: BrowserPanel, surfaceId: UUID)? {
@@ -13284,7 +13392,7 @@ class TerminalController {
 
     /// Builds the standard workspace/surface/window identity payload for a browser action.
     @MainActor
-    private func v2BrowserActionPayload(
+    func v2BrowserActionPayload(
         workspace: Workspace,
         surfaceId: UUID,
         tabManager: TabManager,
@@ -13307,7 +13415,7 @@ class TerminalController {
     /// v2UUID returns nil for both an absent param and a present-but-unresolvable handle (e.g. a
     /// stale `surface:2`/`workspace:99` ref), so a supplied target must not be treated as omitted
     /// and silently fall back to the focused/selected context. Returns nil when all are valid.
-    private func v2RejectUnresolvedHandles(_ params: [String: Any], _ keys: [String]) -> V2CallResult? {
+    func v2RejectUnresolvedHandles(_ params: [String: Any], _ keys: [String]) -> V2CallResult? {
         // Use v2HasNonNullParam (not v2String) for presence: v2String trims empties to nil, so an
         // empty/whitespace explicit handle would otherwise look absent and silently fall back.
         for key in keys where v2HasNonNullParam(params, key) && v2UUID(params, key) == nil {
@@ -13316,7 +13424,7 @@ class TerminalController {
         return nil
     }
 
-    private func v2BrowserReactGrabToggle(params: [String: Any]) -> V2CallResult {
+    func v2BrowserReactGrabToggle(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -13343,7 +13451,7 @@ class TerminalController {
         return result
     }
 
-    private func v2BrowserDevToolsToggle(params: [String: Any]) -> V2CallResult {
+    func v2BrowserDevToolsToggle(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -13361,7 +13469,7 @@ class TerminalController {
         return result
     }
 
-    private func v2BrowserConsoleShow(params: [String: Any]) -> V2CallResult {
+    func v2BrowserConsoleShow(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -13379,7 +13487,7 @@ class TerminalController {
         return result
     }
 
-    private func v2BrowserFocusModeSet(params: [String: Any]) -> V2CallResult {
+    func v2BrowserFocusModeSet(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -13424,7 +13532,7 @@ class TerminalController {
         return result
     }
 
-    private func v2BrowserZoomSet(params: [String: Any]) -> V2CallResult {
+    func v2BrowserZoomSet(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -13451,7 +13559,7 @@ class TerminalController {
         return result
     }
 
-    private func v2BrowserHistoryClear(params: [String: Any]) -> V2CallResult {
+    func v2BrowserHistoryClear(params: [String: Any]) -> V2CallResult {
         // Mirrors the View menu's "Clear Browser History", which clears the default profile's
         // history store (BrowserHistoryStore.shared). Per-profile history stores are NOT touched,
         // so the response reports scope=default to avoid a false "everything cleared" signal.
@@ -13466,7 +13574,7 @@ class TerminalController {
         return .ok(["cleared": true, "scope": "default_profile"])
     }
 
-    private func v2BrowserGetURL(params: [String: Any]) -> V2CallResult {
+    func v2BrowserGetURL(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -13487,7 +13595,7 @@ class TerminalController {
         return result
     }
 
-    private func v2BrowserFocusWebView(params: [String: Any]) -> V2CallResult {
+    func v2BrowserFocusWebView(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -13531,7 +13639,7 @@ class TerminalController {
         return result
     }
 
-    private func v2BrowserIsWebViewFocused(params: [String: Any]) -> V2CallResult {
+    func v2BrowserIsWebViewFocused(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -13554,7 +13662,7 @@ class TerminalController {
         return .ok(["focused": focused])
     }
 
-    private func v2BrowserFindWithScript(
+    func v2BrowserFindWithScript(
         params: [String: Any],
         actionName: String,
         finderBody: String,
@@ -13640,7 +13748,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserFindRole(params: [String: Any]) -> V2CallResult {
+    func v2BrowserFindRole(params: [String: Any]) -> V2CallResult {
         guard let role = (v2String(params, "role") ?? v2String(params, "value"))?.lowercased() else {
             return .err(code: "invalid_params", message: "Missing role", data: nil)
         }
@@ -13708,7 +13816,7 @@ class TerminalController {
         )
     }
 
-    private func v2BrowserFindText(params: [String: Any]) -> V2CallResult {
+    func v2BrowserFindText(params: [String: Any]) -> V2CallResult {
         guard let text = (v2String(params, "text") ?? v2String(params, "value"))?.lowercased() else {
             return .err(code: "invalid_params", message: "Missing text", data: nil)
         }
@@ -13736,7 +13844,7 @@ class TerminalController {
         )
     }
 
-    private func v2BrowserFindLabel(params: [String: Any]) -> V2CallResult {
+    func v2BrowserFindLabel(params: [String: Any]) -> V2CallResult {
         guard let label = (v2String(params, "label") ?? v2String(params, "text") ?? v2String(params, "value"))?.lowercased() else {
             return .err(code: "invalid_params", message: "Missing label", data: nil)
         }
@@ -13769,7 +13877,7 @@ class TerminalController {
         )
     }
 
-    private func v2BrowserFindPlaceholder(params: [String: Any]) -> V2CallResult {
+    func v2BrowserFindPlaceholder(params: [String: Any]) -> V2CallResult {
         guard let placeholder = (v2String(params, "placeholder") ?? v2String(params, "text") ?? v2String(params, "value"))?.lowercased() else {
             return .err(code: "invalid_params", message: "Missing placeholder", data: nil)
         }
@@ -13796,7 +13904,7 @@ class TerminalController {
         )
     }
 
-    private func v2BrowserFindAlt(params: [String: Any]) -> V2CallResult {
+    func v2BrowserFindAlt(params: [String: Any]) -> V2CallResult {
         guard let alt = (v2String(params, "alt") ?? v2String(params, "text") ?? v2String(params, "value"))?.lowercased() else {
             return .err(code: "invalid_params", message: "Missing alt text", data: nil)
         }
@@ -13823,7 +13931,7 @@ class TerminalController {
         )
     }
 
-    private func v2BrowserFindTitle(params: [String: Any]) -> V2CallResult {
+    func v2BrowserFindTitle(params: [String: Any]) -> V2CallResult {
         guard let title = (v2String(params, "title") ?? v2String(params, "text") ?? v2String(params, "value"))?.lowercased() else {
             return .err(code: "invalid_params", message: "Missing title", data: nil)
         }
@@ -13850,7 +13958,7 @@ class TerminalController {
         )
     }
 
-    private func v2BrowserFindTestId(params: [String: Any]) -> V2CallResult {
+    func v2BrowserFindTestId(params: [String: Any]) -> V2CallResult {
         guard let testId = v2String(params, "testid") ?? v2String(params, "test_id") ?? v2String(params, "value") else {
             return .err(code: "invalid_params", message: "Missing testid", data: nil)
         }
@@ -13877,7 +13985,7 @@ class TerminalController {
         )
     }
 
-    private func v2BrowserFindFirst(params: [String: Any]) -> V2CallResult {
+    func v2BrowserFindFirst(params: [String: Any]) -> V2CallResult {
         guard let selectorRaw = v2BrowserSelector(params) else {
             return .err(code: "invalid_params", message: "Missing selector", data: nil)
         }
@@ -13917,7 +14025,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserFindLast(params: [String: Any]) -> V2CallResult {
+    func v2BrowserFindLast(params: [String: Any]) -> V2CallResult {
         guard let selectorRaw = v2BrowserSelector(params) else {
             return .err(code: "invalid_params", message: "Missing selector", data: nil)
         }
@@ -13962,7 +14070,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserFindNth(params: [String: Any]) -> V2CallResult {
+    func v2BrowserFindNth(params: [String: Any]) -> V2CallResult {
         guard let selectorRaw = v2BrowserSelector(params) else {
             return .err(code: "invalid_params", message: "Missing selector", data: nil)
         }
@@ -14015,7 +14123,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserFrameSelect(params: [String: Any]) -> V2CallResult {
+    func v2BrowserFrameSelect(params: [String: Any]) -> V2CallResult {
         guard let selectorRaw = v2BrowserSelector(params) else {
             return .err(code: "invalid_params", message: "Missing selector", data: nil)
         }
@@ -14065,7 +14173,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserFrameMain(params: [String: Any]) -> V2CallResult {
+    func v2BrowserFrameMain(params: [String: Any]) -> V2CallResult {
         return v2BrowserWithPanel(params: params) { _, ws, surfaceId, _ in
             v2BrowserFrameSelectorBySurface.removeValue(forKey: surfaceId)
             return .ok([
@@ -14078,7 +14186,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserEnsureTelemetryHooks(surfaceId _: UUID, browserPanel: BrowserPanel) {
+    func v2BrowserEnsureTelemetryHooks(surfaceId _: UUID, browserPanel: BrowserPanel) {
         _ = v2RunJavaScript(
             browserPanel.webView,
             script: BrowserPanel.telemetryHookBootstrapScriptSource,
@@ -14087,7 +14195,7 @@ class TerminalController {
         )
     }
 
-    private func v2BrowserEnsureDialogHooks(browserPanel: BrowserPanel) {
+    func v2BrowserEnsureDialogHooks(browserPanel: BrowserPanel) {
         _ = v2RunJavaScript(
             browserPanel.webView,
             script: BrowserPanel.dialogTelemetryHookBootstrapScriptSource,
@@ -14096,7 +14204,7 @@ class TerminalController {
         )
     }
 
-    private func v2BrowserDialogRespond(params: [String: Any], accept: Bool) -> V2CallResult {
+    func v2BrowserDialogRespond(params: [String: Any], accept: Bool) -> V2CallResult {
         return v2BrowserWithPanel(params: params) { _, ws, surfaceId, browserPanel in
             v2BrowserEnsureTelemetryHooks(surfaceId: surfaceId, browserPanel: browserPanel)
             v2BrowserEnsureDialogHooks(browserPanel: browserPanel)
@@ -14163,7 +14271,7 @@ class TerminalController {
         case watcherSetupFailed(errnoCode: Int32)
     }
 
-    private nonisolated func v2BrowserDownloadWaitOnSocketWorker(params: [String: Any]) -> V2CallResult {
+    nonisolated func v2BrowserDownloadWaitOnSocketWorker(params: [String: Any]) -> V2CallResult {
         let requestedTimeoutMs = max(
             1,
             Self.v2WorkerInt(params, "timeout_ms") ??
@@ -14327,7 +14435,7 @@ class TerminalController {
         }
     }
 
-    private func v2PopBrowserDownloadEvent(surfaceId: UUID) -> [String: Any]? {
+    func v2PopBrowserDownloadEvent(surfaceId: UUID) -> [String: Any]? {
         guard let first = v2BrowserDownloadEventsBySurface[surfaceId]?.first else {
             return nil
         }
@@ -14398,7 +14506,7 @@ class TerminalController {
         return ready ? .ready : .timeout
     }
 
-    private nonisolated func v2WaitForDownloadEvent(surfaceId: UUID, timeout: TimeInterval) -> [String: Any]? {
+    nonisolated func v2WaitForDownloadEvent(surfaceId: UUID, timeout: TimeInterval) -> [String: Any]? {
         let lock = NSLock()
         let semaphore = DispatchSemaphore(value: 0)
         nonisolated(unsafe) var finished = false
@@ -14442,7 +14550,7 @@ class TerminalController {
         return event
     }
 
-    private func v2BrowserImportDialog(params: [String: Any]) -> V2CallResult {
+    func v2BrowserImportDialog(params: [String: Any]) -> V2CallResult {
         let scope: BrowserImportScope?
         if params.keys.contains("scope") {
             guard let raw = v2String(params, "scope")?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
@@ -14517,7 +14625,7 @@ class TerminalController {
         ])
     }
 
-    private func v2BrowserCookieDict(_ cookie: HTTPCookie) -> [String: Any] {
+    func v2BrowserCookieDict(_ cookie: HTTPCookie) -> [String: Any] {
         var out: [String: Any] = [
             "name": cookie.name,
             "value": cookie.value,
@@ -14534,7 +14642,7 @@ class TerminalController {
         return out
     }
 
-    private func v2BrowserCookieStoreAll(_ store: WKHTTPCookieStore, timeout: TimeInterval = 3.0) -> [HTTPCookie]? {
+    func v2BrowserCookieStoreAll(_ store: WKHTTPCookieStore, timeout: TimeInterval = 3.0) -> [HTTPCookie]? {
         v2AwaitCallback(timeout: timeout) { finish in
             store.getAllCookies { items in
                 finish(items)
@@ -14542,7 +14650,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserCookieStoreSet(_ store: WKHTTPCookieStore, cookie: HTTPCookie, timeout: TimeInterval = 3.0) -> Bool {
+    func v2BrowserCookieStoreSet(_ store: WKHTTPCookieStore, cookie: HTTPCookie, timeout: TimeInterval = 3.0) -> Bool {
         v2AwaitCallback(timeout: timeout) { finish in
             store.setCookie(cookie) {
                 finish(true)
@@ -14550,7 +14658,7 @@ class TerminalController {
         } ?? false
     }
 
-    private func v2BrowserCookieStoreDelete(_ store: WKHTTPCookieStore, cookie: HTTPCookie, timeout: TimeInterval = 3.0) -> Bool {
+    func v2BrowserCookieStoreDelete(_ store: WKHTTPCookieStore, cookie: HTTPCookie, timeout: TimeInterval = 3.0) -> Bool {
         v2AwaitCallback(timeout: timeout) { finish in
             store.delete(cookie) {
                 finish(true)
@@ -14558,7 +14666,7 @@ class TerminalController {
         } ?? false
     }
 
-    private func v2BrowserCookieFromObject(_ raw: [String: Any], fallbackURL: URL?) -> HTTPCookie? {
+    func v2BrowserCookieFromObject(_ raw: [String: Any], fallbackURL: URL?) -> HTTPCookie? {
         var props: [HTTPCookiePropertyKey: Any] = [:]
         if let name = raw["name"] as? String {
             props[.name] = name
@@ -14597,7 +14705,7 @@ class TerminalController {
         return HTTPCookie(properties: props)
     }
 
-    private func v2BrowserCookiesGet(params: [String: Any]) -> V2CallResult {
+    func v2BrowserCookiesGet(params: [String: Any]) -> V2CallResult {
         return v2BrowserWithPanel(params: params) { _, ws, surfaceId, browserPanel in
             let store = browserPanel.webView.configuration.websiteDataStore.httpCookieStore
             guard var cookies = v2BrowserCookieStoreAll(store) else {
@@ -14624,7 +14732,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserCookiesSet(params: [String: Any]) -> V2CallResult {
+    func v2BrowserCookiesSet(params: [String: Any]) -> V2CallResult {
         return v2BrowserWithPanel(params: params) { _, ws, surfaceId, browserPanel in
             let store = browserPanel.webView.configuration.websiteDataStore.httpCookieStore
             let fallbackURL = browserPanel.currentURL
@@ -14672,7 +14780,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserCookiesClear(params: [String: Any]) -> V2CallResult {
+    func v2BrowserCookiesClear(params: [String: Any]) -> V2CallResult {
         return v2BrowserWithPanel(params: params) { _, ws, surfaceId, browserPanel in
             let store = browserPanel.webView.configuration.websiteDataStore.httpCookieStore
             guard let cookies = v2BrowserCookieStoreAll(store) else {
@@ -14706,12 +14814,12 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserStorageType(_ params: [String: Any]) -> String {
+    func v2BrowserStorageType(_ params: [String: Any]) -> String {
         let type = (v2String(params, "storage") ?? v2String(params, "type") ?? "local").lowercased()
         return (type == "session") ? "session" : "local"
     }
 
-    private func v2BrowserStorageGet(params: [String: Any]) -> V2CallResult {
+    func v2BrowserStorageGet(params: [String: Any]) -> V2CallResult {
         let storageType = v2BrowserStorageType(params)
         let key = v2String(params, "key")
         return v2BrowserWithPanel(params: params) { _, ws, surfaceId, browserPanel in
@@ -14756,7 +14864,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserStorageSet(params: [String: Any]) -> V2CallResult {
+    func v2BrowserStorageSet(params: [String: Any]) -> V2CallResult {
         let storageType = v2BrowserStorageType(params)
         guard let key = v2String(params, "key") else {
             return .err(code: "invalid_params", message: "Missing key", data: nil)
@@ -14801,7 +14909,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserStorageClear(params: [String: Any]) -> V2CallResult {
+    func v2BrowserStorageClear(params: [String: Any]) -> V2CallResult {
         let storageType = v2BrowserStorageType(params)
         return v2BrowserWithPanel(params: params) { _, ws, surfaceId, browserPanel in
             let typeLiteral = v2JSONLiteral(storageType)
@@ -14835,7 +14943,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserTabList(params: [String: Any]) -> V2CallResult {
+    func v2BrowserTabList(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -14873,7 +14981,7 @@ class TerminalController {
         return .ok(payload)
     }
 
-    private func v2BrowserTabNew(params: [String: Any]) -> V2CallResult {
+    func v2BrowserTabNew(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -14923,7 +15031,7 @@ class TerminalController {
         return result
     }
 
-    private func v2BrowserTabSwitch(params: [String: Any]) -> V2CallResult {
+    func v2BrowserTabSwitch(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -14965,7 +15073,7 @@ class TerminalController {
         return result
     }
 
-    private func v2BrowserTabClose(params: [String: Any]) -> V2CallResult {
+    func v2BrowserTabClose(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -15021,7 +15129,7 @@ class TerminalController {
         return result
     }
 
-    private func v2BrowserConsoleList(params: [String: Any]) -> V2CallResult {
+    func v2BrowserConsoleList(params: [String: Any]) -> V2CallResult {
         return v2BrowserWithPanel(params: params) { _, ws, surfaceId, browserPanel in
             v2BrowserEnsureTelemetryHooks(surfaceId: surfaceId, browserPanel: browserPanel)
             let clear = v2Bool(params, "clear") ?? false
@@ -15053,13 +15161,13 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserConsoleClear(params: [String: Any]) -> V2CallResult {
+    func v2BrowserConsoleClear(params: [String: Any]) -> V2CallResult {
         var withClear = params
         withClear["clear"] = true
         return v2BrowserConsoleList(params: withClear)
     }
 
-    private func v2BrowserErrorsList(params: [String: Any]) -> V2CallResult {
+    func v2BrowserErrorsList(params: [String: Any]) -> V2CallResult {
         return v2BrowserWithPanel(params: params) { _, ws, surfaceId, browserPanel in
             v2BrowserEnsureTelemetryHooks(surfaceId: surfaceId, browserPanel: browserPanel)
             let clear = v2Bool(params, "clear") ?? false
@@ -15091,7 +15199,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserHighlight(params: [String: Any]) -> V2CallResult {
+    func v2BrowserHighlight(params: [String: Any]) -> V2CallResult {
         return v2BrowserSelectorAction(params: params, actionName: "highlight") { selectorLiteral in
             """
             (() => {
@@ -15111,7 +15219,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserStateSave(params: [String: Any]) -> V2CallResult {
+    func v2BrowserStateSave(params: [String: Any]) -> V2CallResult {
         guard let path = v2String(params, "path") else {
             return .err(code: "invalid_params", message: "Missing path", data: nil)
         }
@@ -15171,7 +15279,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserStateLoad(params: [String: Any]) -> V2CallResult {
+    func v2BrowserStateLoad(params: [String: Any]) -> V2CallResult {
         guard let path = v2String(params, "path") else {
             return .err(code: "invalid_params", message: "Missing path", data: nil)
         }
@@ -15241,7 +15349,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserAddInitScript(params: [String: Any]) -> V2CallResult {
+    func v2BrowserAddInitScript(params: [String: Any]) -> V2CallResult {
         guard let script = v2String(params, "script") ?? v2String(params, "content") else {
             return .err(code: "invalid_params", message: "Missing script", data: nil)
         }
@@ -15264,7 +15372,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserAddScript(params: [String: Any]) -> V2CallResult {
+    func v2BrowserAddScript(params: [String: Any]) -> V2CallResult {
         guard let script = v2String(params, "script") ?? v2String(params, "content") else {
             return .err(code: "invalid_params", message: "Missing script", data: nil)
         }
@@ -15284,7 +15392,7 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserAddStyle(params: [String: Any]) -> V2CallResult {
+    func v2BrowserAddStyle(params: [String: Any]) -> V2CallResult {
         guard let css = v2String(params, "css") ?? v2String(params, "style") ?? v2String(params, "content") else {
             return .err(code: "invalid_params", message: "Missing css/style content", data: nil)
         }
@@ -15317,41 +15425,41 @@ class TerminalController {
         }
     }
 
-    private func v2BrowserViewportSet(params _: [String: Any]) -> V2CallResult {
+    func v2BrowserViewportSet(params _: [String: Any]) -> V2CallResult {
         v2BrowserNotSupported("browser.viewport.set", details: "WKWebView does not provide a per-tab programmable viewport emulation API equivalent to CDP")
     }
 
-    private func v2BrowserGeolocationSet(params _: [String: Any]) -> V2CallResult {
+    func v2BrowserGeolocationSet(params _: [String: Any]) -> V2CallResult {
         v2BrowserNotSupported("browser.geolocation.set", details: "WKWebView does not expose per-tab geolocation spoofing hooks equivalent to Playwright/CDP")
     }
 
-    private func v2BrowserOfflineSet(params _: [String: Any]) -> V2CallResult {
+    func v2BrowserOfflineSet(params _: [String: Any]) -> V2CallResult {
         v2BrowserNotSupported("browser.offline.set", details: "WKWebView does not expose reliable per-tab offline emulation")
     }
 
-    private func v2BrowserTraceStart(params _: [String: Any]) -> V2CallResult {
+    func v2BrowserTraceStart(params _: [String: Any]) -> V2CallResult {
         v2BrowserNotSupported("browser.trace.start", details: "Playwright trace artifacts are not available on WKWebView")
     }
 
-    private func v2BrowserTraceStop(params _: [String: Any]) -> V2CallResult {
+    func v2BrowserTraceStop(params _: [String: Any]) -> V2CallResult {
         v2BrowserNotSupported("browser.trace.stop", details: "Playwright trace artifacts are not available on WKWebView")
     }
 
-    private func v2BrowserNetworkRoute(params: [String: Any]) -> V2CallResult {
+    func v2BrowserNetworkRoute(params: [String: Any]) -> V2CallResult {
         if let surfaceId = v2UUID(params, "surface_id") {
             v2BrowserRecordUnsupportedRequest(surfaceId: surfaceId, request: ["action": "route", "params": params])
         }
         return v2BrowserNotSupported("browser.network.route", details: "WKWebView does not provide CDP-style request interception/mocking")
     }
 
-    private func v2BrowserNetworkUnroute(params: [String: Any]) -> V2CallResult {
+    func v2BrowserNetworkUnroute(params: [String: Any]) -> V2CallResult {
         if let surfaceId = v2UUID(params, "surface_id") {
             v2BrowserRecordUnsupportedRequest(surfaceId: surfaceId, request: ["action": "unroute", "params": params])
         }
         return v2BrowserNotSupported("browser.network.unroute", details: "WKWebView does not provide CDP-style request interception/mocking")
     }
 
-    private func v2BrowserNetworkRequests(params: [String: Any]) -> V2CallResult {
+    func v2BrowserNetworkRequests(params: [String: Any]) -> V2CallResult {
         if let surfaceId = v2UUID(params, "surface_id") {
             let items = v2BrowserUnsupportedNetworkRequestsBySurface[surfaceId] ?? []
             return .err(code: "not_supported", message: "browser.network.requests is not supported on WKWebView", data: [
@@ -15362,30 +15470,30 @@ class TerminalController {
         return v2BrowserNotSupported("browser.network.requests", details: "Request interception logs are unavailable without CDP network hooks")
     }
 
-    private func v2BrowserScreencastStart(params _: [String: Any]) -> V2CallResult {
+    func v2BrowserScreencastStart(params _: [String: Any]) -> V2CallResult {
         v2BrowserNotSupported("browser.screencast.start", details: "WKWebView does not expose CDP screencast streaming")
     }
 
-    private func v2BrowserScreencastStop(params _: [String: Any]) -> V2CallResult {
+    func v2BrowserScreencastStop(params _: [String: Any]) -> V2CallResult {
         v2BrowserNotSupported("browser.screencast.stop", details: "WKWebView does not expose CDP screencast streaming")
     }
 
-    private func v2BrowserInputMouse(params _: [String: Any]) -> V2CallResult {
+    func v2BrowserInputMouse(params _: [String: Any]) -> V2CallResult {
         v2BrowserNotSupported("browser.input_mouse", details: "Raw CDP mouse injection is unavailable; use browser.click/hover/scroll")
     }
 
-    private func v2BrowserInputKeyboard(params _: [String: Any]) -> V2CallResult {
+    func v2BrowserInputKeyboard(params _: [String: Any]) -> V2CallResult {
         v2BrowserNotSupported("browser.input_keyboard", details: "Raw CDP keyboard injection is unavailable; use browser.press/keydown/keyup")
     }
 
-    private func v2BrowserInputTouch(params _: [String: Any]) -> V2CallResult {
+    func v2BrowserInputTouch(params _: [String: Any]) -> V2CallResult {
         v2BrowserNotSupported("browser.input_touch", details: "Raw CDP touch injection is unavailable on WKWebView")
     }
 
 #if DEBUG
     // MARK: - V2 Debug / Test-only Methods
 
-    private func v2DebugShortcutSet(params: [String: Any]) -> V2CallResult {
+    func v2DebugShortcutSet(params: [String: Any]) -> V2CallResult {
         guard let name = v2String(params, "name"),
               let combo = v2String(params, "combo") else {
             return .err(code: "invalid_params", message: "Missing name/combo", data: nil)
@@ -15396,7 +15504,7 @@ class TerminalController {
             : .err(code: "internal_error", message: resp, data: nil)
     }
 
-    private func v2DebugShortcutSimulate(params: [String: Any]) -> V2CallResult {
+    func v2DebugShortcutSimulate(params: [String: Any]) -> V2CallResult {
         guard let combo = v2String(params, "combo") else {
             return .err(code: "invalid_params", message: "Missing combo", data: nil)
         }
@@ -15406,7 +15514,7 @@ class TerminalController {
             : .err(code: "internal_error", message: resp, data: nil)
     }
 
-    private func v2DebugType(params: [String: Any]) -> V2CallResult {
+    func v2DebugType(params: [String: Any]) -> V2CallResult {
         guard let text = params["text"] as? String else {
             return .err(code: "invalid_params", message: "Missing text", data: nil)
         }
@@ -15440,7 +15548,7 @@ class TerminalController {
     }
 
 #if DEBUG
-    private func v2DebugTextBoxInlineFixture(params: [String: Any]) -> V2CallResult {
+    func v2DebugTextBoxInlineFixture(params: [String: Any]) -> V2CallResult {
         guard let tabManager else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -15496,7 +15604,7 @@ class TerminalController {
         return result
     }
 
-    private func v2DebugTextBoxInteract(params: [String: Any]) -> V2CallResult {
+    func v2DebugTextBoxInteract(params: [String: Any]) -> V2CallResult {
         guard let tabManager else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -15542,12 +15650,12 @@ class TerminalController {
     }
 #endif
 
-    private func v2DebugActivateApp() -> V2CallResult {
+    func v2DebugActivateApp() -> V2CallResult {
         let resp = activateApp()
         return resp == "OK" ? .ok([:]) : .err(code: "internal_error", message: resp, data: nil)
     }
 
-    private func v2DebugToggleCommandPalette(params: [String: Any]) -> V2CallResult {
+    func v2DebugToggleCommandPalette(params: [String: Any]) -> V2CallResult {
         let requestedWindowId = v2UUID(params, "window_id")
         var result: V2CallResult = .ok([:])
         v2MainSync {
@@ -15570,7 +15678,7 @@ class TerminalController {
         return result
     }
 
-    private func v2DebugOpenCommandPaletteRenameTabInput(params: [String: Any]) -> V2CallResult {
+    func v2DebugOpenCommandPaletteRenameTabInput(params: [String: Any]) -> V2CallResult {
         let requestedWindowId = v2UUID(params, "window_id")
         var result: V2CallResult = .ok([:])
         v2MainSync {
@@ -15596,7 +15704,7 @@ class TerminalController {
         return result
     }
 
-    private func v2DebugCommandPaletteVisible(params: [String: Any]) -> V2CallResult {
+    func v2DebugCommandPaletteVisible(params: [String: Any]) -> V2CallResult {
         guard let windowId = v2UUID(params, "window_id") else {
             return .err(code: "invalid_params", message: "Missing or invalid window_id", data: nil)
         }
@@ -15611,7 +15719,7 @@ class TerminalController {
         ])
     }
 
-    private func v2DebugCommandPaletteSelection(params: [String: Any]) -> V2CallResult {
+    func v2DebugCommandPaletteSelection(params: [String: Any]) -> V2CallResult {
         guard let windowId = v2UUID(params, "window_id") else {
             return .err(code: "invalid_params", message: "Missing or invalid window_id", data: nil)
         }
@@ -15629,7 +15737,7 @@ class TerminalController {
         ])
     }
 
-    private func v2DebugCommandPaletteResults(params: [String: Any]) -> V2CallResult {
+    func v2DebugCommandPaletteResults(params: [String: Any]) -> V2CallResult {
         guard let windowId = v2UUID(params, "window_id") else {
             return .err(code: "invalid_params", message: "Missing or invalid window_id", data: nil)
         }
@@ -15667,7 +15775,7 @@ class TerminalController {
         ])
     }
 
-    private func v2DebugCommandPaletteRenameInputInteraction(params: [String: Any]) -> V2CallResult {
+    func v2DebugCommandPaletteRenameInputInteraction(params: [String: Any]) -> V2CallResult {
         let requestedWindowId = v2UUID(params, "window_id")
         var result: V2CallResult = .ok([:])
         v2MainSync {
@@ -15693,7 +15801,7 @@ class TerminalController {
         return result
     }
 
-    private func v2DebugCommandPaletteRenameInputDeleteBackward(params: [String: Any]) -> V2CallResult {
+    func v2DebugCommandPaletteRenameInputDeleteBackward(params: [String: Any]) -> V2CallResult {
         let requestedWindowId = v2UUID(params, "window_id")
         var result: V2CallResult = .ok([:])
         v2MainSync {
@@ -15719,7 +15827,7 @@ class TerminalController {
         return result
     }
 
-    private func v2DebugCommandPaletteRenameInputSelection(params: [String: Any]) -> V2CallResult {
+    func v2DebugCommandPaletteRenameInputSelection(params: [String: Any]) -> V2CallResult {
         guard let windowId = v2UUID(params, "window_id") else {
             return .err(code: "invalid_params", message: "Missing or invalid window_id", data: nil)
         }
@@ -15760,7 +15868,7 @@ class TerminalController {
         return result
     }
 
-    private func v2DebugCommandPaletteRenameInputSelectAll(params: [String: Any]) -> V2CallResult {
+    func v2DebugCommandPaletteRenameInputSelectAll(params: [String: Any]) -> V2CallResult {
         if let rawEnabled = params["enabled"] {
             guard let enabled = rawEnabled as? Bool else {
                 return .err(
@@ -15787,7 +15895,7 @@ class TerminalController {
         ])
     }
 
-    private func v2DebugBrowserAddressBarFocused(params: [String: Any]) -> V2CallResult {
+    func v2DebugBrowserAddressBarFocused(params: [String: Any]) -> V2CallResult {
         let requestedSurfaceId = v2UUID(params, "surface_id") ?? v2UUID(params, "panel_id")
         var focusedSurfaceId: UUID?
         v2MainSync {
@@ -15813,7 +15921,7 @@ class TerminalController {
         return .ok(payload)
     }
 
-    private func v2DebugBrowserFavicon(params: [String: Any]) -> V2CallResult {
+    func v2DebugBrowserFavicon(params: [String: Any]) -> V2CallResult {
         return v2BrowserWithPanel(params: params) { _, ws, surfaceId, browserPanel in
             let pngData = browserPanel.faviconPNGData
             return .ok([
@@ -15829,7 +15937,7 @@ class TerminalController {
     }
 
 #if DEBUG
-    private func v2DebugRightSidebarFocus(params: [String: Any]) -> V2CallResult {
+    func v2DebugRightSidebarFocus(params: [String: Any]) -> V2CallResult {
         let modeName = v2String(params, "mode") ?? RightSidebarMode.dock.rawValue
         guard let mode = RightSidebarMode(rawValue: modeName) else {
             return .err(code: "invalid_params", message: "Invalid right sidebar mode", data: ["mode": modeName])
@@ -15916,7 +16024,7 @@ class TerminalController {
     }
 #endif
 
-    private func v2DebugSidebarVisible(params: [String: Any]) -> V2CallResult {
+    func v2DebugSidebarVisible(params: [String: Any]) -> V2CallResult {
         guard let windowId = v2UUID(params, "window_id") else {
             return .err(code: "invalid_params", message: "Missing or invalid window_id", data: nil)
         }
@@ -15938,7 +16046,7 @@ class TerminalController {
         ])
     }
 
-    private func v2DebugIsTerminalFocused(params: [String: Any]) -> V2CallResult {
+    func v2DebugIsTerminalFocused(params: [String: Any]) -> V2CallResult {
         guard let surfaceId = v2String(params, "surface_id") else {
             return .err(code: "invalid_params", message: "Missing surface_id", data: nil)
         }
@@ -15950,7 +16058,7 @@ class TerminalController {
     }
 
 #if DEBUG
-    private func v2DebugSimulateTerminalFileDrop(params: [String: Any]) -> V2CallResult {
+    func v2DebugSimulateTerminalFileDrop(params: [String: Any]) -> V2CallResult {
         guard let tabManager else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
@@ -16061,7 +16169,7 @@ class TerminalController {
     /// Runs on the socket worker (see `ControlCommandExecutionPolicy`) so the
     /// inter-tick `Thread.sleep` doesn't block the main actor — every
     /// dragState mutation hops to main via `v2MainSync`.
-    private nonisolated func v2DebugSidebarSimulateDrag(params: [String: Any]) -> V2CallResult {
+    nonisolated func v2DebugSidebarSimulateDrag(params: [String: Any]) -> V2CallResult {
         // Dispatched on the socket worker (see ControlCommandExecutionPolicy) so the
         // inter-tick Thread.sleep doesn't block the main actor. All parameter
         // resolution (including workspace:N -> UUID ref-resolution) and the
@@ -16274,7 +16382,7 @@ class TerminalController {
     }
 #endif
 
-    private func v2DebugReadTerminalText(params: [String: Any]) -> V2CallResult {
+    func v2DebugReadTerminalText(params: [String: Any]) -> V2CallResult {
         let surfaceArg = v2String(params, "surface_id") ?? ""
         let resp = readTerminalText(surfaceArg)
         guard resp.hasPrefix("OK ") else {
@@ -16284,7 +16392,7 @@ class TerminalController {
         return .ok(["base64": b64])
     }
 
-    private func v2DebugRenderStats(params: [String: Any]) -> V2CallResult {
+    func v2DebugRenderStats(params: [String: Any]) -> V2CallResult {
         let surfaceArg = v2String(params, "surface_id") ?? ""
         let resp = renderStats(surfaceArg)
         guard resp.hasPrefix("OK ") else {
@@ -16298,7 +16406,7 @@ class TerminalController {
         return .ok(["stats": obj])
     }
 
-    private func v2DebugTerminalMouse(params: [String: Any]) -> V2CallResult {
+    func v2DebugTerminalMouse(params: [String: Any]) -> V2CallResult {
         guard let action = v2String(params, "action"),
               let fx = (params["fx"] as? NSNumber)?.doubleValue,
               let fy = (params["fy"] as? NSNumber)?.doubleValue else {
@@ -16318,7 +16426,7 @@ class TerminalController {
         return .ok(["delivered": true])
     }
 
-    private func v2DebugTerminalSelection(params: [String: Any]) -> V2CallResult {
+    func v2DebugTerminalSelection(params: [String: Any]) -> V2CallResult {
         let surfaceArg = v2String(params, "surface_id") ?? ""
         let resp = terminalSelectionDebug(surfaceArg)
         guard resp.hasPrefix("OK ") else {
@@ -16331,7 +16439,7 @@ class TerminalController {
         return .ok(["active": active, "base64": b64])
     }
 
-    private func v2DebugLayout() -> V2CallResult {
+    func v2DebugLayout() -> V2CallResult {
         let resp = layoutDebug()
         guard resp.hasPrefix("OK ") else {
             return .err(code: "internal_error", message: resp, data: nil)
@@ -16344,38 +16452,38 @@ class TerminalController {
         return .ok(["layout": obj])
     }
 
-    private func v2DebugPortalStats() -> V2CallResult {
+    func v2DebugPortalStats() -> V2CallResult {
         let payload: [String: Any] = v2MainSync {
             TerminalWindowPortalRegistry.debugPortalStats()
         }
         return .ok(payload)
     }
 
-    private func v2DebugBonsplitUnderflowCount() -> V2CallResult {
+    func v2DebugBonsplitUnderflowCount() -> V2CallResult {
         let resp = bonsplitUnderflowCount()
         guard resp.hasPrefix("OK ") else { return .err(code: "internal_error", message: resp, data: nil) }
         let n = Int(resp.split(separator: " ").last ?? "0") ?? 0
         return .ok(["count": n])
     }
 
-    private func v2DebugResetBonsplitUnderflowCount() -> V2CallResult {
+    func v2DebugResetBonsplitUnderflowCount() -> V2CallResult {
         let resp = resetBonsplitUnderflowCount()
         return resp == "OK" ? .ok([:]) : .err(code: "internal_error", message: resp, data: nil)
     }
 
-    private func v2DebugEmptyPanelCount() -> V2CallResult {
+    func v2DebugEmptyPanelCount() -> V2CallResult {
         let resp = emptyPanelCount()
         guard resp.hasPrefix("OK ") else { return .err(code: "internal_error", message: resp, data: nil) }
         let n = Int(resp.split(separator: " ").last ?? "0") ?? 0
         return .ok(["count": n])
     }
 
-    private func v2DebugResetEmptyPanelCount() -> V2CallResult {
+    func v2DebugResetEmptyPanelCount() -> V2CallResult {
         let resp = resetEmptyPanelCount()
         return resp == "OK" ? .ok([:]) : .err(code: "internal_error", message: resp, data: nil)
     }
 
-    private func v2DebugFocusNotification(params: [String: Any]) -> V2CallResult {
+    func v2DebugFocusNotification(params: [String: Any]) -> V2CallResult {
         guard let wsId = v2String(params, "workspace_id") else {
             return .err(code: "invalid_params", message: "Missing workspace_id", data: nil)
         }
@@ -16385,7 +16493,7 @@ class TerminalController {
         return resp == "OK" ? .ok([:]) : .err(code: "internal_error", message: resp, data: nil)
     }
 
-    private func v2DebugFlashCount(params: [String: Any]) -> V2CallResult {
+    func v2DebugFlashCount(params: [String: Any]) -> V2CallResult {
         guard let surfaceId = v2String(params, "surface_id") else {
             return .err(code: "invalid_params", message: "Missing surface_id", data: nil)
         }
@@ -16395,12 +16503,12 @@ class TerminalController {
         return .ok(["count": n])
     }
 
-    private func v2DebugResetFlashCounts() -> V2CallResult {
+    func v2DebugResetFlashCounts() -> V2CallResult {
         let resp = resetFlashCounts()
         return resp == "OK" ? .ok([:]) : .err(code: "internal_error", message: resp, data: nil)
     }
 
-    private func v2DebugPanelSnapshot(params: [String: Any]) -> V2CallResult {
+    func v2DebugPanelSnapshot(params: [String: Any]) -> V2CallResult {
         guard let surfaceId = v2String(params, "surface_id") else {
             return .err(code: "invalid_params", message: "Missing surface_id", data: nil)
         }
@@ -16422,7 +16530,7 @@ class TerminalController {
         ])
     }
 
-    private func v2DebugPanelSnapshotReset(params: [String: Any]) -> V2CallResult {
+    func v2DebugPanelSnapshotReset(params: [String: Any]) -> V2CallResult {
         guard let surfaceId = v2String(params, "surface_id") else {
             return .err(code: "invalid_params", message: "Missing surface_id", data: nil)
         }
@@ -16430,7 +16538,7 @@ class TerminalController {
         return resp == "OK" ? .ok([:]) : .err(code: "internal_error", message: resp, data: nil)
     }
 
-    private func v2DebugScreenshot(params: [String: Any]) -> V2CallResult {
+    func v2DebugScreenshot(params: [String: Any]) -> V2CallResult {
         let label = v2String(params, "label") ?? ""
         let resp = captureScreenshot(label)
         guard resp.hasPrefix("OK ") else {
@@ -16704,7 +16812,7 @@ class TerminalController {
     }
 
 #if DEBUG
-    private func setShortcut(_ args: String) -> String {
+    func setShortcut(_ args: String) -> String {
         let trimmed = args.trimmingCharacters(in: .whitespacesAndNewlines)
         let parts = trimmed.split(separator: " ", maxSplits: 1).map(String.init)
         guard parts.count == 2 else {
@@ -16784,7 +16892,7 @@ class TerminalController {
         }
     }
 
-    private func simulateShortcut(_ args: String) -> String {
+    func simulateShortcut(_ args: String) -> String {
         let combo = args.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !combo.isEmpty else {
             return "ERROR: Usage: simulate_shortcut <combo>"
@@ -16857,7 +16965,7 @@ class TerminalController {
         return result
     }
 
-    private func activateApp() -> String {
+    func activateApp() -> String {
         v2MainSync {
             _ = AppDelegate.shared?.activateMainWindowFromSocket()
         }
@@ -17317,7 +17425,7 @@ class TerminalController {
         return out
     }
 
-    private static func responderChainContains(_ start: NSResponder?, target: NSResponder) -> Bool {
+    static func responderChainContains(_ start: NSResponder?, target: NSResponder) -> Bool {
         var r = start
         var hops = 0
         while let cur = r, hops < 64 {
@@ -17328,7 +17436,7 @@ class TerminalController {
         return false
     }
 
-    private func isTerminalFocused(_ args: String) -> String {
+    func isTerminalFocused(_ args: String) -> String {
         guard let tabManager = tabManager else { return "ERROR: TabManager not available" }
 
         let panelArg = args.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -17352,7 +17460,7 @@ class TerminalController {
         return result
     }
 
-    private func readTerminalText(_ args: String) -> String {
+    func readTerminalText(_ args: String) -> String {
         readTerminalTextBase64(surfaceArg: args)
     }
 
@@ -17462,7 +17570,7 @@ class TerminalController {
         let isFirstResponder: Bool
     }
 
-    private func renderStats(_ args: String) -> String {
+    func renderStats(_ args: String) -> String {
         guard let tabManager = tabManager else { return "ERROR: TabManager not available" }
 
         let panelArg = args.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -17684,7 +17792,7 @@ class TerminalController {
 #endif
 
     #if !DEBUG
-    private static func responderChainContains(_ start: NSResponder?, target: NSResponder) -> Bool {
+    static func responderChainContains(_ start: NSResponder?, target: NSResponder) -> Bool {
         var responder = start
         var hops = 0
         while let current = responder, hops < 64 {
@@ -18152,7 +18260,7 @@ class TerminalController {
     }
 
 #if DEBUG
-    private func focusFromNotification(_ args: String) -> String {
+    func focusFromNotification(_ args: String) -> String {
         guard let tabManager else { return "ERROR: TabManager not available" }
         let trimmed = args.trimmingCharacters(in: .whitespacesAndNewlines)
         let parts = trimmed.split(separator: " ", maxSplits: 1).map(String.init)
@@ -18177,7 +18285,7 @@ class TerminalController {
         return result
     }
 
-    private func flashCount(_ args: String) -> String {
+    func flashCount(_ args: String) -> String {
         guard let tabManager else { return "ERROR: TabManager not available" }
         let trimmed = args.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return "ERROR: Missing surface id or index" }
@@ -18199,7 +18307,7 @@ class TerminalController {
         return result
     }
 
-    private func resetFlashCounts() -> String {
+    func resetFlashCounts() -> String {
         v2MainSync {
             GhosttySurfaceScrollView.resetFlashCounts()
         }
@@ -18219,7 +18327,7 @@ class TerminalController {
     private static let panelSnapshotLock = NSLock()
     private static var panelSnapshots: [UUID: PanelSnapshotState] = [:]
 
-    private func panelSnapshotReset(_ args: String) -> String {
+    func panelSnapshotReset(_ args: String) -> String {
         guard let tabManager else { return "ERROR: TabManager not available" }
         let panelArg = args.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !panelArg.isEmpty else { return "ERROR: Usage: panel_snapshot_reset <panel_id|idx>" }
@@ -18309,7 +18417,7 @@ class TerminalController {
         return changed
     }
 
-    private func panelSnapshot(_ args: String) -> String {
+    func panelSnapshot(_ args: String) -> String {
         guard let tabManager = tabManager else { return "ERROR: TabManager not available" }
         let trimmed = args.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return "ERROR: Usage: panel_snapshot <panel_id|idx> [label]" }
@@ -18419,7 +18527,7 @@ class TerminalController {
         let keyWindowNumber: Int?
     }
 
-    private func layoutDebug() -> String {
+    func layoutDebug() -> String {
         guard let tabManager else { return "ERROR: TabManager not available" }
 
         var result = "ERROR: No tab selected"
@@ -18596,7 +18704,7 @@ class TerminalController {
         return result
     }
 
-    private func emptyPanelCount() -> String {
+    func emptyPanelCount() -> String {
         var result = "OK 0"
         v2MainSync {
             result = "OK \(DebugUIEventCounters.emptyPanelAppearCount)"
@@ -18604,14 +18712,14 @@ class TerminalController {
         return result
     }
 
-    private func resetEmptyPanelCount() -> String {
+    func resetEmptyPanelCount() -> String {
         v2MainSync {
             DebugUIEventCounters.resetEmptyPanelAppearCount()
         }
         return "OK"
     }
 
-    private func bonsplitUnderflowCount() -> String {
+    func bonsplitUnderflowCount() -> String {
         var result = "OK 0"
         v2MainSync {
 #if DEBUG
@@ -18623,7 +18731,7 @@ class TerminalController {
         return result
     }
 
-    private func resetBonsplitUnderflowCount() -> String {
+    func resetBonsplitUnderflowCount() -> String {
         v2MainSync {
 #if DEBUG
             BonsplitDebugCounters.reset()
@@ -18632,7 +18740,7 @@ class TerminalController {
         return "OK"
     }
 
-    private func captureScreenshot(_ args: String) -> String {
+    func captureScreenshot(_ args: String) -> String {
         // Parse optional label from args
         let label = args.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -18757,7 +18865,7 @@ class TerminalController {
         return nil
     }
 
-    private func orderedPanels(in tab: Workspace) -> [any Panel] {
+    func orderedPanels(in tab: Workspace) -> [any Panel] {
         // Single source of truth for spatial (left-to-right, top-to-bottom) panel
         // order lives on `Workspace.orderedPanelIds`, derived from bonsplit's tab
         // ordering. This avoids relying on Dictionary iteration order and keeps the
@@ -18765,7 +18873,7 @@ class TerminalController {
         tab.orderedPanelIds.compactMap { tab.panels[$0] }
     }
 
-    private func resolveTerminalPanel(from arg: String, tabManager: TabManager) -> TerminalPanel? {
+    func resolveTerminalPanel(from arg: String, tabManager: TabManager) -> TerminalPanel? {
         guard let tabId = tabManager.selectedTabId,
               let tab = tabManager.tabs.first(where: { $0.id == tabId }) else {
             return nil
@@ -21443,7 +21551,7 @@ class TerminalController {
     /// invalid/oversized base64 is rejected without decoding, and the decode +
     /// filesystem writes run off the main actor so a large payload cannot block
     /// the Mac UI.
-    private func v2MobileDogfoodFeedbackSubmit(params: [String: Any]) async -> V2CallResult {
+    func v2MobileDogfoodFeedbackSubmit(params: [String: Any]) async -> V2CallResult {
         // Privilege check at the trust boundary: the mobile data plane only
         // accepts same-account connections, so the caller is this Mac's own Stack
         // account. The privileged agent feedback sink is restricted to the
@@ -21624,7 +21732,7 @@ class TerminalController {
 
     /// Mobile-gated wrapper over ``v2WorkspaceAction(params:)``: rejects every
     /// sub-action except pin/unpin/rename before dispatching.
-    private func v2MobileWorkspaceAction(params: [String: Any]) -> V2CallResult {
+    func v2MobileWorkspaceAction(params: [String: Any]) -> V2CallResult {
         let rawAction = v2RawString(params, "action")
         guard Self.mobileAllowsWorkspaceAction(rawAction) else {
             return .err(
@@ -21658,7 +21766,7 @@ class TerminalController {
         }
     }
 
-    private func v2MobileHostStatus(
+    func v2MobileHostStatus(
         params: [String: Any],
         includePrivateMetadata: Bool = true
     ) -> V2CallResult {
@@ -21690,7 +21798,7 @@ class TerminalController {
     }
 
     #if DEBUG
-    private func v2MobileDevStackAuthConfigure(params: [String: Any]) -> V2CallResult {
+    func v2MobileDevStackAuthConfigure(params: [String: Any]) -> V2CallResult {
         let enabled = v2Bool(params, "enabled")
         let token = v2OptionalTrimmedRawString(params, "token")
         if enabled == false {
@@ -21715,7 +21823,7 @@ class TerminalController {
     #endif
 
     @MainActor
-    private func v2MobileAttachTicketCreate(params: [String: Any]) async -> V2CallResult {
+    func v2MobileAttachTicketCreate(params: [String: Any]) async -> V2CallResult {
         let ttl = TimeInterval(max(30, min(v2Int(params, "ttl_seconds") ?? 600, 3600)))
         let routeID = v2OptionalTrimmedRawString(params, "route_id")
             ?? v2OptionalTrimmedRawString(params, "routeID")
@@ -21799,7 +21907,7 @@ class TerminalController {
         }
     }
 
-    private func v2MobileWorkspaceList(
+    func v2MobileWorkspaceList(
         params: [String: Any],
         tabManager resolvedTabManager: TabManager? = nil,
         createdWorkspaceID: String? = nil,
@@ -22058,7 +22166,7 @@ class TerminalController {
         return workspace.terminalPanel(for: surfaceID)
     }
 
-    private func v2MobileWorkspaceCreate(params: [String: Any]) -> V2CallResult {
+    func v2MobileWorkspaceCreate(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "Workspace context is unavailable", data: nil)
         }
@@ -22085,7 +22193,7 @@ class TerminalController {
         }
     }
 
-    private func v2MobileTerminalCreate(params: [String: Any]) -> V2CallResult {
+    func v2MobileTerminalCreate(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "Workspace context is unavailable", data: nil)
         }
@@ -22114,7 +22222,7 @@ class TerminalController {
         )
     }
 
-    private func v2MobileTerminalReplay(params: [String: Any]) -> V2CallResult {
+    func v2MobileTerminalReplay(params: [String: Any]) -> V2CallResult {
         if let error = mobileWorkspaceIDValidationError(params: params) {
             return error
         }
@@ -22179,7 +22287,7 @@ class TerminalController {
     /// render to match. This is the iOS/macOS half of the tmux-style shared
     /// resize: the smallest attached viewport wins and every device shows the
     /// same cols×rows with a clear border around the live area.
-    private func v2MobileTerminalViewport(params: [String: Any]) -> V2CallResult {
+    func v2MobileTerminalViewport(params: [String: Any]) -> V2CallResult {
         if let error = mobileWorkspaceIDValidationError(params: params) {
             return error
         }
@@ -22221,7 +22329,7 @@ class TerminalController {
     /// in the alt screen). The producer already exports the live `vp_top`, so
     /// the resulting viewport mirrors back to the phone; nudge an emit since a
     /// pure scroll with no PTY output may not fire a render/tick on its own.
-    private func v2MobileTerminalScroll(params: [String: Any]) -> V2CallResult {
+    func v2MobileTerminalScroll(params: [String: Any]) -> V2CallResult {
         if let error = mobileWorkspaceIDValidationError(params: params) {
             return error
         }
@@ -22246,7 +22354,7 @@ class TerminalController {
         ])
     }
 
-    private func v2MobileTerminalMouse(params: [String: Any]) -> V2CallResult {
+    func v2MobileTerminalMouse(params: [String: Any]) -> V2CallResult {
         if let error = mobileWorkspaceIDValidationError(params: params) {
             return error
         }
@@ -22268,7 +22376,7 @@ class TerminalController {
         ])
     }
 
-    private func v2MobileTerminalInput(params: [String: Any]) -> V2CallResult {
+    func v2MobileTerminalInput(params: [String: Any]) -> V2CallResult {
         guard let text = v2RawString(params, "text"), !text.isEmpty else {
             return .err(code: "invalid_params", message: "Missing text", data: nil)
         }
@@ -22324,7 +22432,7 @@ class TerminalController {
     /// Mac and inject the shell-escaped path as terminal input, exactly the way a
     /// local clipboard-image paste does, so the running TUI (e.g. Claude Code)
     /// attaches the image from the path.
-    private func v2MobileTerminalPasteImage(params: [String: Any]) -> V2CallResult {
+    func v2MobileTerminalPasteImage(params: [String: Any]) -> V2CallResult {
         guard let base64 = v2RawString(params, "image_base64"),
               let imageData = Data(base64Encoded: base64), !imageData.isEmpty else {
             return .err(code: "invalid_params", message: "Missing or invalid image_base64", data: nil)
