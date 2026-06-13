@@ -145752,6 +145752,35 @@
         }
       }
     },
+    "workspace.closeBlocked.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This workspace can't be closed right now."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このワークスペースは現在閉じられません。"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цю робочу область зараз не можна закрити."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 워크스페이스는 지금 닫을 수 없습니다."
+          }
+        }
+      }
+    },
     "workspace.placement.afterCurrent": {
       "extractionState": "manual",
       "localizations": {

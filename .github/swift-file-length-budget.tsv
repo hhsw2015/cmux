@@ -61,7 +61,7 @@
 19265	Sources/ContentView.swift
 924	Sources/DockPanelView.swift
 1365	Sources/Feed/FeedButtonStyleDebugWindowController.swift
-1239	Sources/Feed/FeedCoordinator.swift
+1255	Sources/Feed/FeedCoordinator.swift
 3937	Sources/Feed/FeedPanelView.swift
 574	Sources/Feed/FeedTextEditorDebugWindowController.swift
 680	Sources/FileExplorerSearchController.swift
@@ -74,6 +74,7 @@
 2039	Sources/KeyboardShortcutSettingsFileStore.swift
 768	Sources/MainWindowFocusController.swift
 2340	Sources/Mobile/MobileHostService.swift
+690	Sources/NotificationSoundSettings.swift
 681	Sources/Panels/AgentSessionProcessStore.swift
 756	Sources/Panels/AgentSessionWebRendererCoordinator.swift
 554	Sources/Panels/BrowserAutomation.swift
@@ -115,7 +116,7 @@
 1144	Sources/VaultAgentProcessScanner.swift
 1751	Sources/WindowDragHandleView.swift
 546	Sources/Windowing/WindowGlassEffect.swift
-19985	Sources/Workspace.swift
+19990	Sources/Workspace.swift
 878	Sources/WorkspaceContentView.swift
 627	Sources/WorkspaceRemoteConfiguration.swift
 5462	Sources/cmuxApp.swift

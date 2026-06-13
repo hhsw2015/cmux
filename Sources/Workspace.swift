@@ -11124,6 +11124,11 @@ final class Workspace: Identifiable, ObservableObject {
     )
 
     let id: UUID
+    /// When this workspace instance came into existence in this app session
+    /// (creation, or restore at launch). The mobile list's last-activity
+    /// fallback: a workspace that never fired a notification still carries a
+    /// real timestamp instead of nothing.
+    let createdAt = Date()
     @Published var title: String
     @Published var customTitle: String?
     @Published var customDescription: String?
@@ -13906,6 +13911,46 @@ final class Workspace: Identifiable, ObservableObject {
         for tabId in bonsplitController.allTabIds {
             forceCloseTabIds.insert(tabId)
         }
+    }
+
+    /// Rename the top-level layoutTab containing the given panel.
+    /// Mirrors the user clicking through the rename UI for the
+    /// layout-tab and lets v2WorkspaceTopTabRename do its work
+    /// without reaching across private fields.
+    func renameTopLevelLayoutTabContaining(panelId: UUID, title: String) -> Bool {
+        guard let layout = layoutTabs.first(where: { layout in
+            layout.surfaceIdToPanelId.values.contains(panelId)
+        }) else { return false }
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        topTabController.updateTab(
+            layout.topTabId,
+            title: trimmed,
+            icon: .none,
+            iconImageData: .none,
+            kind: .none,
+            hasCustomTitle: true,
+            isDirty: nil,
+            showsNotificationBadge: nil,
+            isLoading: nil
+        )
+        HerdrLayoutTabBridge.renameMirroredLayoutTabIfChanged(
+            workspace: self,
+            layoutTabId: layout.id,
+            title: trimmed
+        )
+        return true
+    }
+
+    /// Close the top-level layoutTab containing the given panel.
+    /// Returns true when a layoutTab was found and removed.
+    func closeTopLevelLayoutTabContaining(panelId: UUID) -> Bool {
+        guard let layout = layoutTabs.first(where: { layout in
+            layout.surfaceIdToPanelId.values.contains(panelId)
+        }) else { return false }
+        markAllTabsForceCloseable()
+        removeTopLevelLayoutTab(layout, fallbackLayoutId: nil)
+        return true
     }
 
     func panelNeedsConfirmClose(panelId: UUID, fallbackNeedsConfirmClose: Bool) -> Bool {
