@@ -127,45 +127,6 @@ final class TerminalAgentHibernationRecorder: AgentHibernationRecording {
     }
 }
 
-// MARK: Construction
-
-extension TerminalSurface {
-    /// The legacy app-target initializer signature, forwarding to the package
-    /// initializer with the process-wide collaborator bundle. Keeps every
-    /// existing call site byte-identical while construction is injected
-    /// (dissolves when a real composition root constructs surfaces).
-    @MainActor
-    convenience init(
-        id: UUID = UUID(),
-        tabId: UUID,
-        context: ghostty_surface_context_e,
-        configTemplate: CmuxSurfaceConfigTemplate?,
-        workingDirectory: String? = nil,
-        portOrdinal: Int = 0,
-        initialCommand: String? = nil,
-        tmuxStartCommand: String? = nil,
-        initialInput: String? = nil,
-        initialEnvironmentOverrides: [String: String] = [:],
-        additionalEnvironment: [String: String] = [:],
-        focusPlacement: TerminalSurfaceFocusPlacement = .workspace
-    ) {
-        self.init(
-            id: id,
-            tabId: tabId,
-            context: context,
-            configTemplate: configTemplate,
-            workingDirectory: workingDirectory,
-            portOrdinal: portOrdinal,
-            initialCommand: initialCommand,
-            tmuxStartCommand: tmuxStartCommand,
-            initialInput: initialInput,
-            initialEnvironmentOverrides: initialEnvironmentOverrides,
-            additionalEnvironment: additionalEnvironment,
-            focusPlacement: focusPlacement,
-
-        )
-    }
-}
 
 // ponytail: P45 conformance shims so package protocols accept fork's view types.
 
