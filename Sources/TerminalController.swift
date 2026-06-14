@@ -1,7 +1,14 @@
 import AppKit
+import CmuxRemoteSession
+import CmuxCore
 import CmuxAuthRuntime
+import CmuxCommandPalette
 import CmuxControlSocket
+import CmuxPanes
+import CmuxRemoteDaemon
+import CmuxRemoteWorkspace
 import CmuxSettings
+import CmuxWorkspaces
 import CmuxSocketControl
 import CmuxSwiftRenderUI
 import Carbon.HIToolbox
@@ -26,7 +33,7 @@ nonisolated private struct SocketLineProcessingResult: Sendable {
 }
 
 nonisolated private struct RemotePTYSocketTarget {
-    let controller: WorkspaceRemoteSessionController?
+    let controller: RemoteSessionCoordinator?
     let windowId: UUID?
     let windowRef: Any
     let workspaceId: UUID
@@ -98,6 +105,11 @@ class TerminalController {
     @MainActor private(set) var browserSignInFlow: HostBrowserSignInFlow?
     // Sendable value type; injected at construction so socket auth never reaches a global.
     private nonisolated let passwordStore: SocketControlPasswordStore
+    /// Process-wide proxy-tunnel broker (one shared tunnel per remote transport across all
+    /// windows), constructed at this app-hub composition point and injected into each
+    /// `WorkspaceRemoteSessionController`; ownership moves to the composition root with the
+    /// planned `RemoteSessionCoordinator` wiring.
+    nonisolated let remoteProxyBroker: any RemoteProxyBrokering
     // Stateless Sendable structs from CmuxControlSocket; injected at construction.
     // `transport` is internal so sibling-file extensions (CmuxEventStream) can write through it.
     nonisolated let transport: SocketTransport
@@ -266,10 +278,14 @@ class TerminalController {
     private init(
         passwordStore: SocketControlPasswordStore = SocketControlPasswordStore(),
         transport: SocketTransport = SocketTransport(),
-        listenerPolicy: SocketListenerPolicy = SocketListenerPolicy()
+        listenerPolicy: SocketListenerPolicy = SocketListenerPolicy(),
+        remoteProxyBroker: any RemoteProxyBrokering = RemoteProxyBroker(
+            tunnelProvider: RemoteDaemonProxyTunnelProvider(strings: .appLocalized, ptyBridgeStrings: AppRemotePTYBridgeStrings())
+        )
     ) {
         self.passwordStore = passwordStore
         self.transport = transport
+        self.remoteProxyBroker = remoteProxyBroker
         let serverEventTarget = ServerEventTarget()
         let socketServer = SocketControlServer(
             transport: transport,
@@ -599,7 +615,7 @@ class TerminalController {
 
     nonisolated static func parseRemotePortScanKickReason(
         _ rawReason: String
-    ) -> WorkspaceRemoteSessionController.PortScanKickReason? {
+    ) -> PortScanKickReason? {
         switch rawReason.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
         case "command", "running", "foreground", "start":
             return .command
@@ -6939,7 +6955,7 @@ class TerminalController {
         if v2HasNonNullParam(params, "surface_id"), requestedSurfaceId == nil {
             return .err(code: "invalid_params", message: "Missing or invalid surface_id", data: nil)
         }
-        let reason: WorkspaceRemoteSessionController.PortScanKickReason
+        let reason: PortScanKickReason
         if let rawReason = v2RawString(params, "reason") {
             guard let parsedReason = Self.parseRemotePortScanKickReason(rawReason) else {
                 return .err(
@@ -21077,7 +21093,7 @@ class TerminalController {
 
     private func portsKick(_ args: String) -> String {
         let parsed = parseOptions(args)
-        let reason: WorkspaceRemoteSessionController.PortScanKickReason
+        let reason: PortScanKickReason
         if let rawReason = parsed.options["reason"], !rawReason.isEmpty {
             guard let parsedReason = Self.parseRemotePortScanKickReason(rawReason) else {
                 return "ERROR: Invalid ports_kick reason '\(rawReason)' — expected command or refresh"
@@ -22018,7 +22034,7 @@ class TerminalController {
                 createParams["workspace_id"] = createdWorkspaceID
             }
             // workspace.updated emit is handled by MobileWorkspaceListObserver
-            // which watches TabManager.$tabs directly. Don't fire here.
+            // which watches TabManager.tabsPublisher directly. Don't fire here.
             return v2MobileWorkspaceList(
                 params: createParams,
                 tabManager: tabManager,
@@ -22046,7 +22062,7 @@ class TerminalController {
             inPane: paneId,
             focus: false,
             autoRefreshMetadata: false,
-            preserveFocusWhenUnfocused: false
+            preserveFocusWhenUnfocused: false, inheritWorkingDirectoryFallback: true
         ) else {
             return .err(code: "internal_error", message: "Failed to create terminal", data: nil)
         }

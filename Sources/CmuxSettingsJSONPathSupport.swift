@@ -69,6 +69,7 @@ extension CmuxSettingsFileStore {
         "app.language",
         "app.appearance",
         "app.appIcon",
+        "app.windowTitleTemplate",
         "app.menuBarOnly",
         "app.newWorkspacePlacement",
         "app.workspaceInheritWorkingDirectory",

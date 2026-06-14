@@ -1,28 +1,10 @@
 import AppKit
 import SwiftUI
 
-extension Image {
-    /// Sizes an SF Symbol from an explicit frame rather than font metrics.
-    ///
-    /// A `.font(.system(size:))`-sized symbol can rasterize at 0×0 during a
-    /// transient layout pass (e.g. while a view's hosting layer is first added
-    /// to the window, before font metrics resolve). macOS 26+ rejects a zero
-    /// raster size with an uncaught `NSInvalidArgumentException`
-    /// (`targetSizeInPoints.width>0 && targetSizeInPoints.height>0`), which
-    /// AppKit turns into a hard crash. Driving the raster size from a fixed
-    /// frame keeps it positive across every layout pass (#5670, #5841).
-    func cmuxSymbolPixelSize(_ size: CGFloat, weight: Font.Weight = .regular) -> some View {
-        self
-            .resizable()
-            .scaledToFit()
-            .fontWeight(weight)
-            .frame(width: size, height: size, alignment: .center)
-    }
-}
-
 enum RenderableSystemSymbol {
     static let defaultWorkspaceGroupIcon = "folder.fill"
     static let defaultSurfaceTabIcon = "doc.text"
+    private static let minimumRasterPointSize: CGFloat = 1
     @MainActor
     private static var renderabilityCache: [String: Bool] = [:]
 
@@ -69,10 +51,41 @@ enum RenderableSystemSymbol {
         return resolved
     }
 
+    static func clampedRasterPointSize(_ pointSize: CGFloat) -> CGFloat {
+        guard pointSize.isFinite else {
+            return minimumRasterPointSize
+        }
+        return max(minimumRasterPointSize, pointSize)
+    }
+
     #if DEBUG
     @MainActor
     static func resetRenderabilityCacheForTesting() {
         renderabilityCache.removeAll()
     }
     #endif
+}
+
+extension Image {
+    /// Sizes SF Symbols from an explicit positive frame instead of transient font metrics.
+    func cmuxSymbolRasterSize(
+        _ pointSize: CGFloat,
+        weight: Font.Weight? = nil,
+        alignment: Alignment = .center
+    ) -> some View {
+        let rasterSize = RenderableSystemSymbol.clampedRasterPointSize(pointSize)
+        return resizable()
+            .scaledToFit()
+            .fontWeight(weight)
+            .frame(width: rasterSize, height: rasterSize, alignment: alignment)
+    }
+
+    // ponytail: fork retained simpler pixel-size variant; callers in BrowserPanelView and friends rely on it.
+    func cmuxSymbolPixelSize(_ size: CGFloat, weight: Font.Weight = .regular) -> some View {
+        self
+            .resizable()
+            .scaledToFit()
+            .fontWeight(weight)
+            .frame(width: size, height: size, alignment: .center)
+    }
 }

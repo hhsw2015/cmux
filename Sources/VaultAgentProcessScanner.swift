@@ -32,7 +32,7 @@ extension RestorableAgentSessionIndex {
     static func processDetectedSnapshots(
         registry: CmuxVaultAgentRegistry,
         fileManager: FileManager
-    ) -> [PanelKey: (snapshot: SessionRestorableAgentSnapshot, updatedAt: TimeInterval, processIDs: Set<Int>)] {
+    ) -> [PanelKey: ProcessDetectedSnapshotEntry] {
         let capturedAt = Date().timeIntervalSince1970
         // Re-use a recent snapshot when available; the agent-hibernation poll fires every 30 s
         // and the full proc_pidinfo sweep for all processes is expensive. A 60-second TTL
@@ -54,7 +54,7 @@ extension RestorableAgentSessionIndex {
         fileManager: FileManager,
         processSnapshot: CmuxTopProcessSnapshot,
         capturedAt: TimeInterval
-    ) -> [PanelKey: (snapshot: SessionRestorableAgentSnapshot, updatedAt: TimeInterval, processIDs: Set<Int>)] {
+    ) -> [PanelKey: ProcessDetectedSnapshotEntry] {
         return processDetectedSnapshots(
             registry: registry,
             fileManager: fileManager,
@@ -70,11 +70,13 @@ extension RestorableAgentSessionIndex {
         processSnapshot: CmuxTopProcessSnapshot,
         capturedAt: TimeInterval,
         processArgumentsProvider: (Int) -> CmuxTopProcessArguments?
-    ) -> [PanelKey: (snapshot: SessionRestorableAgentSnapshot, updatedAt: TimeInterval, processIDs: Set<Int>)] {
+    ) -> [PanelKey: ProcessDetectedSnapshotEntry] {
+        let scopedProcessIDsByPanelKey = processSnapshot.cmuxScopedProcessIDsByPanelKey()
         var resolved = processDetectedOpenCodeSnapshots(
             processSnapshot: processSnapshot,
             capturedAt: capturedAt,
-            fileManager: fileManager
+            fileManager: fileManager,
+            scopedProcessIDsByPanelKey: scopedProcessIDsByPanelKey
         )
 
         guard !registry.registrations.isEmpty else { return resolved }
@@ -109,13 +111,14 @@ extension RestorableAgentSessionIndex {
             let cwd = normalized(observed.environment["CMUX_AGENT_LAUNCH_CWD"] ?? observed.environment["PWD"])
             let processRegistry = registryForWorkingDirectory(cwd)
             guard let registration = processRegistry.registrations.first(where: { $0.detect.matches(observed) }),
-                  let sessionId = registration.sessionIdSource.sessionId(
+                  let sessionIDResolution = registration.sessionIdSource.sessionIDResolution(
                       from: observed,
                       registration: registration,
                       fileManager: fileManager
                   ) else {
                 continue
             }
+            let sessionId = sessionIDResolution.sessionId
 
             let executablePath = normalized(observed.arguments.first) ?? normalized(process.path) ?? registration.defaultExecutable
             let arguments = observed.arguments.isEmpty ? [executablePath] : observed.arguments
@@ -136,7 +139,8 @@ extension RestorableAgentSessionIndex {
             resolved[key] = (
                 snapshot: snapshot,
                 updatedAt: capturedAt,
-                processIDs: processSnapshot.cmuxScopedProcessIDs(for: key)
+                processIDs: scopedProcessIDsByPanelKey[key] ?? [],
+                sessionIDSource: sessionIDResolution.source
             )
         }
 
@@ -225,9 +229,10 @@ extension RestorableAgentSessionIndex {
     private static func processDetectedOpenCodeSnapshots(
         processSnapshot: CmuxTopProcessSnapshot,
         capturedAt: TimeInterval,
-        fileManager: FileManager
-    ) -> [PanelKey: (snapshot: SessionRestorableAgentSnapshot, updatedAt: TimeInterval, processIDs: Set<Int>)] {
-        var resolved: [PanelKey: (snapshot: SessionRestorableAgentSnapshot, updatedAt: TimeInterval, processIDs: Set<Int>)] = [:]
+        fileManager: FileManager,
+        scopedProcessIDsByPanelKey: [PanelKey: Set<Int>]
+    ) -> [PanelKey: ProcessDetectedSnapshotEntry] {
+        var resolved: [PanelKey: ProcessDetectedSnapshotEntry] = [:]
         var sessionByWorkingDirectoryAndParent: [String: String] = [:]
         var sessionMissesByWorkingDirectoryAndParent = Set<String>()
         var openCodeProcesses: [
@@ -322,7 +327,8 @@ extension RestorableAgentSessionIndex {
             resolved[process.panelKey] = (
                 snapshot: snapshot,
                 updatedAt: capturedAt,
-                processIDs: processSnapshot.cmuxScopedProcessIDs(for: process.panelKey)
+                processIDs: scopedProcessIDsByPanelKey[process.panelKey] ?? [],
+                sessionIDSource: .explicit
             )
         }
 
@@ -860,28 +866,42 @@ private extension VaultObservedAgentProcess {
     }
 }
 
+private struct VaultAgentSessionIDResolution {
+    let sessionId: String
+    let source: RestorableAgentSessionIndex.ProcessDetectedSessionIDSource
+}
+
 private extension CmuxVaultAgentSessionIDSource {
-    func sessionId(
+    func sessionIDResolution(
         from process: VaultObservedAgentProcess,
         registration: CmuxVaultAgentRegistration,
         fileManager: FileManager
-    ) -> String? {
+    ) -> VaultAgentSessionIDResolution? {
         switch self {
         case .argvOption(let option):
-            return process.arguments.nonOptionValue(afterOption: option)
+            guard let sessionId = process.arguments.nonOptionValue(afterOption: option) else { return nil }
+            return VaultAgentSessionIDResolution(sessionId: sessionId, source: .explicit)
         case .piSessionFile:
             if let session = process.piCompatibleSessionID {
-                return PiSessionLocator.resolvedSessionPath(
+                let sessionId = PiSessionLocator.resolvedSessionPath(
                     session,
                     for: process,
                     registration: registration,
                     fileManager: fileManager
                 ) ?? session
+                return VaultAgentSessionIDResolution(sessionId: sessionId, source: .explicit)
             }
-            return PiSessionLocator.latestSessionPath(for: process, registration: registration, fileManager: fileManager)
+            guard let sessionId = PiSessionLocator.latestSessionPath(
+                for: process,
+                registration: registration,
+                fileManager: fileManager
+            ) else {
+                return nil
+            }
+            return VaultAgentSessionIDResolution(sessionId: sessionId, source: .inferredLatestSessionFile)
         case .grokSessionDirectory:
             if let session = process.arguments.grokResumeSessionID {
-                return session
+                return VaultAgentSessionIDResolution(sessionId: session, source: .explicit)
             }
             return nil
         }
@@ -889,15 +909,17 @@ private extension CmuxVaultAgentSessionIDSource {
 }
 
 private extension CmuxTopProcessSnapshot {
-    func cmuxScopedProcessIDs(for key: RestorableAgentSessionIndex.PanelKey) -> Set<Int> {
-        Set(
-            cmuxScopedProcesses()
-                .filter {
-                    $0.cmuxWorkspaceID == key.workspaceId &&
-                        $0.cmuxSurfaceID == key.panelId
-                }
-                .map(\.pid)
-        )
+    func cmuxScopedProcessIDsByPanelKey() -> [RestorableAgentSessionIndex.PanelKey: Set<Int>] {
+        var processIDsByPanelKey: [RestorableAgentSessionIndex.PanelKey: Set<Int>] = [:]
+        for process in cmuxScopedProcesses() {
+            guard let workspaceId = process.cmuxWorkspaceID,
+                  let panelId = process.cmuxSurfaceID else {
+                continue
+            }
+            let key = RestorableAgentSessionIndex.PanelKey(workspaceId: workspaceId, panelId: panelId)
+            processIDsByPanelKey[key, default: []].insert(process.pid)
+        }
+        return processIDsByPanelKey
     }
 }
 

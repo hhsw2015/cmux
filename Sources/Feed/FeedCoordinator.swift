@@ -4,6 +4,7 @@ import CMUXSessionDaemon
 import CMUXWorkstream
 import Foundation
 @preconcurrency import UserNotifications
+import CmuxSettings
 
 /// App-level coordinator that owns the shared `WorkstreamStore` and
 /// mediates between the socket thread (which processes `feed.*` V2
@@ -448,7 +449,7 @@ extension FeedCoordinator {
 
         // Elevate the workspace so it floats to the top of the sidebar,
         // honoring the user's Reorder on Notification preference.
-        if WorkspaceAutoReorderSettings.isEnabled() {
+        if UserDefaultsSettingsClient(defaults: .standard).value(for: SettingCatalog().app.reorderOnNotification) {
             tabManager.moveTabToTopForNotification(resolved.workspaceId)
         }
 
