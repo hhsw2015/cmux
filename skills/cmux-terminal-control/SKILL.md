@@ -339,6 +339,13 @@ The library has been validated end-to-end:
 If you find a case where the lib fails, **that is a bug to fix in
 the lib, not a reason to drop down to raw RPCs.**
 
+## New (P48-P50) — picked from tui-use / tta
+
+- **`surface.snapshot`** / `atomic.snapshot()` — one RPC returns text + cursor + dimensions + state_seq + `highlights[]` + `title` + `status`. `highlights` is the inverse-video runs (active TUI menu item, vim cursor block, selected pane). Read "which option is selected" without parsing text or guessing from cursor. Pass `prev_state_seq` to also get `changed: bool` in the same call.
+- **`atomic.paste_lines(sid, lines)`** — multi-line paste in one verify. Use for REPL `exec("""...""")`, here-docs, vim `:put` content. Don't use for shell command sequences (use `flow.run_lines`, each command needs its exit checked).
+- **`atomic.KEY_NAMES`** — canonical key list. Import + validate before sending instead of guessing `arrow_up` vs `up` (both work, listed there).
+- **`ORCHESTRATOR_TEMPLATE.md`** — drop into the project the Orchestrator drives. The Worker prompt contract has a hard `FORBIDDEN: cmux_term` line that stops Workers from recursing into nested surfaces. Re-read the file at every scheduling step.
+
 ## When to use which RPC (cheat sheet)
 
 **Computer Use track**:
@@ -385,6 +392,16 @@ daemon, read full screen only when you must.**
 - Reading the full grid when you only care about the last line
   (shell prompt, vim status bar, less footer).
   Use `surface.screen_region` with `last_rows`.
+
+**`wait_for_text` vs `wait_for_screen_change` — pick semantic by default**:
+
+| Tool | When | Cost |
+|------|------|------|
+| `wait_for_text` | You know the prompt/output you're waiting for (`>>>`, `$`, `(Pdb)`, "✔ Done", `[Y/n]`). | 1 RPC, ~80 B response, daemon-side polling. |
+| `wait_for_screen_change` | The exact text is unknown but ANY change proves the keystroke landed (e.g. raw Layer 1 verifying a vim cursor moved). | 2 RPCs (hash → wait → maybe screen_text), ~50 B per. |
+| `wait_for_idle` | Output streams for a while then quiets (TUI redraws, dev-server logs). | 1 RPC, daemon settles for you. |
+
+Default to `wait_for_text` — you almost always know what to wait for. `wait_for_screen_change` is the fallback for the rare "change detection without a target string" cases. Picking the wrong one wastes ~50% of the RPC budget on multi-step interactions.
 
 **Recommended pattern**:
 

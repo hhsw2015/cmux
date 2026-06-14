@@ -19,6 +19,34 @@ from ._rpc import CmuxError, TimeoutError, rpc
 from . import raw
 
 
+# Canonical key names accepted by surface.send_key. Keep in sync with
+# pendingKeyEvent in Packages/CmuxTerminal/.../TerminalSurface+Input.swift.
+# LLMs can import this to validate a key name before sending instead of
+# guessing (was the alias `arrow_up` or `up`? both work — listed here).
+KEY_NAMES = (
+    "ctrl-c", "ctrl+c", "sigint",
+    "ctrl-d", "ctrl+d", "eof",
+    "ctrl-f", "ctrl+f",
+    "ctrl-z", "ctrl+z", "sigtstp",
+    "ctrl-\\", "ctrl+\\", "sigquit",
+    "enter", "return",
+    "tab",
+    "escape", "esc",
+    "backspace",
+    "up", "arrow_up", "arrowup",
+    "down", "arrow_down", "arrowdown",
+    "left", "arrow_left", "arrowleft",
+    "right", "arrow_right", "arrowright",
+    "shift+tab", "shift-tab", "backtab",
+    "home", "end",
+    "delete", "del", "forward_delete",
+    "pageup", "page_up",
+    "pagedown", "page_down",
+    # f1-f24, plus "ctrl+<letter>", "shift+<letter>", "alt+<letter>", "cmd+<letter>"
+    # combos are also accepted via the modifier+base parser.
+)
+
+
 def snapshot(surface_id: str) -> dict:
     """Combined screen read: text, cursor, dimensions, state_seq, and
     inverse-video highlights in one RPC. Highlights mark TUI selection
@@ -29,6 +57,45 @@ def snapshot(surface_id: str) -> dict:
     columns, state_seq, highlights (list of {row,col,length,text}).
     """
     return rpc("surface.snapshot", {"surface_id": surface_id})
+
+
+def paste_lines(surface_id: str, lines: Iterable[str], *,
+                line_terminator: str = "\n",
+                expect_after: str | None = None,
+                timeout_ms: int = 4000) -> None:
+    """Send N lines as one bracketed text block. Each line is followed
+    by `line_terminator` (default `\\n`); the terminal sees a single
+    multi-line input the same way a human paste does. One verify at
+    the end (optionally on `expect_after`), not one per line.
+
+    Use for: REPL multi-line scripts, here-docs, vim `:put` content.
+    Avoid for: TUI menus (use atomic.press), shell command sequences
+    (use flow.run_lines so each command's exit is checked).
+    """
+    blob = line_terminator.join(lines)
+    if not blob.endswith(line_terminator):
+        blob += line_terminator
+    if expect_after is not None:
+        prev = raw.screen_hash(surface_id)
+        rpc("surface.send_text", {"surface_id": surface_id, "text": blob})
+        r = rpc(
+            "surface.wait_for_text",
+            {"surface_id": surface_id, "substring": expect_after,
+             "timeout_ms": timeout_ms},
+        )
+        if not (r.get("matched") or r.get("matched_line")):
+            raise TimeoutError(
+                f"paste_lines: '{expect_after}' not seen in {timeout_ms}ms"
+            )
+        return
+    prev = raw.screen_hash(surface_id)
+    rpc("surface.send_text", {"surface_id": surface_id, "text": blob})
+    r = rpc(
+        "surface.wait_for_screen_change",
+        {"surface_id": surface_id, "prev_hash": prev, "timeout_ms": timeout_ms},
+    )
+    if not r.get("changed"):
+        raise TimeoutError(f"paste_lines: no screen change in {timeout_ms}ms")
 
 
 def press(surface_id: str, key: str, *, timeout_ms: int = 1500) -> None:

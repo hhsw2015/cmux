@@ -170,6 +170,17 @@ class AgentSession:
           - None / "off" — no instruction; you verify externally.
         """
         token = uuid.uuid4().hex[:12].upper()
+        # Standing prefix: stop Workers from invoking cmux_term recursively
+        # (they live INSIDE a cmux surface — calling cmux_term from there
+        # would spawn yet another nested surface and steal focus). Inspired
+        # by tta-agents-orchestrator's `Forbidden: Using tta` clause.
+        prompt = (
+            "FORBIDDEN: Do not call any cmux_term, cmux rpc, cmux CLI, or "
+            "scripts under skills/cmux-terminal-control/. Only the "
+            "Orchestrator drives those. You operate inside this surface "
+            "with normal tools (Bash, file edits, project tests).\n\n"
+            + prompt
+        )
 
         if notify == "bus":
             instruction = "\n\n" + _bus.render_protocol_instructions(
