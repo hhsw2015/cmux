@@ -561,6 +561,7 @@ class ClaudeAgent(AgentSession):
     @classmethod
     def spawn(cls, surface, *, cwd=None, extra_args="",
               direction: str = "right",
+              initial_divider_position: Optional[float] = None,
               ready_timeout_ms: int = 60_000) -> "ClaudeAgent":
         """Spawn Claude in a fresh terminal panel.
 
@@ -584,6 +585,8 @@ class ClaudeAgent(AgentSession):
         }
         if cwd:
             params["working_directory"] = cwd
+        if initial_divider_position is not None:
+            params["initial_divider_position"] = float(initial_divider_position)
         result = rpc("surface.split", params)
         sid = result["surface_id"]
         # Settle so the new surface fully wires up before we poll/send.

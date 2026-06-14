@@ -81,6 +81,85 @@ for m in msgs:
     print(f"{m.from_} done: {m.summary}; artifacts={m.artifacts}")
 ```
 
+## Multi-task team: declarative plan.json (preferred for DAG work)
+
+When a goal decomposes into MULTIPLE tasks with dependencies — a DAG,
+not a single delegation — emit a `plan.json` and run it through
+`cmux_term.team_runner` instead of writing a Python orchestration
+script. The runner handles every dynamic concern (top-tab/panel
+allocation, split layout, $inputs.X.outputs[N] wiring, prompt-spill,
+DAG scheduling, durable state, resume on crash) so you don't burn
+tokens re-deriving them per run.
+
+Why prefer `plan.json` over hand-written Python:
+
+- **Token cost**: emit ONCE, run many. A scheduling script is ~300
+  tokens of boilerplate per turn; plan.json is data, not code.
+- **Correctness**: validation catches cycles, dangling `needs`,
+  missing `$inputs` references, non-absolute paths BEFORE any agent
+  spawns. Errors carry JSON pointers (`$.tasks[2].needs[0]: ...`) so
+  you can self-fix.
+- **Resume**: state is persisted to `.cmux-team/<plan>/state.json`
+  after every transition. After a crash / kill / context reset, the
+  same `run` command picks up where it left off — already-done tasks
+  hydrate from disk, only failed/incomplete ones re-spawn.
+
+Quick shape (full schema: `cmux_term/PLAN_SCHEMA.md` or
+`python -m cmux_term.team_runner schema`):
+
+```json
+{
+  "version": 1,
+  "name": "csv-pipeline",
+  "workspace": "/tmp/cmux-team",
+  "max_concurrency": 3,
+  "tasks": [
+    {"id": "scrape", "prompt": "...", "outputs": ["/tmp/cmux-team/raw.json"]},
+    {"id": "stat",   "prompt": "use $inputs.scrape.outputs[0]; write stats.json",
+                     "needs": ["scrape"], "outputs": ["/tmp/cmux-team/stats.json"]},
+    {"id": "plot",   "prompt": "use $inputs.stat.outputs[0]; write plot.txt",
+                     "needs": ["stat"],   "outputs": ["/tmp/cmux-team/plot.txt"]},
+    {"id": "summarize", "prompt": "use $inputs.stat.outputs[0]; write summary.txt",
+                     "needs": ["stat"],   "outputs": ["/tmp/cmux-team/summary.txt"]},
+    {"id": "report", "prompt": "merge $inputs.plot.outputs[0] + $inputs.summarize.outputs[0]",
+                     "needs": ["plot","summarize"], "outputs": ["/tmp/cmux-team/report.md"],
+                     "expect_artifacts": ["/tmp/cmux-team/report.md"]}
+  ]
+}
+```
+
+Runtime guarantees:
+
+- Tasks alive at the same time share a top tab via split panels;
+  serial tasks each get their own top tab.
+- Panel closes when its task finishes; top tab closes when its last
+  task finishes.
+- `$inputs.<id>.outputs[<n>]` is substituted at spawn time.
+- Prompt > `spill_prompt_threshold_bytes` (default 4 KB) is auto-spilled
+  to a context file the agent reads.
+- `on_failure: abort | isolate | continue` controls failure
+  propagation; `isolate` marks the failed task's transitive
+  descendants as `skipped`.
+- Per-task status: `pending → running → {done|failed|cancelled}`
+  plus `skipped` for blocked descendants.
+
+CLI:
+
+```bash
+python -m cmux_term.team_runner run plan.json          # run / resume
+python -m cmux_term.team_runner status plan.json       # progress JSON
+python -m cmux_term.team_runner run plan.json --no-resume   # discard prior state
+python -m cmux_term.team_runner run plan.json --no-retry    # don't re-run prior failures
+python -m cmux_term.team_runner reset plan.json        # archive state.json
+python -m cmux_term.team_runner cancel plan.json       # mark running -> cancelled
+python -m cmux_term.team_runner schema                 # print full schema doc
+```
+
+When NOT to use plan.json: a single delegation (use `ClaudeAgent.spawn
++ delegate` directly), or a dynamic flow where the next step depends
+on the previous one's output in ways the DAG can't express. For those,
+stay on the Agent Bus directly.
+
 ## Track 1 (PRIMARY): delegate to an Agent CLI
 
 **For non-trivial work, this is almost always the right answer.**
@@ -340,6 +419,19 @@ If you find a case where the lib fails, **that is a bug to fix in
 the lib, not a reason to drop down to raw RPCs.**
 
 ## When to use which RPC (cheat sheet)
+
+**Top-level decision (read first)**:
+
+```
+Multi-task DAG (>= 2 tasks with deps)?
+   ├─ YES → emit plan.json, run python -m cmux_term.team_runner run plan.json
+   │        (everything else — top tabs, panels, $inputs, state, resume — is automatic)
+   └─ NO  → continue below
+
+Single long-running task to delegate?
+   ├─ YES → ClaudeAgent.spawn + delegate (Track 1)
+   └─ NO  → drive a TUI directly (Track 2)
+```
 
 **Computer Use track**:
 
