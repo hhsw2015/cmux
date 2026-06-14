@@ -19,6 +19,18 @@ from ._rpc import CmuxError, TimeoutError, rpc
 from . import raw
 
 
+def snapshot(surface_id: str) -> dict:
+    """Combined screen read: text, cursor, dimensions, state_seq, and
+    inverse-video highlights in one RPC. Highlights mark TUI selection
+    (active menu item, vim cursor block, selected pane) so the LLM can
+    read which option is active without text/cursor heuristics.
+
+    Returns a dict with keys: text, cursor ({row,col} or None), rows,
+    columns, state_seq, highlights (list of {row,col,length,text}).
+    """
+    return rpc("surface.snapshot", {"surface_id": surface_id})
+
+
 def press(surface_id: str, key: str, *, timeout_ms: int = 1500) -> None:
     """Send a named key. Raise if screen doesn't change."""
     prev = raw.screen_hash(surface_id)

@@ -6186,6 +6186,54 @@ final class TerminalSurface: Identifiable, ObservableObject {
         return out
     }
 
+    /// True iff the libghostty surface's child process has exited.
+    /// Used by `surface.snapshot` to set `status: "exited"` so agents
+    /// don't keep sending input into a dead pty.
+    @MainActor
+    func processHasExited() -> Bool {
+        guard let surface = liveSurfaceForGhosttyAccess(reason: "snapshot.status") else {
+            return true
+        }
+        return ghostty_surface_process_exited(surface)
+    }
+
+    /// Combined snapshot for `surface.snapshot`: text + inverse-video
+    /// highlights + cursor + dimensions in one RPC. Highlights mark
+    /// reverse-video runs (typically the active TUI menu item, the
+    /// vim cursor block, or a tmux selected pane). Lets agents read
+    /// "which item is selected" without parsing text or guessing
+    /// from the cursor position. Inspired by tui-use's snapshot model.
+    @MainActor
+    func visibleSnapshot() -> (
+        text: String,
+        cursor: (row: Int, col: Int)?,
+        rows: Int,
+        columns: Int,
+        stateSeq: UInt64,
+        highlights: [(row: Int, col: Int, length: Int, text: String)]
+    )? {
+        guard let result = mobileRenderGridFrame(stateSeq: 0, full: true) else {
+            return nil
+        }
+        let frame = result.frame
+        var out = String()
+        for row in result.rows {
+            let trimmed = String(row.reversed().drop(while: { $0 == " " }).reversed())
+            out.append(trimmed)
+            out.append("\n")
+        }
+        let cursor: (row: Int, col: Int)? = frame.cursor.map { ($0.row, $0.column) }
+        var highlights: [(row: Int, col: Int, length: Int, text: String)] = []
+        let inverseStyleIDs: Set<Int> = Set(frame.styles.filter(\.inverse).map(\.id))
+        if !inverseStyleIDs.isEmpty {
+            for span in frame.rowSpans where inverseStyleIDs.contains(span.styleID) {
+                let len = span.cellWidth ?? span.text.count
+                highlights.append((span.row, span.column, len, span.text))
+            }
+        }
+        return (out, cursor, frame.rows, frame.columns, frame.stateSeq, highlights)
+    }
+
     @MainActor
     func mobileRenderGridFrame(
         stateSeq: UInt64,

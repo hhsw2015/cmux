@@ -2273,6 +2273,8 @@ class TerminalController {
             return v2Result(id: id, self.v2SurfaceSendText(params: params))
         case "surface.send_key":
             return v2Result(id: id, self.v2SurfaceSendKey(params: params))
+        case "surface.snapshot":
+            return v2Result(id: id, self.v2SurfaceSnapshot(params: params))
         case "surface.screen_text":
             return v2Result(id: id, self.v2SurfaceScreenText(params: params))
         case "surface.screen_hash":
@@ -9300,6 +9302,76 @@ class TerminalController {
             ]
             if let lastRows { payload["last_rows"] = lastRows }
             if let firstRows { payload["first_rows"] = firstRows }
+            result = .ok(payload)
+        }
+        return result
+    }
+
+    /// Combined snapshot: text + cursor + dimensions + state_seq +
+    /// inverse-video highlights, in one RPC. Highlights mark the
+    /// reverse-video runs (active TUI menu item, vim cursor block,
+    /// selected pane), letting agents read "which item is selected"
+    /// without parsing text. Inspired by tui-use's snapshot model.
+    /// Response shape (~text size + N×40 bytes for N highlights):
+    ///   { workspace_id, surface_id, text, cursor: {row,col}|null,
+    ///     rows, columns, state_seq, highlights: [{row,col,length,text}] }
+    private func v2SurfaceSnapshot(params: [String: Any]) -> V2CallResult {
+        guard let tabManager = v2ResolveTabManager(params: params) else {
+            return .err(code: "unavailable", message: "TabManager not available", data: nil)
+        }
+        var result: V2CallResult = .err(code: "internal_error", message: "Failed to read snapshot", data: nil)
+        v2MainSync {
+            guard let ws = v2ResolveWorkspace(params: params, tabManager: tabManager) else {
+                result = .err(code: "not_found", message: "Workspace not found", data: nil)
+                return
+            }
+            let surfaceId: UUID?
+            if params["surface_id"] != nil {
+                surfaceId = v2UUID(params, "surface_id")
+                guard surfaceId != nil else {
+                    result = .err(code: "not_found", message: "Surface not found for the given surface_id", data: nil)
+                    return
+                }
+            } else {
+                surfaceId = ws.focusedPanelId
+            }
+            guard let surfaceId else {
+                result = .err(code: "not_found", message: "No focused surface", data: nil)
+                return
+            }
+            guard let terminalPanel = ws.terminalPanel(for: surfaceId) else {
+                result = .err(code: "invalid_params", message: "Surface is not a terminal", data: ["surface_id": surfaceId.uuidString])
+                return
+            }
+            guard let snap = terminalPanel.surface.visibleSnapshot() else {
+                result = .err(code: "internal_error", message: "Surface has no rendered frame yet", data: nil)
+                return
+            }
+            let cursorPayload: Any
+            if let c = snap.cursor {
+                cursorPayload = ["row": c.row, "col": c.col]
+            } else {
+                cursorPayload = NSNull()
+            }
+            let highlights: [[String: Any]] = snap.highlights.map { h in
+                ["row": h.row, "col": h.col, "length": h.length, "text": h.text]
+            }
+            let exited = terminalPanel.surface.processHasExited()
+            let prevSeqRaw = (params["prev_state_seq"] as? NSNumber)?.uint64Value
+            let changed: Bool? = prevSeqRaw.map { $0 != snap.stateSeq }
+            var payload: [String: Any] = [
+                "workspace_id": ws.id.uuidString,
+                "surface_id": surfaceId.uuidString,
+                "text": snap.text,
+                "cursor": cursorPayload,
+                "rows": snap.rows,
+                "columns": snap.columns,
+                "state_seq": snap.stateSeq,
+                "highlights": highlights,
+                "title": terminalPanel.title,
+                "status": exited ? "exited" : "running",
+            ]
+            if let changed { payload["changed"] = changed }
             result = .ok(payload)
         }
         return result
