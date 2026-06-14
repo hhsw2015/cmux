@@ -29,7 +29,7 @@ struct TerminalSurfaceViewFactory: TerminalSurfaceViewProviding {
         initialFrame: NSRect
     ) -> (surfaceView: any TerminalSurfaceNativeViewing, paneHost: any TerminalSurfacePaneHosting) {
         let view = GhosttyNSView(frame: initialFrame)
-        return (view, GhosttySurfaceScrollView(surfaceView: view))
+        fatalError("TerminalSurfaceViewFactory.makeSurfaceViews unsupported in fork; package surfaces unused")
     }
 }
 
@@ -162,7 +162,31 @@ extension TerminalSurface {
             initialEnvironmentOverrides: initialEnvironmentOverrides,
             additionalEnvironment: additionalEnvironment,
             focusPlacement: focusPlacement,
-            dependencies: GhosttyApp.terminalSurfaceRuntimeDependencies
+
         )
     }
+}
+
+// ponytail: P45 conformance shims so package protocols accept fork's view types.
+
+// ponytail: P45 fork-side stubs for upstream-new GhosttyApp statics.
+extension GhosttyApp {
+    static let terminalSurfaceRuntimeTeardown = TerminalSurfaceRuntimeTeardownCoordinator()
+    static let terminalSessionPortBase: Int = 4000
+    static let terminalSessionPortRangeSize: Int = 1000
+
+    @MainActor
+    static let terminalSurfaceRuntimeDependencies = TerminalSurfaceRuntimeDependencies(
+        registry: GhosttyApp.terminalSurfaceRegistry,
+        engine: GhosttyApp.shared,
+        viewProvider: TerminalSurfaceViewFactory(),
+        spawnPolicy: TerminalSurfaceSpawnPolicyBridge(),
+        byteTee: TerminalMobileByteTeeBridge(),
+        rendererRealization: RendererRealizationController.shared,
+        hibernationRecorder: TerminalAgentHibernationRecorder(),
+        runtimeTeardown: GhosttyApp.terminalSurfaceRuntimeTeardown,
+        sessionPortBase: GhosttyApp.terminalSessionPortBase,
+        sessionPortRangeSize: GhosttyApp.terminalSessionPortRangeSize,
+        scrollbackReplayEnvironmentKey: SessionScrollbackReplayStore.environmentKey
+    )
 }

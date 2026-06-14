@@ -1,4 +1,6 @@
 import Foundation
+import CmuxFoundation
+import CmuxTerminal
 import CmuxPanes
 import CmuxTerminalCore
 import CmuxTerminalEngine
@@ -314,7 +316,7 @@ extension TerminalSurface: TerminalSurfaceControlling {
     var runtimeSurfacePointer: ghostty_surface_t? { surface }
 }
 
-extension GhosttyNSView: TerminalSurfaceHosting {
+extension GhosttyNSView: TerminalSurfaceNativeViewing {
     var hostedTabId: UUID? { tabId }
     var attachedSurfaceController: (any TerminalSurfaceControlling)? { terminalSurface }
 }
@@ -7550,8 +7552,8 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
     /// the cursor in AppKit overlay state until visual selection starts.
     private var keyboardCopyModeVisualActive = false
     private let keyboardCopyModeCursorOverlayView = GhosttyFlashOverlayView(frame: .zero)
-    fileprivate var isKeyboardCopyModeActive: Bool { keyboardCopyModeActive }
-    fileprivate var currentKeyStateIndicatorText: String? {
+    var isKeyboardCopyModeActive: Bool { keyboardCopyModeActive }
+    var currentKeyStateIndicatorText: String? {
         if let name = keyTables.last {
             return terminalKeyTableIndicatorText(name)
         }

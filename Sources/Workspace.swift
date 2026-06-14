@@ -6134,46 +6134,6 @@ final class Workspace: Identifiable, ObservableObject {
         }
     }
 
-    /// Rename the top-level layoutTab containing the given panel.
-    /// Mirrors the user clicking through the rename UI for the
-    /// layout-tab and lets v2WorkspaceTopTabRename do its work
-    /// without reaching across private fields.
-    func renameTopLevelLayoutTabContaining(panelId: UUID, title: String) -> Bool {
-        guard let layout = layoutTabs.first(where: { layout in
-            layout.surfaceIdToPanelId.values.contains(panelId)
-        }) else { return false }
-        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return false }
-        topTabController.updateTab(
-            layout.topTabId,
-            title: trimmed,
-            icon: .none,
-            iconImageData: .none,
-            kind: .none,
-            hasCustomTitle: true,
-            isDirty: nil,
-            showsNotificationBadge: nil,
-            isLoading: nil
-        )
-        HerdrLayoutTabBridge.renameMirroredLayoutTabIfChanged(
-            workspace: self,
-            layoutTabId: layout.id,
-            title: trimmed
-        )
-        return true
-    }
-
-    /// Close the top-level layoutTab containing the given panel.
-    /// Returns true when a layoutTab was found and removed.
-    func closeTopLevelLayoutTabContaining(panelId: UUID) -> Bool {
-        guard let layout = layoutTabs.first(where: { layout in
-            layout.surfaceIdToPanelId.values.contains(panelId)
-        }) else { return false }
-        markAllTabsForceCloseable()
-        removeTopLevelLayoutTab(layout, fallbackLayoutId: nil)
-        return true
-    }
-
     func panelNeedsConfirmClose(panelId: UUID, fallbackNeedsConfirmClose: Bool) -> Bool {
         Self.resolveCloseConfirmation(
             shellActivityState: panelShellActivityStates[panelId],

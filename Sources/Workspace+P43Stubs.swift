@@ -133,22 +133,6 @@ extension SessionWorkspaceSnapshot {
     var canvasPanes: [SessionCanvasPaneSnapshot]? { nil }
     var layoutMode: String? { nil }
 }
-
-enum CloseTabWarningSettings {
-    static func hidesTabCloseButton() -> Bool { false }
-}
-
-enum CloseTabConfirmationPolicy {
-    enum Source { case tabCloseButton, shortcut }
-    static func shouldConfirm(requiresConfirmation: Bool = false, source: Source) -> Bool { requiresConfirmation }
-}
-
-enum CommandPaletteRenameSelectionSettings {
-    static let selectAllOnFocusKey = "commandPalette.renameSelectAllOnFocus"
-    static let defaultSelectAllOnFocus = true
-    static func selectAllOnFocusEnabled() -> Bool { true }
-}
-
 struct TerminalForegroundDirectoryResolver {
     init() {}
     func foregroundDirectory(forTTYName ttyName: String) -> String? { nil }

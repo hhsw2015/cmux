@@ -1759,7 +1759,8 @@ final class CmuxSettingsFileStore {
 
                 if change.defaultsKey == AppCatalogSection().language.userDefaultsKey {
                     let rawValue = UserDefaults.standard.string(forKey: change.defaultsKey) ?? ""
-                    LanguageSettingsStore(defaults: .standard).applyLanguageOverride(AppLanguage(rawValue: rawValue) ?? .system)
+                    let lang: CmuxSettings.AppLanguage = CmuxSettings.AppLanguage(rawValue: rawValue) ?? .system
+                    LanguageSettingsStore(defaults: .standard).applyLanguageOverride(lang)
                 } else if change.defaultsKey == AppearanceSettings.appearanceModeKey {
                     AppearanceSettings.applyStoredMode(
                         rawValue: UserDefaults.standard.string(forKey: change.defaultsKey),
