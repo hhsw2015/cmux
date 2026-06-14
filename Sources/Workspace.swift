@@ -4782,6 +4782,46 @@ final class Workspace: Identifiable, ObservableObject {
         return selectTopLevelTab(id: layout.id, reassertAppKitFocus: reassertAppKitFocus)
     }
 
+    /// Rename the top tab (layoutTab) that contains the given panel.
+    /// Title shows in the top-tab-bar. Returns true on success.
+    @discardableResult
+    func renameTopLevelLayoutTabContaining(panelId: UUID, title: String) -> Bool {
+        // Try panel-id lookup first (matches what newTopLevelTerminalTab
+        // returned and what `tab.action` accepts as surface_id), fall
+        // back to surfaceId lookup for cases where the caller passes
+        // a tab id from `surfaceIdToPanelId.keys`.
+        let layoutTab = (
+            layoutTab(containingPanelId: panelId)
+            ?? layoutTab(containingSurfaceId: TabID(uuid: panelId))
+        )
+        guard let layoutTab else {
+            return false
+        }
+        topTabController.updateTab(layoutTab.topTabId, title: title)
+        return true
+    }
+
+    /// Close the top tab (layoutTab) that contains the given panel.
+    /// Used by socket clients that just have a surface id from a
+    /// `workspace.top_tab.create` call. Returns true on success.
+    @discardableResult
+    func closeTopLevelLayoutTabContaining(panelId: UUID) -> Bool {
+        // Try panel-id lookup first (matches what newTopLevelTerminalTab
+        // returned and what `tab.action` accepts as surface_id), fall
+        // back to surfaceId lookup for cases where the caller passes
+        // a tab id from `surfaceIdToPanelId.keys`.
+        let layoutTab = (
+            layoutTab(containingPanelId: panelId)
+            ?? layoutTab(containingSurfaceId: TabID(uuid: panelId))
+        )
+        guard let layoutTab else {
+            return false
+        }
+        let fallback = layoutTabs.first(where: { $0.id != layoutTab.id })?.id
+        removeTopLevelLayoutTab(layoutTab, fallbackLayoutId: fallback)
+        return true
+    }
+
     private func removeTopLevelLayoutTab(_ layout: WorkspaceLayoutTab, fallbackLayoutId: UUID?) {
         // If this layoutTab was mirrored into a daemon Tab, close that
         // daemon-side tab too so external clients (tmux ls / herdr

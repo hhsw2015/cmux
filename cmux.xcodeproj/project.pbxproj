@@ -1003,7 +1003,6 @@
 		5AE40AAFDAB8A3F33E80DA36 /* Workspace+P43Stubs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69D00016B713AD89402A4689 /* Workspace+P43Stubs.swift */; };
 		8E966B0412F75AC613740371 /* TerminalSurface+ExternalIoBinding.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB51C8B8F15C35CE9A2394E9 /* TerminalSurface+ExternalIoBinding.swift */; };
 		DC75C7A93C64109D94928F87 /* TerminalSurface+ForegroundChildren.swift in Sources */ = {isa = PBXBuildFile; fileRef = 038F74916FECDAFECB5AAB1E /* TerminalSurface+ForegroundChildren.swift */; };
-		60BAAFF5600A26FAB5CEE643 /* CmuxCompositorBlur.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3B04A085C2994ACF5F8685C /* CmuxCompositorBlur.swift */; };
 		CB4256F8FB2E97B2850023C0 /* GhosttyConfig+P45Stubs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F1943EAFFD989B484B83E3B /* GhosttyConfig+P45Stubs.swift */; };
 /* End PBXBuildFile section */
 
@@ -1985,7 +1984,6 @@
 		69D00016B713AD89402A4689 /* Workspace+P43Stubs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Workspace+P43Stubs.swift"; sourceTree = "<group>"; };
 		BB51C8B8F15C35CE9A2394E9 /* TerminalSurface+ExternalIoBinding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/HerdrClient/TerminalSurface+ExternalIoBinding.swift"; sourceTree = "<group>"; };
 		038F74916FECDAFECB5AAB1E /* TerminalSurface+ForegroundChildren.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/App/TerminalSurface+ForegroundChildren.swift"; sourceTree = "<group>"; };
-		E3B04A085C2994ACF5F8685C /* CmuxCompositorBlur.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Windowing/CmuxCompositorBlur.swift"; sourceTree = "<group>"; };
 		1F1943EAFFD989B484B83E3B /* GhosttyConfig+P45Stubs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/GhosttyConfig+P45Stubs.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -4134,7 +4132,6 @@
 				5AE40AAFDAB8A3F33E80DA36 /* Workspace+P43Stubs.swift in Sources */,
 				8E966B0412F75AC613740371 /* TerminalSurface+ExternalIoBinding.swift in Sources */,
 				DC75C7A93C64109D94928F87 /* TerminalSurface+ForegroundChildren.swift in Sources */,
-				60BAAFF5600A26FAB5CEE643 /* CmuxCompositorBlur.swift in Sources */,
 				CB4256F8FB2E97B2850023C0 /* GhosttyConfig+P45Stubs.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
