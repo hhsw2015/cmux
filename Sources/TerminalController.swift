@@ -5746,11 +5746,14 @@ class TerminalController {
         v2MainSync {
             guard let ws = v2ResolveWorkspace(params: params, tabManager: tabManager) else { return }
             let tree = ws.bonsplitController.treeSnapshot()
-            let equalizeResult = SplitEqualizer.equalize(
+            let equalizeResult = tabManager.paneLayout.equalizeSplits(
                 in: tree,
                 controller: ws.bonsplitController,
                 orientationFilter: orientationFilter
             )
+            if equalizeResult.foundSplit {
+                ws.didProgrammaticallyChangeSplitGeometry()
+            }
             result = .ok([
                 "workspace_id": ws.id.uuidString,
                 "workspace_ref": v2Ref(kind: .workspace, uuid: ws.id),

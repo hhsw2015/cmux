@@ -1003,13 +1003,13 @@
 		F98CA092187047E799BCAC43 /* TerminalControllerControlCommandContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 719B7AF57F15B6ED8DE05D97 /* TerminalControllerControlCommandContext.swift */; };
 		FA208500A2D1DB8A456DAF87 /* GhosttySurfaceSizeDeferralReason.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88D2147E7BE99BBE491ED18C /* GhosttySurfaceSizeDeferralReason.swift */; };
 		5AE40AAFDAB8A3F33E80DA36 /* Workspace+P43Stubs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69D00016B713AD89402A4689 /* Workspace+P43Stubs.swift */; };
-		CB4256F8FB2E97B2850023C0 /* GhosttyConfig+P45Stubs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F1943EAFFD989B484B83E3B /* GhosttyConfig+P45Stubs.swift */; };
 		2952281F6BA79E0CD51ED9B6 /* TerminalStartupEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8920AB661E6818F6821FF088 /* TerminalStartupEnvironment.swift */; };
 		6F15859105C4BC36C106FDBF /* TerminalSurfaceClaudeCommandShim.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD6F0A22987B4F10A10CC8AC /* TerminalSurfaceClaudeCommandShim.swift */; };
 		8E1FA95ED0B4AD96FFC03F66 /* TerminalSurfaceCmuxContextEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C225E1AF48812E63AC698DF /* TerminalSurfaceCmuxContextEnvironment.swift */; };
 		7C02AEF7DD60D9BB5BCBAABA /* SidebarScrollViewResolverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24278DE7DF1BB11E84F2E3FB /* SidebarScrollViewResolverView.swift */; };
 		130D4A91C88DC63853080C68 /* SidebarDropPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3574B36D14438B6A6390D9C /* SidebarDropPlanner.swift */; };
 		B0AE5C1642BD0505EA0E4AF9 /* SidebarScrollViewConfigurator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2932097C67F843CFD919CF46 /* SidebarScrollViewConfigurator.swift */; };
+		80CAE960D4A29567C2422882 /* TerminalSurfacePaneHostingAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 103A05B763E58DD61765EFFE /* TerminalSurfacePaneHostingAdapter.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -1990,13 +1990,13 @@
 		719B7AF57F15B6ED8DE05D97 /* TerminalControllerControlCommandContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TerminalControllerControlCommandContext.swift"; sourceTree = "<group>"; };
 		88D2147E7BE99BBE491ED18C /* GhosttySurfaceSizeDeferralReason.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/GhosttySurfaceSizeDeferralReason.swift"; sourceTree = "<group>"; };
 		69D00016B713AD89402A4689 /* Workspace+P43Stubs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Workspace+P43Stubs.swift"; sourceTree = "<group>"; };
-		1F1943EAFFD989B484B83E3B /* GhosttyConfig+P45Stubs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/GhosttyConfig+P45Stubs.swift"; sourceTree = "<group>"; };
 		8920AB661E6818F6821FF088 /* TerminalStartupEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TerminalStartupEnvironment.swift"; sourceTree = "<group>"; };
 		FD6F0A22987B4F10A10CC8AC /* TerminalSurfaceClaudeCommandShim.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TerminalSurfaceClaudeCommandShim.swift"; sourceTree = "<group>"; };
 		8C225E1AF48812E63AC698DF /* TerminalSurfaceCmuxContextEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/TerminalSurfaceCmuxContextEnvironment.swift"; sourceTree = "<group>"; };
 		24278DE7DF1BB11E84F2E3FB /* SidebarScrollViewResolverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/SidebarScrollViewResolverView.swift"; sourceTree = "<group>"; };
 		F3574B36D14438B6A6390D9C /* SidebarDropPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Sidebar/SidebarDropPlanner.swift"; sourceTree = "<group>"; };
 		2932097C67F843CFD919CF46 /* SidebarScrollViewConfigurator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/SidebarScrollViewConfigurator.swift"; sourceTree = "<group>"; };
+		103A05B763E58DD61765EFFE /* TerminalSurfacePaneHostingAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Panels/TerminalSurfacePaneHostingAdapter.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -4144,13 +4144,13 @@
 				E3B7A4000000000000000001 /* WorkspaceTabColorSettings.swift in Sources */,
 				FA208500A2D1DB8A456DAF87 /* GhosttySurfaceSizeDeferralReason.swift in Sources */,
 				5AE40AAFDAB8A3F33E80DA36 /* Workspace+P43Stubs.swift in Sources */,
-				CB4256F8FB2E97B2850023C0 /* GhosttyConfig+P45Stubs.swift in Sources */,
 				2952281F6BA79E0CD51ED9B6 /* TerminalStartupEnvironment.swift in Sources */,
 				6F15859105C4BC36C106FDBF /* TerminalSurfaceClaudeCommandShim.swift in Sources */,
 				8E1FA95ED0B4AD96FFC03F66 /* TerminalSurfaceCmuxContextEnvironment.swift in Sources */,
 				7C02AEF7DD60D9BB5BCBAABA /* SidebarScrollViewResolverView.swift in Sources */,
 				130D4A91C88DC63853080C68 /* SidebarDropPlanner.swift in Sources */,
 				B0AE5C1642BD0505EA0E4AF9 /* SidebarScrollViewConfigurator.swift in Sources */,
+				80CAE960D4A29567C2422882 /* TerminalSurfacePaneHostingAdapter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

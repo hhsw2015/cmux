@@ -29,7 +29,7 @@ struct TerminalSurfaceViewFactory: TerminalSurfaceViewProviding {
         initialFrame: NSRect
     ) -> (surfaceView: any TerminalSurfaceNativeViewing, paneHost: any TerminalSurfacePaneHosting) {
         let view = GhosttyNSView(frame: initialFrame)
-        fatalError("TerminalSurfaceViewFactory.makeSurfaceViews unsupported in fork; package surfaces unused")
+        return (view, TerminalSurfacePaneHostingAdapter(underlying: GhosttySurfaceScrollView(surfaceView: view)))
     }
 }
 

@@ -16,7 +16,7 @@ struct StableLayoutCoordResolver {
         for window in snapshot.windows {
             for ws in window.tabManager.workspaces {
                 for panel in ws.panels {
-                    if let coord = StableLayoutCoord?.none {
+                    if let coord = panel.stableCoord {
                         map[coord] = panel.id
                     }
                 }

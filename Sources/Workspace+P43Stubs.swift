@@ -8,41 +8,21 @@ import Foundation
 // names in TerminalController + a couple of debug/restore paths. Re-export
 // thin shims so the merge builds; replace with proper package calls in P44+.
 
-enum SplitEqualizer {
-    struct Result {
-        var changedPanels: [UUID] = []
-        var changedSplits: [UUID] = []
-        var didFullyEqualize: Bool = false
-    }
-
-    static func equalize(
-        in tree: Any,
-        controller: Any,
-        orientationFilter: Any? = nil
-    ) -> Result {
-        Result()
-    }
-}
-
-enum WorkspaceRemoteSessionController {
-    enum PortScanKickReason: String, Sendable {
-        case manualKick
-        case probeFailure
-    }
-}
-
 import CmuxSettings
 
 enum WorkspaceGroupNewWorkspacePlacementSettings {
     static let defaultValue: WorkspaceGroupNewPlacement = .afterCurrent
-    static func resolved() -> WorkspaceGroupNewPlacement? { nil }
+
+    /// Reads the persisted user choice from the workspace-groups catalog setting,
+    /// falling back to defaultValue when nothing is stored.
+    static func resolved() -> WorkspaceGroupNewPlacement? {
+        let key = WorkspaceGroupsCatalogSection().newWorkspacePlacement
+        let raw = UserDefaults.standard.string(forKey: key.userDefaultsKey)
+        return WorkspaceGroupNewPlacement(rawString: raw) ?? defaultValue
+    }
 }
 
 extension WorkspaceGroupNewPlacement {
-    init?(rawString: String) {
-        self.init(rawValue: rawString)
-    }
-
     var settingsDescription: String {
         switch self {
         case .top: return "New workspaces appear at the top of the group."
@@ -58,32 +38,6 @@ extension WorkspaceGroupNewPlacement {
         case .afterCurrent: return "After Current"
         }
     }
-}
-
-// ponytail: P45 stubs.
-extension Workspace {
-    func removeSurfaceMapping(tabId: Any?, panelId: UUID) {}
-}
-
-// ponytail: forLayoutTabId stub
-extension Workspace {
-    func bonsplitController(forLayoutTabId layoutTabId: UUID) -> BonsplitController? {
-        bonsplitController
-    }
-}
-
-extension Workspace {
-    var layoutTabId: UUID? { nil }
-}
-
-extension Workspace {
-    func bonsplitController(containingPaneId pid: Any) -> BonsplitController? {
-        bonsplitController
-    }
-}
-
-extension Workspace {
-    func layoutTabId(containingPaneId pid: Any) -> UUID? { nil }
 }
 
 
