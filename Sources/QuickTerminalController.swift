@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import CmuxTerminal
 import QuartzCore
 
 enum QuickTerminalSettings {

@@ -11,6 +11,8 @@ import Bonsplit
 import CMUXAgentLaunch
 import CMUXSessionDaemon
 import CmuxBrowser
+import CmuxWorkspaceCore
+import CmuxTerminal
 import CmuxPanes
 import CmuxWorkspaces
 import CmuxSocketControl
@@ -5732,7 +5734,7 @@ final class Workspace: Identifiable, ObservableObject {
         AgentHibernationController.shared.recordShellActivityTransition(
             workspaceId: id,
             panelId: panelId,
-            state: state
+            state: CmuxWorkspaceCore.PanelShellActivityState(rawValue: state.rawValue) ?? .unknown
         )
         if let restoredAgent = restoredAgentSnapshotsByPanelId[panelId] {
             updateRestoredAgentResumeState(
@@ -11429,7 +11431,7 @@ final class Workspace: Identifiable, ObservableObject {
     }
 
     @discardableResult
-    private func reconcileTerminalPortalVisibilityForCurrentRenderedLayout() -> Bool {
+    func reconcileTerminalPortalVisibilityForCurrentRenderedLayout() -> Bool {
         let visiblePanelIds = renderedVisiblePanelIdsForCurrentLayout()
         var didChange = agentHibernationAutoResumePresentationVisible
             ? resumeVisibleAgentHibernationPanels(panelIds: visiblePanelIds)
@@ -11489,7 +11491,7 @@ final class Workspace: Identifiable, ObservableObject {
 #endif
 
     @discardableResult
-    private func reconcileBrowserPortalVisibilityForCurrentRenderedLayout(reason: String) -> Bool {
+    func reconcileBrowserPortalVisibilityForCurrentRenderedLayout(reason: String) -> Bool {
         let visiblePanelIds = renderedVisiblePanelIdsForCurrentLayout()
         var didChange = false
 

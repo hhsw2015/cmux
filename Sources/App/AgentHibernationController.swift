@@ -1,5 +1,6 @@
 import AppKit
 import Darwin
+import CmuxWorkspaceCore
 import Foundation
 
 struct AgentHibernationPanelKey: Hashable, Sendable {
@@ -143,7 +144,7 @@ final class AgentHibernationController {
     func recordShellActivityTransition(
         workspaceId: UUID,
         panelId: UUID,
-        state: Workspace.PanelShellActivityState,
+        state: PanelShellActivityState,
         recordedAt: Date? = nil
     ) {
         guard AgentHibernationTrackingGate.isEnabled() else { return }

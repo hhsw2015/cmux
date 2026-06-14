@@ -3,6 +3,7 @@ import CmuxTerminalCore
 import Combine
 import AppKit
 import Bonsplit
+import CmuxTerminal
 
 struct AgentHibernationPanelState {
     let agent: SessionRestorableAgentSnapshot
@@ -271,8 +272,7 @@ final class TerminalPanel: Panel, ObservableObject {
             initialInput: initialInput,
             initialEnvironmentOverrides: initialEnvironmentOverrides,
             additionalEnvironment: additionalEnvironment,
-            focusPlacement: focusPlacement,
-            externalIo: externalIo
+            focusPlacement: focusPlacement
         )
         self.init(workspaceId: workspaceId, surface: surface)
     }

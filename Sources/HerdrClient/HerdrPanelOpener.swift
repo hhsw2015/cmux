@@ -1,6 +1,7 @@
 import AppKit
 import Bonsplit
 import CMUXSessionDaemon
+import CmuxTerminal
 import Foundation
 import GhosttyKit
 import os.log

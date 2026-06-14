@@ -2,6 +2,7 @@ import XCTest
 import AppKit
 import Carbon.HIToolbox
 import ObjectiveC.runtime
+import CmuxTerminal
 
 #if canImport(cmux_DEV)
 @testable import cmux_DEV

@@ -1,4 +1,5 @@
 import AppKit
+import CmuxTestSupport
 import Foundation
 import OSLog
 
@@ -19,7 +20,7 @@ enum PreferredEditorSettings {
 
     /// Open a file path with the user's preferred editor, falling back to system default.
     static func open(_ url: URL) {
-        if CmuxUITestCapture.appendLineIfConfigured(
+        if UITestCaptureSink().appendLineIfConfigured(
             envKey: "CMUX_UI_TEST_CAPTURE_OPEN_PATH",
             line: url.path(percentEncoded: false)
         ) {

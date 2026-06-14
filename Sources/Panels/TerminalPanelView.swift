@@ -1,8 +1,11 @@
 import SwiftUI
+import CMUXSessionDaemon
 import Foundation
 import AppKit
 import Bonsplit
-import CMUXSessionDaemon
+import CmuxTestSupport
+import CmuxTerminal
+import CmuxFoundation
 
 /// View for rendering a terminal panel
 struct TerminalPanelView: View {
@@ -317,7 +320,7 @@ private func recordTerminalViewportGeometryForUITest(proxy: GeometryProxy, panel
         hostedFrameInContent = .zero
     }
 
-    _ = CmuxUITestCapture.mutateJSONObjectIfConfigured(envKey: "CMUX_UI_TEST_TERMINAL_VIEWPORT_PATH") { payload in
+    _ = UITestCaptureSink().mutateJSONObjectIfConfigured(envKey: "CMUX_UI_TEST_TERMINAL_VIEWPORT_PATH") { payload in
         payload["terminalViewportPanelId"] = panel.id.uuidString
         payload["terminalViewportPanelWidth"] = terminalViewportFormat(proxy.size.width)
         payload["terminalViewportPanelHeight"] = terminalViewportFormat(proxy.size.height)
@@ -363,7 +366,11 @@ struct PanelAppearance {
     }
 
     static func fromConfig(_ config: GhosttyConfig) -> PanelAppearance {
-        fromConfig(config, usesTransparentWindow: cmuxShouldUseTransparentBackgroundWindow())
+        fromConfig(
+            config,
+            usesTransparentWindow: WindowBackgroundComposition.policy
+                .shouldUseTransparentBackgroundWindow(glassEffectAvailable: WindowGlassEffect.isAvailable)
+        )
     }
 
     static func fromConfig(_ config: GhosttyConfig, usesTransparentWindow: Bool) -> PanelAppearance {
