@@ -65,7 +65,7 @@
 1410	Sources/CommandPalette/CommandPaletteSearch.swift
 903	Sources/CommandPalette/CommandPaletteSettingsToggle.swift
 19265	Sources/ContentView.swift
-924	Sources/DockPanelView.swift
+925	Sources/DockPanelView.swift
 1365	Sources/Feed/FeedButtonStyleDebugWindowController.swift
 1256	Sources/Feed/FeedCoordinator.swift
 3937	Sources/Feed/FeedPanelView.swift
@@ -78,7 +78,7 @@
 586	Sources/JSONCParser.swift
 2516	Sources/KeyboardShortcutSettings.swift
 2039	Sources/KeyboardShortcutSettingsFileStore.swift
-768	Sources/MainWindowFocusController.swift
+769	Sources/MainWindowFocusController.swift
 2340	Sources/Mobile/MobileHostService.swift
 691	Sources/NotificationSoundSettings.swift
 681	Sources/Panels/AgentSessionProcessStore.swift
@@ -112,12 +112,12 @@
 752	Sources/TerminalController+ControlWorkspaceContext.swift
 22444	Sources/TerminalController.swift
 507	Sources/TerminalControllerTopSupport.swift
-508	Sources/TerminalImageTransfer.swift
+509	Sources/TerminalImageTransfer.swift
 947	Sources/TerminalNotificationPolicy.swift
 2527	Sources/TerminalNotificationStore.swift
 710	Sources/TerminalSSHSessionDetector.swift
 2260	Sources/TerminalWindowPortal.swift
-6071	Sources/TextBoxInput.swift
+6073	Sources/TextBoxInput.swift
 937	Sources/TextBoxMentionIndexStore.swift
 3202	Sources/Update/UpdateTitlebarAccessory.swift
 1166	Sources/VaultAgentProcessScanner.swift
@@ -130,8 +130,8 @@
 562	cmuxTests/AgentExecutableResolverTests.swift
 1119	cmuxTests/AgentHibernationTests.swift
 847	cmuxTests/AgentSessionAutoResumeSettingsTests.swift
-1372	cmuxTests/AppDelegateIssue2907RoutingTests.swift
-12044	cmuxTests/AppDelegateShortcutRoutingTests.swift
+1373	cmuxTests/AppDelegateIssue2907RoutingTests.swift
+12045	cmuxTests/AppDelegateShortcutRoutingTests.swift
 577	cmuxTests/AppearanceSettingsTests.swift
 5499	cmuxTests/BrowserConfigTests.swift
 4400	cmuxTests/BrowserPanelTests.swift
@@ -153,7 +153,7 @@
 588	cmuxTests/CommandPaletteShortcutCustomizationTests.swift
 668	cmuxTests/FeedCoordinatorTests.swift
 1126	cmuxTests/FileExplorerStoreTests.swift
-619	cmuxTests/FinderFileDropRegressionTests.swift
+620	cmuxTests/FinderFileDropRegressionTests.swift
 560	cmuxTests/GhosttyConfigPathResolverTests.swift
 6555	cmuxTests/GhosttyConfigTests.swift
 688	cmuxTests/KeyboardShortcutContextTests.swift
