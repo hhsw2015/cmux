@@ -1,4 +1,4 @@
-public import Foundation
+import Foundation
 
 /// A user-selected file to attach to a feedback submission, carrying the
 /// resolved name, size, and MIME type read from the URL's resource values.

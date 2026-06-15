@@ -29,7 +29,6 @@ let package = Package(
             swiftSettings: [
                 .swiftLanguageMode(.v6),
                 .enableUpcomingFeature("ExistentialAny"),
-                .enableUpcomingFeature("InternalImportsByDefault"),
             ]
         ),
         .testTarget(
@@ -38,7 +37,6 @@ let package = Package(
             swiftSettings: [
                 .swiftLanguageMode(.v6),
                 .enableUpcomingFeature("ExistentialAny"),
-                .enableUpcomingFeature("InternalImportsByDefault"),
             ]
         ),
     ]

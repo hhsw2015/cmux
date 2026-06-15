@@ -98706,6 +98706,244 @@
         }
       }
     },
+    "settings.automation.workspaceAutoNaming": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workspace Auto-Naming"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースの自動命名"
+          }
+        }
+      }
+    },
+    "settings.automation.workspaceAutoNaming.subtitleOn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workspaces and tabs are named from agent conversations."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エージェントの会話からワークスペースとタブに名前が付きます。"
+          }
+        }
+      }
+    },
+    "settings.automation.workspaceAutoNaming.subtitleOff": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workspace and tab names are never generated."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースとタブの名前は自動生成されません。"
+          }
+        }
+      }
+    },
+    "settings.automation.workspaceAutoNaming.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When enabled, cmux summarizes supported agent sessions into short workspace and tab names using each agent's own binary, refreshed as the topic shifts. Manual renames always win and stop auto-naming for that workspace or tab. Uses your agent account for the short summarization calls."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有効にすると、cmux は対応エージェントの各バイナリを使ってエージェントセッションを短いワークスペース名とタブ名に要約し、話題が変わると更新します。手動の名前変更が常に優先され、そのワークスペースやタブの自動命名は停止します。短い要約呼び出しにはユーザーのエージェントアカウントが使われます。"
+          }
+        }
+      }
+    },
+    "settings.automation.workspaceAutoNaming.hooksOffWarning": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code Integration is off, so Claude sessions will not be auto-named. Other supported agents still name when their cmux hooks are installed."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code 連携がオフのため、Claude セッションは自動命名されません。他の対応エージェントは、それぞれの cmux フックがインストールされていれば引き続き命名されます。"
+          }
+        }
+      }
+    },
+    "settings.automation.autoNamingAgent": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Naming Agent"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "命名エージェント"
+          }
+        }
+      }
+    },
+    "settings.automation.autoNamingAgent.auto": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動"
+          }
+        }
+      }
+    },
+    "settings.automation.autoNamingAgent.section.supported": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supported"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "対応"
+          }
+        }
+      }
+    },
+    "settings.automation.autoNamingAgent.section.other": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Other agents"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "その他のエージェント"
+          }
+        }
+      }
+    },
+    "settings.automation.autoNamingAgent.requirement.auto": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Each session is named by its own agent."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "各セッションはそのセッション自身のエージェントによって命名されます。"
+          }
+        }
+      }
+    },
+    "settings.automation.autoNamingAgent.requirement.supported": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ names every session. Requires its CLI on your PATH; if it can't produce a name, existing names are left unchanged."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ がすべてのセッションを命名します。PATH にその CLI が必要です。名前を生成できない場合、既存の名前はそのまま保持されます。"
+          }
+        }
+      }
+    },
+    "settings.automation.autoNamingAgent.requirement.unsupported": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ can't generate names yet, so cmux uses each session's own agent."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ はまだ名前を生成できないため、cmux は各セッション自身のエージェントを使用します。"
+          }
+        }
+      }
+    },
+    "settings.automation.autoNamingAgent.status.failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ couldn't generate a name — it may be rate-limited, out of tokens, or signed out. Existing names are left unchanged."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ は名前を生成できませんでした。レート制限、トークン不足、またはサインアウトの可能性があります。既存の名前はそのまま保持されます。"
+          }
+        }
+      }
+    },
+    "settings.automation.autoNamingAgent.status.notInstalled": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ isn't installed, so naming used each session's own agent."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ がインストールされていないため、命名には各セッション自身のエージェントが使用されました。"
+          }
+        }
+      }
+    },
     "settings.automation.cursor": {
       "extractionState": "manual",
       "localizations": {
@@ -112114,6 +112352,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "Натисніть на значення комбінації, щоб записати нову."
+          }
+        }
+      }
+    },
+    "settings.shortcuts.showModifierHoldHints": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Shortcut Hints While Holding Modifier Keys"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修飾キー長押し時にショートカットヒントを表示"
+          }
+        }
+      }
+    },
+    "settings.shortcuts.showModifierHoldHints.subtitleOff": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Holding Cmd or Control does not show shortcut hint chips."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cmd または Control を押し続けてもショートカットヒントのチップを表示しません。"
+          }
+        }
+      }
+    },
+    "settings.shortcuts.showModifierHoldHints.subtitleOn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Holding Cmd or Control shows shortcut hint chips."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cmd または Control を押し続けるとショートカットヒントのチップを表示します。"
           }
         }
       }
@@ -133861,6 +134150,102 @@
             "state": "translated",
             "value": "연결됨"
           }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "متصل"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Povezano"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forbundet"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbunden"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conectado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connecté"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connesso"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "បានភ្ជាប់"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tilkoblet"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Połączono"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conectado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключено"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เชื่อมต่อแล้ว"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlandı"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已连接"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已連線"
+          }
         }
       }
     },
@@ -133889,6 +134274,102 @@
           "stringUnit": {
             "state": "translated",
             "value": "연결 중"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جارٍ الاتصال"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Povezivanje"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opretter forbindelse"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbindung wird hergestellt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conectando"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connexion"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connessione"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "កំពុងភ្ជាប់"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kobler til"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Łączenie"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conectando"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключение"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังเชื่อมต่อ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlanıyor"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在连接"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在連線"
           }
         }
       }
@@ -133919,6 +134400,102 @@
             "state": "translated",
             "value": "다시 연결 중"
           }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جارٍ إعادة الاتصال"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ponovno povezivanje"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genopretter forbindelse"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbindung wird wiederhergestellt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconectando"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconnexion"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riconnessione"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "កំពុងភ្ជាប់ឡើងវិញ"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kobler til på nytt"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ponowne łączenie"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconectando"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повторное подключение"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังเชื่อมต่อใหม่"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeniden bağlanıyor"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在重新连接"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在重新連線"
+          }
         }
       }
     },
@@ -133947,6 +134524,227 @@
           "stringUnit": {
             "state": "translated",
             "value": "연결 해제됨"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "غير متصل"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prekinuto"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afbrudt"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Getrennt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desconectado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déconnecté"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disconnesso"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "បានផ្តាច់"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frakoblet"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rozłączono"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desconectado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отключено"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตัดการเชื่อมต่อแล้ว"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlantı kesildi"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已断开"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已中斷連線"
+          }
+        }
+      }
+    },
+    "remote.status.terminalDisconnected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote terminal session disconnected"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リモートターミナルセッションが切断されました"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сеанс віддаленого термінала відключено"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "원격 터미널 세션 연결 해제됨"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تم قطع جلسة الطرفية البعيدة"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesija udaljenog terminala je prekinuta"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjernterminalsessionen blev afbrudt"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote-Terminalsitzung getrennt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesión de terminal remoto desconectada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session de terminal distant déconnectée"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessione terminale remota disconnessa"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "សម័យ terminal ពីចម្ងាយត្រូវបានផ្តាច់"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekstern terminaløkt frakoblet"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesja zdalnego terminala rozłączona"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessão do terminal remoto desconectada"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сеанс удаленного терминала отключен"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เซสชันเทอร์มินัลระยะไกลถูกตัดการเชื่อมต่อ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uzak terminal oturumu bağlantısı kesildi"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "远程终端会话已断开"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "遠端終端機工作階段已中斷連線"
           }
         }
       }
@@ -133977,34 +134775,226 @@
             "state": "translated",
             "value": "오류"
           }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "خطأ"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Greška"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fejl"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fehler"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Error"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erreur"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Errore"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "កំហុស"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Feil"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Błąd"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erro"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ошибка"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ข้อผิดพลาด"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hata"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "错误"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "錯誤"
+          }
         }
       }
     },
     "sidebar.remote.subtitle": {
       "extractionState": "manual",
       "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بعيد • %@"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Udaljeno • %@"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjern • %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote • %@"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH • %@"
+            "value": "Remote • %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remoto • %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote • %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote • %@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH • %@"
+            "value": "リモート • %@"
           }
         },
-        "uk": {
+        "km": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH • %@"
+            "value": "ពីចម្ងាយ • %@"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH • %@"
+            "value": "원격 • %@"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekstern • %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zdalne • %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remoto • %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удаленно • %@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รีโมต • %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uzak • %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Віддалено • %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "远程 • %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "遠端 • %@"
           }
         }
       }
@@ -134015,25 +135005,121 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH workspace"
+            "value": "Remote workspace"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH ワークスペース"
+            "value": "リモートワークスペース"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH робоча область"
+            "value": "Віддалена робоча область"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH 워크스페이스"
+            "value": "원격 워크스페이스"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مساحة عمل بعيدة"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Udaljeni radni prostor"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjernarbejdsområde"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote-Arbeitsbereich"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Espacio de trabajo remoto"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Espace de travail distant"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Area di lavoro remota"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "កន្លែងធ្វើការពីចម្ងាយ"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eksternt arbeidsområde"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zdalny obszar roboczy"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workspace remoto"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удаленная рабочая область"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เวิร์กสเปซระยะไกล"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uzak çalışma alanı"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "远程工作区"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "遠端工作區"
           }
         }
       }
@@ -134044,25 +135130,121 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH connected to %@"
+            "value": "Remote connected to %@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH は %@ に接続済み"
+            "value": "リモートは %@ に接続済み"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH підключено до %@"
+            "value": "Віддалене підключення до %@ встановлено"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@에 SSH 연결됨"
+            "value": "원격이 %@에 연결됨"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الاتصال البعيد متصل بـ %@"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Udaljeno povezano s %@"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjernforbindelse til %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote mit %@ verbunden"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remoto conectado a %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote connecté à %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote connesso a %@"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "បានភ្ជាប់ពីចម្ងាយទៅ %@"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekstern tilkoblet %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zdalnie połączono z %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remoto conectado a %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удаленное подключение к %@ установлено"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รีโมตเชื่อมต่อกับ %@ แล้ว"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uzak bağlantı %@ ile bağlı"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "远程已连接到 %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "遠端已連線到 %@"
           }
         }
       }
@@ -134073,25 +135255,121 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH connecting to %@"
+            "value": "Remote connecting to %@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH は %@ に接続中"
+            "value": "リモートは %@ に接続中"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH підключення до %@"
+            "value": "Віддалене підключення до %@"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@에 SSH 연결 중"
+            "value": "원격이 %@에 연결 중"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الاتصال البعيد يتصل بـ %@"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Udaljeno povezivanje s %@"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjernforbindelse opretter forbindelse til %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote verbindet mit %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remoto conectando a %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote en connexion à %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote in connessione a %@"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "កំពុងភ្ជាប់ពីចម្ងាយទៅ %@"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekstern kobler til %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zdalne łączenie z %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remoto conectando a %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удаленное подключение к %@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รีโมตกำลังเชื่อมต่อกับ %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uzak bağlantı %@ hedefine bağlanıyor"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "远程正在连接到 %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "遠端正在連線到 %@"
           }
         }
       }
@@ -134102,25 +135380,121 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH reconnecting to %@"
+            "value": "Remote reconnecting to %@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH は %@ に再接続中"
+            "value": "リモートは %@ に再接続中"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH повторно підключається до %@"
+            "value": "Віддалене повторне підключення до %@"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@에 SSH 다시 연결 중"
+            "value": "원격이 %@에 다시 연결 중"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الاتصال البعيد يعيد الاتصال بـ %@"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Udaljeno ponovno povezivanje s %@"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjernforbindelse genopretter forbindelse til %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote verbindet erneut mit %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remoto reconectando a %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote en reconnexion à %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote in riconnessione a %@"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "កំពុងភ្ជាប់ឡើងវិញពីចម្ងាយទៅ %@"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekstern kobler til %@ på nytt"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zdalne ponowne łączenie z %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remoto reconectando a %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удаленное повторное подключение к %@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รีโมตกำลังเชื่อมต่อกับ %@ ใหม่"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uzak bağlantı %@ hedefine yeniden bağlanıyor"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "远程正在重新连接到 %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "遠端正在重新連線到 %@"
           }
         }
       }
@@ -134131,25 +135505,121 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH error for %@"
+            "value": "Remote error for %@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ の SSH エラー"
+            "value": "%@ のリモートエラー"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Помилка SSH для %@"
+            "value": "Помилка віддаленого підключення для %@"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@에 대한 SSH 오류"
+            "value": "%@의 원격 오류"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "خطأ في الاتصال البعيد لـ %@"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Greška udaljene veze za %@"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjernfejl for %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote-Fehler für %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Error remoto para %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erreur remote pour %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Errore remote per %@"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "កំហុសពីចម្ងាយសម្រាប់ %@"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekstern feil for %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Błąd zdalny dla %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erro remoto para %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ошибка удаленного подключения для %@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ข้อผิดพลาดรีโมตสำหรับ %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ için uzak bağlantı hatası"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 的远程错误"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 的遠端錯誤"
           }
         }
       }
@@ -134160,25 +135630,121 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH error for %@: %@"
+            "value": "Remote error for %@: %@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ の SSH エラー: %@"
+            "value": "%@ のリモートエラー: %@"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Помилка SSH для %@: %@"
+            "value": "Помилка віддаленого підключення для %@: %@"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@에 대한 SSH 오류: %@"
+            "value": "%@의 원격 오류: %@"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "خطأ في الاتصال البعيد لـ %@: %@"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Greška udaljene veze za %@: %@"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjernfejl for %@: %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote-Fehler für %@: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Error remoto para %@: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erreur remote pour %@: %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Errore remote per %@: %@"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "កំហុសពីចម្ងាយសម្រាប់ %@: %@"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekstern feil for %@: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Błąd zdalny dla %@: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erro remoto para %@: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ошибка удаленного подключения для %@: %@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ข้อผิดพลาดรีโมตสำหรับ %@: %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ için uzak bağlantı hatası: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 的远程错误: %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 的遠端錯誤: %@"
           }
         }
       }
@@ -134189,25 +135755,121 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH disconnected from %@"
+            "value": "Remote disconnected from %@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH は %@ から切断済み"
+            "value": "リモートは %@ から切断済み"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "SSH відключено від %@"
+            "value": "Віддалене підключення до %@ відключено"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@에서 SSH 연결 해제됨"
+            "value": "원격이 %@에서 연결 해제됨"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الاتصال البعيد منقطع عن %@"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Udaljeno prekinuto s %@"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fjernforbindelse afbrudt fra %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote von %@ getrennt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remoto desconectado de %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote déconnecté de %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote disconnesso da %@"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "បានផ្តាច់ពីចម្ងាយពី %@"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekstern frakoblet %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zdalnie rozłączono z %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remoto desconectado de %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удаленное подключение к %@ отключено"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รีโมตตัดการเชื่อมต่อจาก %@ แล้ว"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uzak bağlantı %@ ile kesildi"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "远程已从 %@ 断开"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "遠端已從 %@ 中斷連線"
           }
         }
       }
@@ -134237,6 +135899,102 @@
           "stringUnit": {
             "state": "translated",
             "value": "원격 호스트"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مضيف بعيد"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "udaljeni host"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "fjernvært"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote-Host"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "host remoto"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "hôte distant"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "host remoto"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ម៉ាស៊ីនពីចម្ងាយ"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ekstern vert"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zdalny host"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "host remoto"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "удаленный хост"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "โฮสต์ระยะไกล"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "uzak ana makine"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "远程主机"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "遠端主機"
           }
         }
       }
@@ -158287,115 +160045,121 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "[cmux] remote ssh session ended: %s"
+            "value": "[cmux] remote session disconnected: %s"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "[cmux] リモート SSH セッションが終了しました: %s"
+            "value": "[cmux] リモートセッションが切断されました: %s"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] remote ssh session ended: %s"
+            "value": "[cmux] remote session disconnected: %s"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] remote ssh session ended: %s"
+            "value": "[cmux] remote session disconnected: %s"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] remote ssh session ended: %s"
+            "value": "[cmux] remote session disconnected: %s"
           }
         },
         "de": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] remote ssh session ended: %s"
+            "value": "[cmux] remote session disconnected: %s"
           }
         },
         "es": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] remote ssh session ended: %s"
+            "value": "[cmux] remote session disconnected: %s"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] remote ssh session ended: %s"
+            "value": "[cmux] remote session disconnected: %s"
           }
         },
         "it": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] remote ssh session ended: %s"
+            "value": "[cmux] remote session disconnected: %s"
           }
         },
         "da": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] remote ssh session ended: %s"
+            "value": "[cmux] remote session disconnected: %s"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] remote ssh session ended: %s"
+            "value": "[cmux] remote session disconnected: %s"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] remote ssh session ended: %s"
+            "value": "[cmux] remote session disconnected: %s"
           }
         },
         "bs": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] remote ssh session ended: %s"
+            "value": "[cmux] remote session disconnected: %s"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] remote ssh session ended: %s"
+            "value": "[cmux] remote session disconnected: %s"
           }
         },
         "nb": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] remote ssh session ended: %s"
+            "value": "[cmux] remote session disconnected: %s"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] remote ssh session ended: %s"
+            "value": "[cmux] remote session disconnected: %s"
           }
         },
         "th": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] remote ssh session ended: %s"
+            "value": "[cmux] remote session disconnected: %s"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] remote ssh session ended: %s"
+            "value": "[cmux] remote session disconnected: %s"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] remote ssh session ended: %s"
+            "value": "[cmux] remote session disconnected: %s"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "new",
+            "value": "[cmux] remote session disconnected: %s"
           }
         }
       }
@@ -158406,115 +160170,246 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "[cmux] falling back to a local shell. Reconnect with the original cmux ssh or cmux vm attach command."
+            "value": "[cmux] Press Enter to reconnect. This terminal will stay disconnected until then."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "[cmux] ローカルシェルにフォールバックしました。元の cmux ssh または cmux vm attach コマンドで再接続してください。"
+            "value": "[cmux] Enter キーを押すと再接続します。それまではこのターミナルは切断されたままです。"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] falling back to a local shell. Reconnect with the original cmux ssh or cmux vm attach command."
+            "value": "[cmux] Press Enter to reconnect. This terminal will stay disconnected until then."
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] falling back to a local shell. Reconnect with the original cmux ssh or cmux vm attach command."
+            "value": "[cmux] Press Enter to reconnect. This terminal will stay disconnected until then."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] falling back to a local shell. Reconnect with the original cmux ssh or cmux vm attach command."
+            "value": "[cmux] Press Enter to reconnect. This terminal will stay disconnected until then."
           }
         },
         "de": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] falling back to a local shell. Reconnect with the original cmux ssh or cmux vm attach command."
+            "value": "[cmux] Press Enter to reconnect. This terminal will stay disconnected until then."
           }
         },
         "es": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] falling back to a local shell. Reconnect with the original cmux ssh or cmux vm attach command."
+            "value": "[cmux] Press Enter to reconnect. This terminal will stay disconnected until then."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] falling back to a local shell. Reconnect with the original cmux ssh or cmux vm attach command."
+            "value": "[cmux] Press Enter to reconnect. This terminal will stay disconnected until then."
           }
         },
         "it": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] falling back to a local shell. Reconnect with the original cmux ssh or cmux vm attach command."
+            "value": "[cmux] Press Enter to reconnect. This terminal will stay disconnected until then."
           }
         },
         "da": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] falling back to a local shell. Reconnect with the original cmux ssh or cmux vm attach command."
+            "value": "[cmux] Press Enter to reconnect. This terminal will stay disconnected until then."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] falling back to a local shell. Reconnect with the original cmux ssh or cmux vm attach command."
+            "value": "[cmux] Press Enter to reconnect. This terminal will stay disconnected until then."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] falling back to a local shell. Reconnect with the original cmux ssh or cmux vm attach command."
+            "value": "[cmux] Press Enter to reconnect. This terminal will stay disconnected until then."
           }
         },
         "bs": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] falling back to a local shell. Reconnect with the original cmux ssh or cmux vm attach command."
+            "value": "[cmux] Press Enter to reconnect. This terminal will stay disconnected until then."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] falling back to a local shell. Reconnect with the original cmux ssh or cmux vm attach command."
+            "value": "[cmux] Press Enter to reconnect. This terminal will stay disconnected until then."
           }
         },
         "nb": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] falling back to a local shell. Reconnect with the original cmux ssh or cmux vm attach command."
+            "value": "[cmux] Press Enter to reconnect. This terminal will stay disconnected until then."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] falling back to a local shell. Reconnect with the original cmux ssh or cmux vm attach command."
+            "value": "[cmux] Press Enter to reconnect. This terminal will stay disconnected until then."
           }
         },
         "th": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] falling back to a local shell. Reconnect with the original cmux ssh or cmux vm attach command."
+            "value": "[cmux] Press Enter to reconnect. This terminal will stay disconnected until then."
           }
         },
         "tr": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] falling back to a local shell. Reconnect with the original cmux ssh or cmux vm attach command."
+            "value": "[cmux] Press Enter to reconnect. This terminal will stay disconnected until then."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "new",
-            "value": "[cmux] falling back to a local shell. Reconnect with the original cmux ssh or cmux vm attach command."
+            "value": "[cmux] Press Enter to reconnect. This terminal will stay disconnected until then."
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "new",
+            "value": "[cmux] Press Enter to reconnect. This terminal will stay disconnected until then."
+          }
+        }
+      }
+    },
+    "remote.disconnectBanner.reconnectUnavailableHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[cmux] Reconnect this workspace from the sidebar or by running the original cmux remote command again."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[cmux] サイドバーからこのワークスペースを再接続するか、元の cmux リモートコマンドをもう一度実行してください。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[cmux] 请从边栏重新连接此工作区，或再次运行原始 cmux 远程命令。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[cmux] 請從側邊欄重新連接此工作區，或再次執行原始 cmux 遠端命令。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[cmux] 사이드바에서 이 워크스페이스를 다시 연결하거나 원래 cmux 원격 명령을 다시 실행하세요."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[cmux] Verbinde diesen Arbeitsbereich über die Seitenleiste erneut oder führe den ursprünglichen cmux-Remote-Befehl noch einmal aus."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[cmux] Vuelve a conectar este espacio de trabajo desde la barra lateral o ejecuta de nuevo el comando remoto original de cmux."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[cmux] Reconnectez cet espace de travail depuis la barre latérale ou relancez la commande distante cmux d'origine."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[cmux] Riconnetti questo spazio di lavoro dalla barra laterale oppure esegui di nuovo il comando remoto cmux originale."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[cmux] Genopret forbindelsen til dette arbejdsområde fra sidepanelet, eller kør den oprindelige cmux-fjernkommando igen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[cmux] Połącz ponownie ten obszar roboczy z paska bocznego albo ponownie uruchom oryginalne polecenie zdalne cmux."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[cmux] Повторно подключите это рабочее пространство из боковой панели или снова выполните исходную удаленную команду cmux."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[cmux] Ponovo povežite ovaj radni prostor iz bočne trake ili ponovo pokrenite originalnu cmux udaljenu naredbu."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[cmux] أعد توصيل مساحة العمل هذه من الشريط الجانبي أو شغّل أمر cmux البعيد الأصلي مرة أخرى."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[cmux] Koble til dette arbeidsområdet på nytt fra sidefeltet, eller kjør den opprinnelige cmux-fjernkommandoen på nytt."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[cmux] Reconecte este espaço de trabalho pela barra lateral ou execute novamente o comando remoto original do cmux."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[cmux] เชื่อมต่อพื้นที่ทำงานนี้ใหม่จากแถบด้านข้าง หรือเรียกใช้คำสั่งรีโมต cmux เดิมอีกครั้ง"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[cmux] Bu çalışma alanını kenar çubuğundan yeniden bağlayın veya özgün cmux uzak komutunu tekrar çalıştırın."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[cmux] Повторно підключіть цей робочий простір із бічної панелі або ще раз запустіть початкову віддалену команду cmux."
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "[cmux] ភ្ជាប់កន្លែងធ្វើការនេះឡើងវិញពីរបារចំហៀង ឬដំណើរការពាក្យបញ្ជា cmux ពីចម្ងាយដើមម្តងទៀត។"
           }
         }
       }
@@ -193167,6 +195062,756 @@
         }
       }
     },
+    "settings.search.alias.setting.sidebarAppearance.right-max-width": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.rightMaxWidth dock right sidebar max width terminal reservation cap logs lazygit"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.rightMaxWidth dock right sidebar max width terminal reservation cap logs lazygit Dock 右サイドバー 最大幅 端末 予約幅 上限 ログ lazygit"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.rightMaxWidth dock right sidebar max width terminal reservation cap logs lazygit أقصى عرض اللوحة الجانبية اليمنى الطرفية سجلات"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.rightMaxWidth dock right sidebar max width terminal reservation cap logs lazygit maksimalna širina desna bočna traka terminal zapisnici"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.rightMaxWidth dock right sidebar max width terminal reservation cap logs lazygit maksimal bredde højre sidepanel terminal logge"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.rightMaxWidth dock right sidebar max width terminal reservation cap logs lazygit maximale breite rechte seitenleiste terminal protokolle"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.rightMaxWidth dock right sidebar max width terminal reservation cap logs lazygit ancho máximo barra lateral derecha terminal registros"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.rightMaxWidth dock right sidebar max width terminal reservation cap logs lazygit largeur maximale barre latérale droite terminal journaux"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.rightMaxWidth dock right sidebar max width terminal reservation cap logs lazygit larghezza massima barra laterale destra terminale log"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.rightMaxWidth dock right sidebar max width terminal reservation cap logs lazygit Dock 오른쪽 사이드바 최대 너비 터미널 로그"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.rightMaxWidth dock right sidebar max width terminal reservation cap logs lazygit ទទឹងអតិបរមា របារចំហៀងស្តាំ terminal កំណត់ហេតុ lazygit"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.rightMaxWidth dock right sidebar max width terminal reservation cap logs lazygit maks bredde høyre sidepanel terminal logger"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.rightMaxWidth dock right sidebar max width terminal reservation cap logs lazygit maksymalna szerokość prawy pasek boczny terminal logi"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.rightMaxWidth dock right sidebar max width terminal reservation cap logs lazygit largura máxima barra lateral direita terminal logs"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.rightMaxWidth dock right sidebar max width terminal reservation cap logs lazygit максимальная ширина правая боковая панель терминал журналы"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.rightMaxWidth dock right sidebar max width terminal reservation cap logs lazygit ความกว้างสูงสุด แถบด้านขวา เทอร์มินัล บันทึก"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.rightMaxWidth dock right sidebar max width terminal reservation cap logs lazygit en fazla genişlik sağ kenar çubuğu terminal günlükler"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.rightMaxWidth dock right sidebar max width terminal reservation cap logs lazygit максимальна ширина права бічна панель термінал журнали"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.rightMaxWidth dock right sidebar max width terminal reservation cap logs lazygit Dock 右侧边栏 最大宽度 终端 日志"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.rightMaxWidth dock right sidebar max width terminal reservation cap logs lazygit Dock 右側邊欄 最大寬度 終端 日誌"
+          }
+        }
+      }
+    },
+    "settings.sidebar.rightMaxWidth": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock Max Width"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock の最大幅"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أقصى عرض للـ Dock"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maksimalna širina Docka"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maks. bredde for Dock"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maximale Dock-Breite"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ancho máximo del Dock"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Largeur maximale du Dock"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Larghezza massima del Dock"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock 최대 너비"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ទទឹងអតិបរមា Dock"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maks bredde for Dock"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maksymalna szerokość Docka"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Largura máxima do Dock"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Максимальная ширина Dock"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ความกว้างสูงสุดของ Dock"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock en fazla genişliği"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Максимальна ширина Dock"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock 最大宽度"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock 最大寬度"
+          }
+        }
+      }
+    },
+    "settings.sidebar.rightMaxWidth.subtitleOff": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use the built-in dynamic cap that keeps extra terminal space reserved."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "端末用の余白を確保する組み込みの動的上限を使います。"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "استخدم الحد الديناميكي المضمن الذي يحافظ على مساحة إضافية للطرفية."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koristi ugrađeno dinamičko ograničenje koje zadržava dodatni prostor za terminal."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brug den indbyggede dynamiske grænse, der reserverer ekstra plads til terminalen."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die integrierte dynamische Begrenzung verwenden, die zusätzlichen Terminalplatz freihält."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa el límite dinámico integrado que reserva espacio adicional para la terminal."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utiliser la limite dynamique intégrée qui réserve de l’espace supplémentaire au terminal."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa il limite dinamico integrato che riserva spazio extra al terminale."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "터미널 공간을 추가로 남겨 두는 내장 동적 제한을 사용합니다."
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ប្រើដែនកំណត់ថាមវន្តដែលមានស្រាប់ ដែលរក្សាទុកកន្លែងបន្ថែមសម្រាប់ terminal។"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bruk den innebygde dynamiske grensen som holder av ekstra plass til terminalen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Użyj wbudowanego limitu dynamicznego, który rezerwuje dodatkowe miejsce dla terminala."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use o limite dinâmico integrado que reserva espaço extra para o terminal."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Использовать встроенное динамическое ограничение, которое оставляет дополнительное место для терминала."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ใช้ขีดจำกัดแบบไดนามิกในตัวที่กันพื้นที่เพิ่มเติมไว้สำหรับเทอร์มินัล"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal için ek alan ayıran yerleşik dinamik sınırı kullan."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Використовувати вбудоване динамічне обмеження, яке залишає додаткове місце для термінала."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用内置动态上限，为终端保留额外空间。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用內建動態上限，為終端保留額外空間。"
+          }
+        }
+      }
+    },
+    "settings.sidebar.rightMaxWidth.subtitleOn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Dock can grow past the built-in width cap while preserving terminal space."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock は端末用の空間を確保したまま、組み込みの幅上限を超えて広げられます。"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يمكن للـ Dock أن يتجاوز حد العرض المضمن مع الحفاظ على مساحة للطرفية."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock se može proširiti preko ugrađenog ograničenja širine uz očuvanje prostora za terminal."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Docken kan vokse forbi den indbyggede breddegrænse, mens der stadig reserveres plads til terminalen."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Dock kann über die integrierte Breitenbegrenzung hinaus wachsen, während Platz für das Terminal erhalten bleibt."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El Dock puede superar el límite de ancho integrado sin dejar de reservar espacio para la terminal."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le Dock peut dépasser la limite de largeur intégrée tout en réservant de l’espace au terminal."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il Dock può superare il limite di larghezza integrato mantenendo spazio per il terminale."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock은 터미널 공간을 유지하면서 내장 너비 상한을 넘어 커질 수 있습니다."
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock អាចពង្រីកលើសដែនកំណត់ទទឹងដែលមានស្រាប់ ខណៈរក្សាកន្លែងសម្រាប់ terminal។"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Docken kan vokse forbi den innebygde breddegrensen samtidig som terminalplass beholdes."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock może przekroczyć wbudowany limit szerokości, zachowując miejsce dla terminala."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Dock pode crescer além do limite de largura integrado enquanto preserva espaço para o terminal."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock может превышать встроенное ограничение ширины, сохраняя место для терминала."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock สามารถขยายเกินขีดจำกัดความกว้างในตัว โดยยังคงเว้นพื้นที่ให้เทอร์มินัล"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock, terminal alanını korurken yerleşik genişlik sınırını aşarak büyüyebilir."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock може перевищувати вбудоване обмеження ширини, зберігаючи місце для термінала."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock 可以在保留终端空间的同时超过内置宽度上限。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock 可以在保留終端空間的同時超過內建寬度上限。"
+          }
+        }
+      }
+    },
+    "settings.sidebar.rightMaxWidth.toggle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use custom Dock max width"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock の最大幅をカスタム設定"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "استخدام عرض Dock أقصى مخصص"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koristi prilagođenu maksimalnu širinu Docka"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brug brugerdefineret maks. Dock-bredde"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eigene maximale Dock-Breite verwenden"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar ancho máximo personalizado del Dock"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utiliser une largeur maximale personnalisée du Dock"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa larghezza massima personalizzata del Dock"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사용자 지정 Dock 최대 너비 사용"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ប្រើទទឹងអតិបរមា Dock ផ្ទាល់ខ្លួន"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bruk egendefinert maks bredde for Dock"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Użyj niestandardowej maksymalnej szerokości Docka"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar largura máxima personalizada do Dock"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Использовать пользовательскую максимальную ширину Dock"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ใช้ความกว้างสูงสุดของ Dock แบบกำหนดเอง"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Özel Dock en fazla genişliğini kullan"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Використовувати власну максимальну ширину Dock"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用自定义 Dock 最大宽度"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用自訂 Dock 最大寬度"
+          }
+        }
+      }
+    },
+    "settings.sidebar.rightMaxWidth.unit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pt"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pt"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pt"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pt"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pt"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pt"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pt"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pt"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pt"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pt"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pt"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pt"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pt"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pt"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pt"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pt"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pt"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pt"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pt"
+          }
+        }
+      }
+    },
     "terminal.shortcut.name.ctrlL": {
       "extractionState": "manual",
       "localizations": {
@@ -194491,25 +197136,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usage: cmux workspace <subcommand> [flags]\n\nCanonical noun for workspace operations. Legacy verbs\n(new-workspace, list-workspaces, close-workspace,\nrename-workspace, select-workspace) keep working and print a\none-time deprecation hint pointing here.\n\nSubcommands:\n  list                    List workspaces in a window\n  create [flags]          Create a workspace (same flags as new-workspace)\n  close <workspace>       Close a workspace\n  rename <workspace> --title <new>\n  select <workspace>      Make a workspace active\n  reconnect [workspace]   Reconnect a remote (SSH) workspace, including one\n                          whose automatic reconnect paused because the host\n                          was unreachable\n  disconnect [workspace]  Stop a remote (SSH) workspace's connection\n  group <subcommand>      Workspace group operations (see cmux workspace-group --help)\n\nreconnect/disconnect accept a positional handle or --workspace\n<id|ref|index>, defaulting to the caller's workspace, then the\nselected one (of --window's window when given).\n\nExamples:\n  cmux workspace list --json\n  cmux workspace create --name Build --cwd ~/projects/myapp\n  cmux workspace close workspace:3\n  cmux workspace reconnect\n  cmux workspace disconnect --workspace workspace:3"
+            "value": "Usage: cmux workspace <subcommand> [flags]\n\nCanonical noun for workspace operations. Legacy verbs\n(new-workspace, list-workspaces, close-workspace,\nrename-workspace, select-workspace) keep working and print a\none-time deprecation hint pointing here.\n\nSubcommands:\n  list                    List workspaces in a window\n  create [flags]          Create a workspace (same flags as new-workspace,\n                          including --env KEY=VALUE and --env-file <path>)\n  env [workspace] [--mask]\n                          Print a workspace's configured environment\n                          variables (--mask redacts the values)\n  close <workspace>       Close a workspace\n  rename <workspace> --title <new>\n  select <workspace>      Make a workspace active\n  reconnect [workspace]   Reconnect a remote (SSH) workspace, including one\n                          whose automatic reconnect paused because the host\n                          was unreachable\n  disconnect [workspace]  Stop a remote (SSH) workspace's connection\n  group <subcommand>      Workspace group operations (see cmux workspace-group --help)\n\nenv/reconnect/disconnect accept a positional handle or --workspace\n<id|ref|index>, defaulting to the caller's workspace, then the\nselected one (of --window's window when given).\n\nExamples:\n  cmux workspace list --json\n  cmux workspace create --name Build --cwd ~/projects/myapp\n  cmux workspace create --cwd . --env AWS_PROFILE=prod --env-file ./.cmux.env\n  cmux workspace env workspace:3 --mask\n  cmux workspace close workspace:3\n  cmux workspace reconnect\n  cmux workspace disconnect --workspace workspace:3"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "使い方: cmux workspace <サブコマンド> [フラグ]\n\nワークスペース操作の正規の名前空間です。従来の動詞コマンド\n(new-workspace、list-workspaces、close-workspace、\nrename-workspace、select-workspace) は引き続き動作し、ここを指す\n非推奨ヒントを一度だけ表示します。\n\nサブコマンド:\n  list                    ウィンドウ内のワークスペースを一覧表示\n  create [flags]          ワークスペースを作成 (new-workspace と同じフラグ)\n  close <workspace>       ワークスペースを閉じる\n  rename <workspace> --title <new>\n  select <workspace>      ワークスペースをアクティブにする\n  reconnect [workspace]   リモート (SSH) ワークスペースを再接続。ホストに\n                          到達できず自動再接続が一時停止したものも含む\n  disconnect [workspace]  リモート (SSH) ワークスペースの接続を停止\n  group <subcommand>      ワークスペースグループ操作 (cmux workspace-group --help を参照)\n\nreconnect/disconnect は位置引数のハンドルまたは --workspace\n<id|ref|index> を受け付け、省略時は呼び出し元のワークスペース、\n次に選択中のワークスペース (--window 指定時はそのウィンドウ) を\n対象にします。\n\n例:\n  cmux workspace list --json\n  cmux workspace create --name Build --cwd ~/projects/myapp\n  cmux workspace close workspace:3\n  cmux workspace reconnect\n  cmux workspace disconnect --workspace workspace:3"
+            "value": "使い方: cmux workspace <サブコマンド> [フラグ]\n\nワークスペース操作の正規の名前空間です。従来の動詞コマンド\n(new-workspace、list-workspaces、close-workspace、\nrename-workspace、select-workspace) は引き続き動作し、ここを指す\n非推奨ヒントを一度だけ表示します。\n\nサブコマンド:\n  list                    ウィンドウ内のワークスペースを一覧表示\n  create [flags]          ワークスペースを作成 (new-workspace と同じフラグ。\n                          --env KEY=VALUE と --env-file <path> を含む)\n  env [workspace] [--mask]\n                          ワークスペースに設定された環境変数を表示\n                          (--mask は値を伏せ字にします)\n  close <workspace>       ワークスペースを閉じる\n  rename <workspace> --title <new>\n  select <workspace>      ワークスペースをアクティブにする\n  reconnect [workspace]   リモート (SSH) ワークスペースを再接続。ホストに\n                          到達できず自動再接続が一時停止したものも含む\n  disconnect [workspace]  リモート (SSH) ワークスペースの接続を停止\n  group <subcommand>      ワークスペースグループ操作 (cmux workspace-group --help を参照)\n\nenv/reconnect/disconnect は位置引数のハンドルまたは --workspace\n<id|ref|index> を受け付け、省略時は呼び出し元のワークスペース、\n次に選択中のワークスペース (--window 指定時はそのウィンドウ) を\n対象にします。\n\n例:\n  cmux workspace list --json\n  cmux workspace create --name Build --cwd ~/projects/myapp\n  cmux workspace create --cwd . --env AWS_PROFILE=prod --env-file ./.cmux.env\n  cmux workspace env workspace:3 --mask\n  cmux workspace close workspace:3\n  cmux workspace reconnect\n  cmux workspace disconnect --workspace workspace:3"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "사용법: cmux workspace <하위 명령> [플래그]\n\n워크스페이스 작업의 표준 네임스페이스입니다. 기존 동사형 명령\n(new-workspace, list-workspaces, close-workspace,\nrename-workspace, select-workspace)은 계속 작동하며 이곳을\n가리키는 사용 중단 안내를 한 번 표시합니다.\n\n하위 명령:\n  list                    창의 워크스페이스 목록 표시\n  create [flags]          워크스페이스 생성 (new-workspace와 동일한 플래그)\n  close <workspace>       워크스페이스 닫기\n  rename <workspace> --title <new>\n  select <workspace>      워크스페이스를 활성화\n  reconnect [workspace]   원격 (SSH) 워크스페이스 재연결. 호스트에 연결할\n                          수 없어 자동 재연결이 일시 중지된 경우 포함\n  disconnect [workspace]  원격 (SSH) 워크스페이스 연결 중지\n  group <subcommand>      워크스페이스 그룹 작업 (cmux workspace-group --help 참고)\n\nreconnect/disconnect는 위치 핸들 또는 --workspace\n<id|ref|index>를 받으며, 기본값은 호출자의 워크스페이스, 그다음\n선택된 워크스페이스입니다 (--window 지정 시 해당 창 기준).\n\n예시:\n  cmux workspace list --json\n  cmux workspace create --name Build --cwd ~/projects/myapp\n  cmux workspace close workspace:3\n  cmux workspace reconnect\n  cmux workspace disconnect --workspace workspace:3"
+            "value": "사용법: cmux workspace <하위 명령> [플래그]\n\n워크스페이스 작업의 표준 네임스페이스입니다. 기존 동사형 명령\n(new-workspace, list-workspaces, close-workspace,\nrename-workspace, select-workspace)은 계속 작동하며 이곳을\n가리키는 사용 중단 안내를 한 번 표시합니다.\n\n하위 명령:\n  list                    창의 워크스페이스 목록 표시\n  create [flags]          워크스페이스 생성 (new-workspace와 동일한 플래그.\n                          --env KEY=VALUE 및 --env-file <path> 포함)\n  env [workspace] [--mask]\n                          워크스페이스에 설정된 환경 변수 표시\n                          (--mask는 값을 가립니다)\n  close <workspace>       워크스페이스 닫기\n  rename <workspace> --title <new>\n  select <workspace>      워크스페이스를 활성화\n  reconnect [workspace]   원격 (SSH) 워크스페이스 재연결. 호스트에 연결할\n                          수 없어 자동 재연결이 일시 중지된 경우 포함\n  disconnect [workspace]  원격 (SSH) 워크스페이스 연결 중지\n  group <subcommand>      워크스페이스 그룹 작업 (cmux workspace-group --help 참고)\n\nenv/reconnect/disconnect는 위치 핸들 또는 --workspace\n<id|ref|index>를 받으며, 기본값은 호출자의 워크스페이스, 그다음\n선택된 워크스페이스입니다 (--window 지정 시 해당 창 기준).\n\n예시:\n  cmux workspace list --json\n  cmux workspace create --name Build --cwd ~/projects/myapp\n  cmux workspace create --cwd . --env AWS_PROFILE=prod --env-file ./.cmux.env\n  cmux workspace env workspace:3 --mask\n  cmux workspace close workspace:3\n  cmux workspace reconnect\n  cmux workspace disconnect --workspace workspace:3"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Використання: cmux workspace <підкоманда> [прапорці]\n\nКанонічний простір імен для операцій з робочими просторами.\nЗастарілі дієслівні команди (new-workspace, list-workspaces,\nclose-workspace, rename-workspace, select-workspace) продовжують\nпрацювати й одноразово показують підказку про застарілість, що\nвказує сюди.\n\nПідкоманди:\n  list                    Список робочих просторів у вікні\n  create [flags]          Створити робочий простір (ті самі прапорці, що й new-workspace)\n  close <workspace>       Закрити робочий простір\n  rename <workspace> --title <new>\n  select <workspace>      Зробити робочий простір активним\n  reconnect [workspace]   Перепідключити віддалений (SSH) робочий простір,\n                          зокрема той, де автоматичне перепідключення\n                          призупинено через недосяжний хост\n  disconnect [workspace]  Зупинити з'єднання віддаленого (SSH) робочого простору\n  group <subcommand>      Операції з групами робочих просторів (див. cmux workspace-group --help)\n\nreconnect/disconnect приймають позиційний дескриптор або --workspace\n<id|ref|index>; типово використовується робочий простір викликача,\nдалі — вибраний (у вікні з --window, якщо задано).\n\nПриклади:\n  cmux workspace list --json\n  cmux workspace create --name Build --cwd ~/projects/myapp\n  cmux workspace close workspace:3\n  cmux workspace reconnect\n  cmux workspace disconnect --workspace workspace:3"
+            "value": "Використання: cmux workspace <підкоманда> [прапорці]\n\nКанонічний простір імен для операцій з робочими просторами.\nЗастарілі дієслівні команди (new-workspace, list-workspaces,\nclose-workspace, rename-workspace, select-workspace) продовжують\nпрацювати й одноразово показують підказку про застарілість, що\nвказує сюди.\n\nПідкоманди:\n  list                    Список робочих просторів у вікні\n  create [flags]          Створити робочий простір (ті самі прапорці, що й\n                          new-workspace, зокрема --env KEY=VALUE та --env-file <path>)\n  env [workspace] [--mask]\n                          Показати налаштовані змінні середовища робочого\n                          простору (--mask приховує значення)\n  close <workspace>       Закрити робочий простір\n  rename <workspace> --title <new>\n  select <workspace>      Зробити робочий простір активним\n  reconnect [workspace]   Перепідключити віддалений (SSH) робочий простір,\n                          зокрема той, де автоматичне перепідключення\n                          призупинено через недосяжний хост\n  disconnect [workspace]  Зупинити з'єднання віддаленого (SSH) робочого простору\n  group <subcommand>      Операції з групами робочих просторів (див. cmux workspace-group --help)\n\nenv/reconnect/disconnect приймають позиційний дескриптор або --workspace\n<id|ref|index>; типово використовується робочий простір викликача,\nдалі — вибраний (у вікні з --window, якщо задано).\n\nПриклади:\n  cmux workspace list --json\n  cmux workspace create --name Build --cwd ~/projects/myapp\n  cmux workspace create --cwd . --env AWS_PROFILE=prod --env-file ./.cmux.env\n  cmux workspace env workspace:3 --mask\n  cmux workspace close workspace:3\n  cmux workspace reconnect\n  cmux workspace disconnect --workspace workspace:3"
           }
         }
       }
@@ -194520,25 +197165,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "workspace requires a subcommand. Try: list, create, close, rename, select, reconnect, disconnect, group"
+            "value": "workspace requires a subcommand. Try: list, create, env, close, rename, select, reconnect, disconnect, group"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "workspace にはサブコマンドが必要です。利用可能: list, create, close, rename, select, reconnect, disconnect, group"
+            "value": "workspace にはサブコマンドが必要です。利用可能: list, create, env, close, rename, select, reconnect, disconnect, group"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "workspace에는 하위 명령이 필요합니다. 사용 가능: list, create, close, rename, select, reconnect, disconnect, group"
+            "value": "workspace에는 하위 명령이 필요합니다. 사용 가능: list, create, env, close, rename, select, reconnect, disconnect, group"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "workspace потребує підкоманди. Доступні: list, create, close, rename, select, reconnect, disconnect, group"
+            "value": "workspace потребує підкоманди. Доступні: list, create, env, close, rename, select, reconnect, disconnect, group"
           }
         }
       }
@@ -194549,25 +197194,228 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Unknown workspace subcommand: %@. Try: list, create, close, rename, select, reconnect, disconnect, group"
+            "value": "Unknown workspace subcommand: %@. Try: list, create, env, close, rename, select, reconnect, disconnect, group"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "不明な workspace サブコマンド: %@。利用可能: list, create, close, rename, select, reconnect, disconnect, group"
+            "value": "不明な workspace サブコマンド: %@。利用可能: list, create, env, close, rename, select, reconnect, disconnect, group"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "알 수 없는 workspace 하위 명령: %@. 사용 가능: list, create, close, rename, select, reconnect, disconnect, group"
+            "value": "알 수 없는 workspace 하위 명령: %@. 사용 가능: list, create, env, close, rename, select, reconnect, disconnect, group"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Невідома підкоманда workspace: %@. Доступні: list, create, close, rename, select, reconnect, disconnect, group"
+            "value": "Невідома підкоманда workspace: %@. Доступні: list, create, env, close, rename, select, reconnect, disconnect, group"
+          }
+        }
+      }
+    },
+    "cli.workspace.create.error.unknownFlag": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: unknown flag '%@'. Known flags: --name <title>, --description <text>, --command <text>, --cwd <path>, --env KEY=VALUE, --env-file <path>, --layout <json>, --window <id|ref|index>, --focus <true|false>"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: 不明なフラグ '%@'。利用可能なフラグ: --name <title>, --description <text>, --command <text>, --cwd <path>, --env KEY=VALUE, --env-file <path>, --layout <json>, --window <id|ref|index>, --focus <true|false>"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: 알 수 없는 플래그 '%@'. 사용 가능한 플래그: --name <title>, --description <text>, --command <text>, --cwd <path>, --env KEY=VALUE, --env-file <path>, --layout <json>, --window <id|ref|index>, --focus <true|false>"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: невідомий прапорець '%@'. Доступні прапорці: --name <title>, --description <text>, --command <text>, --cwd <path>, --env KEY=VALUE, --env-file <path>, --layout <json>, --window <id|ref|index>, --focus <true|false>"
+          }
+        }
+      }
+    },
+    "cli.workspace.create.error.envFileRequiresValue": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: --env-file requires <path>"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: --env-file には <path> が必要です"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: --env-file에는 <path>가 필요합니다"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: --env-file потребує <path>"
+          }
+        }
+      }
+    },
+    "cli.workspace.create.error.envRequiresValue": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: --env requires KEY=VALUE"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: --env には KEY=VALUE が必要です"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: --env에는 KEY=VALUE가 필요합니다"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: --env потребує KEY=VALUE"
+          }
+        }
+      }
+    },
+    "cli.workspace.env.error.emptyKey": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: %@ entry '%@' has an empty key"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: %@ のエントリ '%@' のキーが空です"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: %@ 항목 '%@'의 키가 비어 있습니다"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: запис %@ '%@' має порожній ключ"
+          }
+        }
+      }
+    },
+    "cli.workspace.env.error.invalidAssignment": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: %@ entry '%@' must be in KEY=VALUE form"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: %@ のエントリ '%@' は KEY=VALUE 形式である必要があります"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: %@ 항목 '%@'은(는) KEY=VALUE 형식이어야 합니다"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: запис %@ '%@' має бути у форматі KEY=VALUE"
+          }
+        }
+      }
+    },
+    "cli.workspace.env.error.unknownFlag": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspace env: unknown flag '%@'. Known flags: --workspace <id|ref|index>, --window <id|ref|index>, --mask"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspace env: 不明なフラグ '%@'。利用可能なフラグ: --workspace <id|ref|index>, --window <id|ref|index>, --mask"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspace env: 알 수 없는 플래그 '%@'. 사용 가능한 플래그: --workspace <id|ref|index>, --window <id|ref|index>, --mask"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "workspace env: невідомий прапорець '%@'. Доступні прапорці: --workspace <id|ref|index>, --window <id|ref|index>, --mask"
+          }
+        }
+      }
+    },
+    "cli.workspace.envFile.error.readFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: could not read --env-file '%@': %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: --env-file '%@' を読み込めませんでした: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: --env-file '%@'을(를) 읽을 수 없습니다: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: не вдалося прочитати --env-file '%@': %@"
           }
         }
       }
@@ -198341,6 +201189,93 @@
           "stringUnit": {
             "state": "translated",
             "value": "Command+прокручування переміщує полотно з будь-якого місця"
+          }
+        }
+      }
+    },
+    "cli.workspace.env.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No environment variables"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "環境変数はありません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "환경 변수가 없습니다"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Немає змінних середовища"
+          }
+        }
+      }
+    },
+    "settings.account.signIn.slowHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The system sign-in window may stop responding. If nothing happens, open sign-in in your default browser instead."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "システムのサインインウィンドウが応答しなくなることがあります。何も起きない場合は、デフォルトのブラウザでサインインを開いてください。"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Системне вікно входу може перестати відповідати. Якщо нічого не відбувається, відкрийте вхід у браузері за умовчанням."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시스템 로그인 창이 응답하지 않을 수 있습니다. 아무 반응이 없으면 기본 브라우저에서 로그인을 열어 주세요."
+          }
+        }
+      }
+    },
+    "settings.account.signIn.openInBrowser": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open in Browser"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ブラウザで開く"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відкрити у браузері"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "브라우저에서 열기"
           }
         }
       }

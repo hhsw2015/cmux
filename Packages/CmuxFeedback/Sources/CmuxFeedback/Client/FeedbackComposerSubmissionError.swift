@@ -1,4 +1,4 @@
-public import Foundation
+import Foundation
 
 /// Low-level failure modes raised by ``FeedbackComposerClient`` while preparing
 /// and uploading a feedback submission. ``FeedbackComposerBridge`` maps these to

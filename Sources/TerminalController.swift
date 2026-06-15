@@ -1189,6 +1189,8 @@ class TerminalController {
             return v2Result(id: request.id, v2SystemTop(params: request.params))
         case "system.memory":
             return v2Result(id: request.id, v2SystemMemory(params: request.params))
+        case "workspace.env":
+            return v2Result(id: request.id, v2WorkspaceEnv(params: request.params))
         case "workspace.remote.pty_sessions":
             return v2Result(id: request.id, v2WorkspaceRemotePTYSessions(params: request.params))
         case "workspace.remote.pty_close":
@@ -2126,88 +2128,16 @@ class TerminalController {
             return v2Result(id: id, self.v2WindowDisplay(params: params))
 
         // Workspaces
-        case "workspace.list":
-            return v2Result(id: id, self.v2WorkspaceList(params: params))
-        case "workspace.create":
-            return v2Result(id: id, self.v2WorkspaceCreate(params: params))
-        case "workspace.select":
-            return v2Result(id: id, self.v2WorkspaceSelect(params: params))
-        case "workspace.current":
-            return v2Result(id: id, self.v2WorkspaceCurrent(params: params))
-        case "workspace.close":
-            return v2Result(id: id, self.v2WorkspaceClose(params: params))
-        case "workspace.move_to_window":
-            return v2Result(id: id, self.v2WorkspaceMoveToWindow(params: params))
-        case "workspace.reorder":
-            return v2Result(id: id, self.v2WorkspaceReorder(params: params))
-        case "workspace.reorder_many":
-            return v2Result(id: id, self.v2WorkspaceReorderMany(params: params))
-        case "workspace.prompt_submit":
-            return v2Result(id: id, self.v2WorkspacePromptSubmit(params: params))
-        case "workspace.rename":
-            return v2Result(id: id, self.v2WorkspaceRename(params: params))
-        case "workspace.group.list":
-            return v2Result(id: id, self.v2WorkspaceGroupList(params: params))
-        case "workspace.group.create":
-            return v2Result(id: id, self.v2WorkspaceGroupCreate(params: params))
-        case "workspace.group.ungroup":
-            return v2Result(id: id, self.v2WorkspaceGroupUngroup(params: params))
-        case "workspace.group.delete":
-            return v2Result(id: id, self.v2WorkspaceGroupDelete(params: params))
-        case "workspace.group.rename":
-            return v2Result(id: id, self.v2WorkspaceGroupRename(params: params))
-        case "workspace.group.collapse":
-            return v2Result(id: id, self.v2WorkspaceGroupSetCollapsed(params: params, isCollapsed: true))
-        case "workspace.group.expand":
-            return v2Result(id: id, self.v2WorkspaceGroupSetCollapsed(params: params, isCollapsed: false))
-        case "workspace.group.pin":
-            return v2Result(id: id, self.v2WorkspaceGroupSetPinned(params: params, isPinned: true))
-        case "workspace.group.unpin":
-            return v2Result(id: id, self.v2WorkspaceGroupSetPinned(params: params, isPinned: false))
-        case "workspace.group.add":
-            return v2Result(id: id, self.v2WorkspaceGroupAdd(params: params))
-        case "workspace.group.remove":
-            return v2Result(id: id, self.v2WorkspaceGroupRemove(params: params))
-        case "workspace.group.set_anchor":
-            return v2Result(id: id, self.v2WorkspaceGroupSetAnchor(params: params))
-        case "workspace.group.new_workspace":
-            return v2Result(id: id, self.v2WorkspaceGroupNewWorkspace(params: params))
-        case "workspace.group.set_color":
-            return v2Result(id: id, self.v2WorkspaceGroupSetColor(params: params))
-        case "workspace.group.set_icon":
-            return v2Result(id: id, self.v2WorkspaceGroupSetIcon(params: params))
-        case "workspace.group.move":
-            return v2Result(id: id, self.v2WorkspaceGroupMove(params: params))
-        case "workspace.group.focus":
-            return v2Result(id: id, self.v2WorkspaceGroupFocus(params: params))
-        case "workspace.action":
-            return v2Result(id: id, self.v2WorkspaceAction(params: params))
-        case "extension.sidebar.snapshot":
-            return v2Result(id: id, self.v2ExtensionSidebarSnapshot(params: params))
-        case "workspace.next":
-            return v2Result(id: id, self.v2WorkspaceNext(params: params))
-        case "workspace.previous":
-            return v2Result(id: id, self.v2WorkspacePrevious(params: params))
-        case "workspace.last":
-            return v2Result(id: id, self.v2WorkspaceLast(params: params))
-        case "workspace.equalize_splits":
-            return v2Result(id: id, self.v2WorkspaceEqualizeSplits(params: params))
-        case "workspace.remote.configure":
-            return v2Result(id: id, self.v2WorkspaceRemoteConfigure(params: params))
-        case "workspace.remote.foreground_auth_ready":
-            return v2Result(id: id, self.v2WorkspaceRemoteForegroundAuthReady(params: params))
-        case "workspace.remote.reconnect":
-            return v2Result(id: id, self.v2WorkspaceRemoteReconnect(params: params))
-        case "workspace.remote.disconnect":
-            return v2Result(id: id, self.v2WorkspaceRemoteDisconnect(params: params))
-        case "workspace.remote.status":
-            return v2Result(id: id, self.v2WorkspaceRemoteStatus(params: params))
-        case "workspace.remote.pty_attach_end":
-            return v2Result(id: id, self.v2WorkspaceRemotePTYAttachEnd(params: params))
-        case "workspace.remote.terminal_session_end":
-            return v2Result(id: id, self.v2WorkspaceRemoteTerminalSessionEnd(params: params))
-        case "session.restore_previous":
-            return v2Result(id: id, self.v2SessionRestorePrevious())
+        // workspace.* (list/create/select/current/close/move_to_window/reorder[_many]/
+        // prompt_submit/rename) + workspace.group.* handled by ControlCommandCoordinator.
+        // workspace.action (forwards to the still-shared v2WorkspaceAction) and
+        // extension.sidebar.snapshot handled by ControlCommandCoordinator.
+        // workspace.next/previous/last/equalize_splits + workspace.remote.* (configure/
+        // foreground_auth_ready/reconnect/disconnect/status/pty_attach_end/
+        // terminal_session_end) handled by ControlCommandCoordinator. The worker-lane
+        // workspace.remote.pty_* methods stay on the app-side worker path.
+        case "workspace.set_auto_title":
+            return v2Result(id: id, self.v2WorkspaceSetAutoTitle(params: params))
 
         // Settings
         case "settings.open":
@@ -2696,6 +2626,7 @@ class TerminalController {
             "window.display",
             "workspace.list",
             "workspace.create",
+            "workspace.env",
             "workspace.select",
             "workspace.current",
             "workspace.close",
@@ -2704,6 +2635,7 @@ class TerminalController {
             "workspace.reorder_many",
             "workspace.prompt_submit",
             "workspace.rename",
+            "workspace.set_auto_title",
             "workspace.group.list",
             "workspace.group.create",
             "workspace.group.ungroup",
@@ -4636,91 +4568,103 @@ class TerminalController {
         return trimmed.isEmpty ? nil : trimmed
     }
 
-    func v2WorkspaceCreate(
-        params: [String: Any],
-        tabManager resolvedTabManager: TabManager? = nil
-    ) -> V2CallResult {
-        guard let tabManager = resolvedTabManager ?? v2ResolveTabManager(params: params) else {
+    /// `workspace.set_auto_title`: applies an AI-generated title to a workspace
+    /// (and optionally one of its panels/tabs) with `.auto` provenance, so a
+    /// user-set title is never overwritten. Gated on the opt-in
+    /// `workspaceAutoNamingEnabled` setting; `{"probe": true}` reads the live
+    /// setting state without writing, which lets hook processes honor
+    /// mid-session toggles. `panel_id` accepts either a panel UUID or a
+    /// surface UUID.
+    private func v2WorkspaceSetAutoTitle(params: [String: Any]) -> V2CallResult {
+        let enabled = AutomationCatalogSection().workspaceAutoNaming.value(in: .standard)
+        if v2Bool(params, "probe") == true {
+            let agentSlug = AutomationCatalogSection().autoNamingAgent.value(in: .standard)
+            var result: [String: Any] = [
+                "enabled": enabled,
+                "summarizer_agent": v2OrNull(agentSlug == AutoNamingAgentCatalog.autoSlug ? nil : agentSlug)
+            ]
+            // With a workspace_id the probe also reports user ownership, so
+            // naming engines can skip the LLM call entirely for workspaces
+            // the user renamed.
+            if let workspaceId = v2UUID(params, "workspace_id"),
+               let tabManager = v2ResolveTabManager(params: params) {
+                var userOwned: Bool?
+                v2MainSync {
+                    guard let workspace = tabManager.tabs.first(where: { $0.id == workspaceId }) else { return }
+                    userOwned = workspace.effectiveCustomTitleSource == .user
+                }
+                result["workspace_user_owned"] = v2OrNull(userOwned)
+            }
+            return .ok(result)
+        }
+        guard enabled else {
+            return .err(code: "disabled", message: "Workspace auto-naming is disabled in Settings", data: ["enabled": false])
+        }
+        // A naming pass reporting a problem (rate limit / out of tokens / signed
+        // out / missing override binary). Recorded for the Settings status line
+        // only — it never reaches a workspace or tab title.
+        if let failure = v2String(params, "failure") {
+            AutoNamingStatusStore.record(
+                rawCategory: failure,
+                agent: v2String(params, "agent") ?? "",
+                at: Date().timeIntervalSince1970
+            )
+            return .ok(["recorded": true, "enabled": true])
+        }
+        guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
-
-        let requestedWorkingDirectory = v2RawString(params, "working_directory")?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let workingDirectory = (requestedWorkingDirectory?.isEmpty == false) ? requestedWorkingDirectory : nil
-
-        let requestedInitialCommand = v2RawString(params, "initial_command")?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let initialCommand = (requestedInitialCommand?.isEmpty == false) ? requestedInitialCommand : nil
-
-        let rawInitialEnv = v2StringMap(params, "initial_env") ?? [:]
-        let initialEnv = rawInitialEnv.reduce(into: [String: String]()) { result, pair in
-            let key = pair.key.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !key.isEmpty else { return }
-            result[key] = pair.value
+        guard let workspaceId = v2UUID(params, "workspace_id") else {
+            return .err(code: "invalid_params", message: "Missing or invalid workspace_id", data: nil)
         }
-        let cwd: String?
-        if let workingDirectory {
-            cwd = workingDirectory
-        } else if let raw = params["cwd"] {
-            guard let str = raw as? String else {
-                return .err(code: "invalid_params", message: "cwd must be a string", data: nil)
-            }
-            cwd = str
-        } else {
-            cwd = nil
+        guard let titleRaw = v2String(params, "title"),
+              !titleRaw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return .err(code: "invalid_params", message: "Missing or invalid title", data: nil)
         }
+        let panelId = v2UUID(params, "panel_id")
 
-        let requestedTitle = v2RawString(params, "title")?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let title = (requestedTitle?.isEmpty == false) ? requestedTitle : nil
-        let description = v2RawString(params, "description")
-
-        // Decode optional layout param (same JSON schema as cmux.json layout field).
-        // Validate before creating the workspace so malformed layouts fail fast.
-        var layoutNode: CmuxLayoutNode?
-        if let rawLayout = params["layout"] {
-            guard JSONSerialization.isValidJSONObject(rawLayout),
-                  let layoutData = try? JSONSerialization.data(withJSONObject: rawLayout) else {
-                return .err(code: "invalid_params", message: "layout must be a valid JSON object", data: nil)
-            }
-            do {
-                layoutNode = try JSONDecoder().decode(CmuxLayoutNode.self, from: layoutData)
-            } catch {
-                return .err(code: "invalid_params", message: "Invalid layout: \(error.localizedDescription)", data: nil)
-            }
-        }
-
-        var newId: UUID?
-        var initialSurfaceId: UUID?
-        let shouldFocus = v2FocusAllowed(requested: v2Bool(params, "focus") ?? false)
-        let shouldEagerLoadTerminal = v2Bool(params, "eager_load_terminal") ?? !shouldFocus
-        let shouldAutoRefreshMetadata = v2Bool(params, "auto_refresh_metadata") ?? true
+        let title = titleRaw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let panelOnlyIfMultiple = v2Bool(params, "panel_only_if_multiple") ?? false
+        var found = false
+        var workspaceApplied = false
+        var panelApplied: Bool?
         v2MainSync {
-            let ws = tabManager.addWorkspace(
-                title: title,
-                workingDirectory: cwd,
-                initialTerminalCommand: layoutNode == nil ? initialCommand : nil,
-                initialTerminalEnvironment: layoutNode == nil ? initialEnv : [:],
-                select: shouldFocus,
-                eagerLoadTerminal: shouldEagerLoadTerminal,
-                autoRefreshMetadata: shouldAutoRefreshMetadata
-            )
-            ws.setCustomDescription(description)
-            if let layoutNode {
-                ws.applyCustomLayout(layoutNode, baseCwd: cwd ?? ws.currentDirectory)
+            guard let workspace = tabManager.tabs.first(where: { $0.id == workspaceId }) else { return }
+            found = true
+            workspaceApplied = tabManager.setCustomTitle(tabId: workspaceId, title: title, source: .auto)
+            if let panelId {
+                // Hook payloads carry surface ids; accept either a panel id
+                // or a surface id for the tab target.
+                let resolvedPanelId = workspace.panels[panelId] != nil
+                    ? panelId
+                    : workspace.panelIdFromSurfaceId(TabID(uuid: panelId))
+                if let resolvedPanelId,
+                   !(panelOnlyIfMultiple && workspace.panels.count < 2) {
+                    panelApplied = workspace.setPanelCustomTitle(panelId: resolvedPanelId, title: title, source: .auto)
+                }
             }
-            newId = ws.id
-            initialSurfaceId = ws.focusedPanelId
         }
 
-        guard let newId else {
-            return .err(code: "internal_error", message: "Failed to create workspace", data: nil)
+        guard found else {
+            return .err(code: "not_found", message: "Workspace not found", data: [
+                "workspace_id": workspaceId.uuidString,
+                "workspace_ref": v2Ref(kind: .workspace, uuid: workspaceId)
+            ])
         }
-        let windowId = v2ResolveWindowId(tabManager: tabManager)
+
+        // A title landed, so the naming agent is working again: clear any stale
+        // failure the Settings status line may be showing.
+        if workspaceApplied {
+            AutoNamingStatusStore.clear()
+        }
+
         return .ok([
-            "window_id": v2OrNull(windowId?.uuidString),
-            "window_ref": v2Ref(kind: .window, uuid: windowId),
-            "workspace_id": newId.uuidString,
-            "workspace_ref": v2Ref(kind: .workspace, uuid: newId),
-            "surface_id": v2OrNull(initialSurfaceId?.uuidString),
-            "surface_ref": v2Ref(kind: .surface, uuid: initialSurfaceId)
+            "workspace_id": workspaceId.uuidString,
+            "workspace_ref": v2Ref(kind: .workspace, uuid: workspaceId),
+            "title": title,
+            "workspace_applied": workspaceApplied,
+            "panel_applied": v2OrNull(panelApplied),
+            "enabled": true
         ])
     }
     func v2WorkspaceSelect(params: [String: Any]) -> V2CallResult {
@@ -4914,13 +4858,6 @@ class TerminalController {
                 "workspace_id": wsId.uuidString,
                 "workspace_ref": v2Ref(kind: .workspace, uuid: wsId)
             ])
-    }
-
-    private func workspaceCloseProtectedMessage() -> String {
-        String(
-            localized: "workspace.closeProtected.message",
-            defaultValue: "Pinned workspaces can't be closed while pinned. Unpin the workspace first."
-        )
     }
 
     func v2WorkspaceMoveToWindow(params: [String: Any]) -> V2CallResult {
@@ -6507,7 +6444,64 @@ class TerminalController {
         ]
     }
 
-    nonisolated func v2WorkspaceRemotePTYSessions(params: [String: Any]) -> V2CallResult {
+    /// `workspace.env` — read a workspace's user-defined environment (issue #5995).
+    /// Resolves the workspace by `workspace_id` / surface / pane, falling back to the
+    /// selected workspace only when no explicit target is supplied, and returns the
+    /// raw configured set. An explicit-but-unresolvable target errors. Secret masking is a
+    /// CLI presentation concern (`cmux workspace env --mask`): the local control
+    /// socket already exposes the surrounding workspace state, so values are returned
+    /// verbatim and the env set is deliberately kept out of `workspace.list` so a
+    /// plain listing never echoes secrets.
+    private nonisolated func v2WorkspaceEnv(params: [String: Any]) -> V2CallResult {
+        // Validate any explicit target before resolving. This endpoint can print
+        // secrets, so a malformed or stale explicit target must error rather than
+        // silently fall back to the selected workspace (unlike the generic
+        // v2ResolveWorkspace, which falls through to the selection).
+        for key in ["workspace_id", "surface_id", "terminal_id", "tab_id", "pane_id"] {
+            if v2HasNonNullParam(params, key), v2UUID(params, key) == nil {
+                return .err(code: "invalid_params", message: "Missing or invalid \(key)", data: nil)
+            }
+        }
+        return v2MainSync { () -> V2CallResult in
+            v2RefreshKnownRefs()
+            guard let tabManager = v2ResolveTabManager(params: params) else {
+                return .err(code: "unavailable", message: "TabManager not available", data: nil)
+            }
+            // Resolve strictly for explicit targets; only fall back to the selected
+            // workspace when no explicit target was supplied.
+            let resolved: Workspace?
+            if let wsId = v2UUID(params, "workspace_id") {
+                resolved = tabManager.tabs.first(where: { $0.id == wsId })
+            } else if let surfaceId = v2UUID(params, "surface_id") ?? v2UUID(params, "terminal_id") ?? v2UUID(params, "tab_id") {
+                resolved = tabManager.tabs.first(where: { $0.panels[surfaceId] != nil })
+            } else if let paneId = v2UUID(params, "pane_id") {
+                if let located = v2LocatePane(paneId), located.tabManager === tabManager {
+                    resolved = located.workspace
+                } else {
+                    resolved = nil
+                }
+            } else if let selectedId = tabManager.selectedTabId {
+                resolved = tabManager.tabs.first(where: { $0.id == selectedId })
+            } else {
+                resolved = nil
+            }
+            guard let workspace = resolved else {
+                return .err(code: "not_found", message: "Workspace not found", data: nil)
+            }
+            let windowId = v2ResolveWindowId(tabManager: tabManager)
+            let env = workspace.workspaceEnvironment
+            return .ok([
+                "window_id": v2OrNull(windowId?.uuidString),
+                "window_ref": v2Ref(kind: .window, uuid: windowId),
+                "workspace_id": workspace.id.uuidString,
+                "workspace_ref": v2Ref(kind: .workspace, uuid: workspace.id),
+                "env": env,
+                "count": env.count,
+            ])
+        }
+    }
+
+    private nonisolated func v2WorkspaceRemotePTYSessions(params: [String: Any]) -> V2CallResult {
         if v2HasNonNullParam(params, "all_workspaces"), v2Bool(params, "all_workspaces") == nil {
             return .err(code: "invalid_params", message: "Missing or invalid all_workspaces", data: nil)
         }
@@ -11617,7 +11611,7 @@ class TerminalController {
                 }
             }
 
-            FeedbackComposerBridge.openComposer(in: targetWindow)
+            FeedbackComposerBridge().openComposer(in: targetWindow)
         }
         return .ok(["opened": true])
     }
@@ -11682,7 +11676,7 @@ class TerminalController {
         Task {
             let resolved: V2CallResult
             do {
-                let attachmentCount = try await FeedbackComposerBridge.submit(
+                let attachmentCount = try await FeedbackComposerBridge().submit(
                     email: email,
                     message: body,
                     imagePaths: imagePaths
@@ -12816,7 +12810,33 @@ class TerminalController {
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
         }
         let urlStr = v2String(params, "url")
-        let url = urlStr.flatMap { URL(string: $0) }
+        // Resolve with the same smart logic as browser.navigate (URL, then search fallback)
+        // so an unparseable raw string fails loudly instead of silently opening about:blank.
+        let url: URL?
+        if let urlStr {
+            let trimmedURLStr = urlStr.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let navigable = resolveBrowserNavigableURL(urlStr) {
+                // http/https/file plus host-like inputs (example.com, localhost:3000).
+                url = navigable
+            } else if let parsed = URL(string: trimmedURLStr), parsed.scheme != nil {
+                // Preserve any real-scheme URL the navigable resolver rejects: about:blank,
+                // the trusted cmux-diff-viewer:// scheme, and external app/deep-link schemes
+                // (mailto:, xcode://, ...). The downstream browser-disabled, external-open, and
+                // diff-viewer-registration paths act on the original URL; only scheme-less,
+                // non-navigable input should fall through to a search query.
+                url = parsed
+            } else if let search = BrowserSearchSettingsStore().currentConfiguration.searchURL(query: urlStr) {
+                url = search
+            } else {
+                return .err(
+                    code: "invalid_params",
+                    message: "Could not resolve URL or search query",
+                    data: ["url": urlStr]
+                )
+            }
+        } else {
+            url = nil
+        }
         let respectExternalOpenRules = v2Bool(params, "respect_external_open_rules") ?? false
 
         if BrowserAvailabilitySettings.isDisabled() {
@@ -23074,7 +23094,117 @@ class TerminalController {
         return workspace.terminalPanel(for: surfaceID)
     }
 
-    func v2MobileWorkspaceCreate(params: [String: Any]) -> V2CallResult {
+    // Restored: still used by the v1 close-workspace path (its v2
+    // counterpart moved to ControlCommandCoordinator).
+    private func workspaceCloseProtectedMessage() -> String {
+        String(
+            localized: "workspace.closeProtected.message",
+            defaultValue: "Pinned workspaces can't be closed while pinned. Unpin the workspace first."
+        )
+    }
+
+    // Shared workspace-create implementation (restored): the workspace.create
+    // command moved to ControlCommandCoordinator, but v2MobileWorkspaceCreate
+    // still drives this body for the mobile data-plane create path.
+    func v2WorkspaceCreate(
+        params: [String: Any],
+        tabManager resolvedTabManager: TabManager? = nil
+    ) -> V2CallResult {
+        guard let tabManager = resolvedTabManager ?? v2ResolveTabManager(params: params) else {
+            return .err(code: "unavailable", message: "TabManager not available", data: nil)
+        }
+
+        let requestedWorkingDirectory = v2RawString(params, "working_directory")?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let workingDirectory = (requestedWorkingDirectory?.isEmpty == false) ? requestedWorkingDirectory : nil
+
+        let requestedInitialCommand = v2RawString(params, "initial_command")?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let initialCommand = (requestedInitialCommand?.isEmpty == false) ? requestedInitialCommand : nil
+
+        let rawInitialEnv = v2StringMap(params, "initial_env") ?? [:]
+        let initialEnv = rawInitialEnv.reduce(into: [String: String]()) { result, pair in
+            let key = pair.key.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !key.isEmpty else { return }
+            result[key] = pair.value
+        }
+        // Persistent per-workspace environment (issue #5995): applied to the initial
+        // shell AND every later pane/surface/split, and round-tripped through session
+        // restore. Socket callers must use `workspace_env`; bare `env` remains
+        // layout/config spelling elsewhere and is not silently reinterpreted here.
+        // Unlike `initial_env`, this is NOT gated on the presence of a layout — the
+        // workspace set must apply to layout-defined surfaces too.
+        let workspaceEnv = Workspace.sanitizedWorkspaceEnvironment(
+            v2StringMap(params, "workspace_env") ?? [:]
+        )
+        let cwd: String?
+        if let workingDirectory {
+            cwd = workingDirectory
+        } else if let raw = params["cwd"] {
+            guard let str = raw as? String else {
+                return .err(code: "invalid_params", message: "cwd must be a string", data: nil)
+            }
+            cwd = str
+        } else {
+            cwd = nil
+        }
+
+        let requestedTitle = v2RawString(params, "title")?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = (requestedTitle?.isEmpty == false) ? requestedTitle : nil
+        let description = v2RawString(params, "description")
+
+        // Decode optional layout param (same JSON schema as cmux.json layout field).
+        // Validate before creating the workspace so malformed layouts fail fast.
+        var layoutNode: CmuxLayoutNode?
+        if let rawLayout = params["layout"] {
+            guard JSONSerialization.isValidJSONObject(rawLayout),
+                  let layoutData = try? JSONSerialization.data(withJSONObject: rawLayout) else {
+                return .err(code: "invalid_params", message: "layout must be a valid JSON object", data: nil)
+            }
+            do {
+                layoutNode = try JSONDecoder().decode(CmuxLayoutNode.self, from: layoutData)
+            } catch {
+                return .err(code: "invalid_params", message: "Invalid layout: \(error.localizedDescription)", data: nil)
+            }
+        }
+
+        var newId: UUID?
+        var initialSurfaceId: UUID?
+        let shouldFocus = v2FocusAllowed(requested: v2Bool(params, "focus") ?? false)
+        let shouldEagerLoadTerminal = v2Bool(params, "eager_load_terminal") ?? !shouldFocus
+        let shouldAutoRefreshMetadata = v2Bool(params, "auto_refresh_metadata") ?? true
+        v2MainSync {
+            let ws = tabManager.addWorkspace(
+                title: title,
+                workingDirectory: cwd,
+                initialTerminalCommand: layoutNode == nil ? initialCommand : nil,
+                initialTerminalEnvironment: layoutNode == nil ? initialEnv : [:],
+                workspaceEnvironment: workspaceEnv,
+                select: shouldFocus,
+                eagerLoadTerminal: shouldEagerLoadTerminal,
+                autoRefreshMetadata: shouldAutoRefreshMetadata
+            )
+            ws.setCustomDescription(description)
+            if let layoutNode {
+                ws.applyCustomLayout(layoutNode, baseCwd: cwd ?? ws.currentDirectory)
+            }
+            newId = ws.id
+            initialSurfaceId = ws.focusedPanelId
+        }
+
+        guard let newId else {
+            return .err(code: "internal_error", message: "Failed to create workspace", data: nil)
+        }
+        let windowId = v2ResolveWindowId(tabManager: tabManager)
+        return .ok([
+            "window_id": v2OrNull(windowId?.uuidString),
+            "window_ref": v2Ref(kind: .window, uuid: windowId),
+            "workspace_id": newId.uuidString,
+            "workspace_ref": v2Ref(kind: .workspace, uuid: newId),
+            "surface_id": v2OrNull(initialSurfaceId?.uuidString),
+            "surface_ref": v2Ref(kind: .surface, uuid: initialSurfaceId)
+        ])
+    }
+
+    private func v2MobileWorkspaceCreate(params: [String: Any]) -> V2CallResult {
         guard let tabManager = v2ResolveTabManager(params: params) else {
             return .err(code: "unavailable", message: "Workspace context is unavailable", data: nil)
         }

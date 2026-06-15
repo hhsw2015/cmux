@@ -347,119 +347,6 @@ extension TerminalSurfaceRegistry {
     }
 }
 
-// The native pointer has been removed from all main-thread owner state before
-// this request is created; this wrapper only transports the one-shot free.
-private struct TerminalSurfaceRuntimeTeardownRequest: @unchecked Sendable {
-    let id: UUID
-    let workspaceId: UUID
-    let reason: String
-    let surface: ghostty_surface_t
-    let callbackContext: Unmanaged<GhosttySurfaceCallbackContext>?
-    let freeSurface: @Sendable (ghostty_surface_t) -> Void
-#if DEBUG
-    let surfaceToken: String
-    let workspaceToken: String
-#endif
-
-    init(
-        id: UUID,
-        workspaceId: UUID,
-        reason: String,
-        surface: ghostty_surface_t,
-        callbackContext: Unmanaged<GhosttySurfaceCallbackContext>?,
-        freeSurface: @escaping @Sendable (ghostty_surface_t) -> Void
-    ) {
-        self.id = id
-        self.workspaceId = workspaceId
-        self.reason = reason
-        self.surface = surface
-        self.callbackContext = callbackContext
-        self.freeSurface = freeSurface
-#if DEBUG
-        self.surfaceToken = String(id.uuidString.prefix(5))
-        self.workspaceToken = String(workspaceId.uuidString.prefix(5))
-#endif
-    }
-}
-
-private actor TerminalSurfaceRuntimeTeardownCoordinator {
-    static let shared = TerminalSurfaceRuntimeTeardownCoordinator()
-
-    private let timeout: Duration = .seconds(5)
-    private var pendingReasonsById: [UUID: String] = [:]
-    private var queuedRequests: [TerminalSurfaceRuntimeTeardownRequest] = []
-    private var isWorkerRunning = false
-
-    func enqueue(_ request: TerminalSurfaceRuntimeTeardownRequest) {
-        pendingReasonsById[request.id] = request.reason
-        queuedRequests.append(request)
-        if !isWorkerRunning {
-            isWorkerRunning = true
-            Task.detached(priority: .utility) {
-                while let request = await self.nextRequestForWorker() {
-                    Task {
-                        await self.observeTimeout(id: request.id)
-                    }
-                    await Self.free(request)
-                    await self.complete(id: request.id)
-                }
-            }
-        }
-    }
-
-    private func nextRequestForWorker() -> TerminalSurfaceRuntimeTeardownRequest? {
-        guard !queuedRequests.isEmpty else {
-            isWorkerRunning = false
-            return nil
-        }
-        return queuedRequests.removeFirst()
-    }
-
-    private nonisolated static func free(_ request: TerminalSurfaceRuntimeTeardownRequest) async {
-#if DEBUG
-        cmuxDebugLog(
-            "surface.lifecycle.nativeFree.begin surface=\(request.surfaceToken) " +
-            "workspace=\(request.workspaceToken) reason=\(request.reason)"
-        )
-#endif
-        request.freeSurface(request.surface)
-        if request.callbackContext != nil {
-            // The request is the @unchecked Sendable transport for the
-            // Unmanaged context; release through the request so the @Sendable
-            // closure never captures the non-Sendable Unmanaged directly.
-            await MainActor.run {
-                request.callbackContext?.release()
-            }
-        }
-#if DEBUG
-        cmuxDebugLog(
-            "surface.lifecycle.nativeFree.end surface=\(request.surfaceToken) " +
-            "workspace=\(request.workspaceToken) reason=\(request.reason)"
-        )
-#endif
-    }
-
-    private func complete(id: UUID) {
-        pendingReasonsById.removeValue(forKey: id)
-    }
-
-    private func observeTimeout(id: UUID) async {
-        do {
-            // Genuine teardown deadline: report a stuck native free without blocking close.
-            try await Task.sleep(for: timeout)
-        } catch {
-            return
-        }
-        guard let reason = pendingReasonsById[id] else { return }
-#if DEBUG
-        cmuxDebugLog(
-            "surface.lifecycle.nativeFree.timeout surface=\(id.uuidString.prefix(5)) " +
-            "reason=\(reason)"
-        )
-#endif
-    }
-}
-
 private func enqueueTerminalSurfaceRuntimeTeardown(
     id: UUID,
     workspaceId: UUID,
@@ -468,7 +355,7 @@ private func enqueueTerminalSurfaceRuntimeTeardown(
     callbackContext: Unmanaged<GhosttySurfaceCallbackContext>?,
     freeSurface: @escaping @Sendable (ghostty_surface_t) -> Void
 ) {
-    let request = TerminalSurfaceRuntimeTeardownRequest(
+    GhosttyApp.terminalSurfaceRuntimeTeardown.enqueueRuntimeTeardown(
         id: id,
         workspaceId: workspaceId,
         reason: reason,
@@ -476,9 +363,6 @@ private func enqueueTerminalSurfaceRuntimeTeardown(
         callbackContext: callbackContext,
         freeSurface: freeSurface
     )
-    Task {
-        await TerminalSurfaceRuntimeTeardownCoordinator.shared.enqueue(request)
-    }
 }
 
 private func enqueueTerminalSurfaceRuntimeTeardown(
@@ -488,13 +372,12 @@ private func enqueueTerminalSurfaceRuntimeTeardown(
     surface: ghostty_surface_t,
     callbackContext: Unmanaged<GhosttySurfaceCallbackContext>?
 ) {
-    enqueueTerminalSurfaceRuntimeTeardown(
+    GhosttyApp.terminalSurfaceRuntimeTeardown.enqueueRuntimeTeardown(
         id: id,
         workspaceId: workspaceId,
         reason: reason,
         surface: surface,
-        callbackContext: callbackContext,
-        freeSurface: { surface in ghostty_surface_free(surface) }
+        callbackContext: callbackContext
     )
 }
 
@@ -539,6 +422,43 @@ class GhosttyApp {
     /// The process-wide pasteboard service (was the `GhosttyPasteboardHelper`
     /// namespace enum).
     static let terminalPasteboard = TerminalPasteboardService()
+
+    /// The process-wide serialized native-surface free queue (was the
+    /// `TerminalSurfaceRuntimeTeardownCoordinator.shared` actor singleton).
+    static let terminalSurfaceRuntimeTeardown = TerminalSurfaceRuntimeTeardownCoordinator()
+
+    /// The process-wide paced native-surface creation queue for session restore.
+    @MainActor
+    static let terminalSurfaceRestoreSpawnScheduler = TerminalSurfaceRestoreSpawnScheduler()
+    /// Snapshotted once per app session so all workspaces use consistent values.
+    static let terminalSessionPortBase: Int = {
+        let val = UserDefaults.standard.integer(forKey: AutomationSettings.portBaseKey)
+        return val > 0 ? val : AutomationSettings.defaultPortBase
+    }()
+    static let terminalSessionPortRangeSize: Int = {
+        let val = UserDefaults.standard.integer(forKey: AutomationSettings.portRangeKey)
+        return val > 0 ? val : AutomationSettings.defaultPortRange
+    }()
+
+    /// The injected collaborators for every `TerminalSurface` (transitional:
+    /// dissolves into composition-root injection when `GhosttyAppService`
+    /// replaces this type).
+    @MainActor
+    static let terminalSurfaceRuntimeDependencies = TerminalSurfaceRuntimeDependencies(
+        registry: GhosttyApp.terminalSurfaceRegistry,
+        engine: GhosttyApp.shared,
+        viewProvider: TerminalSurfaceViewFactory(),
+        spawnPolicy: TerminalSurfaceSpawnPolicyBridge(),
+        byteTee: TerminalMobileByteTeeBridge(),
+        rendererRealization: RendererRealizationController.shared,
+        hibernationRecorder: TerminalAgentHibernationRecorder(),
+        runtimeTeardown: GhosttyApp.terminalSurfaceRuntimeTeardown,
+        restoreSpawnScheduler: GhosttyApp.terminalSurfaceRestoreSpawnScheduler,
+        runtimeFilesystem: .live(),
+        sessionPortBase: GhosttyApp.terminalSessionPortBase,
+        sessionPortRangeSize: GhosttyApp.terminalSessionPortRangeSize,
+        scrollbackReplayEnvironmentKey: SessionScrollbackReplayStore.environmentKey
+    )
 
     private static let releaseBundleIdentifier = "com.cmuxterm.app"
     private static let fallbackAppearanceConfig = GhosttyConfig()
@@ -2111,7 +2031,7 @@ class GhosttyApp {
         appSupportDirectory: URL,
         fileManager: FileManager = .default
     ) -> [URL] {
-        CmuxGhosttyConfigPathResolver.loadConfigURLs(
+        CmuxGhosttyConfigPathResolver().loadConfigURLs(
             currentBundleIdentifier: currentBundleIdentifier,
             appSupportDirectory: appSupportDirectory,
             fileManager: fileManager
@@ -6784,6 +6704,16 @@ final class TerminalSurface: Identifiable, ObservableObject {
         return liveSurfaceForGhosttyAccess(reason: reason)
     }
 
+    @MainActor
+    func requestInputDemandSurfaceStartIfNeeded() {
+        requestBackgroundSurfaceStartIfNeeded()
+    }
+
+    @MainActor
+    func attachToViewForInputDemand(_ view: GhosttyNSView) {
+        attachToView(view)
+    }
+
     // Socket/API operations are an explicit runtime demand: they must be able to
     // start a terminal in a background workspace without selecting that workspace.
     // When there is no real window yet, bootstrap Ghostty in a hidden window and
@@ -8272,14 +8202,14 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
             return surface
         }
         guard window != nil else { return nil }
-        terminalSurface?.attachToView(self)
+        terminalSurface?.attachToViewForInputDemand(self)
         updateSurfaceSize(size: bounds.size)
         applySurfaceColorScheme(force: true)
         return surface
     }
 
     private func requestInputRecoveryAfterSurfaceMiss(reason: String) {
-        terminalSurface?.requestBackgroundSurfaceStartIfNeeded()
+        terminalSurface?.requestInputDemandSurfaceStartIfNeeded()
 #if DEBUG
         cmuxDebugLog(
             "focus.input_recovery surface=\(terminalSurface?.id.uuidString.prefix(5) ?? "nil") " +

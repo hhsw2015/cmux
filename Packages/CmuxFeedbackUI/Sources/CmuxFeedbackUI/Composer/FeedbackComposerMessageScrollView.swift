@@ -1,4 +1,4 @@
-public import AppKit
+import AppKit
 
 /// Scroll view backing the feedback message editor. Redirects mouse-down hits to
 /// the document text view so clicking anywhere in the field focuses the editor.

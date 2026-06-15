@@ -1,4 +1,4 @@
-public import AppKit
+import AppKit
 
 /// A self-sizing, scrollable multiline message editor used by the feedback
 /// composer. Grows its document height with content (with an overlay scroller

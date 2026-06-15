@@ -1,4 +1,4 @@
-public import Foundation
+import Foundation
 
 /// User-facing validation and submission failures for the feedback composer.
 public enum FeedbackComposerBridgeError: LocalizedError {

@@ -1,4 +1,4 @@
-public import SwiftUI
+import SwiftUI
 
 /// SwiftUI wrapper around ``FeedbackComposerMessageEditorView`` that binds the
 /// editor's text and forwards accessibility metadata.

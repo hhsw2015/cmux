@@ -1,4 +1,4 @@
-public import Foundation
+import Foundation
 
 extension Notification.Name {
     /// Posted to request that the feedback composer be presented (optionally

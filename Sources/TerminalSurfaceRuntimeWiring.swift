@@ -127,27 +127,23 @@ final class TerminalAgentHibernationRecorder: AgentHibernationRecording {
     }
 }
 
+// MARK: Filesystem
 
-// ponytail: P45 conformance shims so package protocols accept fork's view types.
-
-// ponytail: P45 fork-side stubs for upstream-new GhosttyApp statics.
-extension GhosttyApp {
-    static let terminalSurfaceRuntimeTeardown = TerminalSurfaceRuntimeTeardownCoordinator()
-    static let terminalSessionPortBase: Int = 4000
-    static let terminalSessionPortRangeSize: Int = 1000
-
-    @MainActor
-    static let terminalSurfaceRuntimeDependencies = TerminalSurfaceRuntimeDependencies(
-        registry: GhosttyApp.terminalSurfaceRegistry,
-        engine: GhosttyApp.shared,
-        viewProvider: TerminalSurfaceViewFactory(),
-        spawnPolicy: TerminalSurfaceSpawnPolicyBridge(),
-        byteTee: TerminalMobileByteTeeBridge(),
-        rendererRealization: RendererRealizationController.shared,
-        hibernationRecorder: TerminalAgentHibernationRecorder(),
-        runtimeTeardown: GhosttyApp.terminalSurfaceRuntimeTeardown,
-        sessionPortBase: GhosttyApp.terminalSessionPortBase,
-        sessionPortRangeSize: GhosttyApp.terminalSessionPortRangeSize,
-        scrollbackReplayEnvironmentKey: SessionScrollbackReplayStore.environmentKey
-    )
+extension TerminalSurfaceRuntimeFilesystem {
+    static func live() -> TerminalSurfaceRuntimeFilesystem {
+        TerminalSurfaceRuntimeFilesystem(
+            claudeCommandShimTemporaryDirectory: FileManager.default.temporaryDirectory,
+            installClaudeCommandShim: { (wrapperURL: URL, surfaceId: UUID, temporaryDirectory: URL) async -> TerminalSurfaceClaudeCommandShim? in
+                TerminalSurface.installClaudeCommandShimIfPossible(
+                    wrapperURL: wrapperURL,
+                    surfaceId: surfaceId,
+                    temporaryDirectory: temporaryDirectory,
+                    fileManager: .default
+                )
+            },
+            isExecutableFile: { FileManager.default.isExecutableFile(atPath: $0) }
+        )
+    }
 }
+
+// ponytail: GhosttyApp statics moved to class body in GhosttyTerminalView.swift.

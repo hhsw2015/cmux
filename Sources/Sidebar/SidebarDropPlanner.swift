@@ -1,15 +1,6 @@
+import CmuxFoundation
 import CoreGraphics
 import Foundation
-
-enum SidebarDropEdge: Equatable {
-    case top
-    case bottom
-}
-
-struct SidebarDropIndicator: Equatable {
-    let tabId: UUID?
-    let edge: SidebarDropEdge
-}
 
 enum SidebarDropPlanner {
     static func indicator(
