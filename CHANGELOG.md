@@ -2,6 +2,18 @@
 
 All notable changes to cmux are documented here.
 
+## [0.66.4] - 2026-06-15
+
+### Changed
+- Merge upstream/main: 31 commits including stagger restored terminal surface spawns, configurable Dock max width, namespace-enum dissolution, surface browser Safari, terminal top-row mouse fix, iOS Shift key, and proxy disconnect state fix.
+
+### Preserved (fork features)
+- All cmux_term socket handlers: `surface.snapshot`, `surface.screen_text`, `surface.screen_hash`, `surface.wait_for_text`, `surface.wait_for_idle`, `surface.wait_for_screen_change`, `surface.wait_for_kind`, `surface.wait_for_cursor`, `surface.tui_probe`, `surface.expect`, `surface.screen_region`.
+- agent-bus dispatch (`notification.create` with `$bus`).
+- TerminalSurface `visibleSnapshot()` and `processHasExited()` helpers.
+- skills/cmux-terminal-control 3-layer Python API + ORCHESTRATOR_TEMPLATE.md.
+- HerdrWorkspaceSync + `CustomTitleSource.herdrInbound`.
+
 ## [0.64.16] - 2026-06-15
 
 ### Added
