@@ -508,6 +508,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     nonisolated(unsafe) static var shared: AppDelegate?
     /// Stateless control-socket syscall layer (CmuxControlSocket); composition-root owned.
     nonisolated let socketTransport = SocketTransport()
+    /// Coordinates remote tmux (`ssh … tmux -CC`) mirroring; composition-root owned.
+    let remoteTmuxController = RemoteTmuxController()
     private static let reloadConfigurationMenuItemIdentifier = NSUserInterfaceItemIdentifier("com.cmux.reloadConfiguration")
 
     private static let cachedIsRunningUnderXCTest = detectRunningUnderXCTest(ProcessInfo.processInfo.environment)
@@ -705,7 +707,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     /// path-resolution logic lives in the package; `AppDelegate` only supplies
     /// the `NSWorkspace`/`FileManager` side effect through `FinderRevealing`. The
     /// single instance is shared by both the navigation coordinator and the
-    /// `UNUserNotificationCenter` delegate path (`performTerminalNotificationClickAction`).
+    /// `UNUserNotificationCenter` delivery coordinator.
     /// Weak-owner adapter that satisfies every notification-nav seam by
     /// forwarding to `AppDelegate` helpers. The coordinator and click performer
     /// strong-ref this adapter; the adapter weak-refs `AppDelegate`, so there is
@@ -734,6 +736,66 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 )?.id
             }
         )
+
+    /// OS notification delivery/response coordination, extracted into
+    /// `CmuxNotifications`. The app target injects the concrete
+    /// `UNUserNotificationCenter`, terminal identifiers from
+    /// `TerminalNotificationStore`, localized action titles, and the weak-owner
+    /// Feed/app activation seam.
+    lazy var notificationDeliverySeams = NotificationDeliverySeamAdapter(owner: self)
+
+    lazy var notificationDelivery = NotificationDeliveryCoordinator(
+        center: UNUserNotificationCenter.current(),
+        terminalNavigation: notificationNavigation,
+        feedReplying: notificationDeliverySeams,
+        applicationActivation: notificationDeliverySeams,
+        terminalIdentifiers: TerminalNotificationDeliveryIdentifiers(
+            categoryIdentifier: TerminalNotificationStore.categoryIdentifier,
+            showActionIdentifier: TerminalNotificationStore.actionShowIdentifier
+        ),
+        actionTitles: notificationDeliveryActionTitles
+    )
+
+    private var notificationDeliveryActionTitles: NotificationDeliveryActionTitles {
+        NotificationDeliveryActionTitles(
+            show: String(
+                localized: "terminal.notification.action.show",
+                defaultValue: "Show"
+            ),
+            feedPermissionAllowOnce: String(
+                localized: "feed.notification.permission.allowOnce",
+                defaultValue: "Allow Once"
+            ),
+            feedPermissionAlways: String(
+                localized: "feed.notification.permission.always",
+                defaultValue: "Always"
+            ),
+            feedPermissionAll: String(
+                localized: "feed.notification.permission.all",
+                defaultValue: "All tools"
+            ),
+            feedPermissionDeny: String(
+                localized: "feed.notification.permission.deny",
+                defaultValue: "Deny"
+            ),
+            feedExitPlanUltraplan: String(
+                localized: "feed.notification.exitPlan.ultraplan",
+                defaultValue: "Ultraplan"
+            ),
+            feedExitPlanManual: String(
+                localized: "feed.notification.exitPlan.manual",
+                defaultValue: "Manual"
+            ),
+            feedExitPlanAutoAccept: String(
+                localized: "feed.notification.exitPlan.autoAccept",
+                defaultValue: "Auto"
+            ),
+            feedQuestionReply: String(
+                localized: "feed.notification.question.reply",
+                defaultValue: "Reply"
+            )
+        )
+    }
     // The open-routing trio (`openNotification` / `openNotificationInContext` /
     // `openNotificationFallback`) intentionally stays in `AppDelegate`, reached
     // through the open-routing seam (`openRouted` / `openInWindow` /
@@ -1026,6 +1088,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     // Set to true when the user has already confirmed quit via the warning dialog,
     // so applicationShouldTerminate does not show a second alert.
     private var isQuitWarningConfirmed = false
+    // One-shot guard for deferred terminate replies.
+    private var didReplyToTerminate = false
+    // True while remote tmux kill-before-quit owns the terminate reply.
+    private var isAwaitingTerminateKills = false
+    private var terminateKillWatchdogTask: Task<Void, Never>?
     private var didInstallLifecycleSnapshotObservers = false
     private var didDisableSuddenTermination = false
     /// Owns the per-window command-palette state (visibility, pending-open,
@@ -1788,7 +1855,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         notificationStore.markRead(forTabId: tabId, surfaceId: surfaceId)
     }
 
+    /// Sole caller of `NSApp.reply(toApplicationShouldTerminate:)`.
+    private func replyToTerminateOnce(_ shouldTerminate: Bool) {
+        guard !didReplyToTerminate else { return }
+        didReplyToTerminate = true
+        NSApp.reply(toApplicationShouldTerminate: shouldTerminate)
+        terminateKillWatchdogTask?.cancel()
+        terminateKillWatchdogTask = nil
+        // A cancelled quit ends this terminate request; the next quit must reply again.
+        if !shouldTerminate {
+            didReplyToTerminate = false
+            isAwaitingTerminateKills = false
+        }
+    }
+
+    private func deferTerminateForMarkedRemoteTmuxKills(reason: String) -> Bool {
+        let markedForKill = remoteTmuxController.windowsMarkedForKillOnClose()
+        guard !markedForKill.isEmpty else { return false }
+        if !isAwaitingTerminateKills {
+            isAwaitingTerminateKills = true
+            StartupBreadcrumbLog.append("appDelegate.shouldTerminate.killLater", fields: ["windows": String(markedForKill.count), "reason": reason])
+            Task { @MainActor in
+                await self.remoteTmuxController.killMarkedSessionsBeforeTerminate()
+                self.replyToTerminateOnce(true)
+            }
+            // Watchdog: release quit if the deferred Task is starved inside a nested run loop.
+            terminateKillWatchdogTask?.cancel()
+            terminateKillWatchdogTask = Task { @MainActor [weak self] in
+                try? await ContinuousClock().sleep(for: .milliseconds(3_500))
+                guard !Task.isCancelled else { return }
+                self?.replyToTerminateOnce(true)
+            }
+        }
+        return true
+    }
+
+    private func clearMarkedRemoteTmuxKills() {
+        for windowId in remoteTmuxController.windowsMarkedForKillOnClose() {
+            remoteTmuxController.consumeKillSessionsOnWindowClose(windowId: windowId)
+        }
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        // A re-entrant terminate must wait for the in-flight kill-before-quit reply.
+        if isAwaitingTerminateKills { return .terminateLater }
         let buildFlavor = BuildFlavor.current
         let quitConfirmationStore = QuitConfirmationStore(defaults: .standard)
         let hasDirtyWorkspaces = hasQuitConfirmationDirtyWorkspaces()
@@ -1828,6 +1938,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             } else {
                 reason = "policy"
             }
+            // Explicit last-tab closes kill marked remote sessions before quit.
+            // Plain app/window quits have no marker and only detach.
+            if deferTerminateForMarkedRemoteTmuxKills(reason: reason) {
+                return .terminateLater
+            }
             StartupBreadcrumbLog.append("appDelegate.shouldTerminate.terminateNow", fields: ["reason": reason])
             return .terminateNow
         }
@@ -1854,12 +1969,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 self.isQuitWarningConfirmed = true
                 self.closeAllWebInspectorsBeforeAppTeardown()
                 StartupBreadcrumbLog.append("appDelegate.shouldTerminate.reply", fields: ["shouldQuit": "1"])
+                if self.deferTerminateForMarkedRemoteTmuxKills(reason: "confirmedDialog") {
+                    return
+                }
             } else {
                 // Reset so that the next quit attempt can show the dialog again.
                 self.isTerminatingApp = false
+                self.clearMarkedRemoteTmuxKills()
                 StartupBreadcrumbLog.append("appDelegate.shouldTerminate.reply", fields: ["shouldQuit": "0"])
             }
-            NSApp.reply(toApplicationShouldTerminate: shouldQuit)
+            self.replyToTerminateOnce(shouldQuit)
         }
         StartupBreadcrumbLog.append("appDelegate.shouldTerminate.later")
         return .terminateLater
@@ -1923,6 +2042,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     func applicationWillTerminate(_ notification: Notification) {
         StartupBreadcrumbLog.append("appDelegate.willTerminate.begin")
         isTerminatingApp = true
+        // Plain quit detaches local ssh clients; explicit close already killed marked sessions.
+        remoteTmuxController.detachAll()
         // Best-effort presence goodbye; unclean exits are covered by the
         // service's missed-heartbeat timeout.
         PresenceHeartbeatClient.shared.appWillTerminate()
@@ -1987,6 +2108,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         self.sidebarState = sidebarState
         self.auth = auth
         VMClient.bootstrap(auth: auth.coordinator)
+        RemotesClient.bootstrap(auth: auth.coordinator)
         PhonePushClient.shared.configure(auth: auth.coordinator)
         MobileHostService.shared.configure(auth: auth.coordinator)
         DeviceRegistryClient.shared.configure(auth: auth.coordinator)
@@ -1998,6 +2120,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         auth.start()
         ensureMobileWorkspaceListObserver(for: tabManager)
         MobileTerminalRenderObserver.shared.start()
+        AgentChatTranscriptService.shared.start()
         installMobileHostSettingsObserver()
         scheduleGhosttyCrashBreadcrumbIfNeeded(notificationStore: notificationStore)
         disableSuddenTerminationIfNeeded()
@@ -4345,29 +4468,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let regularContexts = contexts.filter { !$0.isQuickTerminal }
         let restorableAgentIndex = suppliedRestorableAgentIndex ?? RestorableAgentSessionIndex.load()
 
-        let windows: [SessionWindowSnapshot] = regularContexts
-            .prefix(SessionPersistencePolicy.maxWindowsPerSnapshot)
-            .map { context in
-                sessionWindowSnapshot(
+        let windows = Array(
+            contexts.lazy.compactMap { context -> SessionWindowSnapshot? in
+                let snapshot = self.sessionWindowSnapshot(
                     for: context,
                     includeScrollback: includeScrollback,
                     restorableAgentIndex: restorableAgentIndex,
                     surfaceResumeBindingIndex: suppliedSurfaceResumeBindingIndex
                 )
+                // A dedicated remote-tmux mirror window needs a live SSH control
+                // connection and should not restore as an empty shell. If the user
+                // dragged local workspaces into that window, keep those local
+                // workspaces: TabManager already prunes remote mirror workspaces
+                // from its snapshot.
+                if self.remoteTmuxController.isDedicatedRemoteWindow(context.windowId),
+                   snapshot.tabManager.workspaces.isEmpty {
+                    return nil
+                }
+                return snapshot
             }
-        let liveQuickTerminalSnapshot = quickTerminalContext.map { context in
-            sessionWindowSnapshot(
-                for: context,
-                includeScrollback: includeScrollback,
-                restorableAgentIndex: restorableAgentIndex,
-                surfaceResumeBindingIndex: suppliedSurfaceResumeBindingIndex
-            )
-        }
+            .prefix(SessionPersistencePolicy.maxWindowsPerSnapshot)
+        )
 
         let windowsWithPendingQuickTerminal = Self.includingPendingQuickTerminalSnapshot(
             windows,
-            pendingQuickTerminalSnapshot: liveQuickTerminalSnapshot
-                ?? mainWindowQuickTerminalController.pendingSessionSnapshotForPersistence()
+            pendingQuickTerminalSnapshot: mainWindowQuickTerminalController.pendingSessionSnapshotForPersistence()
         )
 
         guard !windowsWithPendingQuickTerminal.isEmpty else { return nil }
@@ -7241,6 +7366,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let context = livePreferredContext
             ?? preferredMainWindowContextForWorkspaceCreation(event: event, debugSource: debugSource)
 
+        // In a dedicated remote-tmux window, a new workspace means "create a new
+        // tmux session on that host" — route it to the remote and mirror it into
+        // this window instead of creating a local workspace.
+        if let context,
+           remoteTmuxController.handleRemoteWindowNewWorkspaceRequested(windowId: context.windowId) {
+            return true
+        }
+
         let workspaceGroupTarget = context.flatMap { workspaceGroupNewWorkspaceTarget(in: $0) }
         // The configured new-workspace action is the user's override for the
         // plain New Workspace behavior; the browser variant keeps its own
@@ -7805,8 +7938,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
         let workspace = context.tabManager.selectedWorkspace
             ?? context.tabManager.addWorkspace(select: shouldBringToFront, autoWelcomeIfNeeded: false)
+        // In a remote tmux mirror workspace, paste targets the existing focused
+        // pane. Do NOT fall back to creating a new surface there: that would
+        // route to a remote `new-window` (a surprising side effect) yet still
+        // have no local pane to deliver the text to.
         let terminalPanel = workspace.focusedTerminalPanel
-            ?? workspace.newTerminalSurfaceInFocusedPane(focus: shouldBringToFront)
+            ?? (workspace.isRemoteTmuxMirror ? nil : workspace.newTerminalSurfaceInFocusedPane(focus: shouldBringToFront))
         guard let terminalPanel else { return false }
 
 #if DEBUG
@@ -8410,6 +8547,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let controller = MainWindowController(window: window)
         controller.onClose = { [weak self, weak controller] in
             guard let self, let controller else { return }
+            let manager = self.tabManagerFor(windowId: windowId)
+            // An explicit close of the window's LAST remote workspace (a tab/session
+            // close) kills its remote session(s) — synced with tmux — even though it
+            // also closes the app window. A plain window/quit close leaves the marker
+            // unset and falls through to detach below (server stays alive for resume).
+            if self.remoteTmuxController.consumeKillSessionsOnWindowClose(windowId: windowId),
+               let manager {
+                for workspace in manager.tabs where workspace.isRemoteTmuxMirror {
+                    self.remoteTmuxController.handleWorkspaceClosed(workspaceId: workspace.id)
+                }
+            }
+            // If this was a dedicated remote-tmux window, detach its host's control
+            // connections (no-op when the kill path above already tore them down).
+            // A window/quit close only detaches — the remote tmux server stays alive.
+            self.remoteTmuxController.handleRemoteWindowClosed(windowId: windowId)
+            // Also detach any per-workspace mirrors in this window (covers the
+            // socket `remote.tmux.mirror` path into a non-dedicated window), so
+            // their pane surfaces / ssh connections don't leak on window close.
+            if let manager {
+                self.remoteTmuxController.handleWindowWorkspacesClosed(
+                    workspaceIds: manager.tabs.map { $0.id }
+                )
+            }
             self.mainWindowControllers.removeAll(where: { $0 === controller })
         }
         controller.shouldClose = { [weak self, weak window] in
@@ -8422,6 +8582,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             let shouldClose = self?.handleMainTerminalWindowShouldClose() ?? true
             if !shouldClose {
                 self?.closedWindowHistorySuppressedWindowIds.remove(windowId)
+                // Close CANCELLED (a genuine veto, not a confirmed quit): clear any
+                // kill-on-close marker so a later window/quit close detaches. A
+                // CONFIRMED quit of the last tab keeps the marker set so
+                // applicationWillTerminate kills the session before exit.
+                if self?.isTerminatingApp != true {
+                    self?.remoteTmuxController.consumeKillSessionsOnWindowClose(windowId: windowId)
+                }
             }
             return shouldClose
         }
@@ -15462,237 +15629,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
 
     private func configureUserNotifications() {
-        let actions = [
-            UNNotificationAction(
-                identifier: TerminalNotificationStore.actionShowIdentifier,
-                title: "Show"
-            )
-        ]
-
-        let category = UNNotificationCategory(
-            identifier: TerminalNotificationStore.categoryIdentifier,
-            actions: actions,
-            intentIdentifiers: [],
-            options: [.customDismissAction]
-        )
-
-        // Feed categories with inline decision buttons. Identifiers and
-        // action strings are matched in `handleFeedNotificationResponse`.
-        let permissionOnceAction = UNNotificationAction(
-            identifier: "feed.permission.once",
-            title: String(localized: "feed.notification.permission.allowOnce", defaultValue: "Allow Once")
-        )
-        let permissionAlwaysAction = UNNotificationAction(
-            identifier: "feed.permission.always",
-            title: String(localized: "feed.notification.permission.always", defaultValue: "Always")
-        )
-        let permissionAllAction = UNNotificationAction(
-            identifier: "feed.permission.all",
-            title: String(localized: "feed.notification.permission.all", defaultValue: "All tools")
-        )
-        let permissionDenyAction = UNNotificationAction(
-            identifier: "feed.permission.deny",
-            title: String(localized: "feed.notification.permission.deny", defaultValue: "Deny"),
-            options: [.destructive]
-        )
-        let permissionCategories = Self.feedPermissionNotificationCategoryIds().map { categoryId in
-            var actions: [UNNotificationAction] = []
-            if categoryId.contains("Once") || categoryId == "CMUXFeedPermission" {
-                actions.append(permissionOnceAction)
-            }
-            if categoryId.contains("Always") || categoryId == "CMUXFeedPermission" {
-                actions.append(permissionAlwaysAction)
-            }
-            if categoryId.contains("All") {
-                actions.append(permissionAllAction)
-            }
-            actions.append(permissionDenyAction)
-            return UNNotificationCategory(
-                identifier: categoryId,
-                actions: actions,
-                intentIdentifiers: [],
-                options: []
-            )
-        }
-        let exitPlanCategory = UNNotificationCategory(
-            identifier: "CMUXFeedExitPlan",
-            actions: [
-                UNNotificationAction(
-                    identifier: "feed.exit_plan.ultraplan",
-                    title: String(localized: "feed.notification.exitPlan.ultraplan", defaultValue: "Ultraplan")
-                ),
-                UNNotificationAction(
-                    identifier: "feed.exit_plan.manual",
-                    title: String(localized: "feed.notification.exitPlan.manual", defaultValue: "Manual")
-                ),
-                UNNotificationAction(
-                    identifier: "feed.exit_plan.autoAccept",
-                    title: String(localized: "feed.notification.exitPlan.autoAccept", defaultValue: "Auto")
-                ),
-            ],
-            intentIdentifiers: [],
-            options: []
-        )
-        let questionCategory = UNNotificationCategory(
-            identifier: "CMUXFeedQuestion",
-            actions: [
-                UNNotificationAction(
-                    identifier: "feed.question.open",
-                    title: String(localized: "feed.notification.question.reply", defaultValue: "Reply"),
-                    options: [.foreground]
-                ),
-            ],
-            intentIdentifiers: [],
-            options: []
-        )
-
-        let center = UNUserNotificationCenter.current()
-        center.setNotificationCategories(Set([category, exitPlanCategory, questionCategory] + permissionCategories))
-        center.delegate = self
-    }
-
-    private static func feedPermissionNotificationCategoryIds() -> [String] {
-        [
-            "CMUXFeedPermission",
-            "CMUXFeedPermissionDeny",
-            "CMUXFeedPermissionOnce",
-            "CMUXFeedPermissionAlways",
-            "CMUXFeedPermissionAll",
-            "CMUXFeedPermissionOnceAlways",
-            "CMUXFeedPermissionOnceAll",
-            "CMUXFeedPermissionAlwaysAll",
-            "CMUXFeedPermissionOnceAlwaysAll",
-        ]
-    }
-
-    /// Routes a notification action identifier like
-    /// `feed.permission.once` back to `FeedCoordinator.deliverReply`.
-    /// Returns `true` if the identifier was Feed-owned.
-    private func handleFeedNotificationResponse(_ response: UNNotificationResponse) -> Bool {
-        let categoryId = response.notification.request.content.categoryIdentifier
-        guard categoryId.hasPrefix("CMUXFeedPermission")
-           || categoryId == "CMUXFeedExitPlan"
-           || categoryId == "CMUXFeedQuestion"
-        else { return false }
-
-        guard let requestId = response.notification.request.content.userInfo["requestId"] as? String else {
-            return true
-        }
-
-        switch response.actionIdentifier {
-        case "feed.permission.once":
-            guard let decision = feedPermissionNotificationDecision(requestId: requestId, requestedMode: .once) else {
-                return true
-            }
-            FeedCoordinator.shared.deliverReply(requestId: requestId, decision: decision)
-        case "feed.permission.always":
-            guard let decision = feedPermissionNotificationDecision(requestId: requestId, requestedMode: .always) else {
-                return true
-            }
-            FeedCoordinator.shared.deliverReply(requestId: requestId, decision: decision)
-        case "feed.permission.all":
-            guard let decision = feedPermissionNotificationDecision(requestId: requestId, requestedMode: .all) else {
-                return true
-            }
-            FeedCoordinator.shared.deliverReply(requestId: requestId, decision: decision)
-        case "feed.permission.deny":
-            FeedCoordinator.shared.deliverReply(requestId: requestId, decision: .permission(.deny))
-        case "feed.exit_plan.ultraplan":
-            FeedCoordinator.shared.deliverReply(requestId: requestId, decision: .exitPlan(.ultraplan))
-        case "feed.exit_plan.bypassPermissions":
-            FeedCoordinator.shared.deliverReply(requestId: requestId, decision: .exitPlan(.bypassPermissions))
-        case "feed.exit_plan.autoAccept":
-            FeedCoordinator.shared.deliverReply(requestId: requestId, decision: .exitPlan(.autoAccept))
-        case "feed.exit_plan.manual":
-            FeedCoordinator.shared.deliverReply(requestId: requestId, decision: .exitPlan(.manual))
-        case "feed.question.open":
-            // Open the app / focus the Feed sidebar; actual reply happens in-app.
-            NSApp.activate(ignoringOtherApps: true)
-        case UNNotificationDismissActionIdentifier,
-             UNNotificationDefaultActionIdentifier:
-            // Tap on the banner body opens the app so user can act in-UI.
-            NSApp.activate(ignoringOtherApps: true)
-        default:
-            break
-        }
-        return true
-    }
-
-    /// Routes herdr notification taps. Blocked-agent + workspace
-    /// notifications open the workspace; host offline / back-online
-    /// notifications just bring cmux to the foreground so the user
-    /// sees the sidebar host row. Returns `true` if the notification
-    /// was herdr-owned.
-    private func handleHerdrNotificationResponse(_ response: UNNotificationResponse) -> Bool {
-        let userInfo = response.notification.request.content.userInfo
-        guard let hostIdString = userInfo["cmux.herdr.hostId"] as? String,
-              let hostId = UUID(uuidString: hostIdString)
-        else {
-            return false
-        }
-        let host = HostRegistry.shared.hosts.first(where: { $0.id == hostId })
-        switch response.actionIdentifier {
-        case UNNotificationDismissActionIdentifier:
-            return true
-        default:
-            NSApp.activate(ignoringOtherApps: true)
-            if let host, let workspaceId = userInfo["cmux.herdr.workspaceId"] as? String {
-                HerdrPanelOpener.openWorkspace(host: host, workspaceId: workspaceId)
-            }
-            // host-only kinds (hostOffline / hostBackOnline) just
-            // need foreground; no further routing.
-        }
-        return true
-    }
-
-    private func feedPermissionNotificationDecision(
-        requestId: String,
-        requestedMode: WorkstreamPermissionMode
-    ) -> WorkstreamDecision? {
-        guard let item = FeedCoordinator.shared.snapshot(pendingOnly: false).reversed().first(where: { item in
-            guard case .permissionRequest(let itemRequestId, _, _, _) = item.payload else { return false }
-            return itemRequestId == requestId
-        }) else {
-            return .permission(requestedMode)
-        }
-        guard case .permissionRequest(_, _, let toolInputJSON, _) = item.payload else {
-            return .permission(requestedMode)
-        }
-
-        switch requestedMode {
-        case .once:
-            guard FeedPermissionActionPolicy.supportsOncePermissionMode(
-                source: item.source,
-                toolInputJSON: toolInputJSON
-            ) else {
-                return nil
-            }
-            return .permission(.once)
-        case .always:
-            if FeedPermissionActionPolicy.supportsAlwaysPermissionMode(
-                source: item.source,
-                toolInputJSON: toolInputJSON
-            ) {
-                return .permission(.always)
-            }
-            if FeedPermissionActionPolicy.supportsOncePermissionMode(
-                source: item.source,
-                toolInputJSON: toolInputJSON
-            ) {
-                return .permission(.once)
-            }
-            return nil
-        case .all:
-            guard FeedPermissionActionPolicy.supportsAllPermissionMode(
-                source: item.source,
-                toolInputJSON: toolInputJSON
-            ) else {
-                return nil
-            }
-            return .permission(.all)
-        default:
-            return .permission(requestedMode)
-        }
+        notificationDelivery.configureUserNotifications(delegate: self)
     }
 
     private func disableNativeTabbingShortcut() {
@@ -15840,80 +15777,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
     }
 
-    func userNotificationCenter(
+    nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        handleNotificationResponse(response)
-        completionHandler()
+        Task { @MainActor [weak self] in
+            self?.notificationDelivery.handleNotificationResponse(response)
+            completionHandler()
+        }
     }
 
-    func userNotificationCenter(
+    nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        var options: UNNotificationPresentationOptions = [.banner, .list]
-        if notification.request.content.sound != nil {
-            options.insert(.sound)
-        }
-        completionHandler(options)
-    }
-
-    private func handleNotificationResponse(_ response: UNNotificationResponse) {
-        if handleFeedNotificationResponse(response) {
-            return
-        }
-        if handleHerdrNotificationResponse(response) {
-            return
-        }
-        guard let tabIdString = response.notification.request.content.userInfo["tabId"] as? String,
-              let tabId = UUID(uuidString: tabIdString) else {
-            return
-        }
-        let surfaceId: UUID? = {
-            guard let surfaceIdString = response.notification.request.content.userInfo["surfaceId"] as? String else {
-                return nil
-            }
-            return UUID(uuidString: surfaceIdString)
-        }()
-
-        switch response.actionIdentifier {
-        case UNNotificationDefaultActionIdentifier, TerminalNotificationStore.actionShowIdentifier:
-            let notificationId: UUID? = {
-                if let id = UUID(uuidString: response.notification.request.identifier) {
-                    return id
-                }
-                if let idString = response.notification.request.content.userInfo["notificationId"] as? String,
-                   let id = UUID(uuidString: idString) {
-                    return id
-                }
-                return nil
-            }()
-            if let clickAction = TerminalNotificationClickAction(userInfo: response.notification.request.content.userInfo) {
-                Task { @MainActor in
-                    let didPerform = self.performTerminalNotificationClickAction(clickAction)
-                    if didPerform, let notificationId {
-                        self.notificationStore?.markRead(id: notificationId)
-                    }
-                }
-                return
-            }
-            DispatchQueue.main.async {
-                _ = self.openNotification(tabId: tabId, surfaceId: surfaceId, notificationId: notificationId)
-            }
-        case UNNotificationDismissActionIdentifier:
-            DispatchQueue.main.async {
-                if let notificationId = UUID(uuidString: response.notification.request.identifier) {
-                    self.notificationStore?.markRead(id: notificationId)
-                } else if let notificationIdString = response.notification.request.content.userInfo["notificationId"] as? String,
-                          let notificationId = UUID(uuidString: notificationIdString) {
-                    self.notificationStore?.markRead(id: notificationId)
-                }
-            }
-        default:
-            break
+        Task { @MainActor [weak self] in
+            let options = self?.notificationDelivery.presentationOptions(for: notification) ?? []
+            completionHandler(options)
         }
     }
 

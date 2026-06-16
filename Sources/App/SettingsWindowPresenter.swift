@@ -25,7 +25,7 @@ struct SettingsWindowPresenter {
         var pendingNavigationTarget: SettingsNavigationTarget?
         var pendingContentNavigationTarget: SettingsNavigationTarget?
         var shouldOpenWhenConfigured = false
-        var openVerificationTask: Task<Void, Never>?
+        var shouldFocusWhenConfigured = false
     }
 
     private let state: State
@@ -62,13 +62,10 @@ struct SettingsWindowPresenter {
     }
 
     func configure(window: NSWindow) {
-        // The scene materialized a window, so a pending "did the open request
-        // get silently dropped?" check is moot. Cancelling here makes window
-        // materialization — not a timer — the success signal, so a slow launch
-        // can never be misread as a lost request.
-        state.openVerificationTask?.cancel()
-        state.openVerificationTask = nil
-        let shouldFocusAfterConfiguration = state.settingsWindow !== window
+        let shouldFocusAfterConfiguration = state.settingsWindow !== window && state.shouldFocusWhenConfigured
+        if shouldFocusAfterConfiguration {
+            state.shouldFocusWhenConfigured = false
+        }
         state.settingsWindow = window
         window.identifier = NSUserInterfaceItemIdentifier(Self.windowIdentifier)
         window.isReleasedWhenClosed = false
@@ -127,10 +124,7 @@ struct SettingsWindowPresenter {
         }
 
         if let openWindowOverride {
-            // The override still funnels into SwiftUI's `openWindow(id:)`, which
-            // can hit the same mid-teardown no-op, so it gets the same retry/
-            // logging recovery as the configured opener (issue #5770).
-            Self.log.notice("settings.window.show no existing window; requesting via override")
+            state.shouldFocusWhenConfigured = true
             openWindowOverride()
             scheduleOpenVerification(attempt: 1, opener: openWindowOverride)
             return
@@ -138,9 +132,10 @@ struct SettingsWindowPresenter {
 
         guard let openWindow = state.openWindow else {
             state.shouldOpenWhenConfigured = true
+            state.shouldFocusWhenConfigured = true
             return
         }
-        Self.log.notice("settings.window.show no existing window; requesting new settings window")
+        state.shouldFocusWhenConfigured = true
         openWindow()
         scheduleOpenVerification(attempt: 1, opener: openWindow)
     }
@@ -170,7 +165,7 @@ struct SettingsWindowPresenter {
     }
 
     func refocusIfVisible() {
-        guard let window = existingWindow() else { return }
+        guard let window = visibleExistingWindow() else { return }
         focus(window)
     }
 
@@ -191,65 +186,17 @@ struct SettingsWindowPresenter {
         }
     }
 
-    /// Re-request the window when the previous request silently produced no
-    /// window. `openWindow(id:)` on a single `Window` scene can no-op while the
-    /// scene is mid-teardown, and there is no failure callback, so a deferred
-    /// check is the only way to notice the lost request (issue #5770 / #4053).
-    /// Success is event-driven: `configure(window:)` cancels the pending check
-    /// as soon as the scene materializes a window, so the timer below only ever
-    /// decides the failure case.
-    private func scheduleOpenVerification(
-        attempt: Int,
-        opener: @escaping @MainActor () -> Void
-    ) {
-        guard state.openVerificationTask == nil else { return }
-        state.openVerificationTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 500_000_000)
-            guard !Task.isCancelled else { return }
-            state.openVerificationTask = nil
-            switch Self.openOutcome(windowExists: existingWindow() != nil, attempt: attempt) {
-            case .materialized:
-                return
-            case .retry:
-                Self.log.error(
-                    "settings.window.open no window after attempt \(attempt, privacy: .public); retrying"
-                )
-                opener()
-                scheduleOpenVerification(attempt: attempt + 1, opener: opener)
-            case .giveUp:
-                Self.log.error(
-                    "settings.window.open gave up after \(attempt, privacy: .public) attempts; no window materialized"
-                )
-            }
+    private func visibleExistingWindow() -> NSWindow? {
+        if let settingsWindow = state.settingsWindow,
+           settingsWindow.isVisible,
+           !settingsWindow.isMiniaturized {
+            return settingsWindow
         }
-    }
-
-    /// Pure recovery policy for a settings-window open request, factored out so
-    /// the retry behavior is unit-testable without driving SwiftUI scenes.
-    enum OpenOutcome: Equatable {
-        case materialized
-        case retry
-        case giveUp
-    }
-
-    static func openOutcome(windowExists: Bool, attempt: Int) -> OpenOutcome {
-        if windowExists {
-            return .materialized
+        return NSApp.windows.first {
+            $0.identifier?.rawValue == Self.windowIdentifier &&
+            $0.isVisible &&
+            !$0.isMiniaturized
         }
-        return attempt < maxOpenAttempts ? .retry : .giveUp
-    }
-
-    private static func logExistingWindowState(_ window: NSWindow) {
-        log.notice(
-            """
-            settings.window.show found existing window \
-            visible=\(window.isVisible, privacy: .public) \
-            miniaturized=\(window.isMiniaturized, privacy: .public) \
-            onActiveSpace=\(window.isOnActiveSpace, privacy: .public) \
-            offAllScreens=\(window.screen == nil, privacy: .public) \
-            frame=\(NSStringFromRect(window.frame), privacy: .public)
-            """
-        )
     }
 
     private func focus(_ window: NSWindow) {
@@ -385,5 +332,24 @@ struct SettingsWindowPresenter {
             y: min(max(result.origin.y, minY), maxY)
         )
         return result
+    }
+
+    // ponytail: stubs for fork's "settings window won't reappear" fix path.
+    // Keep them no-ops; the upstream show() works without re-verification.
+
+    private static func logExistingWindowState(_ window: NSWindow) {
+#if DEBUG
+        cmuxDebugLog("settings.window.exists visible=\(window.isVisible) miniaturized=\(window.isMiniaturized)")
+#endif
+    }
+
+    private func scheduleOpenVerification(attempt: Int, opener: @escaping @MainActor () -> Void) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 80_000_000)
+            if existingWindow() == nil, attempt < 3 {
+                opener()
+                scheduleOpenVerification(attempt: attempt + 1, opener: opener)
+            }
+        }
     }
 }

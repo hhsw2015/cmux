@@ -277,21 +277,21 @@ class TerminalController {
     private nonisolated static let socketCommandDebugLogEnvironmentKey = "CMUX_DEBUG_SOCKET_COMMAND_LOG"
     private nonisolated static let socketCommandSlowThresholdMs: Double = 500
 #endif
-    private static var terminalProcessExitedMessage: String {
+    static var terminalProcessExitedMessage: String {
         String(
             localized: "socket.terminal.processExited",
             defaultValue: "The terminal session has ended; reopen it or create a new terminal session."
         )
     }
 
-    private static var terminalInputQueueFullMessage: String {
+    static var terminalInputQueueFullMessage: String {
         String(
             localized: "socket.terminal.inputQueueFull",
             defaultValue: "The terminal can't accept more input right now. Wait a moment and retry, or reopen the terminal if it stays unavailable."
         )
     }
 
-    private static var terminalSurfaceUnavailableMessage: String {
+    static var terminalSurfaceUnavailableMessage: String {
         String(
             localized: "socket.terminal.surfaceUnavailable",
             defaultValue: "The terminal surface is no longer available; reopen it or create a new terminal session."
@@ -1201,6 +1201,18 @@ class TerminalController {
             return v2Result(id: request.id, v2WorkspaceRemotePTYBridge(params: request.params))
         case "workspace.remote.pty_resize":
             return v2Result(id: request.id, v2WorkspaceRemotePTYResize(params: request.params))
+        case "remote.tmux.sessions":
+            return v2RemoteTmuxSessions(id: request.id, params: request.params)
+        case "remote.tmux.attach":
+            return v2RemoteTmuxAttach(id: request.id, params: request.params)
+        case "remote.tmux.detach":
+            return v2RemoteTmuxDetach(id: request.id, params: request.params)
+        case "remote.tmux.state":
+            return v2RemoteTmuxState(id: request.id, params: request.params)
+        case "remote.tmux.mirror":
+            return v2RemoteTmuxMirror(id: request.id, params: request.params)
+        case "remote.tmux.window":
+            return v2RemoteTmuxWindow(id: request.id, params: request.params)
         case "sidebar.custom.validate":
             return v2Result(id: request.id, v2CustomSidebarValidate(params: request.params))
         case "sidebar.custom.reload":
@@ -1227,6 +1239,8 @@ class TerminalController {
             return v2Result(id: request.id, v2SurfaceExpect(params: request.params))
         case let method where method.hasPrefix("vm."):
             return socketWorkerCloudVMResponse(method: method, id: request.id, params: request.params)
+        case let method where method.hasPrefix("remotes."):
+            return socketWorkerRemotesResponse(method: method, id: request.id, params: request.params)
         default:
             return v2Error(id: request.id, code: "method_not_found", message: "Unknown method")
         }
@@ -2469,6 +2483,8 @@ class TerminalController {
             return v2Result(id: id, self.v2BrowserInputKeyboard(params: params))
         case "browser.input_touch":
             return v2Result(id: id, self.v2BrowserInputTouch(params: params))
+        case "chat.sessions.dump":
+            return v2Result(id: id, self.v2ChatSessionsDump())
 
         // Markdown
         case "markdown.open":
@@ -2601,7 +2617,7 @@ class TerminalController {
             "mobile.terminal.create",
             "mobile.terminal.input",
             "mobile.terminal.replay",
-            "mobile.terminal.viewport",
+            "mobile.terminal.viewport", "mobile.events.subscribe", "mobile.events.unsubscribe",
             "terminal.create",
             "terminal.input",
             "terminal.replay",
@@ -2670,7 +2686,7 @@ class TerminalController {
             "workspace.remote.pty_bridge",
             "workspace.remote.pty_resize",
             "workspace.remote.pty_attach_end",
-            "workspace.remote.terminal_session_end",
+            "workspace.remote.terminal_session_end", "remote.tmux.sessions", "remote.tmux.attach", "remote.tmux.detach", "remote.tmux.state", "remote.tmux.mirror", "remote.tmux.window",
             "session.restore_previous",
             "settings.open",
             "feedback.open",
@@ -7715,6 +7731,9 @@ class TerminalController {
     @discardableResult
     private func closeSurfaceRecordingHistory(in workspace: Workspace, surfaceId: UUID, force: Bool) -> Bool {
         if let tabId = workspace.surfaceIdFromPanelId(surfaceId) {
+            if force {
+                return workspace.requestNonInteractiveCloseTabRecordingHistory(tabId)
+            }
             return workspace.requestCloseTabRecordingHistory(tabId, force: force)
         }
 
@@ -11771,6 +11790,7 @@ class TerminalController {
 
         CmuxEventBus.shared.publishWorkstreamEvent(event, phase: "received")
         v2ApplyIMessageModeSideEffects(for: event)
+        Task { @MainActor in AgentChatTranscriptService.shared.noteHookEvent(event) }
 
         let result = FeedCoordinator.shared.ingestBlocking(
             event: event,
@@ -18999,6 +19019,12 @@ class TerminalController {
         return "OK \(newTabId?.uuidString ?? "unknown")"
     }
 
+    /// v1 socket error for a left/up split directed at a mirror workspace
+    /// (kept here for the still-app-side v1 `new_split`; the coordinator-side
+    /// v1 `new_pane` carries the same wording via its sidebar context).
+    private static let v1MirrorDirectionError =
+        "ERROR: direction left/up is not supported in a remote tmux mirror workspace"
+
     private func newSplit(_ args: String) -> String {
         guard let tabManager = tabManager else { return "ERROR: TabManager not available" }
 
@@ -19039,8 +19065,24 @@ class TerminalController {
                 return
             }
 
-            if let newPanelId = tabManager.newSplit(tabId: tabId, surfaceId: targetSurface, direction: direction) {
-                result = "OK \(newPanelId.uuidString)"
+            if tab.isRemoteTmuxMirror, direction.insertFirst {
+                // Routed tmux `split-window` cannot insert before the target
+                // pane; reject before mutating the remote session.
+                result = Self.v1MirrorDirectionError
+                return
+            }
+
+            switch tab.newTerminalSplitOutcome(
+                from: targetSurface,
+                orientation: direction.orientation,
+                insertFirst: direction.insertFirst
+            ) {
+            case .created(let panel):
+                result = "OK \(panel.id.uuidString)"
+            case .routedToRemote:
+                result = "OK routed-to-remote-tmux"
+            case .failed:
+                break
             }
         }
         return result
@@ -22591,6 +22633,8 @@ class TerminalController {
             result = v2MobileTerminalMouse(params: request.params)
         case "workspace.action":
             result = v2MobileWorkspaceAction(params: request.params)
+        case let method where method.hasPrefix("mobile.chat."):
+            result = await v2MobileChatDispatch(method: method, params: request.params)
         case "workspace.close":
             result = v2MobileWorkspaceClose(params: request.params)
         case "workspace.group.collapse":
@@ -23521,6 +23565,132 @@ class TerminalController {
         ])
     }
 
+    /// Deliver a composed block from the mobile composer as a bracketed paste
+    /// followed by an optional single submit key.
+    ///
+    /// This mirrors the macOS TextBox composer dispatch
+    /// (`[.pasteText(payload), .namedKey(submitKey)]`): the text goes through
+    /// `sendText` (libghostty `ghostty_surface_text`), which bracketed-pastes it
+    /// (`ESC[200~ … ESC[201~` when DECSET 2004 is active) so the agent's line
+    /// editor inserts the whole, possibly multi-line, block as literal text
+    /// instead of treating every interior newline as a submit. A single named
+    /// submit key then commits it once. The `terminal.input` path is wrong for a
+    /// composed block: `parsedSocketInputEvents` rewrites every `\n`/`\r` to a
+    /// raw CR, so an N-line message fragments into N submissions.
+    ///
+    /// `submit_key` is optional: `return`/`enter` (default) or `ctrl+enter`
+    /// submit; `none` pastes without submitting so the composer can keep editing.
+    func v2MobileTerminalPaste(params: [String: Any]) -> V2CallResult {
+        guard let text = v2RawString(params, "text"), !text.isEmpty else {
+            return .err(code: "invalid_params", message: "Missing text", data: nil)
+        }
+        // Resolve the optional submit key up front so an unsupported value fails
+        // before any text is pasted (no partial application). The phone sends
+        // `return` as the default submit *intent*; the agent-aware upgrade to
+        // `ctrl+enter` happens below once the surface (and its agent context) is
+        // resolved, because only the Mac knows which agent is running.
+        let submitKeyRaw = (v2String(params, "submit_key") ?? "return").lowercased()
+        var submitKeyName: String?
+        var submitKeyWasReturnIntent = false
+        switch submitKeyRaw {
+        case "", "return", "enter":
+            submitKeyName = "return"
+            submitKeyWasReturnIntent = true
+        case "ctrl+enter":
+            submitKeyName = "ctrl+enter"
+        case "none":
+            submitKeyName = nil
+        default:
+            return .err(code: "invalid_params", message: "Unsupported submit_key", data: ["submit_key": submitKeyRaw])
+        }
+        if let error = mobileWorkspaceIDValidationError(params: params) {
+            return error
+        }
+        if let error = mobileTerminalAliasValidationError(params: params) {
+            return error
+        }
+        guard let resolved = mobileResolveWorkspaceAndSurface(params: params, requireTerminal: true),
+              let surfaceId = resolved.surfaceId,
+              let terminalPanel = resolved.workspace.terminalPanel(for: surfaceId) else {
+            return .err(code: "not_found", message: "Terminal surface not found", data: nil)
+        }
+
+        // Mirror the macOS TextBox composer's submit-key selection
+        // (`TextBoxInput.dispatchEvents`): Claude Code needs `ctrl+enter` to
+        // submit a multi-line block, while plain `return` submits a newline mid
+        // prompt. The phone cannot know the running agent, so it always asks for
+        // `return`; upgrade that intent here when the surface is Claude and the
+        // composed text spans multiple lines. Explicit `ctrl+enter`/`none` from
+        // the client are honored as-is.
+        if submitKeyWasReturnIntent,
+           text.contains("\n") || text.contains("\r"),
+           TextBoxAgentDetection.isClaudeCode(
+               context: WorkspaceContentView.terminalAgentContext(panel: terminalPanel, workspace: resolved.workspace)
+           ) {
+            submitKeyName = "ctrl+enter"
+        }
+
+        applyMobileViewportReport(params: params, terminalPanel: terminalPanel)
+
+        // Send through the TerminalPanel explicit-input wrappers (not the raw
+        // surface): they run `resumeForExplicitInputIfNeeded()` first, waking a
+        // hibernated agent terminal the same way local typing does, so a mobile
+        // composer submit cannot write into a cold surface.
+        guard terminalPanel.sendText(text) else {
+            return .err(code: "surface_unavailable", message: Self.terminalSurfaceUnavailableMessage, data: ["surface_id": surfaceId.uuidString])
+        }
+
+        // The paste text is already accepted by the surface above. From here on a
+        // submit-key failure must NOT surface as an RPC error: the client treats
+        // any error as "nothing was sent" and keeps the composer draft, so a
+        // retry would paste the whole block a second time. Report partial
+        // success instead — `submitted: false` plus `submit_error` — so the
+        // client clears the draft (the text is sitting at the prompt) and can
+        // tell the user the submit keypress is still needed.
+        var submitted = false
+        var submitError: String?
+        if let submitKeyName {
+            let keyResult = terminalPanel.sendNamedKeyResult(submitKeyName)
+            if keyResult.accepted {
+                submitted = true
+            } else {
+                switch keyResult {
+                case .inputQueueFull:
+                    submitError = "input_queue_full"
+                case .surfaceUnavailable:
+                    submitError = "surface_unavailable"
+                case .processExited:
+                    submitError = "process_exited"
+                case .unknownKey, .sent, .queued:
+                    // .sent / .queued are accepted results and unreachable in this
+                    // else-branch; grouped here only to keep the switch exhaustive.
+                    submitError = "unknown_key"
+                }
+            }
+        }
+
+        terminalPanel.surface.forceRefresh(reason: "mobileHost.terminalPaste")
+
+        #if DEBUG
+        cmuxDebugLog(
+            "mobile.terminal.paste workspace=\(resolved.workspace.id.uuidString.prefix(8)) surface=\(surfaceId.uuidString.prefix(8)) chars=\(text.count) submitted=\(submitted ? 1 : 0)"
+        )
+        #endif
+
+        var payload: [String: Any] = [
+            "workspace_id": resolved.workspace.id.uuidString,
+            "surface_id": terminalPanel.id.uuidString,
+            "submitted": submitted,
+        ]
+        if let submitError {
+            payload["submit_error"] = submitError
+        }
+        if let seq = MobileTerminalByteTee.shared.currentSequence(surfaceID: surfaceId) {
+            payload["terminal_seq"] = seq
+        }
+        return .ok(payload)
+    }
+
     private func applyMobileViewportReport(
         params: [String: Any],
         terminalPanel: TerminalPanel,
@@ -23659,7 +23829,7 @@ class TerminalController {
         scheduleMobileViewportReportCleanup(surfaceID: surfaceID, reports: reports)
     }
 
-    private func mobileResolveWorkspaceAndSurface(
+    func mobileResolveWorkspaceAndSurface(
         params: [String: Any],
         requireTerminal: Bool
     ) -> (tabManager: TabManager, workspace: Workspace, surfaceId: UUID?)? {

@@ -146,4 +146,5 @@ extension TerminalSurfaceRuntimeFilesystem {
     }
 }
 
-// ponytail: GhosttyApp statics moved to class body in GhosttyTerminalView.swift.
+// ponytail: convenience init removed — fork TerminalSurface has externalIo: param,
+// not dependencies:. Legacy app-target init lives directly in GhosttyTerminalView.swift.

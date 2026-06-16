@@ -555,7 +555,17 @@ class GhosttyApp {
             func completeClipboardRequest(with text: String) {
                 let finish = {
                     guard callbackContext.runtimeSurface == requestSurface else { return }
-                    text.withCString { ptr in
+                    // Remote tmux mirror panes need tmux to bracket the paste
+                    // because the local manual-I/O surface cannot know the
+                    // remote pane's bracketed-paste mode.
+                    let handledByMirror = !text.isEmpty && MainActor.assumeIsolated {
+                        AppDelegate.shared?.remoteTmuxController.pasteIntoMirror(
+                            surfaceId: callbackContext.surfaceId,
+                            text: text
+                        ) ?? false
+                    }
+                    let completionText = handledByMirror ? "" : text
+                    completionText.withCString { ptr in
                         ghostty_surface_complete_clipboard_request(requestSurface, ptr, state, false)
                     }
                     callbackContext.terminalSurface?.noteClipboardReadCompleted()
@@ -6714,6 +6724,26 @@ final class TerminalSurface: Identifiable, ObservableObject {
         attachToView(view)
     }
 
+    // ponytail: stubs for upstream RemoteTmuxWindowMirror/RemoteTmuxSessionMirror;
+    // fork TS doesn't implement remote-tmux mirror — feature unused in fork build path.
+    @MainActor
+    func processRemoteOutput(_ data: Data) {}
+
+    @MainActor
+    func cellSizePoints() -> CGSize? { nil }
+
+    @MainActor
+    func renderedGridCells() -> (columns: Int, rows: Int)? { nil }
+
+    @MainActor
+    var onManualGridResize: (@MainActor (_ columns: Int, _ rows: Int) -> Void)? {
+        get { nil }
+        set { _ = newValue }
+    }
+
+    @MainActor
+    func setManualIONoReflow(_ value: Bool) {}
+
     // Socket/API operations are an explicit runtime demand: they must be able to
     // start a terminal in a background workspace without selecting that workspace.
     // When there is no real window yet, bootstrap Ghostty in a hidden window and
@@ -10993,8 +11023,13 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
     }
 
     private func canSplitCurrentSurface() -> Bool {
+        guard let surfaceId = terminalSurface?.id else { return false }
+        // Mirror panes are not workspace panels, but their split command routes
+        // to tmux and the resulting layout change rebuilds the mirrored panes.
+        if AppDelegate.shared?.remoteTmuxController.isMirrorPaneSurface(surfaceId) == true {
+            return true
+        }
         guard let tabId,
-              let surfaceId = terminalSurface?.id,
               let app = AppDelegate.shared,
               let manager = app.tabManagerFor(tabId: tabId) ?? app.tabManager,
               let workspace = manager.tabs.first(where: { $0.id == tabId }) else {
@@ -11013,8 +11048,14 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
 
     @discardableResult
     private func splitCurrentSurface(direction: SplitDirection) -> Bool {
+        guard let surfaceId = terminalSurface?.id else { return false }
+        // Remote tmux mirror pane: never fall through to a local split. The tmux
+        // command either reaches the live stream, or the action reports false.
+        if let controller = AppDelegate.shared?.remoteTmuxController,
+           controller.isMirrorPaneSurface(surfaceId) {
+            return controller.handleMirrorSplitRequested(surfaceId: surfaceId, vertical: !direction.isHorizontal)
+        }
         guard let tabId,
-              let surfaceId = terminalSurface?.id,
               let app = AppDelegate.shared,
               let manager = app.tabManagerFor(tabId: tabId) ?? app.tabManager else {
             return false
@@ -11367,10 +11408,20 @@ class GhosttyNSView: NSView, NSUserInterfaceValidations {
                     if let operation {
                         self?.terminalSurface?.hostedView.endImageTransferIndicator(for: operation)
                     }
+                    guard let surface = self?.terminalSurface else { return }
+                    // Mirror panes need tmux paste-buffer so dropped image paths
+                    // arrive as a real bracketed paste in the remote pane.
+                    let handledByMirror = MainActor.assumeIsolated {
+                        AppDelegate.shared?.remoteTmuxController.pasteIntoMirror(
+                            surfaceId: surface.id,
+                            text: text
+                        ) ?? false
+                    }
+                    if handledByMirror { return }
                     // Use the text/paste path (ghostty_surface_text) instead of the key event
                     // path (ghostty_surface_key) so bracketed paste mode is triggered and the
                     // insertion is instant, matching upstream Ghostty behaviour.
-                    self?.terminalSurface?.sendText(text)
+                    surface.sendText(text)
                 }
                 if Thread.isMainThread {
                     send()

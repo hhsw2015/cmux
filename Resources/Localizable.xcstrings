@@ -14085,6 +14085,23 @@
         }
       }
     },
+    "cli.help.ssh-tmux": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usage: cmux ssh-tmux <destination> [--port <n>] [--identity <path>] [--no-focus]\n\nOpen a dedicated cmux window that mirrors a remote host's tmux sessions over\ntmux control mode (tmux -CC) via SSH: each tmux session becomes a workspace,\neach window a tab, and a multi-pane window a native split. Requires the\n\"Remote tmux\" beta to be enabled in Settings.\n\nIf the host needs interactive authentication (password, host-key confirmation,\nMFA, or a security-key touch), cmux runs ssh inline in this terminal so you can\nauthenticate, then mirrors the sessions over the shared SSH connection. Hosts\nthat authenticate non-interactively (ssh-agent / key in ~/.ssh/config) mirror\nwith no prompt. ~/.ssh/config aliases and their IdentityFile/ProxyJump/Port\nsettings are honored.\n\nFlags:\n  --port <n>          SSH port\n  --identity <path>   SSH identity file path\n  --no-focus          Open the mirror window without activating it\n\nExample:\n  cmux ssh-tmux dev@my-host\n  cmux ssh-tmux my-ssh-alias\n  cmux ssh-tmux dev@my-host --port 2222 --identity ~/.ssh/id_ed25519"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usage: cmux ssh-tmux <destination> [--port <n>] [--identity <path>] [--no-focus]\n\nSSH 経由の tmux コントロールモード（tmux -CC）でリモートホストの tmux セッションをミラーリングする専用の cmux ウィンドウを開きます。各 tmux セッションはワークスペースに、各ウィンドウはタブに、複数ペインのウィンドウはネイティブな分割になります。設定で「Remote tmux」ベータを有効にする必要があります。\n\nホストが対話型認証（パスワード、ホストキーの確認、多要素認証、セキュリティキーのタッチ）を必要とする場合、cmux はこのターミナル内で ssh を実行するため、その場で認証できます。認証後、共有 SSH 接続を介してセッションをミラーリングします。非対話で認証されるホスト（ssh-agent / ~/.ssh/config の鍵）はプロンプトなしでミラーリングされます。~/.ssh/config のエイリアスとその IdentityFile / ProxyJump / Port 設定は尊重されます。\n\nFlags:\n  --port <n>          SSH ポート\n  --identity <path>   SSH 識別ファイルのパス\n  --no-focus          ミラーウィンドウをアクティブにせずに開く\n\nExample:\n  cmux ssh-tmux dev@my-host\n  cmux ssh-tmux my-ssh-alias\n  cmux ssh-tmux dev@my-host --port 2222 --identity ~/.ssh/id_ed25519"
+          }
+        }
+      }
+    },
     "cli.help.ssh": {
       "extractionState": "manual",
       "localizations": {
@@ -16358,6 +16375,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "ターミナルセッションは終了しています。開き直すか、新しいターミナルセッションを作成してください。"
+          }
+        }
+      }
+    },
+    "socket.remoteTmux.disabled": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "remote tmux beta is disabled"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リモート tmux ベータは無効です"
+          }
+        }
+      }
+    },
+    "socket.remoteTmux.hostAndSessionRequired": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "host and session are required"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ホストとセッションが必要です"
+          }
+        }
+      }
+    },
+    "socket.remoteTmux.hostRequired": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "host is required"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ホストが必要です"
+          }
+        }
+      }
+    },
+    "socket.remoteTmux.sessionRequired": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "session is required"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "セッションが必要です"
           }
         }
       }
@@ -105034,6 +105119,159 @@
         }
       }
     },
+    "settings.betaFeatures.remoteTmux": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote tmux"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リモート tmux"
+          }
+        }
+      }
+    },
+    "settings.betaFeatures.remoteTmux.subtitleOff": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hides remote tmux mirroring until you enable it here."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ここで有効にするまで、リモート tmux のミラーリングを表示しません。"
+          }
+        }
+      }
+    },
+    "settings.betaFeatures.remoteTmux.subtitleOn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mirrors a remote host's tmux sessions in the sidebar over ssh tmux -CC; sessions become workspaces and windows become tabs. Quitting cmux leaves the remote tmux server running."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ssh tmux -CC でリモートホストの tmux セッションをサイドバーにミラーリングします。セッションはワークスペースに、ウィンドウはタブになります。cmux を終了してもリモートの tmux サーバーは動作し続けます。"
+          }
+        }
+      }
+    },
+    "remoteTmux.tab.pane": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tmux pane"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tmux ペイン"
+          }
+        }
+      }
+    },
+    "remoteTmux.tab.window": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tmux window"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tmux ウィンドウ"
+          }
+        }
+      }
+    },
+    "remoteTmux.pane.splitRight": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Split Right"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右に分割"
+          }
+        }
+      }
+    },
+    "remoteTmux.pane.splitDown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Split Down"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下に分割"
+          }
+        }
+      }
+    },
+    "remoteTmux.pane.close": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close Pane"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペインを閉じる"
+          }
+        }
+      }
+    },
+    "sidebar.extensions.action.remoteTmuxWindowRequested": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote tmux window requested"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リモート tmux ウィンドウを要求しました"
+          }
+        }
+      }
+    },
     "settings.betaFeatures.dock": {
       "extractionState": "manual",
       "localizations": {
@@ -158123,6 +158361,23 @@
         }
       }
     },
+    "terminal.notification.action.show": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "表示"
+          }
+        }
+      }
+    },
     "feed.notification.permission.allowOnce": {
       "extractionState": "manual",
       "localizations": {
@@ -201276,6 +201531,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "브라우저에서 열기"
+          }
+        }
+      }
+    },
+    "mobile.chat.error.terminalMoved": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The agent's terminal moved. Open it once on your Mac (or send the agent any prompt there), then retry."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エージェントのターミナルが移動しました。Macで一度開く（またはそのターミナルでエージェントにプロンプトを送る）してから、再試行してください。"
+          }
+        }
+      }
+    },
+    "mobile.chat.error.transcriptNotReadable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This conversation's transcript isn't readable on the Mac yet. Send the agent a prompt from its terminal, then retry."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この会話のトランスクリプトはまだMacで読み取れません。ターミナルからエージェントにプロンプトを送ってから、再試行してください。"
+          }
+        }
+      }
+    },
+    "mobile.chat.error.interruptNotAccepted": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interrupt key was not accepted"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中断キーが受け付けられませんでした"
+          }
+        }
+      }
+    },
+    "mobile.chat.error.answerNotAccepted": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Answer key was not accepted"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回答キーが受け付けられませんでした"
           }
         }
       }

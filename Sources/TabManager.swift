@@ -1686,6 +1686,14 @@ class TabManager: ObservableObject {
         if applied, selectedTabId == tabId {
             updateWindowTitle(for: tabs[index])
         }
+        // A remote tmux mirror workspace rename propagates to `rename-session`,
+        // but only when the write landed (an `.auto` write rejected over a
+        // user-set title must not desync the remote session name).
+        if applied, tabs[index].isRemoteTmuxMirror {
+            AppDelegate.shared?.remoteTmuxController.handleMirrorWorkspaceRenamed(
+                workspaceId: tabId, title: title
+            )
+        }
         return applied
     }
 
@@ -2003,22 +2011,11 @@ class TabManager: ObservableObject {
     func closeWorkspace(_ workspace: Workspace, recordHistory: Bool = true) {
         guard tabs.count > 1 else { return }
         sentryBreadcrumb("workspace.close", data: ["tabCount": tabs.count - 1])
-
-        // Mark this workspace as detaching so HerdrCloseHandler skips
-        // the per-pane pane.close RPC cascade that would otherwise
-        // delete the daemon-side workspace + its custom_name. Default
-        // close = tmux detach: daemon keeps the workspace, next launch
-        // can reattach with the saved title intact. The "Kill herdr
-        // workspace" command path explicitly destroys via
-        // HerdrKillCommands instead.
-        let hasHerdrBinding = HerdrTabRegistry.shared.allBindings.contains { $0.workspace?.id == workspace.id }
-        if hasHerdrBinding {
-            HerdrCloseHandler.detachingWorkspaceIds.insert(workspace.id)
-        }
-        defer {
-            if hasHerdrBinding {
-                HerdrCloseHandler.detachingWorkspaceIds.remove(workspace.id)
-            }
+        // User-initiated close of a mirrored remote tmux session kills it on the
+        // remote. (App quit tears down windows without calling closeWorkspace, so
+        // quitting still leaves remote sessions alive.)
+        if workspace.isRemoteTmuxMirror {
+            AppDelegate.shared?.remoteTmuxController.handleWorkspaceClosed(workspaceId: workspace.id)
         }
         if recordHistory,
            workspace.isRestorableInSessionSnapshot,
@@ -2240,6 +2237,20 @@ class TabManager: ObservableObject {
         sidebarMultiSelection.replaceSelection(with: workspaceIds.intersection(existingIds))
     }
 
+    /// Marks the window's pending close as a tab/session close so a remote-tmux
+    /// mirror among `workspaces` is KILLED (synced with tmux) on the close commit
+    /// rather than detached. The single decision point for every close path that
+    /// closes the whole window directly — the last-workspace branch of
+    /// ``closeWorkspaceIfRunningProcess`` and the batch/anchor paths in
+    /// ``closeWorkspacesWithConfirmation`` — so every explicit tab-close intent kills
+    /// consistently. ``AppDelegate``'s `shouldClose`/`onClose` consume or clear the
+    /// marker (veto vs commit).
+    private func markRemoteTmuxKillOnWindowCloseIfNeeded(for workspaces: [Workspace]) {
+        guard workspaces.contains(where: { $0.isRemoteTmuxMirror }),
+              let windowId = AppDelegate.shared?.windowId(for: self) else { return }
+        AppDelegate.shared?.remoteTmuxController.markKillSessionsOnWindowClose(windowId: windowId)
+    }
+
     func closeWorkspacesWithConfirmation(_ workspaceIds: [UUID], allowPinned: Bool) {
         let workspaces = orderedClosableWorkspaces(workspaceIds, allowPinned: allowPinned)
         guard !workspaces.isEmpty else { return }
@@ -2259,6 +2270,9 @@ class TabManager: ObservableObject {
 
         if plan.workspaces.count == tabs.count,
            let firstWorkspace = plan.workspaces.first {
+            // Closing every tab is still an explicit tab/session close: kill the
+            // remote-tmux session(s) on commit, not detach.
+            markRemoteTmuxKillOnWindowCloseIfNeeded(for: plan.workspaces)
             if let window {
                 window.performClose(nil)
                 return
@@ -2288,6 +2302,8 @@ class TabManager: ObservableObject {
                 // Anchor confirmed (or suppressed); skip the inner re-prompt
                 // by closing without going through closeWorkspaceIfRunningProcess.
                 if tabs.count <= 1 {
+                    // Still a tab/session close → kill the remote session on commit.
+                    markRemoteTmuxKillOnWindowCloseIfNeeded(for: [workspace])
                     if let window {
                         window.performClose(nil)
                     } else {
@@ -2533,7 +2549,14 @@ class TabManager: ObservableObject {
             return
         }
         if tabs.count <= 1 {
-            // Last workspace in this window: match Close Workspace shortcut behavior.
+            // Last workspace in this window closes via the window-close path, but it
+            // is still an explicit TAB/session close: for a remote-tmux mirror, mark
+            // the close to KILL the session on commit (synced with tmux), even though
+            // it also closes the app window. The marker is consumed on the (non-vetoed)
+            // close commit, or cleared if the close is vetoed (single-window quit
+            // warning) so a cancelled close never kills. A plain window/quit close
+            // never sets it, so it detaches. Non-last workspaces kill via closeWorkspace.
+            markRemoteTmuxKillOnWindowCloseIfNeeded(for: [workspace])
             if let window {
                 window.performClose(nil)
             } else {

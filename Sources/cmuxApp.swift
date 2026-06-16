@@ -1598,6 +1598,7 @@ private let cmuxAuxiliaryWindowIdentifiers: Set<String> = [
     "cmux.herdrEventPumpDebug",
     "cmux.titlebarLayoutDebug",
     "cmux.devWindowDisplay",
+    "cmux.mobilePairingWindow",
 ]
 
 /// Returns whether the given window should handle the standard close shortcut

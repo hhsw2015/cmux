@@ -223,6 +223,121 @@ struct WorkspaceContentView: View {
         }
         .internalOnlyTabDrag()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+        // Inactive workspaces are kept alive in a ZStack (for state preservation) but their
+        // AppKit-backed views can still intercept drags. Disable drop acceptance for them.
+        let _ = { workspace.bonsplitController.isInteractive = isWorkspaceInputActive }()
+
+        // Wire up file drop handling so bonsplit's PaneDragContainerView can forward
+        // Finder file drops to the correct terminal panel.
+        let _ = {
+            workspace.bonsplitController.onFileDrop = { [weak workspace] urls, paneId in
+                guard let workspace else { return false }
+                // Find the focused panel in this pane and drop the files into it.
+                guard let tabId = workspace.bonsplitController.selectedTab(inPane: paneId)?.id,
+                      let panelId = workspace.panelIdFromSurfaceId(tabId),
+                      let panel = workspace.panels[panelId] as? TerminalPanel else { return false }
+                return panel.hostedView.handleDroppedURLs(urls)
+            }
+        }()
+
+        let bonsplitView = BonsplitView(controller: workspace.bonsplitController) { tab, paneId in
+            // Content for each tab in bonsplit
+            let _ = Self.debugPanelLookup(tab: tab, workspace: workspace)
+            if let panel = workspace.panel(for: tab.id) {
+                let isFocused = isWorkspaceInputActive && workspace.focusedPanelId == panel.id
+                let isSelectedInPane = workspace.bonsplitController.selectedTab(inPane: paneId)?.id == tab.id
+                let isVisibleInUI = Self.panelVisibleInUI(
+                    isWorkspaceVisible: isWorkspaceVisible,
+                    isSelectedInPane: isSelectedInPane,
+                    isFocused: isFocused
+                )
+                let showsNotificationRing = Workspace.shouldShowUnreadIndicator(
+                    hasUnreadNotification: notificationStore.hasVisibleNotificationIndicator(
+                        forTabId: workspace.id,
+                        surfaceId: panel.id
+                    ),
+                    hasPanelUnreadIndicator: workspace.manualUnreadPanelIds.contains(panel.id) ||
+                        workspace.restoredUnreadPanelIds.contains(panel.id),
+                    isWorkspaceManuallyUnread: isWorkspaceManuallyUnread,
+                    isWorkspaceManualUnreadRepresentative: workspaceManualUnreadPanelId == panel.id
+                )
+                if let windowMirror = workspace.remoteTmuxWindowMirror(forPanelId: panel.id) {
+                    // Multi-pane tmux window: render its pane layout as splits
+                    // inside this single tab. Single-pane windows keep the
+                    // standard PanelContentView path below.
+                    RemoteTmuxWindowMirrorView(
+                        mirror: windowMirror,
+                        appearance: appearance,
+                        isVisibleInUI: isVisibleInUI,
+                        portalPriority: workspacePortalPriority,
+                        onClosePane: { tmuxPaneId in
+                            workspace.requestRemoteTmuxPaneClose(
+                                windowMirror: windowMirror, tmuxPaneId: tmuxPaneId
+                            )
+                        }
+                    )
+                    .onTapGesture {
+                        workspace.bonsplitController.focusPane(paneId)
+                    }
+                } else {
+                    let isSplit = workspace.bonsplitController.allPaneIds.count > 1 || workspace.bonsplitController.allTabIds.count > 1
+                    PanelContentView(
+                        panel: panel,
+                        workspaceId: workspace.id,
+                        paneId: paneId,
+                        isFocused: isFocused,
+                        isSelectedInPane: isSelectedInPane,
+                        isVisibleInUI: isVisibleInUI,
+                        portalPriority: workspacePortalPriority,
+                        isSplit: isSplit,
+                        appearance: appearance,
+                        hasUnreadNotification: showsNotificationRing && !usesWorkspacePaneOverlay,
+                        terminalAgentContext: Self.terminalAgentContext(panel: panel, workspace: workspace),
+                        onFocus: {
+                            // Keep bonsplit focus in sync with the AppKit first responder for the
+                            // active workspace. This prevents divergence between the blue focused-tab
+                            // indicator and where keyboard input/flash-focus actually lands.
+                            guard isWorkspaceInputActive else { return }
+                            guard workspace.panels[panel.id] != nil else { return }
+                            workspace.focusPanel(panel.id, trigger: .terminalFirstResponder)
+                        },
+                        onRequestPanelFocus: {
+                            guard isWorkspaceInputActive else { return }
+                            guard workspace.panels[panel.id] != nil else { return }
+                            AppDelegate.shared?.noteMainPanelKeyboardFocusIntent(
+                                workspaceId: workspace.id,
+                                panelId: panel.id,
+                                in: NSApp.keyWindow ?? NSApp.mainWindow
+                            )
+                            workspace.focusPanel(panel.id)
+                        },
+                        onResumeAgentHibernation: {
+                            guard isWorkspaceInputActive else { return }
+                            guard workspace.panels[panel.id] != nil else { return }
+                            workspace.resumeAgentHibernation(panelId: panel.id, focus: true)
+                        },
+                        onAutoResumeAgentHibernation: {
+                            guard isWorkspaceInputActive else { return }
+                            guard workspace.panels[panel.id] != nil else { return }
+                            workspace.resumeAgentHibernation(panelId: panel.id, focus: false)
+                        },
+                        onTriggerFlash: { workspace.triggerDebugFlash(panelId: panel.id) }
+                    )
+                    .onTapGesture {
+                        workspace.bonsplitController.focusPane(paneId)
+                    }
+                }
+            } else {
+                Color.clear
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        } emptyPane: { _ in
+            Color.clear
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .internalOnlyTabDrag()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
             updateAgentHibernationPresentationVisibility()
             syncBonsplitNotificationBadges()
