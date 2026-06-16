@@ -107,12 +107,47 @@ def main() -> None:
 
     print(f"\n[dispatcher] waiting for all 3 workers (push, single bus.wait_all RPC stream)…")
     t0 = time.time()
+
+    # Chat-stream observers: spawn a background thread per worker that
+    # tails the claude transcript jsonl and prints structured tool_use
+    # events as they happen. Visible live progress without screen scrape.
+    import threading
+    observer_stop = threading.Event()
+    tool_counts = {a_id: 0 for a_id, *_ in workers}
+
+    def observe(agent_id: str, agent_obj):
+        if agent_obj._chat_stream is None:
+            return
+        for ev in agent_obj._chat_stream.poll(timeout=300.0, interval=0.1):
+            if observer_stop.is_set():
+                return
+            if ev.kind == "tool_use":
+                tool_counts[agent_id] += 1
+                inp_summary = ""
+                if ev.tool_name == "Bash":
+                    inp_summary = f" cmd={ev.tool_input.get('command','')[:50]!r}"
+                elif ev.tool_name == "Write":
+                    inp_summary = f" path={ev.tool_input.get('file_path','')!r}"
+                elif ev.tool_name == "Read":
+                    inp_summary = f" path={ev.tool_input.get('file_path','')!r}"
+                print(f"[observe:{agent_id}] tool_use {ev.tool_name}{inp_summary}")
+            elif ev.kind == "thinking" and ev.text:
+                print(f"[observe:{agent_id}] thinking: {ev.text[:80]}")
+
+    threads = []
+    for agent_id, a, *_ in workers:
+        t = threading.Thread(target=observe, args=(agent_id, a), daemon=True)
+        t.start()
+        threads.append(t)
+
     msgs = bus.wait_all(
         agents=[a_id for a_id, *_ in workers],
         kind="done",
         timeout_ms=300_000,
     )
+    observer_stop.set()
     print(f"[dispatcher] all 3 done in {time.time()-t0:.1f}s")
+    print(f"[dispatcher] tool_use counts via chat stream: {tool_counts}")
 
     # Verify on disk + synthesize
     print("\n[dispatcher] reading artifacts:")

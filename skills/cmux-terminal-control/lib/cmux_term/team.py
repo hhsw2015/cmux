@@ -28,6 +28,7 @@ This file is pure glue — every primitive it uses already exists in
 import json
 import os
 import re
+import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -352,8 +353,40 @@ class Team:
                 and not any(outcomes[d].status in ("failed", "cancelled", "skipped") for d in t.needs)
             ]
 
+        emit_lock = threading.Lock()
+
         def emit(kind: str, **fields: Any) -> None:
-            self.on_event({"event": kind, "ts": datetime.now().isoformat(), **fields})
+            evt = {"event": kind, "ts": datetime.now().isoformat(), **fields}
+            with emit_lock:
+                self.on_event(evt)
+
+        # Observer threads: per-task transcript tail that emits
+        # `task.tool_use` / `task.thinking` events while the worker runs.
+        # Backed by chat_source.ChatStream when AGENT_KIND is set;
+        # silently skipped otherwise.
+        observer_stop = threading.Event()
+        observer_threads: List[threading.Thread] = []
+
+        def start_observer(task_id: str, agent: AgentSession) -> None:
+            if getattr(agent, "_chat_stream", None) is None:
+                return
+            def run_observer():
+                try:
+                    for ev in agent._chat_stream.poll(timeout=24 * 3600.0, interval=0.1):
+                        if observer_stop.is_set():
+                            return
+                        if ev.kind == "tool_use":
+                            emit("task.tool_use",
+                                 task=task_id,
+                                 tool=ev.tool_name,
+                                 input_keys=list((ev.tool_input or {}).keys()))
+                        elif ev.kind == "thinking" and ev.text:
+                            emit("task.thinking", task=task_id, text=ev.text[:200])
+                except Exception:
+                    pass
+            t = threading.Thread(target=run_observer, daemon=True)
+            t.start()
+            observer_threads.append(t)
 
         emit("plan.start", plan=plan.name, tasks=[t.id for t in plan.tasks],
              resumed_done=resumed_done)
@@ -384,6 +417,7 @@ class Team:
                     agent.delegate(prompt, notify="bus")
                     state.mark_running(task.id, panel_id=agent.surface_id)
                     emit("task.spawned", task=task.id, panel=agent.surface_id)
+                    start_observer(task.id, agent)
 
                 # If nothing in flight and nothing ready, we're done
                 if not in_flight:
@@ -410,6 +444,7 @@ class Team:
                 self._handle_message(msg, in_flight, outcomes, plan, emit)
 
         finally:
+            observer_stop.set()
             self._tear_down(in_flight)
 
         finished = datetime.now()

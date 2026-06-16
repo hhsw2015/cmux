@@ -147,8 +147,13 @@ def main() -> None:
     events = []
     def on_event(e):
         events.append(e)
-        if e["event"].startswith("task."):
-            print(f"  · {e['event']:18} {e.get('task','')}  {e.get('summary','')[:80]}")
+        ev = e["event"]
+        if ev == "task.tool_use":
+            print(f"  · {ev:18} {e.get('task','')}  {e.get('tool','')}({','.join(e.get('input_keys', []))})")
+        elif ev == "task.thinking":
+            print(f"  · {ev:18} {e.get('task','')}  {e.get('text','')[:80]}")
+        elif ev.startswith("task."):
+            print(f"  · {ev:18} {e.get('task','')}  {e.get('summary','')[:80]}")
 
     team = Team(parent_surface_id=parent, max_concurrency=3, on_event=on_event)
 
