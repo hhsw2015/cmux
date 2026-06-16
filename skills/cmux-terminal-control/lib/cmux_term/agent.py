@@ -102,6 +102,7 @@ class AgentSession:
     READY_MARKERS: tuple = ()      # substrings printed when prompt is ready
     DONE_MARKERS: tuple = ()       # substrings printed when a turn finishes
     GOAL_COMMAND: Optional[str] = None  # e.g. "/goal "
+    AGENT_KIND: Optional[str] = None    # "claude" | "codex" | None — enables chat-stream fast path
 
     def __init__(self, surface_id: str, *, cwd: Optional[str] = None,
                  agent_id: Optional[str] = None):
@@ -111,6 +112,10 @@ class AgentSession:
         # to route notifications back to the right session.
         self.agent_id = agent_id or f"agent_{uuid.uuid4().hex[:8]}"
         self._spawned = False
+        # Chat-stream fast path: when AGENT_KIND is set and the transcript
+        # file is found post-spawn, wait_for_text/_done can read structured
+        # events instead of polling the screen.
+        self._chat_stream = None  # set by _attach_chat_stream() after spawn
 
     # ----- factories -----
 
@@ -140,7 +145,33 @@ class AgentSession:
         else:
             _wait_settled(sid, settle_ms=1200, deadline_ms=ready_timeout_ms)
         self._spawned = True
+        self._attach_chat_stream()
         return self
+
+    def _attach_chat_stream(self) -> None:
+        """Locate the agent's transcript file and attach a ChatStream.
+
+        No-op when AGENT_KIND is unset, env var CMUX_TERM_CHAT=0 disables it,
+        or no transcript can be located. Failure is silent — wait_for_text
+        will fall back to RPC polling.
+        """
+        if not self.AGENT_KIND:
+            return
+        if os.environ.get("CMUX_TERM_CHAT", "1") == "0":
+            return
+        try:
+            from . import chat_source
+            self._chat_stream = chat_source.open_stream(
+                agent_kind=self.AGENT_KIND,
+                cwd=self.cwd,
+            )
+            if self._chat_stream is not None:
+                # Drain the existing content so wait_for_text only matches
+                # text emitted AFTER the spawn. Otherwise old transcript
+                # lines from a prior session would falsely satisfy markers.
+                _ = list(self._chat_stream.replay_existing())
+        except Exception:
+            self._chat_stream = None
 
     # ----- delegation -----
 
@@ -297,6 +328,21 @@ class AgentSession:
     # ----- waiting / observation -----
 
     def wait_for_text(self, substring: str, *, timeout_ms: int = 600_000) -> None:
+        # Chat-stream fast path: structured assistant_text/thinking events
+        # are pushed to the transcript file faster than they reach the
+        # screen, and we don't have to OCR the rendered grid.
+        if self._chat_stream is not None:
+            ev = self._chat_stream.wait_for(
+                lambda e: e.kind in ("assistant_text", "thinking", "user")
+                          and substring in e.text,
+                timeout=timeout_ms / 1000.0,
+            )
+            if ev is not None:
+                return
+            # Stream miss could mean the marker is in tool I/O not the
+            # message stream — fall through to screen polling instead of
+            # raising. Use a short residual budget so we still bound time.
+            timeout_ms = max(2000, timeout_ms // 4)
         try:
             r = rpc(
                 "surface.wait_for_text",
@@ -313,6 +359,17 @@ class AgentSession:
             raise TimeoutError(
                 f"wait_for_text({substring!r}): not seen in {timeout_ms}ms"
             )
+
+    def chat_events(self, *, timeout_ms: int = 60_000):
+        """Iterator of ChatEvent from the transcript stream (chat-only path).
+
+        Yields nothing if AGENT_KIND unset or transcript not found.
+        Useful when caller wants structured tool_use / thinking events
+        directly (e.g. "wait until the agent runs Bash with command X").
+        """
+        if self._chat_stream is None:
+            return
+        yield from self._chat_stream.poll(timeout=timeout_ms / 1000.0)
 
     def wait_for_any(self, substrings, *, timeout_ms: int = 60_000) -> str:
         """Wait until ANY of `substrings` appears. Returns the one matched.
@@ -552,6 +609,7 @@ class ClaudeAgent(AgentSession):
     confirmation. ONLY use this in a sandboxed cwd you control.
     """
 
+    AGENT_KIND = "claude"
     LAUNCH_CMD = "claude --dangerously-skip-permissions"
     READY_MARKERS = (
         # Wrapping-tolerant substrings. Claude Code shows these once
@@ -619,6 +677,7 @@ class ClaudeAgent(AgentSession):
 class CodexAgent(AgentSession):
     """OpenAI Codex CLI."""
 
+    AGENT_KIND = "codex"
     LAUNCH_CMD = "codex"
     READY_MARKERS = (
         "▌",         # codex prompt cursor
