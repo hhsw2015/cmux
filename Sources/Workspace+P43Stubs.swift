@@ -1,6 +1,8 @@
 import CmuxWorkspaceCore
+import CmuxPanes
 import Bonsplit
 import CmuxSettings
+import Combine
 import Foundation
 
 // ponytail: P43 merge stubs. Upstream lifted these types into packages
@@ -54,17 +56,8 @@ import Combine
 import CmuxCanvas
 import CmuxCanvasUI
 
-extension Workspace {
-    var panelsPublisher: AnyPublisher<[UUID: any Panel], Never> {
-        Just([UUID: any Panel]()).eraseToAnyPublisher()
-    }
-}
-
-extension Workspace {
-    var paneLayoutVersionPublisher: AnyPublisher<Int, Never> {
-        Just(0).eraseToAnyPublisher()
-    }
-}
+// ponytail: panelsPublisher / paneLayoutVersionPublisher now stored on Workspace
+// (P53 upstream restored them as CurrentValueSubject); stub overrides removed.
 
 func shouldRouteTerminalSelectAllToNaturalTextEngine(_ event: Any?) -> Bool { false }
 extension SessionPersistencePolicy {
@@ -91,3 +84,19 @@ struct TerminalForegroundDirectoryResolver {
     init() {}
     func foregroundDirectory(forTTYName ttyName: String) -> String? { nil }
 }
+
+// MARK: - PaneTreeHosting
+extension Workspace: PaneTreeHosting {
+    @MainActor
+    public func panelsWillChange(to newValue: [UUID: any Panel]) {
+        objectWillChange.send()
+        panelsPublisher.send(newValue)
+    }
+
+    @MainActor
+    public func paneLayoutVersionWillChange(to newValue: Int) {
+        objectWillChange.send()
+        paneLayoutVersionPublisher.send(newValue)
+    }
+}
+

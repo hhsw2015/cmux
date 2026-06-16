@@ -18,6 +18,7 @@ import CmuxPanes
 import CmuxWorkspaces
 import CmuxSocketControl
 import CmuxSettings
+import CmuxNotifications
 import os.log
 import Combine
 import CryptoKit
@@ -3108,6 +3109,44 @@ final class Workspace: Identifiable, ObservableObject {
     private var surfaceTabBarButtonSourcePath: String?
     private var surfaceTabBarButtonGlobalConfigPath: String?
 
+    /// The pane-tree sub-model (CmuxPanes): owns the panel registry, the
+    /// surface-id mapping, and the pane-layout bookkeeping. The legacy
+    /// accessors below forward here; `Workspace` hosts the property-observer
+    /// hooks via `PaneTreeHosting`.
+    let paneTree = PaneTreeModel<any Panel>()
+
+    /// The surface-list derivation sub-model (CmuxWorkspaces): derives
+    /// the ordered panel-id lists, focused panel, representative panel, per-pane
+    /// selection, the `tabIdsTo*` pane queries, and the `paneLayoutVersion`
+    /// reorder bump. `Workspace` is its tree-reading host via
+    /// `WorkspaceSurfaceTreeReading`; the legacy accessors below forward here.
+    let surfaceList = WorkspaceSurfaceListModel()
+
+    /// The surface-registry sub-model (CmuxWorkspaceCore): owns the
+    /// per-surface registry annotations (tty names, shell-activity states)
+    /// and the transient tab-selection/focus-reassert request state. The
+    /// legacy accessors below forward here. None of the moved properties
+    /// were `@Published`, so no observer hooks are required.
+    private let surfaceRegistry = SurfaceRegistryModel<PendingTabSelectionRequest>()
+
+    /// The split-layout sub-model (CmuxPanes): owns the split/detach
+    /// choreography bookkeeping (programmatic-split flag, detaching surface
+    /// ids, captured transfer payloads, detach-close transaction count). The
+    /// legacy accessors below forward here. None of the moved properties
+    /// were `@Published`, so no observer hooks are required.
+    private let splitLayout = SplitLayoutModel<DetachedSurfaceTransfer>()
+
+    /// Legacy Combine bridge for the remaining `workspace.$panels`
+    /// subscribers. Driven exclusively from `panelsWillChange(to:)`, so it
+    /// emits the new value during willSet and replays the current value on
+    /// subscribe — the exact `Published.Publisher` semantics those call
+    /// sites were written against. Single seam; delete when the subscribers
+    /// move to @Observable observation.
+    let panelsPublisher = CurrentValueSubject<[UUID: any Panel], Never>([:])
+    /// Legacy Combine bridge for the remaining `$paneLayoutVersion`
+    /// subscribers; same contract as `panelsPublisher`.
+    let paneLayoutVersionPublisher = CurrentValueSubject<Int, Never>(0)
+
     /// Mapping from bonsplit TabID to our Panel instances
     @Published var panels: [UUID: any Panel] = [:]
 
@@ -3120,10 +3159,6 @@ final class Workspace: Identifiable, ObservableObject {
     /// change of `orderedPanelIds` so that divider drags and selection-only events
     /// (which also flow through `didChangeGeometry`) do not fire `objectWillChange`.
     @Published var paneLayoutVersion: Int = 0
-
-    /// Snapshot of `orderedPanelIds` from the last geometry notification, used to
-    /// gate `paneLayoutVersion` bumps to genuine reorder events.
-    private var lastOrderedPanelIds: [UUID] = []
 
     /// Subscriptions for panel updates (e.g., browser title changes)
     var panelSubscriptions: [UUID: AnyCancellable] = [:]
@@ -3153,13 +3188,10 @@ final class Workspace: Identifiable, ObservableObject {
     // Closing tabs mutates split layout immediately; terminal views handle their own AppKit
     // layout/size synchronization.
 
-    /// The currently focused pane's panel ID
+    /// The currently focused pane's panel ID. Forwards to
+    /// ``WorkspaceSurfaceListModel/focusedPanelId``.
     var focusedPanelId: UUID? {
-        guard let paneId = bonsplitController.focusedPaneId,
-              let tab = bonsplitController.selectedTab(inPane: paneId) else {
-            return nil
-        }
-        return panelIdFromSurfaceId(tab.id)
+        surfaceList.focusedPanelId
     }
 
     /// Panel ids in bonsplit's spatial order: depth-first over the split tree
@@ -3168,19 +3200,9 @@ final class Workspace: Identifiable, ObservableObject {
     /// the single source of truth for serializing panels (e.g. the mobile
     /// terminal list) and for detecting reorders. Any panels not currently in
     /// bonsplit are appended in a stable id order so the list never drops a panel.
+    /// Forwards to ``WorkspaceSurfaceListModel/orderedPanelIds``.
     var orderedPanelIds: [UUID] {
-        var result: [UUID] = []
-        var seen = Set<UUID>()
-        for tabId in bonsplitController.allTabIds {
-            guard let panelId = panelIdFromSurfaceId(tabId), panels[panelId] != nil else { continue }
-            guard seen.insert(panelId).inserted else { continue }
-            result.append(panelId)
-        }
-        let orphans = panels.keys
-            .filter { !seen.contains($0) }
-            .sorted { $0.uuidString < $1.uuidString }
-        result.append(contentsOf: orphans)
-        return result
+        surfaceList.orderedPanelIds
     }
 
     /// The currently focused terminal panel (if any)
@@ -3192,52 +3214,16 @@ final class Workspace: Identifiable, ObservableObject {
         return panel
     }
 
+    /// Forwards to
+    /// ``WorkspaceSurfaceListModel/representativePanelIdForWorkspaceManualUnread()``.
     func representativePanelIdForWorkspaceManualUnread() -> UUID? {
-        if let focusedPanelId, panels[focusedPanelId] != nil {
-            return focusedPanelId
-        }
-
-        let selectedPanelsByPaneId = Dictionary(
-            uniqueKeysWithValues: bonsplitController.allPaneIds.compactMap { paneId -> (String, UUID)? in
-                guard let tabId = bonsplitController.selectedTab(inPane: paneId)?.id,
-                      let panelId = panelIdFromSurfaceId(tabId),
-                      panels[panelId] != nil else {
-                    return nil
-                }
-                return (paneId.id.uuidString, panelId)
-            }
-        )
-
-        for paneId in SidebarBranchOrdering.orderedPaneIds(tree: bonsplitController.treeSnapshot()) {
-            guard let panelId = selectedPanelsByPaneId[paneId] else { continue }
-            return panelId
-        }
-
-        return sidebarOrderedPanelIds().first
+        surfaceList.representativePanelIdForWorkspaceManualUnread()
     }
 
+    /// Forwards to
+    /// ``WorkspaceSurfaceListModel/effectiveSelectedPanelId(inPaneId:)``.
     func effectiveSelectedPanelId(inPane paneId: PaneID) -> UUID? {
-        bonsplitController(containingPaneId: paneId)?
-            .selectedTab(inPane: paneId)
-            .flatMap { panelIdFromSurfaceId($0.id) }
-    }
-
-    enum FocusPanelTrigger {
-        case standard
-        case terminalFirstResponder
-    }
-
-    nonisolated enum RestoredPanelUnreadIndicator: Equatable, Sendable {
-        case visualOnly
-        case workspaceUnread
-
-        init(contributesToWorkspaceUnread: Bool) {
-            self = contributesToWorkspaceUnread ? .workspaceUnread : .visualOnly
-        }
-
-        var contributesToWorkspaceUnread: Bool {
-            self == .workspaceUnread
-        }
+        surfaceList.effectiveSelectedPanelId(inPaneId: paneId.id)
     }
 
     /// Published directory for each panel
@@ -3981,17 +3967,16 @@ final class Workspace: Identifiable, ObservableObject {
         let topController = BonsplitController(
             configuration: Self.topTabBonsplitConfiguration(from: config)
         )
-        guard let initialLayoutTab = Self.makeLayoutTab(
-            title: title,
-            surfaceConfiguration: config,
-            topTabController: topController,
-            closeExistingTopWelcomeTabs: true
-        ) else {
-            fatalError("Failed to create initial workspace layout tab")
-        }
+        let initialBonsplitController = BonsplitController(configuration: config)
+        // Top-tab strip seeds with one layout tab. Use first existing topTab id or fresh.
+        let initialTopTabId = topController.allTabIds.first ?? TabID(uuid: UUID())
+        let initialLayoutTab = WorkspaceLayoutTab(topTabId: initialTopTabId, bonsplitController: initialBonsplitController)
         self.topTabController = topController
         self.layoutTabs = [initialLayoutTab]
         self.selectedLayoutTabId = initialLayoutTab.id
+        paneTree.attach(host: self)
+        surfaceList.attach(tree: self)
+        bonsplitController.contextMenuShortcuts = Self.buildContextMenuShortcuts()
 
         // Remove the default "Welcome" tab that bonsplit creates
         let welcomeTabIds = bonsplitController.allTabIds
@@ -12074,25 +12059,15 @@ final class Workspace: Identifiable, ObservableObject {
     private func closeTabs(_ tabIds: [TabID], skipPinned: Bool = true) { closeTabsFromContextMenu(tabIds, skipPinned: skipPinned) }
 
     private func tabIdsToLeft(of anchorTabId: TabID, inPane paneId: PaneID) -> [TabID] {
-        guard let controller = bonsplitController(containingPaneId: paneId) else { return [] }
-        let tabs = controller.tabs(inPane: paneId)
-        guard let index = tabs.firstIndex(where: { $0.id == anchorTabId }) else { return [] }
-        return Array(tabs.prefix(index).map(\.id))
+        surfaceList.surfaceIdsToLeft(of: anchorTabId.uuid, inPaneId: paneId.id).map { TabID(uuid: $0) }
     }
 
     private func tabIdsToRight(of anchorTabId: TabID, inPane paneId: PaneID) -> [TabID] {
-        guard let controller = bonsplitController(containingPaneId: paneId) else { return [] }
-        let tabs = controller.tabs(inPane: paneId)
-        guard let index = tabs.firstIndex(where: { $0.id == anchorTabId }),
-              index + 1 < tabs.count else { return [] }
-        return Array(tabs.suffix(from: index + 1).map(\.id))
+        surfaceList.surfaceIdsToRight(of: anchorTabId.uuid, inPaneId: paneId.id).map { TabID(uuid: $0) }
     }
 
     private func tabIdsToCloseOthers(of anchorTabId: TabID, inPane paneId: PaneID) -> [TabID] {
-        guard let controller = bonsplitController(containingPaneId: paneId) else { return [] }
-        return controller.tabs(inPane: paneId)
-            .map(\.id)
-            .filter { $0 != anchorTabId }
+        surfaceList.surfaceIdsToCloseOthers(of: anchorTabId.uuid, inPaneId: paneId.id).map { TabID(uuid: $0) }
     }
 
     private func createTerminalToRight(of anchorTabId: TabID, inPane paneId: PaneID) {
@@ -14438,11 +14413,7 @@ extension Workspace: BonsplitDelegate {
         // would miss it. Bump `paneLayoutVersion` only when the ordered panel-id
         // sequence actually changed, so divider drags and selection-only events
         // (also routed here) do not fire `objectWillChange` app-wide.
-        let currentOrder = orderedPanelIds
-        if currentOrder != lastOrderedPanelIds {
-            lastOrderedPanelIds = currentOrder
-            paneLayoutVersion &+= 1
-        }
+        surfaceList.registerGeometryChange()
         scheduleTerminalGeometryReconcile()
         publishCmuxSurfaceFrameChanges(layoutSnapshot: snapshot, origin: "bonsplit_geometry")
         if !isDetachingCloseTransaction {
