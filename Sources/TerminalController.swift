@@ -1689,7 +1689,8 @@ class TerminalController {
         return withSocketCommandPolicy(commandKey: cmd, isV2: false, params: policyParams) {
             // P41: V1 sidebar/browser-panel commands answer here first.
             if let coordinatorV1 = controlCommandCoordinator.handleSidebarV1(command: cmd, args: args)
-                ?? controlCommandCoordinator.handleBrowserPanelV1(command: cmd, args: args) {
+                ?? controlCommandCoordinator.handleBrowserPanelV1(command: cmd, args: args)
+                ?? controlCommandCoordinator.handleDebugV1(command: cmd, args: args) {
                 return coordinatorV1
             }
             switch cmd {
@@ -1884,12 +1885,6 @@ class TerminalController {
         case "send_workspace":
             return sendInputToWorkspace(args)
 
-        case "set_shortcut":
-            return setShortcut(args)
-
-        case "simulate_shortcut":
-            return simulateShortcut(args)
-
         case "simulate_type":
             return simulateType(args)
 
@@ -1931,60 +1926,6 @@ class TerminalController {
 
         case "terminal_drop_overlay_probe":
             return terminalDropOverlayProbe(args)
-
-        case "activate_app":
-            return activateApp()
-
-        case "is_terminal_focused":
-            return isTerminalFocused(args)
-
-        case "read_terminal_text":
-            return readTerminalText(args)
-
-        case "terminal_mouse":
-            return terminalMouseDebug(args)
-
-        case "terminal_selection":
-            return terminalSelectionDebug(args)
-
-        case "render_stats":
-            return renderStats(args)
-
-        case "layout_debug":
-            return layoutDebug()
-
-        case "bonsplit_underflow_count":
-            return bonsplitUnderflowCount()
-
-        case "reset_bonsplit_underflow_count":
-            return resetBonsplitUnderflowCount()
-
-        case "empty_panel_count":
-            return emptyPanelCount()
-
-        case "reset_empty_panel_count":
-            return resetEmptyPanelCount()
-
-        case "focus_notification":
-            return focusFromNotification(args)
-
-        case "debug_right_sidebar_focus":
-            return debugRightSidebarFocus(args)
-
-        case "flash_count":
-            return flashCount(args)
-
-        case "reset_flash_counts":
-            return resetFlashCounts()
-
-        case "panel_snapshot":
-            return panelSnapshot(args)
-
-        case "panel_snapshot_reset":
-            return panelSnapshotReset(args)
-
-        case "screenshot":
-            return captureScreenshot(args)
 #endif
 
         case "help":
@@ -2573,12 +2514,16 @@ class TerminalController {
         case "debug.right_sidebar.focus":
             return v2Result(id: id, self.v2DebugRightSidebarFocus(params: params))
         case "debug.sidebar.visible":
-            return v2Result(id: id, self.v2DebugSidebarVisible(params: params))
+            // ponytail: v2DebugSidebarVisible removed upstream P56-+3 (debug ctl moved to ControlCommandCoordinator).
+            _ = params
+            return v2Result(id: id, .err(code: "unimplemented", message: "debug.sidebar.visible removed", data: nil))
         case "debug.terminal.is_focused":
-            return v2Result(id: id, self.v2DebugIsTerminalFocused(params: params))
+            _ = params
+            return v2Result(id: id, .err(code: "unimplemented", message: "debug.terminal.is_focused removed", data: nil))
 #if DEBUG
         case "debug.terminal.simulate_file_drop":
-            return v2Result(id: id, self.v2DebugSimulateTerminalFileDrop(params: params))
+            _ = params
+            return v2Result(id: id, .err(code: "unimplemented", message: "debug.terminal.simulate_file_drop removed", data: nil))
         // debug.sidebar.simulate_drag is dispatched on the socket worker
         // (see ControlCommandExecutionPolicy + the worker switch in processCommand)
         // so its inter-tick Thread.sleep never blocks the main actor.
@@ -16849,174 +16794,6 @@ class TerminalController {
             "window_id": v2OrNull(requestedWindowId?.uuidString),
             "window_ref": v2Ref(kind: .window, uuid: requestedWindowId)
         ])
-    }
-
-    private func debugRightSidebarFocus(_ args: String) -> String {
-        let modeName = args.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            ? RightSidebarMode.dock.rawValue
-            : args.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let mode = RightSidebarMode(rawValue: modeName) else {
-            return "ERROR: Invalid right sidebar mode: \(modeName)"
-        }
-
-        var revealed = false
-        var focusApplied = false
-        var contextFound = false
-        var stateFound = false
-        var visible = false
-        var activeMode = ""
-
-        let result = AppDelegate.shared?.debugRevealRightSidebarInActiveMainWindow(
-            mode: mode,
-            focusFirstItem: false,
-            preferredWindow: NSApp.keyWindow ?? NSApp.mainWindow
-        )
-        revealed = result?.revealed ?? false
-        focusApplied = result?.focusApplied ?? false
-        contextFound = result?.contextFound ?? false
-        stateFound = result?.stateFound ?? false
-        visible = result?.visible ?? false
-        activeMode = result?.activeMode ?? ""
-
-        let details = "mode=\(mode.rawValue) active=\(activeMode) visible=\(visible ? 1 : 0) " +
-            "context=\(contextFound ? 1 : 0) state=\(stateFound ? 1 : 0) focus=\(focusApplied ? 1 : 0)"
-        return revealed ? "OK: \(details)" : "ERROR: \(details)"
-    }
-#endif
-
-    func v2DebugSidebarVisible(params: [String: Any]) -> V2CallResult {
-        guard let windowId = v2UUID(params, "window_id") else {
-            return .err(code: "invalid_params", message: "Missing or invalid window_id", data: nil)
-        }
-        var visibility: Bool?
-        v2MainSync {
-            visibility = AppDelegate.shared?.sidebarVisibility(windowId: windowId)
-        }
-        guard let visible = visibility else {
-            return .err(
-                code: "not_found",
-                message: "Window not found",
-                data: ["window_id": windowId.uuidString, "window_ref": v2Ref(kind: .window, uuid: windowId)]
-            )
-        }
-        return .ok([
-            "window_id": windowId.uuidString,
-            "window_ref": v2Ref(kind: .window, uuid: windowId),
-            "visible": visible
-        ])
-    }
-
-    func v2DebugIsTerminalFocused(params: [String: Any]) -> V2CallResult {
-        guard let surfaceId = v2String(params, "surface_id") else {
-            return .err(code: "invalid_params", message: "Missing surface_id", data: nil)
-        }
-        let resp = isTerminalFocused(surfaceId)
-        if resp.hasPrefix("ERROR") {
-            return .err(code: "internal_error", message: resp, data: nil)
-        }
-        return .ok(["focused": resp.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "true"])
-    }
-
-#if DEBUG
-    func v2DebugSimulateTerminalFileDrop(params: [String: Any]) -> V2CallResult {
-        guard let tabManager else {
-            return .err(code: "unavailable", message: "TabManager not available", data: nil)
-        }
-        guard let surfaceId = v2String(params, "surface_id") else {
-            return .err(code: "invalid_params", message: "Missing surface_id", data: nil)
-        }
-        guard let rawPaths = params["paths"] as? [String] else {
-            return .err(code: "invalid_params", message: "Missing paths", data: nil)
-        }
-        let paths = rawPaths
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        guard !paths.isEmpty else {
-            return .err(code: "invalid_params", message: "paths must not be empty", data: nil)
-        }
-
-        let route = (v2String(params, "route") ?? "text_destination")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
-        enum TerminalFileDropSimulationRoute {
-            case terminal
-            case textDestination
-        }
-        enum TerminalFileDropSimulationPayload {
-            case fileURLs
-            case imageData
-        }
-        let simulationRoute: TerminalFileDropSimulationRoute
-        switch route {
-        case "terminal", "direct":
-            simulationRoute = .terminal
-        case "text", "text_destination", "pane_text":
-            simulationRoute = .textDestination
-        default:
-            return .err(code: "invalid_params", message: "Unknown route", data: [
-                "route": route
-            ])
-        }
-        let payload = (v2String(params, "payload") ?? "file_urls")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
-        let simulationPayload: TerminalFileDropSimulationPayload
-        switch payload {
-        case "file", "files", "file_url", "file_urls":
-            simulationPayload = .fileURLs
-        case "image", "image_data", "images":
-            simulationPayload = .imageData
-        default:
-            return .err(code: "invalid_params", message: "Unknown payload", data: [
-                "payload": payload
-            ])
-        }
-
-        var result: V2CallResult = .err(code: "not_found", message: "Terminal surface not found", data: [
-            "surface_id": surfaceId
-        ])
-        v2MainSync {
-            guard let panel = resolveTerminalPanel(from: surfaceId, tabManager: tabManager) else {
-                return
-            }
-
-            switch simulationRoute {
-            case .terminal:
-                let handled = panel.hostedView.debugSimulateFileDrop(
-                    paths: paths,
-                    asImageData: simulationPayload == .imageData
-                )
-                result = handled
-                    ? .ok(["handled": true, "route": "terminal", "payload": payload])
-                    : .err(code: "internal_error", message: "Terminal drop simulation failed", data: nil)
-            case .textDestination:
-                guard simulationPayload == .fileURLs else {
-                    result = .err(code: "invalid_params", message: "Image data payload requires terminal route", data: [
-                        "route": route,
-                        "payload": payload
-                    ])
-                    return
-                }
-                guard let workspace = tabManager.tabs.first(where: { $0.id == panel.workspaceId }) else {
-                    result = .err(code: "not_found", message: "Workspace not found", data: [
-                        "workspace_id": panel.workspaceId.uuidString
-                    ])
-                    return
-                }
-                let urls = paths.map { URL(fileURLWithPath: $0).standardizedFileURL }
-                let handled = FileDropTextDropController.performTerminalFileDrop(
-                    workspace: workspace,
-                    panelId: panel.id,
-                    hostedView: panel.hostedView,
-                    urls: urls,
-                    window: panel.surface.uiWindow
-                )
-                result = handled
-                    ? .ok(["handled": true, "route": "text_destination", "payload": payload])
-                    : .err(code: "internal_error", message: "Text destination drop simulation failed", data: nil)
-            }
-        }
-        return result
     }
 
     /// Drives `SidebarDragState.draggedTabId` and `dropIndicator` mutations
