@@ -83763,6 +83763,125 @@
         }
       }
     },
+    "menu.view.hardRefresh": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تحديث قسري"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prisilno osvježi"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hård genindlæsning"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hart neu laden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hard Refresh"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recarga completa"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualisation forcée"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiornamento forzato"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "強制再読み込み"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "강력 새로고침"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tvungen oppdatering"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twarde odświeżenie"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atualização forçada"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Жёсткое обновление"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รีเฟรชแบบบังคับ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zorla yenile"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Примусове оновлення"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "强制刷新"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "強制重新整理"
+          }
+        }
+      }
+    },
     "menu.view.renameWorkspace": {
       "extractionState": "manual",
       "localizations": {
@@ -98805,6 +98924,114 @@
             "state": "translated",
             "value": "ワークスペースの自動命名"
           }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التسمية التلقائية لمساحات العمل"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatsko imenovanje radnih prostora"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisk navngivning af arbejdsområder"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatische Benennung von Arbeitsbereichen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombrado automático de espacios de trabajo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nommage automatique des espaces de travail"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Assegnazione automatica dei nomi agli spazi di lavoro"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ការដាក់ឈ្មោះកន្លែងធ្វើការដោយស្វ័យប្រវត្តិ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작업 공간 자동 이름 지정"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisk navngiving av arbeidsområder"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatyczne nazywanie obszarów roboczych"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nomeação automática de espaços de trabalho"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Автоматическое именование рабочих областей"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การตั้งชื่อพื้นที่ทำงานอัตโนมัติ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışma alanlarını otomatik adlandırma"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Автоматичне іменування робочих областей"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "工作区自动命名"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "工作區自動命名"
+          }
         }
       }
     },
@@ -98821,6 +99048,114 @@
           "stringUnit": {
             "state": "translated",
             "value": "エージェントの会話からワークスペースとタブに名前が付きます。"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تُسمّى مساحات العمل وعلامات التبويب من محادثات الوكيل."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Radni prostori i kartice nazivaju se prema razgovorima agenta."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arbejdsområder og faner navngives ud fra agentsamtaler."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arbeitsbereiche und Tabs werden aus Agentengesprächen benannt."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los espacios de trabajo y las pestañas se nombran a partir de conversaciones del agente."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les espaces de travail et les onglets sont nommés à partir des conversations de l'agent."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spazi di lavoro e schede vengono nominati dalle conversazioni dell'agente."
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "កន្លែងធ្វើការ និងផ្ទាំងត្រូវបានដាក់ឈ្មោះពីការសន្ទនារបស់ភ្នាក់ងារ។"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작업 공간과 탭 이름이 에이전트 대화에서 지정됩니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arbeidsområder og faner navngis fra agentsamtaler."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obszary robocze i karty są nazywane na podstawie rozmów agenta."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Espaços de trabalho e abas são nomeados a partir das conversas do agente."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рабочие области и вкладки получают имена из разговоров агента."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "พื้นที่ทำงานและแท็บจะตั้งชื่อตามการสนทนาของเอเจนต์"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışma alanları ve sekmeler aracı konuşmalarından adlandırılır."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робочі області та вкладки отримують назви з розмов агента."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "工作区和标签页会根据代理对话命名。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "工作區和分頁會根據代理對話命名。"
           }
         }
       }
@@ -98839,6 +99174,114 @@
             "state": "translated",
             "value": "ワークスペースとタブの名前は自動生成されません。"
           }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يتم إنشاء أسماء مساحات العمل وعلامات التبويب أبدًا."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nazivi radnih prostora i kartica nikada se ne generiraju."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Navne på arbejdsområder og faner genereres aldrig."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Namen für Arbeitsbereiche und Tabs werden nie erzeugt."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nunca se generan nombres para espacios de trabajo ni pestañas."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les noms des espaces de travail et des onglets ne sont jamais générés."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I nomi di spazi di lavoro e schede non vengono mai generati."
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ឈ្មោះកន្លែងធ្វើការ និងផ្ទាំងមិនត្រូវបានបង្កើតឡើយ។"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작업 공간과 탭 이름은 생성되지 않습니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Navn på arbeidsområder og faner genereres aldri."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nazwy obszarów roboczych i kart nigdy nie są generowane."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nomes de espaços de trabalho e abas nunca são gerados."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Имена рабочих областей и вкладок никогда не создаются."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "จะไม่มีการสร้างชื่อพื้นที่ทำงานและแท็บ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışma alanı ve sekme adları hiçbir zaman oluşturulmaz."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Назви робочих областей і вкладок ніколи не створюються."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不会生成工作区和标签页名称。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不會產生工作區和分頁名稱。"
+          }
         }
       }
     },
@@ -98855,6 +99298,114 @@
           "stringUnit": {
             "state": "translated",
             "value": "有効にすると、cmux は対応エージェントの各バイナリを使ってエージェントセッションを短いワークスペース名とタブ名に要約し、話題が変わると更新します。手動の名前変更が常に優先され、そのワークスペースやタブの自動命名は停止します。短い要約呼び出しにはユーザーのエージェントアカウントが使われます。"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عند التفعيل، يلخّص cmux جلسات الوكلاء المدعومة في أسماء قصيرة لمساحات العمل وعلامات التبويب باستخدام البرنامج الثنائي الخاص بكل وكيل، ويتم التحديث عند تغيّر الموضوع. تتقدم إعادة التسمية اليدوية دائمًا وتوقف التسمية التلقائية لتلك المساحة أو علامة التبويب. تُستخدم حسابات الوكلاء لديك لاستدعاءات التلخيص القصيرة."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kada je uključeno, cmux sažima podržane sesije agenata u kratke nazive radnih prostora i kartica koristeći binarni program svakog agenta, uz osvježavanje kada se tema promijeni. Ručna preimenovanja uvijek imaju prednost i zaustavljaju automatsko imenovanje za taj radni prostor ili karticu. Za kratke pozive sažimanja koristi se vaš agentski račun."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Når det er slået til, opsummerer cmux understøttede agentsessioner til korte navne på arbejdsområder og faner med hver agents egen binærfil og opdaterer dem, når emnet skifter. Manuelle omdøbninger vinder altid og stopper automatisk navngivning for det arbejdsområde eller den fane. Bruger din agentkonto til de korte opsummeringskald."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wenn aktiviert, fasst cmux unterstützte Agentensitzungen mit der jeweiligen Agent-Binärdatei zu kurzen Arbeitsbereichs- und Tabnamen zusammen und aktualisiert sie, wenn sich das Thema ändert. Manuelle Umbenennungen haben immer Vorrang und stoppen die automatische Benennung für diesen Arbeitsbereich oder Tab. Für die kurzen Zusammenfassungsaufrufe wird dein Agentenkonto verwendet."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuando está activado, cmux resume las sesiones de agentes compatibles en nombres cortos de espacios de trabajo y pestañas usando el binario propio de cada agente, y los actualiza cuando cambia el tema. Los cambios de nombre manuales siempre tienen prioridad y detienen el nombrado automático para ese espacio de trabajo o pestaña. Usa tu cuenta del agente para las llamadas breves de resumen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lorsque cette option est activée, cmux résume les sessions d'agents prises en charge en noms courts d'espaces de travail et d'onglets avec le binaire propre à chaque agent, puis les actualise quand le sujet change. Les renommages manuels gagnent toujours et arrêtent le nommage automatique pour cet espace de travail ou cet onglet. Utilise votre compte d'agent pour les courts appels de résumé."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quando è attivo, cmux riassume le sessioni degli agenti supportati in brevi nomi di spazi di lavoro e schede usando il binario di ciascun agente, aggiornandoli quando cambia l'argomento. Le rinominazioni manuali hanno sempre la precedenza e interrompono la denominazione automatica per quello spazio di lavoro o quella scheda. Usa il tuo account dell'agente per le brevi chiamate di riepilogo."
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ពេលបើក cmux សង្ខេបសម័យភ្នាក់ងារដែលគាំទ្រជាឈ្មោះខ្លីសម្រាប់កន្លែងធ្វើការ និងផ្ទាំង ដោយប្រើ binary របស់ភ្នាក់ងារនីមួយៗ ហើយធ្វើបច្ចុប្បន្នភាពនៅពេលប្រធានបទផ្លាស់ប្តូរ។ ការប្តូរឈ្មោះដោយដៃតែងតែមានអាទិភាព ហើយបញ្ឈប់ការដាក់ឈ្មោះស្វ័យប្រវត្តិសម្រាប់កន្លែងធ្វើការ ឬផ្ទាំងនោះ។ ប្រើគណនីភ្នាក់ងាររបស់អ្នកសម្រាប់ការហៅសង្ខេបខ្លីៗ។"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "켜면 cmux가 각 에이전트의 자체 바이너리를 사용해 지원되는 에이전트 세션을 짧은 작업 공간 및 탭 이름으로 요약하고, 주제가 바뀌면 갱신합니다. 수동 이름 변경이 항상 우선하며 해당 작업 공간이나 탭의 자동 이름 지정을 중지합니다. 짧은 요약 호출에는 사용자의 에이전트 계정이 사용됩니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Når dette er på, oppsummerer cmux støttede agentøkter til korte navn på arbeidsområder og faner med hver agents egen binærfil, og oppdaterer dem når emnet endres. Manuelle endringer av navn vinner alltid og stopper automatisk navngiving for det arbeidsområdet eller den fanen. Bruker agentkontoen din for de korte oppsummeringskallene."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Po włączeniu cmux streszcza obsługiwane sesje agentów do krótkich nazw obszarów roboczych i kart, używając własnego pliku binarnego każdego agenta, i odświeża je po zmianie tematu. Ręczne zmiany nazw zawsze mają pierwszeństwo i zatrzymują automatyczne nazywanie dla tego obszaru roboczego lub karty. Krótkie wywołania streszczeń używają Twojego konta agenta."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quando ativado, o cmux resume sessões de agentes compatíveis em nomes curtos de espaços de trabalho e abas usando o binário próprio de cada agente, atualizados conforme o assunto muda. Renomeações manuais sempre vencem e interrompem a nomeação automática para aquele espaço de trabalho ou aba. Usa sua conta do agente para as chamadas curtas de resumo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Если включено, cmux кратко обобщает поддерживаемые сеансы агентов в короткие имена рабочих областей и вкладок с помощью собственного бинарного файла каждого агента и обновляет их при смене темы. Ручные переименования всегда имеют приоритет и останавливают автоматическое именование для этой рабочей области или вкладки. Для коротких вызовов обобщения используется ваша учетная запись агента."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เมื่อเปิดใช้งาน cmux จะสรุปเซสชันเอเจนต์ที่รองรับเป็นชื่อพื้นที่ทำงานและแท็บแบบสั้น โดยใช้ไบนารีของเอเจนต์แต่ละตัว และรีเฟรชเมื่อหัวข้อเปลี่ยน การเปลี่ยนชื่อด้วยตนเองจะมีผลเหนือกว่าเสมอและหยุดการตั้งชื่ออัตโนมัติสำหรับพื้นที่ทำงานหรือแท็บนั้น ใช้บัญชีเอเจนต์ของคุณสำหรับการเรียกสรุปแบบสั้น"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Açıldığında cmux, desteklenen aracı oturumlarını her aracının kendi ikili dosyasını kullanarak kısa çalışma alanı ve sekme adlarına özetler ve konu değiştikçe yeniler. Elle yeniden adlandırmalar her zaman kazanır ve o çalışma alanı veya sekme için otomatik adlandırmayı durdurur. Kısa özetleme çağrıları için aracı hesabınızı kullanır."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Коли ввімкнено, cmux узагальнює підтримувані сеанси агентів у короткі назви робочих областей і вкладок за допомогою власного бінарного файла кожного агента та оновлює їх, коли тема змінюється. Ручні перейменування завжди мають перевагу й зупиняють автоматичне іменування для цієї робочої області або вкладки. Для коротких викликів узагальнення використовується ваш обліковий запис агента."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启用后，cmux 会使用每个代理自己的二进制文件，将支持的代理会话总结为简短的工作区和标签页名称，并在主题变化时刷新。手动重命名始终优先，并会停止该工作区或标签页的自动命名。短摘要调用会使用你的代理账户。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "啟用後，cmux 會使用每個代理自己的二進位檔，將支援的代理工作階段摘要為簡短的工作區和分頁名稱，並在主題變化時重新整理。手動重新命名永遠優先，並會停止該工作區或分頁的自動命名。短摘要呼叫會使用你的代理帳戶。"
           }
         }
       }
@@ -98873,6 +99424,114 @@
             "state": "translated",
             "value": "Claude Code 連携がオフのため、Claude セッションは自動命名されません。他の対応エージェントは、それぞれの cmux フックがインストールされていれば引き続き命名されます。"
           }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تكامل Claude Code متوقف، لذلك لن تتم تسمية جلسات Claude تلقائيًا. لا يزال الوكلاء المدعومون الآخرون يسمّون الجلسات عند تثبيت خطافات cmux الخاصة بهم."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code integracija je isključena, pa se Claude sesije neće automatski imenovati. Drugi podržani agenti i dalje imenuju sesije kada su njihovi cmux hookovi instalirani."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code-integration er slået fra, så Claude-sessioner navngives ikke automatisk. Andre understøttede agenter navngiver stadig, når deres cmux-hooks er installeret."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Claude Code-Integration ist deaktiviert, daher werden Claude-Sitzungen nicht automatisch benannt. Andere unterstützte Agenten benennen weiterhin, wenn ihre cmux-Hooks installiert sind."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La integración de Claude Code está desactivada, por lo que las sesiones de Claude no se nombrarán automáticamente. Otros agentes compatibles seguirán nombrando cuando sus hooks de cmux estén instalados."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'intégration Claude Code est désactivée, donc les sessions Claude ne seront pas nommées automatiquement. Les autres agents pris en charge continuent de nommer les sessions lorsque leurs hooks cmux sont installés."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'integrazione Claude Code è disattivata, quindi le sessioni Claude non verranno nominate automaticamente. Gli altri agenti supportati continuano a nominare quando i loro hook cmux sono installati."
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ការរួមបញ្ចូល Claude Code ត្រូវបានបិទ ដូច្នេះសម័យ Claude នឹងមិនត្រូវបានដាក់ឈ្មោះដោយស្វ័យប្រវត្តិទេ។ ភ្នាក់ងារដែលគាំទ្រផ្សេងទៀតនៅតែដាក់ឈ្មោះនៅពេល hook cmux របស់ពួកវាត្រូវបានដំឡើង។"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code 통합이 꺼져 있어 Claude 세션은 자동으로 이름 지정되지 않습니다. 다른 지원 에이전트는 해당 cmux 훅이 설치되어 있으면 계속 이름을 지정합니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code-integrasjonen er av, så Claude-økter blir ikke navngitt automatisk. Andre støttede agenter navngir fortsatt når cmux-hookene deres er installert."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Integracja Claude Code jest wyłączona, więc sesje Claude nie będą nazywane automatycznie. Inni obsługiwani agenci nadal nadają nazwy, gdy ich hooki cmux są zainstalowane."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A integração com o Claude Code está desativada, então sessões do Claude não serão nomeadas automaticamente. Outros agentes compatíveis ainda nomeiam quando seus hooks do cmux estão instalados."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Интеграция Claude Code отключена, поэтому сеансы Claude не будут автоматически именоваться. Другие поддерживаемые агенты продолжат именование, если установлены их хуки cmux."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การผสานรวม Claude Code ปิดอยู่ ดังนั้นเซสชัน Claude จะไม่ถูกตั้งชื่ออัตโนมัติ เอเจนต์อื่นที่รองรับยังคงตั้งชื่อได้เมื่อมีการติดตั้งฮุก cmux ของตน"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code entegrasyonu kapalı, bu yüzden Claude oturumları otomatik adlandırılmayacak. Diğer desteklenen aracılar, cmux hook'ları kurulu olduğunda adlandırmaya devam eder."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Інтеграцію Claude Code вимкнено, тому сеанси Claude не будуть автоматично іменуватися. Інші підтримувані агенти й надалі іменують, коли встановлено їхні хуки cmux."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code 集成已关闭，因此 Claude 会话不会自动命名。其他受支持的代理在安装了各自的 cmux 钩子后仍会命名。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code 整合已關閉，因此 Claude 工作階段不會自動命名。其他支援的代理在安裝各自的 cmux hook 後仍會命名。"
+          }
         }
       }
     },
@@ -98890,6 +99549,114 @@
             "state": "translated",
             "value": "命名エージェント"
           }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "وكيل التسمية"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent za imenovanje"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Navngivningsagent"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Benennungsagent"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agente de nombres"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent de nommage"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agente di denominazione"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ភ្នាក់ងារដាក់ឈ្មោះ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이름 지정 에이전트"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Navngivingsagent"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent nazywania"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agente de nomeação"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Агент именования"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เอเจนต์ตั้งชื่อ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adlandırma aracısı"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Агент іменування"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "命名代理"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "命名代理"
+          }
         }
       }
     },
@@ -98903,6 +99670,114 @@
           }
         },
         "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تلقائي"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatski"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisk"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisch"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automático"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatique"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatico"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ស្វ័យប្រវត្តិ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisk"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatycznie"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automático"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Автоматически"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อัตโนมัติ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otomatik"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Автоматично"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动"
+          }
+        },
+        "zh-Hant": {
           "stringUnit": {
             "state": "translated",
             "value": "自動"
@@ -116054,115 +116929,115 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "ghostty config configuration terminal settings preview merged file reload"
+            "value": "ghostty config configuration terminal settings preview merged file reload macos-option-as-alt option as alt left option right option alt key meta"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ghostty config configuration terminal settings preview merged file reload ghostty 設定 構成 ターミナル プレビュー マージ ファイル 再読み込み"
+            "value": "ghostty config configuration terminal settings preview merged file reload macos-option-as-alt option as alt left option right option alt key meta ghostty 設定 構成 ターミナル プレビュー マージ ファイル 再読み込み option alt オプション"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "ghostty config configuration terminal settings preview merged file reload تطبيق عام تفضيلات سلوك شريط القائمة حالة الشريط الجانبي طرفية صدفة تمرير سجل شاشة إعدادات تكوين ملف json مخطط وثائق مرجع محرر كود فتح مسار إعادة تحميل الطرفية • %@ Ghostty… الإعدادات الإعدادات… التطبيق مدمج"
+            "value": "ghostty config configuration terminal settings preview merged file reload macos-option-as-alt option as alt left option right option alt key meta تطبيق عام تفضيلات سلوك شريط القائمة حالة الشريط الجانبي طرفية صدفة تمرير سجل شاشة إعدادات تكوين ملف json مخطط وثائق مرجع محرر كود فتح مسار إعادة تحميل الطرفية • %@ Ghostty… الإعدادات الإعدادات… التطبيق مدمج"
           }
         },
         "bs": {
           "stringUnit": {
             "state": "translated",
-            "value": "ghostty config configuration terminal settings preview merged file reload aplikacija opće postavke ponašanje dock traka menija status bočna shell povratni zapis za pomicanje ekran konfiguracija datoteka json šema dokumentacija referenca preferencije editor kod otvori putanja Ponovo učitaj • %@ postavke… konfiguraciju spojen"
+            "value": "ghostty config configuration terminal settings preview merged file reload macos-option-as-alt option as alt left option right option alt key meta aplikacija opće postavke ponašanje dock traka menija status bočna shell povratni zapis za pomicanje ekran konfiguracija datoteka json šema dokumentacija referenca preferencije editor kod otvori putanja Ponovo učitaj • %@ postavke… konfiguraciju spojen"
           }
         },
         "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "ghostty config configuration terminal settings preview merged file reload app generelt indstillinger adfærd dock menulinje status sidepanel shell scrollback rullepanel skærm konfiguration fil json skema dokumentation reference præferencer editor kode åbn sti Genindlæs • %@ Ghostty-indstillinger… Indstillinger… sammenlagt"
+            "value": "ghostty config configuration terminal settings preview merged file reload macos-option-as-alt option as alt left option right option alt key meta app generelt indstillinger adfærd dock menulinje status sidepanel shell scrollback rullepanel skærm konfiguration fil json skema dokumentation reference præferencer editor kode åbn sti Genindlæs • %@ Ghostty-indstillinger… Indstillinger… sammenlagt"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "ghostty config configuration terminal settings preview merged file reload app allgemein einstellungen verhalten dock menüleiste status seitenleiste shell scrollback scrollleiste bildschirm konfiguration datei json schema dokumentation referenz präferenzen editor code öffnen pfad Neu laden • %@ Ghostty-Einstellungen … zusammengeführt"
+            "value": "ghostty config configuration terminal settings preview merged file reload macos-option-as-alt option as alt left option right option alt key meta app allgemein einstellungen verhalten dock menüleiste status seitenleiste shell scrollback scrollleiste bildschirm konfiguration datei json schema dokumentation referenz präferenzen editor code öffnen pfad Neu laden • %@ Ghostty-Einstellungen … zusammengeführt"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "ghostty config configuration terminal settings preview merged file reload aplicación general preferencias comportamiento dock barra de menú estado lateral shell historial desplazamiento pantalla ajustes configuración archivo json esquema documentación referencia editor código abrir ruta Recargar • %@ Ghostty… Ajustes… App fusionado"
+            "value": "ghostty config configuration terminal settings preview merged file reload macos-option-as-alt option as alt left option right option alt key meta aplicación general preferencias comportamiento dock barra de menú estado lateral shell historial desplazamiento pantalla ajustes configuración archivo json esquema documentación referencia editor código abrir ruta Recargar • %@ Ghostty… Ajustes… App fusionado"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "ghostty config configuration terminal settings preview merged file reload application général préférences comportement dock barre de menus état latérale shell historique défilement écran réglages fichier json schéma documentation référence éditeur code ouvrir chemin Recharger • %@ Ghostty... la Réglages... App fusionnée"
+            "value": "ghostty config configuration terminal settings preview merged file reload macos-option-as-alt option as alt left option right option alt key meta application général préférences comportement dock barre de menus état latérale shell historique défilement écran réglages fichier json schéma documentation référence éditeur code ouvrir chemin Recharger • %@ Ghostty... la Réglages... App fusionnée"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "ghostty config configuration terminal settings preview merged file reload app generale preferenze comportamento dock barra menu stato laterale terminale shell cronologia di scorrimento schermo impostazioni configurazione json schema documentazione riferimento editor codice apri percorso Ricarica • %@ Ghostty… Impostazioni… unita"
+            "value": "ghostty config configuration terminal settings preview merged file reload macos-option-as-alt option as alt left option right option alt key meta app generale preferenze comportamento dock barra menu stato laterale terminale shell cronologia di scorrimento schermo impostazioni configurazione json schema documentazione riferimento editor codice apri percorso Ricarica • %@ Ghostty… Impostazioni… unita"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "ghostty config configuration terminal settings preview merged file reload 앱 일반 환경설정 동작 독 메뉴 막대 상태 사이드바 터미널 셸 스크롤백 스크롤바 화면 설정 구성 파일 json 스키마 문서 참조 편집기 코드 열기 경로 미리보기 새로고침 • %@ 설정… 다시 불러오기 병합됨"
+            "value": "ghostty config configuration terminal settings preview merged file reload macos-option-as-alt option as alt left option right option alt key meta 앱 일반 환경설정 동작 독 메뉴 막대 상태 사이드바 터미널 셸 스크롤백 스크롤바 화면 설정 구성 파일 json 스키마 문서 참조 편집기 코드 열기 경로 미리보기 새로고침 • %@ 설정… 다시 불러오기 병합됨"
           }
         },
         "nb": {
           "stringUnit": {
             "state": "translated",
-            "value": "ghostty config configuration terminal settings preview merged file reload app generelt innstillinger oppførsel dock menylinje status sidepanel skall tilbakerulling rullefelt skjerm konfigurasjon fil json skjema dokumentasjon referanse preferanser redigerer kode åpne bane Last inn på nytt • %@ Ghostty-innstillinger … sammenslått"
+            "value": "ghostty config configuration terminal settings preview merged file reload macos-option-as-alt option as alt left option right option alt key meta app generelt innstillinger oppførsel dock menylinje status sidepanel skall tilbakerulling rullefelt skjerm konfigurasjon fil json skjema dokumentasjon referanse preferanser redigerer kode åpne bane Last inn på nytt • %@ Ghostty-innstillinger … sammenslått"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "ghostty config configuration terminal settings preview merged file reload aplikacja ogólne preferencje zachowanie dock pasek menu status boczny powłoka przewijanie przewijania ekran ustawienia konfiguracja plik json schemat dokumentacja referencja edytor kod otwórz ścieżka Odśwież • %@ Ghostty… konfigurację Ustawienia… scalony"
+            "value": "ghostty config configuration terminal settings preview merged file reload macos-option-as-alt option as alt left option right option alt key meta aplikacja ogólne preferencje zachowanie dock pasek menu status boczny powłoka przewijanie przewijania ekran ustawienia konfiguracja plik json schemat dokumentacja referencja edytor kod otwórz ścieżka Odśwież • %@ Ghostty… konfigurację Ustawienia… scalony"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "ghostty config configuration terminal settings preview merged file reload app geral preferências comportamento dock barra de menu status lateral shell histórico rolagem tela configurações configuração arquivo json esquema documentação referência editor código abrir caminho Recarregar • %@ Ajustes do Ghostty… Ajustes… mesclado"
+            "value": "ghostty config configuration terminal settings preview merged file reload macos-option-as-alt option as alt left option right option alt key meta app geral preferências comportamento dock barra de menu status lateral shell histórico rolagem tela configurações configuração arquivo json esquema documentação referência editor código abrir caminho Recarregar • %@ Ajustes do Ghostty… Ajustes… mesclado"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "ghostty config configuration terminal settings preview merged file reload приложение общие настройки поведение док строка меню статус боковая панель терминал оболочка история прокрутки полоса экран конфигурация файл json схема документация справочник предпочтения редактор код открыть путь Перезагрузить • %@ Ghostty... конфигурацию Настройки... объединен"
+            "value": "ghostty config configuration terminal settings preview merged file reload macos-option-as-alt option as alt left option right option alt key meta приложение общие настройки поведение док строка меню статус боковая панель терминал оболочка история прокрутки полоса экран конфигурация файл json схема документация справочник предпочтения редактор код открыть путь Перезагрузить • %@ Ghostty... конфигурацию Настройки... объединен"
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "ghostty config configuration terminal settings preview merged file reload แอป ทั่วไป ค่ากำหนด พฤติกรรม ด็อก แถบเมนู สถานะ แถบด้านข้าง เทอร์มินัล เชลล์ ประวัติเลื่อน แถบเลื่อน หน้าจอ การตั้งค่า การกำหนดค่า ไฟล์ json สคีมา เอกสาร อ้างอิง ตัวแก้ไข โค้ด เปิด เส้นทาง โหลดใหม่ • %@ Ghostty... โหลดการกำหนดค่าใหม่ การตั้งค่า... ผสานแล้ว"
+            "value": "ghostty config configuration terminal settings preview merged file reload macos-option-as-alt option as alt left option right option alt key meta แอป ทั่วไป ค่ากำหนด พฤติกรรม ด็อก แถบเมนู สถานะ แถบด้านข้าง เทอร์มินัล เชลล์ ประวัติเลื่อน แถบเลื่อน หน้าจอ การตั้งค่า การกำหนดค่า ไฟล์ json สคีมา เอกสาร อ้างอิง ตัวแก้ไข โค้ด เปิด เส้นทาง โหลดใหม่ • %@ Ghostty... โหลดการกำหนดค่าใหม่ การตั้งค่า... ผสานแล้ว"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "ghostty config configuration terminal settings preview merged file reload uygulama genel tercihler davranış dock menü çubuğu durum kenar kabuk geri kaydırma ekran ayarlar yapılandırma dosya json şema belgeler başvuru düzenleyici kod aç yol Yeniden Yükle • %@ Ayarları… Yapılandırmayı Ayarlar… birleştirildi"
+            "value": "ghostty config configuration terminal settings preview merged file reload macos-option-as-alt option as alt left option right option alt key meta uygulama genel tercihler davranış dock menü çubuğu durum kenar kabuk geri kaydırma ekran ayarlar yapılandırma dosya json şema belgeler başvuru düzenleyici kod aç yol Yeniden Yükle • %@ Ayarları… Yapılandırmayı Ayarlar… birleştirildi"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "ghostty config configuration terminal settings preview merged file reload 应用 通用 偏好设置 行为 程序坞 菜单栏 状态 侧边栏 终端 shell 回滚 滚动条 屏幕 设置 配置 文件 json 架构 文档 参考 编辑器 代码 打开 路径 重新加载 • %@ 设置... 重新加载配置 已合并"
+            "value": "ghostty config configuration terminal settings preview merged file reload macos-option-as-alt option as alt left option right option alt key meta 应用 通用 偏好设置 行为 程序坞 菜单栏 状态 侧边栏 终端 shell 回滚 滚动条 屏幕 设置 配置 文件 json 架构 文档 参考 编辑器 代码 打开 路径 重新加载 • %@ 设置... 重新加载配置 已合并"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "ghostty config configuration terminal settings preview merged file reload 應用程式 一般 偏好設定 行為 Dock 選單列 狀態 側邊欄 終端機 shell 回捲 捲動列 螢幕 設定 設定檔 檔案 json 結構描述 文件 參考 編輯器 程式碼 開啟 路徑 重新載入 • %@ 設定... 重新載入設定 App 已合併"
+            "value": "ghostty config configuration terminal settings preview merged file reload macos-option-as-alt option as alt left option right option alt key meta 應用程式 一般 偏好設定 行為 Dock 選單列 狀態 側邊欄 終端機 shell 回捲 捲動列 螢幕 設定 設定檔 檔案 json 結構描述 文件 參考 編輯器 程式碼 開啟 路徑 重新載入 • %@ 設定... 重新載入設定 App 已合併"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "ghostty config configuration terminal settings preview merged file reload програма загальні параметри поведінка док рядок меню статус бічна панель термінал shell історія прокручування смуга екран налаштування конфігурація файл json схема документація довідник редактор код відкрити шлях Перегляд Перезавантажити • %@ Ghostty… конфігурацію Налаштування… злитий"
+            "value": "ghostty config configuration terminal settings preview merged file reload macos-option-as-alt option as alt left option right option alt key meta програма загальні параметри поведінка док рядок меню статус бічна панель термінал shell історія прокручування смуга екран налаштування конфігурація файл json схема документація довідник редактор код відкрити шлях Перегляд Перезавантажити • %@ Ghostty… конфігурацію Налаштування… злитий"
           }
         }
       }
@@ -117244,115 +118119,115 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "notifications.command shell command hook script env environment variable done agent"
+            "value": "notifications.command shell command hook script env environment variable variables done agent"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "notifications.command shell command hook script env environment variable done agent 通知コマンド シェル コマンド フック スクリプト 環境変数 完了 エージェント"
+            "value": "notifications.command shell command hook script env environment variable variables done agent 通知コマンド シェル コマンド フック スクリプト 環境変数 完了 エージェント"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "notifications.command shell command hook script env environment variable done agent تطبيق عام تفضيلات سلوك شريط القائمة حالة الشريط الجانبي طرفية صدفة تمرير سجل شاشة أتمتة واجهة برمجة سطر أوامر تحكم مأخذ وكيل خطافات منافذ بيئة إشعار إشعارات تنبيه غير مقروء رسالة شارة رنين وميض صوت سطح المكتب الإشعارات التطبيق"
+            "value": "notifications.command shell command hook script env environment variable variables done agent تطبيق عام تفضيلات سلوك شريط القائمة حالة الشريط الجانبي طرفية صدفة تمرير سجل شاشة أتمتة واجهة برمجة سطر أوامر تحكم مأخذ وكيل خطافات منافذ بيئة إشعار إشعارات تنبيه غير مقروء رسالة شارة رنين وميض صوت سطح المكتب الإشعارات التطبيق"
           }
         },
         "bs": {
           "stringUnit": {
             "state": "translated",
-            "value": "notifications.command shell command hook script env environment variable done agent aplikacija opće postavke ponašanje dock traka menija status bočna terminal povratni zapis za pomicanje ekran automatizacija api cli kontrola socket kuke portovi okruženje obavijest obavijesti upozorenje nepročitano poruka značka prsten bljesak zvuk desktop Obavještenja"
+            "value": "notifications.command shell command hook script env environment variable variables done agent aplikacija opće postavke ponašanje dock traka menija status bočna terminal povratni zapis za pomicanje ekran automatizacija api cli kontrola socket kuke portovi okruženje obavijest obavijesti upozorenje nepročitano poruka značka prsten bljesak zvuk desktop Obavještenja"
           }
         },
         "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "notifications.command shell command hook script env environment variable done agent app generelt indstillinger adfærd dock menulinje status sidepanel terminal scrollback rullepanel skærm automatisering api cli kontrol socket hooks porte miljø notifikation notifikationer advarsel ulæst besked badge ring blink lyd skrivebord"
+            "value": "notifications.command shell command hook script env environment variable variables done agent app generelt indstillinger adfærd dock menulinje status sidepanel terminal scrollback rullepanel skærm automatisering api cli kontrol socket hooks porte miljø notifikation notifikationer advarsel ulæst besked badge ring blink lyd skrivebord"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "notifications.command shell command hook script env environment variable done agent app allgemein einstellungen verhalten dock menüleiste status seitenleiste terminal scrollback scrollleiste bildschirm automatisierung api cli steuerung socket hooks ports umgebung benachrichtigung benachrichtigungen alarm ungelesen nachricht badge ring blinken ton desktop"
+            "value": "notifications.command shell command hook script env environment variable variables done agent app allgemein einstellungen verhalten dock menüleiste status seitenleiste terminal scrollback scrollleiste bildschirm automatisierung api cli steuerung socket hooks ports umgebung benachrichtigung benachrichtigungen alarm ungelesen nachricht badge ring blinken ton desktop"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "notifications.command shell command hook script env environment variable done agent aplicación general preferencias comportamiento dock barra de menú estado lateral terminal historial desplazamiento pantalla automatización api cli control socket agente hooks puertos entorno notificación notificaciones alerta no leído mensaje insignia anillo destello sonido escritorio App"
+            "value": "notifications.command shell command hook script env environment variable variables done agent aplicación general preferencias comportamiento dock barra de menú estado lateral terminal historial desplazamiento pantalla automatización api cli control socket agente hooks puertos entorno notificación notificaciones alerta no leído mensaje insignia anillo destello sonido escritorio App"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "notifications.command shell command hook script env environment variable done agent application général préférences comportement dock barre de menus état latérale terminal historique défilement écran automatisation api cli contrôle socket hooks ports environnement notification notifications alerte non lu message badge anneau flash son bureau App"
+            "value": "notifications.command shell command hook script env environment variable variables done agent application général préférences comportement dock barre de menus état latérale terminal historique défilement écran automatisation api cli contrôle socket hooks ports environnement notification notifications alerte non lu message badge anneau flash son bureau App"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "notifications.command shell command hook script env environment variable done agent app generale preferenze comportamento dock barra menu stato laterale terminale cronologia di scorrimento schermo automazione api cli controllo socket agente porte ambiente notifica notifiche avviso non letto messaggio badge anello lampeggio suono scrivania"
+            "value": "notifications.command shell command hook script env environment variable variables done agent app generale preferenze comportamento dock barra menu stato laterale terminale cronologia di scorrimento schermo automazione api cli controllo socket agente porte ambiente notifica notifiche avviso non letto messaggio badge anello lampeggio suono scrivania"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "notifications.command shell command hook script env environment variable done agent 앱 일반 환경설정 동작 독 메뉴 막대 상태 사이드바 터미널 셸 스크롤백 스크롤바 화면 자동화 api cli 제어 소켓 에이전트 훅 포트 환경 알림 읽지 않음 메시지 배지 링 깜박임 소리 데스크탑 경고 완료"
+            "value": "notifications.command shell command hook script env environment variable variables done agent 앱 일반 환경설정 동작 독 메뉴 막대 상태 사이드바 터미널 셸 스크롤백 스크롤바 화면 자동화 api cli 제어 소켓 에이전트 훅 포트 환경 알림 읽지 않음 메시지 배지 링 깜박임 소리 데스크탑 경고 완료"
           }
         },
         "nb": {
           "stringUnit": {
             "state": "translated",
-            "value": "notifications.command shell command hook script env environment variable done agent app generelt innstillinger oppførsel dock menylinje status sidepanel terminal skall tilbakerulling rullefelt skjerm automatisering api cli kontroll socket hooks porter miljø varsling varsler ulest melding merke ring blink lyd skrivebord"
+            "value": "notifications.command shell command hook script env environment variable variables done agent app generelt innstillinger oppførsel dock menylinje status sidepanel terminal skall tilbakerulling rullefelt skjerm automatisering api cli kontroll socket hooks porter miljø varsling varsler ulest melding merke ring blink lyd skrivebord"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "notifications.command shell command hook script env environment variable done agent aplikacja ogólne preferencje zachowanie dock pasek menu status boczny terminal powłoka przewijanie przewijania ekran automatyzacja api cli sterowanie gniazdo haki porty środowisko powiadomienie powiadomienia alert nieprzeczytane wiadomość odznaka pierścień błysk dźwięk pulpit"
+            "value": "notifications.command shell command hook script env environment variable variables done agent aplikacja ogólne preferencje zachowanie dock pasek menu status boczny terminal powłoka przewijanie przewijania ekran automatyzacja api cli sterowanie gniazdo haki porty środowisko powiadomienie powiadomienia alert nieprzeczytane wiadomość odznaka pierścień błysk dźwięk pulpit"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "notifications.command shell command hook script env environment variable done agent app geral preferências comportamento dock barra de menu status lateral terminal histórico rolagem tela automação api cli controle socket agente hooks portas ambiente notificação notificações alerta não lido mensagem selo anel piscar som desktop"
+            "value": "notifications.command shell command hook script env environment variable variables done agent app geral preferências comportamento dock barra de menu status lateral terminal histórico rolagem tela automação api cli controle socket agente hooks portas ambiente notificação notificações alerta não lido mensagem selo anel piscar som desktop"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "notifications.command shell command hook script env environment variable done agent приложение общие настройки поведение док строка меню статус боковая панель терминал оболочка история прокрутки полоса экран автоматизация api cli управление сокет агент хуки порты окружение уведомление уведомления предупреждение непрочитанное сообщение бейдж кольцо вспышка звук рабочий стол"
+            "value": "notifications.command shell command hook script env environment variable variables done agent приложение общие настройки поведение док строка меню статус боковая панель терминал оболочка история прокрутки полоса экран автоматизация api cli управление сокет агент хуки порты окружение уведомление уведомления предупреждение непрочитанное сообщение бейдж кольцо вспышка звук рабочий стол"
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "notifications.command shell command hook script env environment variable done agent แอป ทั่วไป ค่ากำหนด พฤติกรรม ด็อก แถบเมนู สถานะ แถบด้านข้าง เทอร์มินัล เชลล์ ประวัติเลื่อน แถบเลื่อน หน้าจอ อัตโนมัติ api cli ควบคุม ซ็อกเก็ต เอเจนต์ ฮุก พอร์ต สภาพแวดล้อม การแจ้งเตือน ยังไม่ได้อ่าน ข้อความ ป้าย วงแหวน แฟลช เสียง เดสก์ท็อป"
+            "value": "notifications.command shell command hook script env environment variable variables done agent แอป ทั่วไป ค่ากำหนด พฤติกรรม ด็อก แถบเมนู สถานะ แถบด้านข้าง เทอร์มินัล เชลล์ ประวัติเลื่อน แถบเลื่อน หน้าจอ อัตโนมัติ api cli ควบคุม ซ็อกเก็ต เอเจนต์ ฮุก พอร์ต สภาพแวดล้อม การแจ้งเตือน ยังไม่ได้อ่าน ข้อความ ป้าย วงแหวน แฟลช เสียง เดสก์ท็อป"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "notifications.command shell command hook script env environment variable done agent uygulama genel tercihler davranış dock menü çubuğu durum kenar terminal kabuk geri kaydırma ekran otomasyon api cli kontrol soket ajan kancalar portlar ortam bildirim bildirimler uyarı okunmamış mesaj rozet halka flaş ses masaüstü"
+            "value": "notifications.command shell command hook script env environment variable variables done agent uygulama genel tercihler davranış dock menü çubuğu durum kenar terminal kabuk geri kaydırma ekran otomasyon api cli kontrol soket ajan kancalar portlar ortam bildirim bildirimler uyarı okunmamış mesaj rozet halka flaş ses masaüstü"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "notifications.command shell command hook script env environment variable done agent 应用 通用 偏好设置 行为 程序坞 菜单栏 状态 侧边栏 终端 回滚 滚动条 屏幕 自动化 api cli 控制 套接字 代理 钩子 端口 环境 通知 未读 消息 徽章 圆环 闪烁 声音 桌面 提醒"
+            "value": "notifications.command shell command hook script env environment variable variables done agent 应用 通用 偏好设置 行为 程序坞 菜单栏 状态 侧边栏 终端 回滚 滚动条 屏幕 自动化 api cli 控制 套接字 代理 钩子 端口 环境 通知 未读 消息 徽章 圆环 闪烁 声音 桌面 提醒"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "notifications.command shell command hook script env environment variable done agent 應用程式 一般 偏好設定 行為 Dock 選單列 狀態 側邊欄 終端機 回捲 捲動列 螢幕 自動化 api cli 控制 socket 代理程式 連接埠 環境 通知 未讀 訊息 徽章 圓環 閃爍 聲音 桌面 提醒 App"
+            "value": "notifications.command shell command hook script env environment variable variables done agent 應用程式 一般 偏好設定 行為 Dock 選單列 狀態 側邊欄 終端機 回捲 捲動列 螢幕 自動化 api cli 控制 socket 代理程式 連接埠 環境 通知 未讀 訊息 徽章 圓環 閃爍 聲音 桌面 提醒 App"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "notifications.command shell command hook script env environment variable done agent програма загальні параметри поведінка док рядок меню статус бічна панель термінал історія прокручування смуга екран автоматизація api cli керування сокет агент хуки порти середовище сповіщення непрочитане повідомлення значок кільце спалах звук робочий стіл Готово"
+            "value": "notifications.command shell command hook script env environment variable variables done agent програма загальні параметри поведінка док рядок меню статус бічна панель термінал історія прокручування смуга екран автоматизація api cli керування сокет агент хуки порти середовище сповіщення непрочитане повідомлення значок кільце спалах звук робочий стіл Готово"
           }
         }
       }
@@ -118096,6 +118971,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "app.commandPaletteSearchesAllSurfaces command palette search all surfaces cmd-p terminal browser markdown програма загальні параметри поведінка док рядок меню статус бічна панель термінал shell історія прокручування смуга екран браузер веб webview адресний посилання url вбудований сторінка вкладки робочий простір вкладка кольори палітра значок вибрано підсвічування індикатор активний крапка пошук пропозиції автодоповнення постачальник пошукова система Браузер: %@ • команд…"
+          }
+        }
+      }
+    },
+    "settings.search.alias.setting.app.canvas-pane-gap": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "canvas.paneGap canvas pane gap spacing freeform layout panes snapping tidy distribute align"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "canvas.paneGap canvas pane gap spacing freeform layout panes snapping tidy distribute align キャンバス ペイン 間隔 余白 フリーフォーム レイアウト スナップ 整列"
+          }
+        }
+      }
+    },
+    "settings.search.alias.setting.app.canvas-snapping": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "canvas.snappingEnabled canvas snap snapping enabled edges drag resize align panes freeform layout"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "canvas.snappingEnabled canvas snap snapping enabled edges drag resize align panes freeform layout キャンバス スナップ 有効 端 ドラッグ リサイズ 整列 ペイン"
           }
         }
       }
@@ -121181,6 +122090,131 @@
           "stringUnit": {
             "state": "translated",
             "value": "automation.claudeBinaryPath claude binary executable path cli command custom автоматизація api керування сокет агент хуки порти середовище редактор файл код відкрити шлях Власне: %@"
+          }
+        }
+      }
+    },
+    "settings.search.alias.setting.automation.workspace-auto-naming": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation ワークスペース 自動命名 名前 タブ タイトル 変更 要約 エージェント"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation مساحة العمل تسمية تلقائية اسم إعادة تسمية تبويب عنوان ملخص محادثة وكيل"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation radni prostor automatsko imenovanje naziv preimenuj kartica naslov sažetak razgovor agent"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation arbejdsområde automatisk navngivning navn omdøb fane titel opsummering samtale agent"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation arbeitsbereich automatische benennung name umbenennen tab titel zusammenfassung gespräch agent"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation espacio trabajo nombrado automático nombre renombrar pestaña título resumen conversación agente"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation espace travail nommage automatique nom renommer onglet titre résumé conversation agent"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation spazio lavoro denominazione automatica nome rinomina scheda titolo riepilogo conversazione agente"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation កន្លែងធ្វើការ ដាក់ឈ្មោះ ស្វ័យប្រវត្តិ ឈ្មោះ ប្តូរឈ្មោះ ផ្ទាំង ចំណងជើង សង្ខេប ការសន្ទនា ភ្នាក់ងារ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation 작업공간 자동 이름 지정 이름 변경 탭 제목 요약 대화 에이전트"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation arbeidsområde automatisk navngiving navn gi nytt navn fane tittel sammendrag samtale agent"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation obszar roboczy automatyczne nazywanie nazwa zmień nazwę karta tytuł streszczenie rozmowa agent"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation espaço trabalho nomeação automática nome renomear aba título resumo conversa agente"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation рабочая область автоматическое именование имя переименовать вкладка заголовок сводка разговор агент"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation พื้นที่ทำงาน ตั้งชื่อ อัตโนมัติ ชื่อ เปลี่ยนชื่อ แท็บ หัวข้อ สรุป สนทนา เอเจนต์"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation çalışma alanı otomatik adlandırma ad yeniden adlandır sekme başlık özet konuşma aracı"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation робоча область автоматичне іменування назва перейменувати вкладка заголовок підсумок розмова агент"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation 工作区 自动命名 名称 重命名 标签页 标题 摘要 对话 代理"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation 工作區 自動命名 名稱 重新命名 分頁 標題 摘要 對話 代理"
           }
         }
       }
@@ -169030,6 +170064,131 @@
         }
       }
     },
+    "command.terminalClearScreenKeepScrollback.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画面をクリア（スクロールバックを保持）"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        }
+      }
+    },
     "command.terminalSendCtrlF.title": {
       "extractionState": "manual",
       "localizations": {
@@ -169276,6 +170435,131 @@
           "stringUnit": {
             "state": "needs_review",
             "value": "Send Ctrl-F to Terminal"
+          }
+        }
+      }
+    },
+    "shortcut.clearScreenKeepScrollback.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画面をクリア（スクロールバックを保持）"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clear Screen (Keep Scrollback)"
           }
         }
       }
@@ -199782,6 +201066,244 @@
         }
       }
     },
+    "canvas.minimap.accessibilityHelp": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Click or drag to move the canvas viewport"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "クリックまたはドラッグしてキャンバスの表示範囲を移動します"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点按或拖动以移动画布视口"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "點按或拖曳以移動畫布視口"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "클릭하거나 드래그하여 캔버스 뷰포트를 이동합니다"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klicken oder ziehen, um den Canvas-Viewport zu verschieben"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haz clic o arrastra para mover la vista del lienzo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cliquez ou faites glisser pour déplacer la fenêtre du canevas"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fai clic o trascina per spostare la visuale del canvas"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klik eller træk for at flytte lærredets visningsområde"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kliknij lub przeciągnij, aby przesunąć widok kanwy"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нажмите или перетащите, чтобы переместить область просмотра холста"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kliknite ili povucite za pomicanje prikaza platna"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "انقر أو اسحب لتحريك منفذ عرض اللوحة"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klikk eller dra for å flytte lerretets visningsområde"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clique ou arraste para mover a área de visualização do canvas"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คลิกหรือลากเพื่อย้ายวิวพอร์ตของแคนวาส"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuval görünümünü taşımak için tıklayın veya sürükleyin"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Клацніть або перетягніть, щоб перемістити область перегляду полотна"
+          }
+        }
+      }
+    },
+    "canvas.minimap.accessibilityLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Canvas minimap"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キャンバスミニマップ"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画布小地图"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "畫布小地圖"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "캔버스 미니맵"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Canvas-Minimap"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minimapa del lienzo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mini-carte du canevas"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minimappa del canvas"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lærredsminikort"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minimapa kanwy"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Мини-карта холста"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minimapa platna"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "خريطة مصغرة للوحة"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minikart for lerret"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minimapa do canvas"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แผนที่ย่อแคนวาส"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuval mini haritası"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Мінікарта полотна"
+          }
+        }
+      }
+    },
     "canvas.pane.close.help": {
       "extractionState": "manual",
       "localizations": {
@@ -201548,6 +203070,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "エージェントのターミナルが移動しました。Macで一度開く（またはそのターミナルでエージェントにプロンプトを送る）してから、再試行してください。"
+          }
+        }
+      }
+    },
+    "mobile.chat.error.serviceUnavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent chat transcript service is not configured"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エージェントチャットのトランスクリプトサービスが設定されていません"
           }
         }
       }
