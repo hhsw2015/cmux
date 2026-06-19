@@ -2,6 +2,17 @@
 
 All notable changes to cmux are documented here.
 
+## [0.66.7] - 2026-06-20
+
+### Changed
+- Merge upstream/main: 36 commits including SSH ControlMaster PTY-resize fix, profiling capture action, hookless agent forking revert, notification jump-focus fix for nested tabs, Blacksmith CI consolidation, ~100% CPU re-render loop fix, and the big micro-package consolidation (PR #6356) that folded 20 narrow packages into their owning domains.
+- Restored fork-only `CMUXSessionDaemon` and `CMUXSettingsCore` packages under `Packages/macOS/`; rewired into pbxproj with `cmux` + `cmux-cli` consumers.
+- Wired 35 new upstream-introduced source files (3 CLI, 21 app, 11 tests) into pbxproj.
+
+### Preserved (fork features)
+- All cmux_term socket handlers, agent-bus dispatch, `TerminalSurface.visibleSnapshot()`, `processHasExited()`, herdr inbound section.
+- `TerminalNotificationKind` enum + `cmuxNotificationAppended` Notification.Name (re-added after upstream removed them in TerminalNotificationStore rewrite).
+
 ## [0.66.4] - 2026-06-15
 
 ### Changed
