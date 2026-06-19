@@ -1,6 +1,6 @@
 import AppKit
 import Darwin
-import CmuxWorkspaceCore
+import CmuxWorkspaces
 import Foundation
 
 struct AgentHibernationPanelKey: Hashable, Sendable {

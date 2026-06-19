@@ -1,7 +1,7 @@
 import AppKit
 import Bonsplit
+import CMUXAgentLaunch
 import CMUXSessionDaemon
-import CMUXWorkstream
 import Foundation
 @preconcurrency import UserNotifications
 import CmuxSettings
@@ -912,7 +912,8 @@ private extension FeedCoordinator {
                 title: title,
                 subtitle: subtitle,
                 body: body,
-                effects: effects
+                effects: effects,
+                runCommand: true
             )
             return
         }
@@ -975,7 +976,8 @@ private extension FeedCoordinator {
                             effects: TerminalNotificationStore.fallbackEffects(
                                 effects,
                                 authorizationState: requestFailed ? .unknown : .denied
-                            )
+                            ),
+                            runCommand: false
                         )
                     }
                 default:
@@ -989,7 +991,8 @@ private extension FeedCoordinator {
                             authorizationState: TerminalNotificationStore.authorizationState(
                                 from: settings.authorizationStatus
                             )
-                        )
+                        ),
+                        runCommand: false
                     )
                 }
             }
@@ -1021,7 +1024,8 @@ private extension FeedCoordinator {
                         title: title,
                         subtitle: subtitle,
                         body: body,
-                        effects: effects
+                        effects: effects,
+                        runCommand: false
                     )
                     return
                 }
@@ -1042,19 +1046,16 @@ private extension FeedCoordinator {
         title: String,
         subtitle: String,
         body: String,
-        effects: TerminalNotificationPolicyEffects
+        effects: TerminalNotificationPolicyEffects,
+        runCommand: Bool
     ) {
         guard isAwaitingDecision(requestId: requestId) else { return }
-        if effects.sound {
-            NotificationSoundSettings.playSelectedSound()
-        }
-        if effects.command {
-            NotificationSoundSettings.runCustomCommand(
-                title: title,
-                subtitle: subtitle,
-                body: body
-            )
-        }
+        NativeNotificationDeliveryHooks.runLocalFeedback(
+            title: title,
+            subtitle: subtitle,
+            body: body,
+            effects: effects, runCommand: runCommand
+        )
     }
 
     func cancelNotification(requestId: String) {

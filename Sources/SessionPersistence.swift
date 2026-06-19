@@ -1,9 +1,9 @@
+import CMUXSessionDaemon
 import CoreGraphics
 import CmuxCore
 import Foundation
 import Bonsplit
-import CMUXSessionDaemon
-import CmuxSession
+import CmuxWorkspaces
 #if canImport(CryptoKit)
 import CryptoKit
 #endif
@@ -1950,7 +1950,7 @@ struct AppSessionSnapshot: Codable, Sendable {
 }
 
 extension AppSessionSnapshot: SessionSnapshotRepresenting {
-    /// Whether the snapshot carries at least one window. The `CmuxSession`
+    /// Whether the snapshot carries at least one window. The `CmuxWorkspaces`
     /// repository treats an empty-window snapshot as unusable (empty states
     /// remove the file instead of writing it), matching the legacy
     /// `!snapshot.windows.isEmpty` usability check.

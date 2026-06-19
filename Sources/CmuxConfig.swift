@@ -1,5 +1,5 @@
 import Bonsplit
-import CmuxFileWatch
+import CmuxFoundation
 import Combine
 import CryptoKit
 import Foundation
@@ -1968,7 +1968,7 @@ final class CmuxConfigStore: ObservableObject {
     private var trackingCancellables = Set<AnyCancellable>()
     // The local config still uses a bespoke DispatchSource watcher because it
     // performs search-directory *path re-resolution* (not just reload-on-change).
-    // The global config and hook files use CmuxFileWatch.FileWatcher.
+    // The global config and hook files use CmuxFoundation.FileWatcher.
     private var localFileWatchSource: DispatchSourceFileSystemObject?
     private var localFileDescriptor: Int32 = -1
     private var localConfigSearchDirectory: String?
@@ -3351,7 +3351,7 @@ final class CmuxConfigStore: ObservableObject {
 
     // MARK: - File watching (global)
 
-    /// Watches the global config via ``CmuxFileWatch/FileWatcher``, which handles
+    /// Watches the global config via ``CmuxFoundation/FileWatcher``, which handles
     /// inode reattachment and nearest-existing-ancestor recovery internally; each
     /// change reloads. Ensures the config directory exists first (the previous
     /// directory-watcher created it).

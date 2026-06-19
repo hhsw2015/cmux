@@ -1,6 +1,6 @@
 import AppKit
 import CmuxTerminalCore
-import CmuxTerminalEngine
+import CmuxTerminal
 import ObjectiveC.runtime
 
 @MainActor
@@ -39,7 +39,7 @@ private struct MainWindowRouteSnapshot {
 private var mainWindowRouteLedgerKey: UInt8 = 0
 
 // The retire sweep is the MainWindowRouteRetiring witness: the terminal
-// surface registry (CmuxTerminalEngine) calls it through the seam instead of
+// surface registry (CmuxTerminal) calls it through the seam instead of
 // reaching up to AppDelegate.shared.
 extension AppDelegate: MainWindowRouteRetiring {}
 

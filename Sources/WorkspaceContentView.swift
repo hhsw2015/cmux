@@ -2,7 +2,7 @@ import SwiftUI
 import Foundation
 import AppKit
 import Bonsplit
-import CmuxWorkspaceWindow
+import CmuxWorkspaces
 import CmuxTerminal
 
 enum TmuxOverlayExperimentTarget: String, CaseIterable, Codable, Sendable {

@@ -1,4 +1,4 @@
-import CmuxWorkspaceCore
+import CmuxWorkspaces
 import CmuxPanes
 import Bonsplit
 import CmuxSettings
@@ -10,7 +10,6 @@ import Foundation
 // names in TerminalController + a couple of debug/restore paths. Re-export
 // thin shims so the merge builds; replace with proper package calls in P44+.
 
-import CmuxSettings
 
 enum WorkspaceGroupNewWorkspacePlacementSettings {
     static let defaultValue: WorkspaceGroupNewPlacement = .afterCurrent
@@ -52,7 +51,6 @@ extension Workspace {
 
 
 
-import Combine
 import CmuxCanvas
 import CmuxCanvasUI
 

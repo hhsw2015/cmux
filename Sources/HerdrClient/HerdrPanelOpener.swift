@@ -1,6 +1,7 @@
+import CMUXSessionDaemon
 import AppKit
 import Bonsplit
-import CMUXSessionDaemon
+
 import CmuxTerminal
 import Foundation
 import GhosttyKit
@@ -1281,7 +1282,6 @@ enum HerdrPanelOpener {
         }
     }
 }
-
 
 private func herdrPanelOpenerTrace(_ message: String) {
     let timestamp = ISO8601DateFormatter().string(from: Date())

@@ -1,5 +1,5 @@
 import AppKit
-import CmuxFileWatch
+import CmuxFoundation
 import Combine
 import Foundation
 
@@ -74,7 +74,7 @@ final class MarkdownPanel: Panel, ObservableObject, FilePreviewTextEditingPanel 
 
     // MARK: - File watching
 
-    // Watches `filePath` (file + ancestor-directory recovery) via CmuxFileWatch.
+    // Watches `filePath` (file + ancestor-directory recovery) via CmuxFoundation.
     private var fileWatcher: FileWatcher?
     private var fileWatchTask: Task<Void, Never>?
     private var originalTextContent: String = ""
@@ -420,7 +420,7 @@ final class MarkdownPanel: Panel, ObservableObject, FilePreviewTextEditingPanel 
 
     // MARK: - File watcher
 
-    /// Watches ``filePath`` for changes via ``CmuxFileWatch/FileWatcher``, which
+    /// Watches ``filePath`` for changes via ``CmuxFoundation/FileWatcher``, which
     /// handles inode reattachment and nearest-existing-ancestor recovery
     /// internally; each change reloads the content.
     private func startWatching() {

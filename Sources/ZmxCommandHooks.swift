@@ -1,5 +1,6 @@
-import AppKit
 import CMUXSessionDaemon
+import AppKit
+
 import Foundation
 
 /// Bridge between cmux's command palette and the CMUXSessionDaemon package.

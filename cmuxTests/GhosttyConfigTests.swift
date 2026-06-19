@@ -2,15 +2,12 @@
 import CmuxAppKitSupportUI
 import CmuxSettings
 import CmuxBrowser
-import CmuxBrowserImport
 import CmuxCore
 import CmuxRemoteDaemon
 import CmuxRemoteSession
 import CmuxRemoteWorkspace
-import CmuxSocketControl
 import CmuxFoundation
 import AppKit
-import CmuxFoundation
 import Combine
 import CoreText
 import WebKit
@@ -1702,9 +1699,9 @@ final class WorkspaceChromeColorTests: XCTestCase {
 // WindowTransparencyDecisionTests was deleted: its subjects (the free functions
 // cmuxShouldUseTransparentBackgroundWindow / cmuxShouldUseClearWindowBackground /
 // cmuxShouldApplyWindowGlass) were lifted out of the app target into
-// CmuxWorkspaceWindow's WindowBackgroundPolicy by the window-chrome tranche, and
+// CmuxWorkspaces's WindowBackgroundPolicy by the window-chrome tranche, and
 // equivalent coverage now lives in
-// Packages/macOS/CmuxWorkspaceWindow/Tests/CmuxWorkspaceWindowTests/WindowBackgroundPolicyTests.swift.
+// Packages/macOS/CmuxWorkspaces/Tests/CmuxWorkspaceWindowTests/WindowBackgroundPolicyTests.swift.
 // The stale app-side test was left referencing the removed symbols, which broke
 // the cmuxTests compile on the Swift 6 depot toolchain.
 

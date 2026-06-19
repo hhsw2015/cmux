@@ -1,5 +1,6 @@
-import SwiftUI
 import CMUXSessionDaemon
+import SwiftUI
+
 import Foundation
 import AppKit
 import Bonsplit

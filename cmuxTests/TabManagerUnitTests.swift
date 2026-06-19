@@ -1198,7 +1198,7 @@ final class TabManagerPullRequestProbeTests: XCTestCase {
 
     // testResolvedCommandPathFallsBackOutsideAppPATH moved to
     // CmuxProcessTests.resolvesCommandViaFallbackDirectoryOutsidePath when the
-    // command runner was extracted into the CmuxProcess package.
+    // command runner was extracted into the CmuxFoundation package.
 
     func testPeriodicWorkspaceGitMetadataRefreshClearsStalePullRequestAfterBranchReset() throws {
         let fileManager = FileManager.default

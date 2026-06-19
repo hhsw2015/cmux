@@ -121975,6 +121975,131 @@
         }
       }
     },
+    "settings.search.alias.setting.automation.workspace-auto-naming": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent ai auto naming auto-name auto name workspace tab workspaces tabs title titles rename workspace rename tab renaming generated summarize summary summarizer conversation agent picker naming agent"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent ai auto naming auto-name auto name workspace tab workspaces tabs title titles rename workspace rename tab renaming generated summarize summary summarizer conversation agent picker naming agent 自動命名 自動 命名 ワークスペース タブ 名前 タイトル リネーム 変更 エージェント 要約 生成 自動名前付け"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent ai auto naming auto-name auto name workspace tab workspaces tabs title titles rename workspace rename tab renaming generated summarize summary summarizer conversation agent picker naming agent أتمتة تسمية تلقائية اسم مساحة عمل تبويب عنوان إعادة تسمية ملخص إنشاء وكيل اختيار"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent ai auto naming auto-name auto name workspace tab workspaces tabs title titles rename workspace rename tab renaming generated summarize summary summarizer conversation agent picker naming agent automatizacija automatsko imenovanje naziv radni prostor kartica naslov preimenuj sažetak generisano agent birač"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent ai auto naming auto-name auto name workspace tab workspaces tabs title titles rename workspace rename tab renaming generated summarize summary summarizer conversation agent picker naming agent automatisering automatisk navngivning navn arbejdsområde fane titel omdøb resume genereret agent vælger"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent ai auto naming auto-name auto name workspace tab workspaces tabs title titles rename workspace rename tab renaming generated summarize summary summarizer conversation agent picker naming agent automatisierung automatische benennung name arbeitsbereich tab titel umbenennen zusammenfassung generiert agent auswahl"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent ai auto naming auto-name auto name workspace tab workspaces tabs title titles rename workspace rename tab renaming generated summarize summary summarizer conversation agent picker naming agent automatización nombre automático nombrar espacio de trabajo pestaña título renombrar resumen generado agente selector"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent ai auto naming auto-name auto name workspace tab workspaces tabs title titles rename workspace rename tab renaming generated summarize summary summarizer conversation agent picker naming agent automatisation nommage automatique nom espace de travail onglet titre renommer résumé généré agent sélecteur"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent ai auto naming auto-name auto name workspace tab workspaces tabs title titles rename workspace rename tab renaming generated summarize summary summarizer conversation agent picker naming agent automazione denominazione automatica nome area di lavoro scheda titolo rinomina riepilogo generato agente selettore"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent ai auto naming auto-name auto name workspace tab workspaces tabs title titles rename workspace rename tab renaming generated summarize summary summarizer conversation agent picker naming agent ស្វ័យប្រវត្តិកម្ម ដាក់ឈ្មោះស្វ័យប្រវត្តិ ឈ្មោះ កន្លែងធ្វើការ ផ្ទាំង ចំណងជើង ប្តូរឈ្មោះ សង្ខេប បានបង្កើត ភ្នាក់ងារ ជ្រើសរើស"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent ai auto naming auto-name auto name workspace tab workspaces tabs title titles rename workspace rename tab renaming generated summarize summary summarizer conversation agent picker naming agent 자동화 자동 이름 지정 이름 워크스페이스 탭 제목 이름 변경 요약 생성 에이전트 선택기"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent ai auto naming auto-name auto name workspace tab workspaces tabs title titles rename workspace rename tab renaming generated summarize summary summarizer conversation agent picker naming agent automatisering automatisk navngiving navn arbeidsområde fane tittel gi nytt navn sammendrag generert agent velger"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent ai auto naming auto-name auto name workspace tab workspaces tabs title titles rename workspace rename tab renaming generated summarize summary summarizer conversation agent picker naming agent automatyzacja automatyczne nazywanie nazwa obszar roboczy karta tytuł zmień nazwę podsumowanie wygenerowane agent selektor"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent ai auto naming auto-name auto name workspace tab workspaces tabs title titles rename workspace rename tab renaming generated summarize summary summarizer conversation agent picker naming agent automação nomeação automática nome workspace área de trabalho aba guia título renomear resumo gerado agente seletor"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent ai auto naming auto-name auto name workspace tab workspaces tabs title titles rename workspace rename tab renaming generated summarize summary summarizer conversation agent picker naming agent автоматизация автоматическое именование имя рабочая область вкладка заголовок переименовать сводка создано агент выбор"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent ai auto naming auto-name auto name workspace tab workspaces tabs title titles rename workspace rename tab renaming generated summarize summary summarizer conversation agent picker naming agent อัตโนมัติ ตั้งชื่ออัตโนมัติ ชื่อ เวิร์กสเปซ แท็บ ชื่อเรื่อง เปลี่ยนชื่อ สรุป สร้างแล้ว เอเจนต์ ตัวเลือก"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent ai auto naming auto-name auto name workspace tab workspaces tabs title titles rename workspace rename tab renaming generated summarize summary summarizer conversation agent picker naming agent otomasyon otomatik adlandırma ad çalışma alanı sekme başlık yeniden adlandır özet oluşturulan ajan seçici"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent ai auto naming auto-name auto name workspace tab workspaces tabs title titles rename workspace rename tab renaming generated summarize summary summarizer conversation agent picker naming agent автоматизація автоматичне іменування назва робоча область вкладка заголовок перейменувати підсумок створено агент вибір"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent ai auto naming auto-name auto name workspace tab workspaces tabs title titles rename workspace rename tab renaming generated summarize summary summarizer conversation agent picker naming agent 自动化 自动命名 名称 工作区 标签页 标题 重命名 摘要 生成 代理 选择器"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.workspaceAutoNaming automation.autoNamingAgent ai auto naming auto-name auto name workspace tab workspaces tabs title titles rename workspace rename tab renaming generated summarize summary summarizer conversation agent picker naming agent 自動化 自動命名 名稱 工作區 分頁 標題 重新命名 摘要 產生 代理程式 選擇器"
+          }
+        }
+      }
+    },
     "settings.search.alias.setting.automation.claude-path": {
       "extractionState": "manual",
       "localizations": {
@@ -122030,6 +122155,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "automation.claudeBinaryPath claude binary executable path cli command custom automazione api controllo socket agente hook porte ambiente editor file codice apri percorso Personalizzato: %@"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "automation.claudeBinaryPath claude binary executable path cli command custom ស្វ័យប្រវត្តិកម្ម claude បៃណារី ឯកសារប្រតិបត្តិ ផ្លូវ cli ពាក្យបញ្ជា ផ្ទាល់ខ្លួន"
           }
         },
         "ko": {
@@ -122090,131 +122221,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "automation.claudeBinaryPath claude binary executable path cli command custom автоматизація api керування сокет агент хуки порти середовище редактор файл код відкрити шлях Власне: %@"
-          }
-        }
-      }
-    },
-    "settings.search.alias.setting.automation.workspace-auto-naming": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation ワークスペース 自動命名 名前 タブ タイトル 変更 要約 エージェント"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation مساحة العمل تسمية تلقائية اسم إعادة تسمية تبويب عنوان ملخص محادثة وكيل"
-          }
-        },
-        "bs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation radni prostor automatsko imenovanje naziv preimenuj kartica naslov sažetak razgovor agent"
-          }
-        },
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation arbejdsområde automatisk navngivning navn omdøb fane titel opsummering samtale agent"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation arbeitsbereich automatische benennung name umbenennen tab titel zusammenfassung gespräch agent"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation espacio trabajo nombrado automático nombre renombrar pestaña título resumen conversación agente"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation espace travail nommage automatique nom renommer onglet titre résumé conversation agent"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation spazio lavoro denominazione automatica nome rinomina scheda titolo riepilogo conversazione agente"
-          }
-        },
-        "km": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation កន្លែងធ្វើការ ដាក់ឈ្មោះ ស្វ័យប្រវត្តិ ឈ្មោះ ប្តូរឈ្មោះ ផ្ទាំង ចំណងជើង សង្ខេប ការសន្ទនា ភ្នាក់ងារ"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation 작업공간 자동 이름 지정 이름 변경 탭 제목 요약 대화 에이전트"
-          }
-        },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation arbeidsområde automatisk navngiving navn gi nytt navn fane tittel sammendrag samtale agent"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation obszar roboczy automatyczne nazywanie nazwa zmień nazwę karta tytuł streszczenie rozmowa agent"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation espaço trabalho nomeação automática nome renomear aba título resumo conversa agente"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation рабочая область автоматическое именование имя переименовать вкладка заголовок сводка разговор агент"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation พื้นที่ทำงาน ตั้งชื่อ อัตโนมัติ ชื่อ เปลี่ยนชื่อ แท็บ หัวข้อ สรุป สนทนา เอเจนต์"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation çalışma alanı otomatik adlandırma ad yeniden adlandır sekme başlık özet konuşma aracı"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation робоча область автоматичне іменування назва перейменувати вкладка заголовок підсумок розмова агент"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation 工作区 自动命名 名称 重命名 标签页 标题 摘要 对话 代理"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "automation.workspaceAutoNaming automation.autoNamingAgent workspace auto naming auto name ai naming names rename workspace rename tab title titles generated name agent summarizer summarize conversation 工作區 自動命名 名稱 重新命名 分頁 標題 摘要 對話 代理"
           }
         }
       }
@@ -161762,6 +161768,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "タスクマネージャ..."
+          }
+        }
+      }
+    },
+    "statusMenu.startProfiling": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start Profiling"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プロファイリングを開始"
           }
         }
       }
@@ -203138,6 +203161,312 @@
           "stringUnit": {
             "state": "translated",
             "value": "回答キーが受け付けられませんでした"
+          }
+        }
+      }
+    },
+    "paneMemoryGuardrail.banner.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A pane is using a lot of memory"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペインが大量のメモリを使用しています"
+          }
+        }
+      }
+    },
+    "paneMemoryGuardrail.banner.kill": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kill Pane Process"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペインのプロセスを終了"
+          }
+        }
+      }
+    },
+    "paneMemoryGuardrail.banner.dismiss": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dismiss"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "閉じる"
+          }
+        }
+      }
+    },
+    "paneMemoryGuardrail.banner.location": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ in %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ の %1$@"
+          }
+        }
+      }
+    },
+    "paneMemoryGuardrail.banner.unnamedPane": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナル"
+          }
+        }
+      }
+    },
+    "paneMemoryGuardrail.banner.detailWithCommand": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ — %2$@ (running %3$@)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ — %2$@（%3$@ を実行中）"
+          }
+        }
+      }
+    },
+    "paneMemoryGuardrail.banner.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ — %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ — %2$@"
+          }
+        }
+      }
+    },
+    "paneMemoryGuardrail.confirm.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kill this pane's runaway process?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このペインの暴走プロセスを終了しますか？"
+          }
+        }
+      }
+    },
+    "paneMemoryGuardrail.confirm.kill": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kill Process"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プロセスを終了"
+          }
+        }
+      }
+    },
+    "paneMemoryGuardrail.confirm.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キャンセル"
+          }
+        }
+      }
+    },
+    "paneMemoryGuardrail.confirm.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This sends SIGTERM then SIGKILL to high-memory process groups in the pane. Other process groups are left alone."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペイン内の高メモリ使用プロセスグループに SIGTERM、続いて SIGKILL を送信します。他のプロセスグループには影響しません。"
+          }
+        }
+      }
+    },
+    "sidebar.memoryWarning.tooltip": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A pane in this workspace is using a lot of memory"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このワークスペースのペインが大量のメモリを使用しています"
+          }
+        }
+      }
+    },
+    "sidebar.memoryWarning.accessibilityLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "High memory warning"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高メモリ警告"
+          }
+        }
+      }
+    },
+    "settings.terminal.memoryGuardrail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Runaway Memory Guardrail"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暴走メモリガードレール"
+          }
+        }
+      }
+    },
+    "settings.terminal.memoryGuardrail.subtitleOn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cmux warns you with a badge and a banner when one pane's process tree uses too much memory, so a single leak can't crash the whole app."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1つのペインのプロセスツリーが過剰なメモリを使用すると、バッジとバナーで警告します。1件のリークでアプリ全体がクラッシュするのを防ぎます。"
+          }
+        }
+      }
+    },
+    "settings.terminal.memoryGuardrail.subtitleOff": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No warning is shown when a pane's process tree grows large. A leaking process can OOM-suspend the entire app."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペインのプロセスツリーが大きくなっても警告は表示されません。リークしたプロセスがアプリ全体を OOM で停止させる可能性があります。"
+          }
+        }
+      }
+    },
+    "settings.terminal.memoryGuardrail.threshold": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Memory Warning Threshold (GB)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "メモリ警告のしきい値（GB）"
+          }
+        }
+      }
+    },
+    "settings.terminal.memoryGuardrail.threshold.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A pane is flagged once its combined process-tree memory crosses this many gigabytes."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペインのプロセスツリーの合計メモリがこのギガバイト数を超えるとフラグが立てられます。"
           }
         }
       }
