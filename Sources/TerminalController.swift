@@ -21661,7 +21661,7 @@ class TerminalController {
             case .state(let state):
                 return v2Encode([
                     "visible": state.visible,
-                    "mode": state.mode.rawValue
+                    "mode": state.modeRawValue
                 ])
             case .failure(let message):
                 return message

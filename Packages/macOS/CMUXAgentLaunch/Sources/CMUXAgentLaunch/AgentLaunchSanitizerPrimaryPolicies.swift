@@ -36,6 +36,7 @@ extension AgentLaunchSanitizer {
             "--setting-sources",
             "--settings",
             "--system-prompt",
+            "--system-prompt-file",
             "--teammate-mode",
             "--tmux",
             "--tools",

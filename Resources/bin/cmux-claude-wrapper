@@ -23,6 +23,9 @@ cmux_claude_wrapper_is_self_or_shim() {
         return 0
     fi
     case "$candidate" in
+        */cmux-cli-shims/*/claude|*/cmux-cli-shims/claude)
+            return 0
+            ;;
         */Contents/Resources/bin/claude|*/Resources/bin/claude)
             return 0
             ;;
@@ -49,21 +52,9 @@ find_real_claude() {
     local IFS=:
     for d in $PATH; do
         [[ "$d" == "$self_dir" ]] && continue
-<<<<<<< HEAD:Resources/bin/claude
-        if [[ -x "$d/claude" ]]; then
-            # Skip other cmux claude wrappers to prevent shim loops when both
-            # the debug build and release app bins are in PATH simultaneously.
-            # Read only the first two lines (shebang + marker) using shell builtins
-            # to avoid spawning subprocesses on every PATH entry.
-            { IFS= read -r _cr_l1; IFS= read -r _cr_l2; } < "$d/claude" 2>/dev/null
-            [[ "$_cr_l1$_cr_l2" == *"cmux claude wrapper - injects hooks and session tracking"* ]] && continue
-            printf '%s' "$d/claude" && return 0
-        fi
-=======
         local candidate="$d/claude"
         cmux_claude_wrapper_is_self_or_shim "$candidate" && continue
         [[ -x "$candidate" ]] && printf '%s' "$candidate" && return 0
->>>>>>> upstream/main:Resources/bin/cmux-claude-wrapper
     done
     return 1
 }
@@ -200,6 +191,183 @@ normalize_claude_config_dir() {
     esac
 }
 
+# Claude stores transcripts at <config-dir>/projects/<encode(cwd)>/<id>.jsonl and
+# `--resume <id>` only resolves a session under the *current* CLAUDE_CONFIG_DIR.
+# cmux can launch with a foreign CLAUDE_CONFIG_DIR (the .app inherits the env of
+# whatever opened it, e.g. a terminal whose agent set one), so resuming a session
+# created under a different config root fails with "No conversation found" and drops
+# the user to a bare shell. Self-heal by relocating CLAUDE_CONFIG_DIR to the root
+# that actually holds the transcript, but only when the current root lacks it (so a
+# correct resume is never repointed). https://github.com/manaflow-ai/cmux/issues/6194
+cmux_claude_config_dir_has_session() {
+    local root="$1" sid="$2"
+    [[ -n "$root" && -d "$root/projects" ]] || return 1
+    local transcript
+    for transcript in \
+        "$root"/projects/*/"$sid".jsonl \
+        "$root"/projects/*/*/"$sid".jsonl \
+        "$root"/projects/*/*/*/"$sid".jsonl \
+        "$root"/projects/*/*/*/*/"$sid".jsonl \
+        "$root"/projects/*/*/*/*/*/"$sid".jsonl; do
+        [[ -f "$transcript" && -s "$transcript" ]] && return 0
+    done
+    return 1
+}
+
+claude_option_consumes_value() {
+    case "$1" in
+        --add-dir|--agent|--agents|--allowedTools|--allowed-tools|\
+        --append-system-prompt|--betas|--debug-file|--disallowedTools|\
+        --disallowed-tools|--effort|--fallback-model|--file|\
+        --input-format|--json-schema|--max-budget-usd|--mcp-config|\
+        --model|-m|-n|--name|--output-format|--permission-mode|--plugin-dir|\
+        --plugin-url|--remote-control-session-name-prefix|--setting-sources|\
+        --settings|--system-prompt|--tools)
+            return 0
+            ;;
+    esac
+    return 1
+}
+
+claude_remaining_args_have_resume_flag() {
+    local arg
+    for arg in "$@"; do
+        case "$arg" in
+            --)
+                return 1
+                ;;
+            --resume|-r|--resume=*)
+                return 0
+                ;;
+        esac
+    done
+    return 1
+}
+
+claude_remaining_args_have_explicit_session_flag() {
+    local arg
+    for arg in "$@"; do
+        case "$arg" in
+            --)
+                return 1
+                ;;
+            --resume|--resume=*|-r|--session-id|--session-id=*|--continue|-c)
+                return 0
+                ;;
+        esac
+    done
+    return 1
+}
+
+claude_unknown_option_should_skip_value_before_resume_flag() {
+    local index="$1"
+    local -a args=("${@:2}")
+    local next_index=$((index + 1))
+    local rest_index=$((index + 2))
+    (( next_index < ${#args[@]} )) || return 1
+    [[ "${args[$next_index]}" != -* ]] || return 1
+    claude_remaining_args_have_resume_flag "${args[@]:$rest_index}"
+}
+
+claude_unknown_option_should_skip_value_before_explicit_session_flag() {
+    local index="$1"
+    local -a args=("${@:2}")
+    local next_index=$((index + 1))
+    local rest_index=$((index + 2))
+    (( next_index < ${#args[@]} )) || return 1
+    [[ "${args[$next_index]}" != -* ]] || return 1
+    claude_remaining_args_have_explicit_session_flag "${args[@]:$rest_index}"
+}
+
+extract_claude_resume_session_id() {
+    local -a args=("$@")
+    local index=0
+    local arg
+    while (( index < ${#args[@]} )); do
+        arg="${args[$index]}"
+        case "$arg" in
+            --)
+                return 1
+                ;;
+            --resume|-r)
+                index=$((index + 1))
+                (( index < ${#args[@]} )) || return 1
+                printf '%s' "${args[$index]}"
+                return 0
+                ;;
+            --resume=*)
+                printf '%s' "${arg#--resume=}"
+                return 0
+                ;;
+            -*)
+                if [[ "$arg" != *=* ]]; then
+                    if claude_option_consumes_value "$arg" ||
+                       claude_unknown_option_should_skip_value_before_resume_flag "$index" "${args[@]}"; then
+                        index=$((index + 2))
+                        continue
+                    fi
+                fi
+                ;;
+            *)
+                ;;
+        esac
+        index=$((index + 1))
+    done
+    return 1
+}
+
+claude_explicit_session_flag_present() {
+    local -a args=("$@")
+    local index=0
+    local arg
+    while (( index < ${#args[@]} )); do
+        arg="${args[$index]}"
+        case "$arg" in
+            --)
+                return 1
+                ;;
+            --resume|--resume=*|-r|--session-id|--session-id=*|--continue|-c)
+                return 0
+                ;;
+            -*)
+                if [[ "$arg" != *=* ]]; then
+                    if claude_option_consumes_value "$arg" ||
+                       claude_unknown_option_should_skip_value_before_explicit_session_flag "$index" "${args[@]}"; then
+                        index=$((index + 2))
+                        continue
+                    fi
+                fi
+                ;;
+            *)
+                ;;
+        esac
+        index=$((index + 1))
+    done
+    return 1
+}
+
+reconcile_claude_config_dir_for_resume() {
+    local sid="$1"
+    [[ -n "$sid" && -n "${HOME:-}" ]] || return 0
+    # Only safe filename tokens (claude session ids are uuids); never glob-walk on
+    # path separators or dot segments.
+    case "$sid" in
+        *[!A-Za-z0-9._-]*|''|.|..) return 0 ;;
+    esac
+
+    local current_root="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+    cmux_claude_config_dir_has_session "$current_root" "$sid" && return 0
+
+    local root
+    for root in "$HOME/.claude" "$HOME"/.codex-accounts/claude/* "$HOME/.subrouter/codex/claude" "$HOME"/.subrouter/codex/claude/*; do
+        [[ "$root" == "$current_root" ]] && continue
+        if cmux_claude_config_dir_has_session "$root" "$sid"; then
+            export CLAUDE_CONFIG_DIR="$root"
+            return 0
+        fi
+    done
+}
+
 clear_inherited_claude_auth_selection_env() {
     if [[ "${IN_CMUX:-0}" == "1" ]]; then
         local key
@@ -212,113 +380,23 @@ clear_inherited_claude_auth_selection_env() {
     normalize_claude_config_dir
 }
 
-is_cmux_node_options_restore_module_path() {
-    local value="$1"
-    value="${value#\"}"
-    value="${value%\"}"
-    value="${value#\'}"
-    value="${value%\'}"
-    [[ "$(basename "$value")" == "restore-node-options.cjs" ]] || return 1
-    [[ "$value" == *"/cmux-"* || "$value" == *"/.claude/cmux/"* ]]
-}
-
-inline_require_option_path() {
-    case "$1" in
-        --require=*|-r=*) printf '%s' "${1#*=}" ;;
-    esac
-}
-
-normalize_node_options_for_restore() {
-    local existing="${1:-}"
-    local -a tokens=()
-    local -a normalized=()
-    local token
-    local index=0
-    local drop_injected_heap_cap=0
-
-    read -r -a tokens <<<"$existing"
-    while (( index < ${#tokens[@]} )); do
-        token="${tokens[$index]}"
-        if (( drop_injected_heap_cap )); then
-            drop_injected_heap_cap=0
-            if [[ "$token" == "--max-old-space-size" && $((index + 1)) -lt ${#tokens[@]} && "${tokens[$((index + 1))]}" == "4096" ]]; then
-                index=$((index + 2))
-                continue
-            fi
-            if [[ "$token" == "--max-old-space-size=4096" ]]; then
-                index=$((index + 1))
-                continue
-            fi
-        fi
-        if [[ ( "$token" == "--require" || "$token" == "-r" ) && $((index + 1)) -lt ${#tokens[@]} ]] && \
-            is_cmux_node_options_restore_module_path "${tokens[$((index + 1))]}"; then
-            index=$((index + 2))
-            drop_injected_heap_cap=1
-            continue
-        fi
-        local inline_path
-        inline_path="$(inline_require_option_path "$token")"
-        if [[ -n "$inline_path" ]] && is_cmux_node_options_restore_module_path "$inline_path"; then
-            index=$((index + 1))
-            drop_injected_heap_cap=1
-            continue
-        fi
-        if [[ "$token" == "--max-old-space-size" && $((index + 1)) -lt ${#tokens[@]} ]]; then
-            normalized+=("--max-old-space-size=${tokens[$((index + 1))]}")
-            index=$((index + 2))
-            continue
-        fi
-        normalized+=("$token")
-        index=$((index + 1))
-    done
-
-    if (( ${#normalized[@]} == 0 )); then
-        return 0
-    fi
-    printf '%s' "${normalized[0]}"
-    if (( ${#normalized[@]} > 1 )); then
-        printf ' %s' "${normalized[@]:1}"
-    fi
-}
-
-sanitize_inherited_cmux_node_options() {
-    [[ ${NODE_OPTIONS+x} ]] || return 0
-
-    local normalized
-    normalized="$(normalize_node_options_for_restore "$NODE_OPTIONS")"
-    if [[ -n "$normalized" ]]; then
-        export NODE_OPTIONS="$normalized"
-    else
-        unset NODE_OPTIONS
-    fi
-    unset CMUX_ORIGINAL_NODE_OPTIONS
-    unset CMUX_ORIGINAL_NODE_OPTIONS_PRESENT
-}
-
-hide_cmux_passthrough_environment() {
-    [[ "${IN_CMUX:-0}" == "1" ]] || return 0
-
-    local key
-    while IFS='=' read -r key _; do
-        [[ "$key" == CMUX_* ]] || continue
-        unset "$key"
-    done < <(env)
-    unset TERMINFO
-}
-
-exec_real_claude_passthrough() {
-    clear_inherited_claude_auth_selection_env
-    hide_cmux_passthrough_environment
-    exec "$REAL_CLAUDE" "$@"
-}
-
 # Pass through if not in a cmux terminal, hooks are disabled, or the cmux
 # socket is unavailable (stale env / app not running).
 IN_CMUX=0
 if [[ -n "$CMUX_SURFACE_ID" ]]; then
     IN_CMUX=1
 fi
-sanitize_inherited_cmux_node_options
+
+exec_real_claude_passthrough() {
+    if [[ "$IN_CMUX" == "1" ]]; then
+        local cmux_key
+        for cmux_key in "${!CMUX_@}"; do
+            unset "$cmux_key"
+        done
+        unset TERMINFO
+    fi
+    exec "$REAL_CLAUDE" "$@"
+}
 
 if [[ "$CMUX_CLAUDE_HOOKS_DISABLED" == "1" ]]; then
     # User-managed hooks need the original cmux terminal environment.
@@ -326,6 +404,9 @@ if [[ "$CMUX_CLAUDE_HOOKS_DISABLED" == "1" ]]; then
         unset CLAUDECODE
     fi
     clear_inherited_claude_auth_selection_env
+    if [[ "$IN_CMUX" == "1" ]]; then
+        reconcile_claude_config_dir_for_resume "$(extract_claude_resume_session_id "$@")"
+    fi
     REAL_CLAUDE="$(find_real_claude)" || { echo "Error: claude not found in PATH" >&2; exit 127; }
     exec "$REAL_CLAUDE" "$@"
 fi
@@ -336,6 +417,10 @@ if [[ "$IN_CMUX" == "0" ]] || ! cmux_socket_available; then
     if [[ "$IN_CMUX" == "1" ]]; then
         unset CLAUDECODE
     fi
+    clear_inherited_claude_auth_selection_env
+    if [[ "$IN_CMUX" == "1" ]]; then
+        reconcile_claude_config_dir_for_resume "$(extract_claude_resume_session_id "$@")"
+    fi
     REAL_CLAUDE="$(find_real_claude)" || { echo "Error: claude not found in PATH" >&2; exit 127; }
     exec_real_claude_passthrough "$@"
 fi
@@ -343,20 +428,9 @@ fi
 # Find real claude.
 REAL_CLAUDE="$(find_real_claude)" || { echo "Error: claude not found in PATH" >&2; exit 127; }
 
-node_options_restore_dir_candidates() {
-    # NODE_OPTIONS can be inherited after macOS cleans session-scoped TMPDIR.
-    local home="${HOME:-}"
-    home="${home#"${home%%[![:space:]]*}"}"
-    home="${home%"${home##*[![:space:]]}"}"
-    if [[ -n "$home" ]]; then
-        printf '%s\n' "${home%/}/.claude/cmux"
-    fi
+ensure_node_options_restore_module() {
     local guard_dir="${TMPDIR:-/tmp}"
-    printf '%s\n' "${guard_dir%/}/cmux-claude-node-options"
-}
-
-write_node_options_restore_module() {
-    local guard_dir="$1"
+    guard_dir="${guard_dir%/}/cmux-claude-node-options"
     local guard_path="$guard_dir/restore-node-options.cjs"
     mkdir -p "$guard_dir" || return 1
     local temp_path
@@ -386,17 +460,6 @@ EOF
     printf '%s' "$guard_path"
 }
 
-ensure_node_options_restore_module() {
-    local guard_dir
-    while IFS= read -r guard_dir; do
-        [[ -n "$guard_dir" ]] || continue
-        if write_node_options_restore_module "$guard_dir"; then
-            return 0
-        fi
-    done < <(node_options_restore_dir_candidates)
-    return 1
-}
-
 merge_node_options() {
     local guard_path="$1"
     local require_flag="--require=$guard_path"
@@ -412,7 +475,6 @@ merge_node_options() {
         return 0
     fi
 
-    existing="$(normalize_node_options_for_restore "$existing")"
     read -r -a tokens <<<"$existing"
     for token in "${tokens[@]}"; do
         if (( skip_next )); then
@@ -437,6 +499,34 @@ merge_node_options() {
     printf ' %s' "${filtered[@]}"
 }
 
+normalize_node_options_for_restore() {
+    local existing="${1:-}"
+    local -a tokens=()
+    local -a normalized=()
+    local token
+    local index=0
+
+    read -r -a tokens <<<"$existing"
+    while (( index < ${#tokens[@]} )); do
+        token="${tokens[$index]}"
+        if [[ "$token" == "--max-old-space-size" && $((index + 1)) -lt ${#tokens[@]} ]]; then
+            normalized+=("--max-old-space-size=${tokens[$((index + 1))]}")
+            index=$((index + 2))
+            continue
+        fi
+        normalized+=("$token")
+        index=$((index + 1))
+    done
+
+    if (( ${#normalized[@]} == 0 )); then
+        return 0
+    fi
+    printf '%s' "${normalized[0]}"
+    if (( ${#normalized[@]} > 1 )); then
+        printf ' %s' "${normalized[@]:1}"
+    fi
+}
+
 encode_launch_argv() {
     {
         printf '%s\0' "$REAL_CLAUDE"
@@ -444,21 +534,6 @@ encode_launch_argv() {
             printf '%s\0' "$@"
         fi
     } | base64 | tr -d '\n'
-}
-
-claude_option_consumes_value() {
-    case "$1" in
-        --add-dir|--agent|--agents|--allowedTools|--allowed-tools|\
-        --append-system-prompt|--betas|--debug-file|--disallowedTools|\
-        --disallowed-tools|--effort|--fallback-model|--file|\
-        --input-format|--json-schema|--max-budget-usd|--mcp-config|\
-        --model|-m|-n|--name|--output-format|--permission-mode|--plugin-dir|\
-        --plugin-url|--remote-control-session-name-prefix|--setting-sources|\
-        --settings|--system-prompt|--tools)
-            return 0
-            ;;
-    esac
-    return 1
 }
 
 claude_interactive_entry_flag() {
@@ -544,6 +619,7 @@ should_inject_claude_hooks() {
 # Only inject hooks for Claude session entrypoints. Command-like invocations
 # pass through so Claude subcommands do not receive session/hook flags.
 if ! should_inject_claude_hooks "$@"; then
+    clear_inherited_claude_auth_selection_env
     exec_real_claude_passthrough "$@"
 fi
 
@@ -555,14 +631,14 @@ clear_inherited_claude_auth_selection_env
 # Check if the user already specified a session/resume flag.
 # If so, don't inject our own --session-id (it would conflict).
 SKIP_SESSION_ID=false
-for arg in "$@"; do
-    case "$arg" in
-        --resume|--resume=*|-r|--session-id|--session-id=*|--continue|-c)
-            SKIP_SESSION_ID=true
-            break
-            ;;
-    esac
-done
+if claude_explicit_session_flag_present "$@"; then
+    SKIP_SESSION_ID=true
+fi
+
+# For an explicit `--resume <id>`, point CLAUDE_CONFIG_DIR at the config root that
+# actually holds the transcript so an inherited/foreign config dir cannot turn the
+# resume into "No conversation found". https://github.com/manaflow-ai/cmux/issues/6194
+reconcile_claude_config_dir_for_resume "$(extract_claude_resume_session_id "$@")"
 
 # Export the wrapper's PID. Because we exec claude below, this PID becomes
 # the actual claude process PID, which hooks use for stale-session detection.
@@ -574,14 +650,8 @@ export CMUX_AGENT_LAUNCH_ARGV_B64="$(encode_launch_argv "$@")"
 export CMUX_AGENT_LAUNCH_CWD="$PWD"
 if GUARD_PATH="$(ensure_node_options_restore_module)"; then
     if [[ ${NODE_OPTIONS+x} ]]; then
-        ORIGINAL_NODE_OPTIONS="$(normalize_node_options_for_restore "$NODE_OPTIONS")"
-        if [[ -n "$ORIGINAL_NODE_OPTIONS" ]]; then
-            export CMUX_ORIGINAL_NODE_OPTIONS_PRESENT=1
-            export CMUX_ORIGINAL_NODE_OPTIONS="$ORIGINAL_NODE_OPTIONS"
-        else
-            export CMUX_ORIGINAL_NODE_OPTIONS_PRESENT=0
-            unset CMUX_ORIGINAL_NODE_OPTIONS
-        fi
+        export CMUX_ORIGINAL_NODE_OPTIONS_PRESENT=1
+        export CMUX_ORIGINAL_NODE_OPTIONS="$(normalize_node_options_for_restore "$NODE_OPTIONS")"
     else
         export CMUX_ORIGINAL_NODE_OPTIONS_PRESENT=0
         unset CMUX_ORIGINAL_NODE_OPTIONS

@@ -952,14 +952,6 @@ private final class SelectedWorkspaceDirectoryObserver: ObservableObject {
     }
 }
 
-func titlebarShortcutHintShouldShow(
-    shortcut: StoredShortcut,
-    alwaysShowShortcutHints: Bool,
-    modifierPressed: Bool
-) -> Bool {
-    !shortcut.isUnbound && (alwaysShowShortcutHints || (shortcut.command && modifierPressed))
-}
-
 @MainActor
 private final class SurfaceFrameChangePublishCoordinator {
     private let windowMoveCoalescer = NotificationBurstCoalescer(delay: 1.0 / 30.0)
@@ -994,6 +986,7 @@ struct ContentView: View {
     @AppStorage(MinimalModeTitlebarDebugSettings.trafficLightTabBarInsetKey) private var titlebarTrafficLightTabBarInset = MinimalModeTitlebarDebugSettings.defaultTrafficLightTabBarInset
     @AppStorage(MinimalModeTitlebarDebugSettings.trafficLightTitlebarLeadingInsetKey) private var titlebarTrafficLightTitlebarLeadingInset = MinimalModeTitlebarDebugSettings.defaultTrafficLightTitlebarLeadingInset
     @LiveSetting(\.shortcuts.showModifierHoldHints) private var showModifierHoldHints
+    @LiveSetting(\.customSidebars.renderer) private var customSidebarRenderer
     @State private var sidebarWidth: CGFloat = CGFloat(SessionPersistencePolicy.defaultSidebarWidth)
     @State private var hoveredResizerHandles: Set<SidebarResizerHandle> = []
     @State private var isResizerDragging = false
@@ -2085,6 +2078,7 @@ struct ContentView: View {
                         isWorkspaceInputActive: isInputActive,
                         isFullScreen: isFullScreen,
                         workspacePortalPriority: portalPriority,
+                        windowAppearance: appearance,
                         onThemeRefreshRequest: { reason, eventId, source, payloadHex in
                             scheduleTitlebarThemeRefreshFromWorkspace(
                                 workspaceId: tab.id,
@@ -5764,7 +5758,6 @@ struct ContentView: View {
             description: workspace.customDescription
         )
     }
-
     private func commandPaletteSurfaceSearchMetadata(
         for workspace: Workspace,
         panelId: UUID
@@ -5778,7 +5771,6 @@ struct ContentView: View {
             ports: ports
         )
     }
-
     private func commandPaletteSurfaceKindLabel(for panelType: PanelType) -> String {
         switch panelType {
         case .terminal:
@@ -5791,6 +5783,8 @@ struct ContentView: View {
             return String(localized: "commandPalette.kind.filePreview", defaultValue: "File Preview")
         case .rightSidebarTool:
             return String(localized: "commandPalette.kind.rightSidebarTool", defaultValue: "Tool")
+        case .customSidebar:
+            return String(localized: "commandPalette.kind.customSidebar", defaultValue: "Custom Sidebar")
         case .agentSession:
             return String(localized: "commandPalette.kind.agentSession", defaultValue: "Agent")
         case .project:
@@ -5799,7 +5793,6 @@ struct ContentView: View {
             return String(localized: "sidebar.extensions.browser.title", defaultValue: "Sidebar Extensions")
         }
     }
-
     private func commandPaletteSurfaceKeywords(for panelType: PanelType) -> [String] {
         switch panelType {
         case .terminal:
@@ -5812,6 +5805,8 @@ struct ContentView: View {
             return ["file", "preview", "text", "pdf", "image", "audio", "video"]
         case .rightSidebarTool:
             return ["tool", "files", "find", "vault", "sidebar"]
+        case .customSidebar:
+            return ["custom", "sidebar", "pane"]
         case .agentSession:
             return ["agent", "codex", "claude", "opencode", "react", "solid"]
         case .project:
@@ -5820,13 +5815,11 @@ struct ContentView: View {
             return ["sidebar", "extensions", "extensionkit", "browser"]
         }
     }
-
     private func commandPaletteCachedCommandsContext() -> CommandPaletteCommandsContext {
         commandPaletteCommandsContext(
             terminalOpenTargets: commandPaletteTerminalOpenTargetAvailability
         )
     }
-
     private func resolveCommandPaletteTerminalOpenTargets(
         for scope: CommandPaletteListScope
     ) -> Set<TerminalDirectoryOpenTarget> {
@@ -7212,7 +7205,19 @@ struct ContentView: View {
                 commandId: "palette.openDiffViewer",
                 title: constant(String(localized: "command.openDiffViewer.title", defaultValue: "Open Diff Viewer")),
                 subtitle: workspaceSubtitle,
-                keywords: ["diff", "changes", "git", "review", "branch", "unstaged", "codeview"],
+                keywords: ["diff", "changes", "git", "review", "branch", "unstaged", "codeview", "agent", "codex", "claude"],
+                when: {
+                    $0.bool(CommandPaletteContextKeys.hasWorkspace) &&
+                    !$0.bool(CommandPaletteContextKeys.browserDisabled)
+                }
+            )
+        )
+        contributions.append(
+            CommandPaletteCommandContribution(
+                commandId: "palette.openDirectoryDiffViewer",
+                title: constant(String(localized: "command.openDirectoryDiffViewer.title", defaultValue: "Open Directory Diff Viewer")),
+                subtitle: workspaceSubtitle,
+                keywords: ["diff", "changes", "git", "review", "branch", "unstaged", "codeview", "directory", "cwd", "folder"],
                 when: {
                     $0.bool(CommandPaletteContextKeys.hasWorkspace) &&
                     !$0.bool(CommandPaletteContextKeys.browserDisabled)
@@ -8312,6 +8317,11 @@ struct ContentView: View {
         }
         registry.register(commandId: "palette.openDiffViewer") {
             if AppDelegate.shared?.openDiffViewerForFocusedWorkspace(for: tabManager) != true {
+                NSSound.beep()
+            }
+        }
+        registry.register(commandId: "palette.openDirectoryDiffViewer") {
+            if AppDelegate.shared?.openDirectoryDiffViewerForFocusedWorkspace(for: tabManager) != true {
                 NSSound.beep()
             }
         }
@@ -10546,7 +10556,10 @@ enum CmuxExtensionSidebarSelection {
 
     /// Directory custom sidebars are authored into.
     static var customSidebarsDirectory: URL {
-        FileManager.default.homeDirectoryForCurrentUser
+        #if DEBUG
+        if let override = customSidebarsDirectoryOverrideForTesting { return override }
+        #endif
+        return FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".config/cmux/sidebars", isDirectory: true)
     }
 
@@ -11980,7 +11993,6 @@ struct VerticalTabsSidebar: View {
             )
         }
     }
-
     private func cmuxSidebarSurfaceKind(for panelType: PanelType) -> CmuxSidebarSurfaceKind {
         switch panelType {
         case .terminal:
@@ -11993,6 +12005,8 @@ struct VerticalTabsSidebar: View {
             return .filePreview
         case .rightSidebarTool:
             return .rightSidebarTool
+        case .customSidebar:
+            return .unknown
         case .agentSession:
             return .agentSession
         case .project:
@@ -13090,7 +13104,6 @@ struct VerticalTabsSidebar: View {
             notificationStore: notificationStore,
             tab: tab,
             index: index,
-            isActive: tabManager.selectedTabId == tab.id,
             isHerdrBacked: HerdrTabRegistry.shared.hasBinding(forWorkspaceId: tab.id),
             workspaceShortcutDigit: WorkspaceShortcutMapper.digitForWorkspace(
                 at: index,
@@ -15103,7 +15116,6 @@ struct TabItemView: View, Equatable {
     nonisolated static func == (lhs: TabItemView, rhs: TabItemView) -> Bool {
         lhs.tab === rhs.tab &&
         lhs.index == rhs.index &&
-        lhs.isActive == rhs.isActive &&
         lhs.isHerdrBacked == rhs.isHerdrBacked &&
         lhs.workspaceShortcutDigit == rhs.workspaceShortcutDigit &&
         lhs.workspaceShortcutModifierSymbol == rhs.workspaceShortcutModifierSymbol &&
@@ -15133,7 +15145,6 @@ struct TabItemView: View, Equatable {
     @Environment(\.colorScheme) private var colorScheme
     let tab: Tab
     let index: Int
-    let isActive: Bool
     /// True when at least one pane in this workspace has been wired
     /// to a herdr daemon (HerdrTabRegistry binding). Drives the small
     /// anchor icon in the row that distinguishes a persistent
@@ -15182,6 +15193,8 @@ struct TabItemView: View, Equatable {
     let onContextMenuAppear: () -> Void
     let onContextMenuDisappear: () -> Void
     @State private var workspaceSnapshotStorage: SidebarWorkspaceSnapshotBuilder.Snapshot?
+    // Row-local selection projection: selectedTabId changes update only rows whose boolean flips.
+    @State private var observedIsActive: Bool?
     @StateObject private var contextMenuState = SidebarTabItemContextMenuState()
     @State private var rowInteractionState = SidebarWorkspaceRowInteractionState()
     @State private var rowHeight: CGFloat = 1
@@ -15240,6 +15253,10 @@ struct TabItemView: View, Equatable {
 
     private var activeTabIndicatorStyle: WorkspaceIndicatorStyle {
         settings.activeTabIndicatorStyle
+    }
+
+    private var isActive: Bool {
+        observedIsActive ?? (tabManager.selectedTabId == tab.id)
     }
 
     private var sidebarSelectionColorHex: String? {
@@ -15941,7 +15958,16 @@ struct TabItemView: View, Equatable {
             )
         }
         .onAppear {
+            updateObservedActiveState(tabManager.selectedTabId == tab.id)
             refreshWorkspaceSnapshot(force: true)
+        }
+        .onReceive(
+            tabManager.selectedTabIdPublisher
+                .map { $0 == tab.id }
+                .removeDuplicates()
+                .receive(on: RunLoop.main)
+        ) { isSelected in
+            updateObservedActiveState(isSelected)
         }
         .task(id: workspaceFinderDirectoryOpenRequest) {
             guard let request = workspaceFinderDirectoryOpenRequest else { return }
@@ -16024,6 +16050,11 @@ struct TabItemView: View, Equatable {
                     flushDeferredWorkspaceObservationInvalidation()
                 }
         }
+    }
+
+    private func updateObservedActiveState(_ isActive: Bool) {
+        guard observedIsActive != isActive else { return }
+        observedIsActive = isActive
     }
 
     private func refreshWorkspaceSnapshot(force: Bool = false) {

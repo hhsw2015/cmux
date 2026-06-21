@@ -162,21 +162,6 @@ _cmux_ports_kick_via_relay() {
     _cmux_relay_rpc_bg "surface.ports_kick" "$params"
 }
 
-_cmux_report_pwd_via_relay() {
-    local pwd="$1"
-    _cmux_socket_uses_remote_relay || return 1
-    [[ -n "$pwd" ]] || return 1
-    local workspace_id=""
-    workspace_id="$(_cmux_relay_workspace_id)" || return 1
-    local surface_id="${CMUX_PANEL_ID:-${CMUX_SURFACE_ID:-}}"
-    [[ -n "$surface_id" ]] || return 1
-
-    local pwd_json params
-    pwd_json="$(_cmux_json_escape "$pwd")"
-    params="{\"workspace_id\":\"$workspace_id\",\"surface_id\":\"$surface_id\",\"directory\":\"$pwd_json\"}"
-    _cmux_relay_rpc_bg "surface.report_pwd" "$params"
-}
-
 _cmux_restore_scrollback_once() {
     local path="${CMUX_RESTORE_SCROLLBACK_FILE:-}"
     [[ -n "$path" ]] || return 0
@@ -243,10 +228,46 @@ _cmux_install_cli_command_shim() {
     {
         printf '%s\n' '#!/usr/bin/env bash'
         if [[ "$command_name" == "claude" ]]; then
+            printf 'cmux_wrapper="%s"\n' "$escaped_wrapper"
+            printf '%s\n' 'if [[ ! -x "$cmux_wrapper" && -n "${CMUX_BUNDLED_CLI_PATH:-}" ]]; then'
+            printf '%s\n' '    cmux_candidate="$(dirname "$CMUX_BUNDLED_CLI_PATH")/cmux-claude-wrapper"'
+            printf '%s\n' '    if [[ -x "$cmux_candidate" ]]; then'
+            printf '%s\n' '        cmux_wrapper="$cmux_candidate"'
+            printf '%s\n' '    fi'
+            printf '%s\n' 'fi'
+            printf '%s\n' 'if [[ ! -x "$cmux_wrapper" ]]; then'
+            printf '%s\n' '    cmux_cli="$(command -v cmux 2>/dev/null || true)"'
+            printf '%s\n' '    if [[ -n "$cmux_cli" ]]; then'
+            printf '%s\n' '        cmux_candidate="$(dirname "$cmux_cli")/cmux-claude-wrapper"'
+            printf '%s\n' '        if [[ -x "$cmux_candidate" ]]; then'
+            printf '%s\n' '            cmux_wrapper="$cmux_candidate"'
+            printf '%s\n' '        fi'
+            printf '%s\n' '    fi'
+            printf '%s\n' 'fi'
             printf 'export CMUX_CLAUDE_WRAPPER_SHIM="%s"\n' "$shim_path"
             printf 'export CMUX_CLAUDE_WRAPPER_SHIM_ROOT="%s"\n' "$shim_root"
+            printf '%s\n' 'if [[ -x "$cmux_wrapper" ]]; then'
+            printf '%s\n' '    exec "$cmux_wrapper" "$@"'
+            printf '%s\n' 'fi'
+            printf '%s\n' 'cmux_path_without_shim=""'
+            printf '%s\n' 'cmux_old_ifs="$IFS"'
+            printf '%s\n' 'IFS=:'
+            printf '%s\n' 'for cmux_entry in ${PATH:-}; do'
+            printf '%s\n' '    if [[ "$cmux_entry" == "$CMUX_CLAUDE_WRAPPER_SHIM_ROOT" || "$cmux_entry" == */cmux-cli-shims/* || "$cmux_entry" == */cmux-cli-shims ]]; then'
+            printf '%s\n' '        continue'
+            printf '%s\n' '    fi'
+            printf '%s\n' '    if [[ -z "$cmux_path_without_shim" ]]; then'
+            printf '%s\n' '        cmux_path_without_shim="$cmux_entry"'
+            printf '%s\n' '    else'
+            printf '%s\n' '        cmux_path_without_shim="$cmux_path_without_shim:$cmux_entry"'
+            printf '%s\n' '    fi'
+            printf '%s\n' 'done'
+            printf '%s\n' 'IFS="$cmux_old_ifs"'
+            printf '%s\n' 'export PATH="$cmux_path_without_shim"'
+            printf '%s\n' 'exec claude "$@"'
+        else
+            printf 'exec "%s" "$@"\n' "$escaped_wrapper"
         fi
-        printf 'exec "%s" "$@"\n' "$escaped_wrapper"
     } >"$shim_path" 2>/dev/null || return 0
     /bin/chmod 0700 "$shim_path" >/dev/null 2>&1 || return 0
 
@@ -257,6 +278,15 @@ _cmux_install_cli_command_shim() {
 
     PATH="$(_cmux_path_prepend_unique_directory "$shim_root" "${PATH-}")"
     hash -r >/dev/null 2>&1 || true
+}
+_cmux_claude_wrapper_command() {
+    if [[ -x "${CMUX_CLAUDE_WRAPPER_SHIM:-}" ]]; then
+        "$CMUX_CLAUDE_WRAPPER_SHIM" "$@"
+    elif [[ -x "${_CMUX_CLAUDE_WRAPPER:-}" ]]; then
+        "$_CMUX_CLAUDE_WRAPPER" "$@"
+    else
+        command claude "$@"
+    fi
 }
 _cmux_install_cli_wrapper() {
     local command_name="$1"
@@ -283,15 +313,13 @@ _cmux_install_cli_wrapper() {
     esac
 
     # Keep the bundled wrapper ahead of later PATH mutations. Install it
-<<<<<<< HEAD
-    # via eval so an existing alias cannot break parsing. Route through
-    # _cmux_with_context so the bundled CLI inherits cmux's session context.
-    printf -v "$wrapper_variable" '%s' "$wrapper_path"
-=======
     # via eval so an existing alias cannot break parsing.
->>>>>>> upstream/main
     unalias "$command_name" >/dev/null 2>&1 || true
-    eval "$command_name() { _cmux_with_context \"\${$wrapper_variable}\" \"\$@\"; }"
+    if [[ "$command_name" == "claude" ]]; then
+        eval "$command_name() { _cmux_claude_wrapper_command \"\$@\"; }"
+    else
+        eval "$command_name() { \"\${$wrapper_variable}\" \"\$@\"; }"
+    fi
 }
 _cmux_install_cli_wrapper claude _CMUX_CLAUDE_WRAPPER cmux-claude-wrapper
 _cmux_install_cli_wrapper grok _CMUX_GROK_WRAPPER
@@ -328,9 +356,6 @@ _CMUX_TTY_NAME="${_CMUX_TTY_NAME:-}"
 _CMUX_TTY_REPORTED="${_CMUX_TTY_REPORTED:-0}"
 _CMUX_TMUX_PUSH_SIGNATURE="${_CMUX_TMUX_PUSH_SIGNATURE:-}"
 _CMUX_TMUX_PULL_SIGNATURE="${_CMUX_TMUX_PULL_SIGNATURE:-}"
-_CMUX_TMUX_HOOKS_INIT_SIGNATURE="${_CMUX_TMUX_HOOKS_INIT_SIGNATURE:-}"
-_CMUX_TMUX_HOOKS_LAST_ATTEMPT="${_CMUX_TMUX_HOOKS_LAST_ATTEMPT:-0}"
-_CMUX_TMUX_HOOKS_KNOWN_VERSION="${_CMUX_TMUX_HOOKS_KNOWN_VERSION:-}"
 _CMUX_TMUX_SYNC_KEYS=(
     CMUX_BUNDLED_CLI_PATH
     CMUX_BUNDLE_ID
@@ -355,53 +380,6 @@ _CMUX_TMUX_SURFACE_SCOPED_KEYS=(
     CMUX_PANEL_ID
     CMUX_SURFACE_ID
 )
-_CMUX_CONTEXT_EXPORT_KEYS=(
-    "${_CMUX_TMUX_SYNC_KEYS[@]}"
-    "${_CMUX_TMUX_SURFACE_SCOPED_KEYS[@]}"
-    CMUX_CLAUDE_HOOKS_DISABLED
-    CMUX_CURSOR_HOOKS_DISABLED
-    CMUX_CUSTOM_CLAUDE_PATH
-    CMUX_GEMINI_HOOKS_DISABLED
-    CMUX_LOAD_GHOSTTY_BASH_INTEGRATION
-    CMUX_PRESERVE_CLAUDE_AUTH_SELECTION_ENV
-    CMUX_PRESERVE_CLAUDE_AUTH_SELECTION_ENV_KEYS
-    CMUX_RESTORE_SCROLLBACK_FILE
-)
-
-_cmux_hide_downstream_environment() {
-    local key
-    while IFS= read -r key; do
-        [[ "$key" == CMUX_* ]] || continue
-        export -n "$key" 2>/dev/null || true
-    done < <(compgen -v CMUX_)
-    export -n TERMINFO 2>/dev/null || true
-}
-
-_cmux_with_context() {
-    local -a env_args=()
-    local key value
-    for key in "${_CMUX_CONTEXT_EXPORT_KEYS[@]}"; do
-        if [[ ${!key+x} ]]; then
-            value="${!key}"
-            env_args+=("$key=$value")
-        fi
-    done
-    env "${env_args[@]}" "$@"
-}
-
-_cmux_install_context_command_wrapper() {
-    local command_name="$1"
-    local existing_type=""
-    existing_type="$(type -t "$command_name" 2>/dev/null || true)"
-    case "$existing_type" in
-        alias|function)
-            return 0
-            ;;
-    esac
-    eval "$command_name() { _cmux_with_context $command_name \"\$@\"; }"
-}
-_cmux_install_context_command_wrapper cmux
-_cmux_install_context_command_wrapper open
 
 _cmux_tmux_sync_key_is_managed() {
     local candidate="$1"
@@ -492,55 +470,12 @@ _cmux_tmux_refresh_cmux_environment() {
     fi
 }
 
-_cmux_tmux_bootstrap_hooks() {
-    [[ -n "${CMUX_SOCKET_PATH:-}" ]] || return 0
-    command -v tmux >/dev/null 2>&1 || return 0
-
-    local cli=""
-    if [[ -n "${CMUX_BUNDLED_CLI_PATH:-}" && -x "${CMUX_BUNDLED_CLI_PATH}" ]]; then
-        cli="$CMUX_BUNDLED_CLI_PATH"
-    else
-        cli="$(command -v cmux 2>/dev/null || true)"
-    fi
-    [[ -n "$cli" ]] || return 0
-
-    local expected_version="1"
-    local base_signature cached_signature
-    base_signature="${TMUX:-__outside__}"$'\037'"${CMUX_SOCKET_PATH:-}"$'\037'"${CMUX_WORKSPACE_ID:-${CMUX_TAB_ID:-}}"$'\037'"${CMUX_PANEL_ID:-${CMUX_SURFACE_ID:-}}"$'\037'"$cli"
-    cached_signature="$base_signature"$'\037'"$_CMUX_TMUX_HOOKS_KNOWN_VERSION"
-    if [[ "$_CMUX_TMUX_HOOKS_KNOWN_VERSION" == "$expected_version" && "$cached_signature" == "$_CMUX_TMUX_HOOKS_INIT_SIGNATURE" ]]; then
-        return 0
-    fi
-
-    local now
-    now="$(_cmux_now)"
-    if (( now - _CMUX_TMUX_HOOKS_LAST_ATTEMPT < 5 )); then
-        return 0
-    fi
-    _CMUX_TMUX_HOOKS_LAST_ATTEMPT="$now"
-
-    local marker signature
-    marker="$(tmux show-options -gqv @cmux_hooks_version 2>/dev/null || true)"
-    signature="$base_signature"$'\037'"$marker"
-    if [[ "$marker" == "$expected_version" ]]; then
-        _CMUX_TMUX_HOOKS_KNOWN_VERSION="$marker"
-        _CMUX_TMUX_HOOKS_INIT_SIGNATURE="$signature"
-        return 0
-    fi
-
-    if "$cli" tmux init >/dev/null 2>&1; then
-        _CMUX_TMUX_HOOKS_KNOWN_VERSION="$expected_version"
-        _CMUX_TMUX_HOOKS_INIT_SIGNATURE="$base_signature"$'\037'"$expected_version"
-    fi
-}
-
 _cmux_tmux_sync_cmux_environment() {
     if [[ -n "$TMUX" ]]; then
         _cmux_tmux_refresh_cmux_environment
     else
         _cmux_tmux_publish_cmux_environment
     fi
-    _cmux_tmux_bootstrap_hooks
 }
 
 _cmux_git_resolve_head_path() {
@@ -1480,7 +1415,6 @@ _cmux_command_starts_nested_shell() {
 _cmux_preexec_command() {
     local cmd="${1:-${BASH_COMMAND:-}}"
     _cmux_tmux_sync_cmux_environment
-    _cmux_hide_downstream_environment
 
     local cmux_has_unix_socket=0
     _cmux_socket_is_unix && cmux_has_unix_socket=1
@@ -1547,7 +1481,6 @@ _cmux_bash_preexec_hook_subshell() {
 _cmux_prompt_command() {
     local last_status=$?
     _cmux_tmux_sync_cmux_environment
-    _cmux_hide_downstream_environment
 
     local cmux_has_unix_socket=0
     _cmux_socket_is_unix && cmux_has_unix_socket=1
@@ -1569,13 +1502,7 @@ _cmux_prompt_command() {
 
     local now
     now="$(_cmux_now)"
-    local pwd="$PWD"
     if (( ! cmux_has_unix_socket )); then
-        if [[ "$pwd" != "$_CMUX_PWD_LAST_PWD" ]]; then
-            if _cmux_report_pwd_via_relay "$pwd"; then
-                _CMUX_PWD_LAST_PWD="$pwd"
-            fi
-        fi
         if (( now - _CMUX_PORTS_LAST_RUN >= 10 )); then
             _cmux_ports_kick refresh
         fi
@@ -1583,6 +1510,7 @@ _cmux_prompt_command() {
     fi
 
     [[ -n "$CMUX_PANEL_ID" ]] || return 0
+    local pwd="$PWD"
     _cmux_set_git_active_pwd "$pwd"
 
     # Post-wake socket writes can occasionally leave a probe process wedged.
@@ -1752,4 +1680,3 @@ unset -f _cmux_fix_path
 _cmux_detect_send_tool
 
 _cmux_install_prompt_command
-_cmux_hide_downstream_environment

@@ -191,6 +191,13 @@ enum SessionBlueprintEncoder {
                 command: panel.agentSession?.providerID.rawValue ?? "",
                 cwd: panel.agentSession?.workingDirectory
             )
+        case .customSidebar:
+            return .init(
+                splitPath: splitPath,
+                kind: "customSidebar",
+                command: "",
+                cwd: nil
+            )
         }
     }
 
