@@ -2,6 +2,18 @@
 
 All notable changes to cmux are documented here.
 
+## [0.66.8] - 2026-06-21
+
+### Changed
+- Merge upstream/main: 34 commits including right-sidebar custom sidebar tabs (#6430), terminal scroll-speed multiplier (#6422), Settings recovery from offscreen frames (#5770), Claude restore cwd drift fix (#6205), terminal content duplication on resize fix (#4765), stale ssh pane resize reconciliation, command palette title-match prioritization (#6498), and main window drift on sleep/wake (#6305).
+- vendor/bonsplit caught up: per-tab audio-playing indicator with click-to-mute (PR #150 + #151).
+- Re-wired 110 fork-only Swift files into pbxproj after taking upstream's project file wholesale.
+- Restored fork-only `CMUXSessionDaemon` + `CMUXSettingsCore` packages, now linked into both `cmux` and `cmux-cli` targets.
+
+### Preserved (fork features)
+- All cmux_term socket handlers, chat_source.py, herdr inbound, `TerminalSurface.visibleSnapshot()`, `processHasExited()`.
+- `SurfaceKind.customSidebar` added so Workspace+CustomSidebarPane (upstream) compiles against the fork's namespace-style enum.
+
 ## [0.66.7] - 2026-06-20
 
 ### Changed
