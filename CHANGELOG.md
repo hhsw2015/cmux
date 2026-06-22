@@ -2,6 +2,60 @@
 
 All notable changes to cmux are documented here.
 
+## [0.67.0] - 2026-06-23
+
+### Added
+- Global font magnification — system-wide scale for terminal + UI font sizes (#6554).
+- Chrome-style audio-playing indicator on browser panes with click-to-mute (#6517).
+- Mark-read / Mark-unread / Clear notifications entries in the workspace group menu (#6535).
+- File Explorer: keyboard shortcut to open the highlighted selection (#6001).
+- Diff viewer: searchable, uncapped branch-base picker with smart defaults (#6484).
+- Diff viewer: responsive toolbar that no longer overlaps at small widths (#6550).
+- Show profiling progress window during profile capture (#6440).
+- iOS: auto-generate per-build TestFlight "What to Test" and stamp next beta version (#6544).
+- README: FAQ section mirroring the homepage (#6561).
+
+### Changed
+- Merge upstream/main: 43 commits across two passes (P60 + P61 in this release).
+- Evict hidden browser WebViews under memory pressure.
+- Defer restored browser WebViews until visible (#6508).
+- Cache settings search index per runtime (#6591).
+- Gate idle pollers to the active workspace (#6583).
+- Reduce redundant panel title update work (#6552).
+- Honor "keep workspace open on last surface close" preference (#6475).
+- Canvas: use pan arrows for the scroll hint (#6528).
+- ghostty submodule bumped to 120c6c68c (manaflow/main +5): adds absolute-screen-row read API and bounded screen-clipboard formatter.
+
+### Fixed
+- Vim copy-mode cursor, V/Y selection, and pasteboard parity (#6221).
+- Cmd+Grave show/hide global hotkey (#6477).
+- Terminal input after window key restore (#6518).
+- Copy-on-select parity with Ghostty (#6200).
+- Portal hit-test CPU spin on pointer movement (#6592).
+- Crash diagnostic window restore (#6596).
+- Stale agent-resume executable paths (#6582).
+- Stale Claude notification sidebar status (#6473).
+- Stale surface-to-panel rebinding (#6581).
+- Main app-host shard regressions (#6580).
+- Hidden popover relayout during SwiftUI updates (#6589).
+- Remote tmux session discovery under non-UTF-8 remote locale (#6568).
+- cmux ssh-tmux socket path too long for AF_UNIX (#6465).
+- Canvas zoom animation snap at low zoom (#6538).
+- Sidebar row-height layout feedback (#6558).
+- Audio indicator audibility signal (#6566).
+- DevTools teardown during redock no longer fires (#6559).
+- iOS unread count badge contrast (#6524).
+- Changelog title clipping (#6425).
+- Group plus button trailing inset alignment (#6531).
+- Bounded iOS pairing attempts (#6495).
+
+### Preserved (fork features)
+- All cmux_term socket handlers, chat_source.py, herdr inbound, `TerminalSurface.visibleSnapshot()`, `processHasExited()`.
+- Multi-layout-tab Workspace architecture (top-tab strip + per-layout BonsplitController).
+- v2CustomSidebar* methods inline in TerminalController (vs upstream's split-out file).
+- `SidebarWorkspaceGroupHeader{DropZone,DropAction,DropPolicy,DropDelegate}` inline (upstream removed/split).
+- Compat shims on Workspace: `bindSurface`, `removeSurfaceMapping(forSurfaceId:)`, `handleRemoteTmuxSessionEndedKeepingWorkspaceOpenIfNeeded`, `discardBrowserPanelSubscription`.
+
 ## [0.66.8] - 2026-06-21
 
 ### Changed
