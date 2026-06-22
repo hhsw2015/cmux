@@ -4,11 +4,11 @@
 34326	CLI/cmux.swift
 23010	Sources/TerminalController.swift
 18609	Sources/ContentView.swift
-18084	Sources/AppDelegate.swift
+18087	Sources/AppDelegate.swift
 16007	Sources/GhosttyTerminalView.swift
-14040	Sources/Workspace.swift
+14051	Sources/Workspace.swift
 12194	cmuxTests/AppDelegateShortcutRoutingTests.swift
-11962	Sources/Panels/BrowserPanel.swift
+11967	Sources/Panels/BrowserPanel.swift
 9959	cmuxTests/CLINotifyProcessIntegrationRegressionTests.swift
 8017	CLI/cmux_open.swift
 7986	Sources/Panels/BrowserPanelView.swift
@@ -16,7 +16,7 @@
 7298	cmuxTests/WorkspaceRemoteConnectionTests.swift
 6802	cmuxTests/SessionPersistenceTests.swift
 6488	cmuxTests/GhosttyConfigTests.swift
-6207	Sources/TabManager.swift
+6214	Sources/TabManager.swift
 6107	cmuxTests/TerminalAndGhosttyTests.swift
 6084	Sources/TextBoxInput.swift
 5765	Sources/cmuxApp.swift
@@ -205,6 +205,7 @@
 552	Packages/macOS/CmuxSettingsUI/Sources/CmuxSettingsUI/Sections/BrowserSection.swift
 549	Sources/Panels/BrowserAutomation.swift
 549	Sources/SidebarWorkspaceGroupHeaderView.swift
+548	Sources/PaneMemoryGuardrail.swift
 546	Sources/QuickTerminalController.swift
 541	Packages/macOS/CmuxControlSocket/Sources/CmuxControlSocket/Coordinator/Pane/ControlCommandCoordinator+Pane.swift
 540	Packages/macOS/CmuxWorkspaces/Sources/CmuxWorkspaces/Coordinators/WorkspaceReorderCoordinator.swift
@@ -225,7 +226,6 @@
 519	Packages/macOS/CmuxSwiftRender/Tests/CmuxSwiftRenderTests/Corpus/stress-two-column-cockpit-sidebar.swift
 519	Sources/CmuxConfigExecutor.swift
 518	Packages/macOS/CmuxSwiftRender/Tests/CmuxSwiftRenderTests/Corpus/stress-git-review-queue-command-deck.swift
-517	Sources/PaneMemoryGuardrail.swift
 516	Sources/TerminalImageTransfer.swift
 514	Packages/macOS/CmuxSwiftRender/Sources/CmuxSwiftRender/ExpressionEvaluator.swift
 514	cmuxUITests/UpdatePillUITests.swift
