@@ -343,9 +343,10 @@ nonisolated struct SurfaceResumeBindingSnapshot: Codable, Equatable, Sendable {
         updatedAt: TimeInterval = Date().timeIntervalSince1970
     ) {
         let normalizedCwd = Self.normalized(cwd)
+        let normalizedKind = Self.normalized(kind)
         let normalizedSource = Self.normalized(source)
         self.name = Self.normalized(name)
-        self.kind = Self.normalized(kind)
+        self.kind = normalizedKind
         self.command = Self.sanitizedStartupCommand(
             command,
             cwd: normalizedCwd,
@@ -429,34 +430,7 @@ nonisolated struct SurfaceResumeBindingSnapshot: Codable, Equatable, Sendable {
     }
 
     var inlineStartupInput: String? {
-        let trimmed = startupCommand.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        guard let environment, !environment.isEmpty else {
-            return trimmed + "\n"
-        }
-        let assignments = environment.keys.sorted().compactMap { key -> String? in
-            guard let value = environment[key] else { return nil }
-            return "\(key)=\(value)"
-        }
-        let argv = ["/usr/bin/env"] + assignments + ["/bin/zsh", "-lc", trimmed]
-        return argv.map(Self.shellSingleQuoted).joined(separator: " ") + "\n"
-    }
-
-    private var startupCommand: String {
-        Self.sanitizedStartupCommand(command, cwd: cwd, source: source)
-    }
-
-    private static func sanitizedStartupCommand(
-        _ command: String,
-        cwd: String?,
-        source: String?
-    ) -> String {
-        let trimmed = command.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard source == "agent-hook" else { return trimmed }
-        return TerminalStartupWorkingDirectoryPrefix.replacingRequiredChangeDirectoryPrefix(
-            in: trimmed,
-            workingDirectory: cwd
-        )
+        inlineStartupInput(repairPortableAgentExecutable: true)
     }
 
     func startupInputWithLauncherScript(
@@ -540,7 +514,7 @@ nonisolated struct SurfaceResumeBindingSnapshot: Codable, Equatable, Sendable {
         return sensitiveFragments.contains { uppercasedKey.contains($0) }
     }
 
-    private static func shellSingleQuoted(_ value: String) -> String {
+    static func shellSingleQuoted(_ value: String) -> String {
         "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 }
@@ -755,6 +729,7 @@ enum SurfaceResumeCommandCanonicalizer {
         }
         return "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
+
 }
 
 enum SurfaceResumeApprovalSignature {
@@ -1374,7 +1349,7 @@ nonisolated enum TerminalStartupReturnShellScript {
     }
 }
 
-private enum SurfaceResumeBindingScriptStore {
+enum SurfaceResumeBindingScriptStore {
     private static let directoryName = "cmux-surface-resume"
     private static let scriptTTL: TimeInterval = 24 * 60 * 60
 

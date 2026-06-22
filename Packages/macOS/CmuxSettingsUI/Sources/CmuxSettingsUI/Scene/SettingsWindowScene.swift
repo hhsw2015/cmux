@@ -59,12 +59,12 @@ public enum SettingsExtraSectionsHost {
 /// scrolling content side-by-side.
 @MainActor
 public struct SettingsWindowRoot: View {
-    let runtime: SettingsRuntime
-    private let searchIndex: SettingsSearchIndex // `SettingsRuntime.catalog` is immutable for this scene lifetime.
+    private let runtime: SettingsRuntime
+    private let searchIndex: SettingsSearchIndex
 
     public init(runtime: SettingsRuntime) {
         self.runtime = runtime
-        self.searchIndex = SettingsSearchIndex(catalog: runtime.catalog)
+        self.searchIndex = runtime.searchIndex
     }
 
     @State private var searchText: String = ""
@@ -124,9 +124,7 @@ public struct SettingsWindowRoot: View {
     /// Whether the user currently has a non-empty search query. When
     /// false the sidebar should track section selection only; when true
     /// the per-entry selection survives.
-    private var isSearching: Bool {
-        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
+    private var isSearching: Bool { !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
     // Legacy uses a non-optional `Binding<String>` because a sidebar
     // selection always points at *some* entry (section row or setting
@@ -204,7 +202,7 @@ public struct SettingsWindowRoot: View {
     @ViewBuilder
     private var sidebar: some View {
         List(selection: sidebarSelectionBinding) {
-            let matches = searchIndex.match(searchText)
+            let matches = sidebarEntries(matching: searchText)
             let extras = isSearching ? [] : SettingsExtraSectionsHost.entries
             if matches.isEmpty && extras.isEmpty {
                 Text(String(localized: "settings.search.noResults", defaultValue: "No Results"))
@@ -234,6 +232,8 @@ public struct SettingsWindowRoot: View {
         .searchable(text: $searchText, placement: .sidebar, prompt: Text(String(localized: "settings.search.prompt", defaultValue: "Search")))
         .navigationSplitViewColumnWidth(210)
     }
+
+    func sidebarEntries(matching query: String) -> [SettingsSearchIndex.Entry] { searchIndex.match(query) }
 
     /// Legacy `SettingsSearchEntry` populates `subtitle` with the
     /// parent section's title for setting-type hits and `nil` for

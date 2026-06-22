@@ -111,8 +111,10 @@ struct GhosttyConfig {
     static func load(
         preferredColorScheme: ColorSchemePreference? = nil,
         useCache: Bool = true,
+        globalFontMagnificationPercent: Int? = nil,
         loadFromDisk: (_ preferredColorScheme: ColorSchemePreference) -> GhosttyConfig = Self.loadFromDisk
     ) -> GhosttyConfig {
+        _ = globalFontMagnificationPercent
         let resolvedColorScheme = preferredColorScheme ?? currentColorSchemePreference()
         if useCache, let cached = cachedLoad(for: resolvedColorScheme) {
             return cached

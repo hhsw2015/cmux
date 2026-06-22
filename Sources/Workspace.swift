@@ -2733,6 +2733,11 @@ final class Workspace: Identifiable, ObservableObject {
     private var pendingHerdrSplitOriginalPane: PaneID?
     private var debugStressPreloadSelectionDepth = 0
 
+    /// Aggregate media-device activity across every browser pane in this
+    /// workspace (audio / microphone / camera), surfaced to the sidebar
+    /// workspace row so a noisy or capturing background pane is discoverable.
+    private(set) var browserMediaActivity = BrowserMediaActivity()
+
     /// Last terminal panel used as an inheritance source (typically last focused terminal).
     var lastTerminalConfigInheritancePanelId: UUID?
     /// Last known terminal font points from inheritance sources. Used as fallback when
@@ -3535,8 +3540,10 @@ final class Workspace: Identifiable, ObservableObject {
         initialTerminalEnvironment: [String: String] = [:],
         workspaceEnvironment: [String: String] = [:],
         initialDetachedSurface: DetachedSurfaceTransfer? = nil,
-        sessionRestorePolicy: WorkspaceSessionRestorePolicyService<SurfaceResumeBindingSnapshot>? = nil
+        sessionRestorePolicy: WorkspaceSessionRestorePolicyService<SurfaceResumeBindingSnapshot>? = nil,
+        closeTabWarningDefaults: UserDefaults = .standard
     ) {
+        _ = closeTabWarningDefaults
         self.id = UUID()
         self.sessionRestorePolicy = sessionRestorePolicy ?? Self.makeSessionRestorePolicyService()
         let sanitizedWorkspaceEnvironment = Self.sanitizedWorkspaceEnvironment(workspaceEnvironment)
@@ -4001,6 +4008,19 @@ final class Workspace: Identifiable, ObservableObject {
             }
         }
         return nil
+    }
+
+    /// Compatibility shim for upstream call sites authored against the
+    /// single-bonsplitController architecture. Binds to the active
+    /// layout tab's controller, matching fork's `setSurfaceMapping(tabId:panelId:in:)`.
+    func bindSurface(_ surfaceId: TabID, toPanelId panelId: UUID) {
+        setSurfaceMapping(tabId: surfaceId, panelId: panelId, in: bonsplitController)
+    }
+
+    func removeSurfaceMapping(forSurfaceId surfaceId: TabID) {
+        for layout in layoutTabs {
+            layout.surfaceIdToPanelId.removeValue(forKey: surfaceId)
+        }
     }
 
     func removeSurfaceMapping(tabId: TabID?, panelId: UUID) {
@@ -6073,6 +6093,18 @@ final class Workspace: Identifiable, ObservableObject {
     /// single-surface ``PanelContentView``. Owned by ``RemoteTmuxSessionMirror``;
     /// the view layer only reads it.
     private(set) var remoteTmuxWindowMirrors: [UUID: RemoteTmuxWindowMirror] = [:]
+
+    /// Upstream-introduced API stub: cmux fork has no "keep workspace open
+    /// after remote tmux session ended" mode yet, so always returns false
+    /// to let callers fall through to the default cleanup path.
+    func handleRemoteTmuxSessionEndedKeepingWorkspaceOpenIfNeeded() -> Bool {
+        false
+    }
+
+    func discardBrowserPanelSubscription(panelId _: UUID, panel: (any Panel)?) {
+        guard let browserPanel = panel as? BrowserPanel else { return }
+        browserPanel.onMediaActivityChanged = nil
+    }
 
     /// The multi-pane renderer for a window-tab's panel, if that window is
     /// currently multi-pane.
