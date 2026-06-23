@@ -1,22 +1,22 @@
 # cmux-owned Swift file length budget.
 # Format: max_lines<TAB>relative path
 # Reduce counts as files shrink. CI fails if tracked files exceed this budget.
-34326	CLI/cmux.swift
+34403	CLI/cmux.swift
 23010	Sources/TerminalController.swift
-18609	Sources/ContentView.swift
-18087	Sources/AppDelegate.swift
+18585	Sources/ContentView.swift
+18082	Sources/AppDelegate.swift
 16007	Sources/GhosttyTerminalView.swift
 14051	Sources/Workspace.swift
 12194	cmuxTests/AppDelegateShortcutRoutingTests.swift
 11967	Sources/Panels/BrowserPanel.swift
-9959	cmuxTests/CLINotifyProcessIntegrationRegressionTests.swift
+10121	cmuxTests/CLINotifyProcessIntegrationRegressionTests.swift
 8017	CLI/cmux_open.swift
 7986	Sources/Panels/BrowserPanelView.swift
 7480	cmuxTests/WorkspaceUnitTests.swift
 7298	cmuxTests/WorkspaceRemoteConnectionTests.swift
 6802	cmuxTests/SessionPersistenceTests.swift
 6488	cmuxTests/GhosttyConfigTests.swift
-6214	Sources/TabManager.swift
+6219	Sources/TabManager.swift
 6107	cmuxTests/TerminalAndGhosttyTests.swift
 6084	Sources/TextBoxInput.swift
 5765	Sources/cmuxApp.swift
@@ -42,7 +42,7 @@
 2405	Sources/RestorableAgentSession.swift
 2395	Sources/Mobile/MobileHostService.swift
 2364	cmuxTests/CJKIMEInputTests.swift
-2333	Sources/TerminalNotificationStore.swift
+2318	Sources/TerminalNotificationStore.swift
 2237	Sources/TerminalWindowPortal.swift
 2126	cmuxTests/CmuxConfigTests.swift
 2121	Sources/SessionPersistence.swift
@@ -62,8 +62,8 @@
 1560	cmuxTests/TextBoxMentionCompletionTests.swift
 1500	cmuxUITests/MultiWindowNotificationsUITests.swift
 1499	cmuxTests/OmnibarAndToolsTests.swift
+1452	Sources/RemoteTmuxControlConnection.swift
 1447	Sources/FileExplorerStore.swift
-1412	Sources/RemoteTmuxControlConnection.swift
 1384	cmuxTests/KeyboardShortcutSettingsFileStoreStartupTests.swift
 1380	cmuxUITests/MenuKeyEquivalentRoutingUITests.swift
 1373	cmuxTests/AppDelegateIssue2907RoutingTests.swift
@@ -86,10 +86,10 @@
 1144	cmuxTests/PiVaultAgentPersistenceTests.swift
 1133	cmuxTests/AgentHibernationTests.swift
 1110	Sources/AppDelegate+CmuxSSHURL.swift
+1093	Sources/RemoteTmuxController.swift
 1093	cmuxUITests/BonsplitTabDragUITests.swift
 1087	Packages/macOS/CmuxCommandPalette/Sources/CmuxCommandPalette/Search/CommandPaletteFuzzyMatcher.swift
 1047	Sources/Panels/TerminalPanel.swift
-1037	Sources/RemoteTmuxController.swift
 1025	cmuxTests/CmuxSSHURLRequestTests.swift
 1021	cmuxUITests/TerminalCmdClickUITests.swift
 1009	cmuxTests/CmuxTopSnapshotScopeTests.swift
@@ -161,6 +161,7 @@
 654	cmuxTests/MainWindowVisibilityControllerTests.swift
 653	Packages/macOS/CmuxBrowser/Sources/CmuxBrowser/Import/Detection/BrowserInstalledBrowserDetector.swift
 650	Sources/Panels/MarkdownRemoteImageLoader.swift
+642	cmuxTests/RemoteTmuxControlParserTests.swift
 641	cmuxTests/CommandPaletteNucleoFFITests.swift
 636	Sources/TerminalController+ControlPaneContext.swift
 633	cmuxTests/CLICommandSurfaceTests.swift
@@ -171,7 +172,6 @@
 620	Sources/SettingsNavigation.swift
 620	cmuxTests/FinderFileDropRegressionTests.swift
 620	cmuxTests/TerminalNotificationQueueTests.swift
-615	cmuxTests/RemoteTmuxControlParserTests.swift
 612	cmuxUITests/FeedSidebarUITests.swift
 610	Sources/PortScanner.swift
 608	Packages/macOS/CmuxWorkspaces/Sources/CmuxWorkspaces/Coordinators/WorkspaceGroupCoordinator.swift
@@ -205,7 +205,6 @@
 552	Packages/macOS/CmuxSettingsUI/Sources/CmuxSettingsUI/Sections/BrowserSection.swift
 549	Sources/Panels/BrowserAutomation.swift
 549	Sources/SidebarWorkspaceGroupHeaderView.swift
-548	Sources/PaneMemoryGuardrail.swift
 546	Sources/QuickTerminalController.swift
 541	Packages/macOS/CmuxControlSocket/Sources/CmuxControlSocket/Coordinator/Pane/ControlCommandCoordinator+Pane.swift
 540	Packages/macOS/CmuxWorkspaces/Sources/CmuxWorkspaces/Coordinators/WorkspaceReorderCoordinator.swift
@@ -219,7 +218,7 @@
 528	cmuxTests/CLINotifyProcessTestSupport.swift
 528	cmuxUITests/AutomationSocketUITests.swift
 527	CLI/CLISocketPathResolver.swift
-526	Packages/macOS/CmuxSettings/Sources/CmuxSettings/SocketControl/SocketControlSettings.swift
+525	Packages/macOS/CmuxSettings/Sources/CmuxSettings/SocketControl/SocketControlSettings.swift
 524	CLI/CMUXCLI+AutoNaming.swift
 523	Packages/macOS/CmuxSettingsUI/Sources/CmuxSettingsUI/Sections/AutomationSection.swift
 520	CLI/CMUXCLI+AmpExtension.swift
@@ -239,4 +238,5 @@
 503	Packages/iOS/CmuxMobileShellUI/Sources/CmuxMobileShellUI/CMUXMobileRootView.swift
 503	Sources/Settings/ConfigSource.swift
 502	Sources/KeyboardShortcutContext.swift
+502	Sources/RemoteTmuxSessionMirror.swift
 500	Sources/KeyboardShortcutRecorder.swift

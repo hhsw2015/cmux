@@ -45,10 +45,4 @@ extension AppDelegate {
         // pane-memory guardrail telemetry is a no-op on this branch.
         return []
     }
-
-    @discardableResult
-    func closePaneForMemoryGuardrail(workspaceId: UUID, panelId: UUID) -> Bool {
-        guard let manager = tabManagerFor(tabId: workspaceId) ?? tabManager else { return false }
-        return manager.closeSurface(tabId: workspaceId, surfaceId: panelId)
-    }
 }
