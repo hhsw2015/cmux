@@ -2,6 +2,19 @@
 
 All notable changes to cmux are documented here.
 
+## [0.68.0] - 2026-06-23
+
+### Changed
+- Merge upstream/main: 6 commits (P62).
+- Remove the high-memory pane warning UI (triangle + popover); the guardrail engine still runs (#6619).
+- CI: route all macOS compile/test gates to Swift 6.3 Xcode to match the shipping toolchain (#6603).
+
+### Fixed
+- Sync remote tmux session rename to the mirror workspace title (#6602).
+- Flag "Needs input" for blocked AskUserQuestion / ExitPlanMode under `--dangerously-skip-permissions` (#6608).
+- Fix explicit-surface routing for read-screen and send (#6605).
+- Fix canvas tab hover hit testing (#6555).
+
 ## [0.67.0] - 2026-06-23
 
 ### Added
