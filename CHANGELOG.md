@@ -2,6 +2,40 @@
 
 All notable changes to cmux are documented here.
 
+## [0.69.0] - 2026-06-24
+
+### Added
+- iOS: don't lose saved hosts/IPs on upgrade (paired-Mac backup + restore) (#6405).
+- iOS: auto sign-in + auto-pair the device by default on reload (#6661).
+- iOS: workspace folder collapse is now device-local (#6666).
+- One-step grouped workspace creation (#6657).
+- `cmux mobile set-font` to live-resize the mirrored iOS terminal (#6674).
+- Allow `.m4r` notification sound files (#6635).
+- Smooth-fade home page typing caret (#6688).
+- Disable "Move to group" when there are no groups (#6662).
+- Web: agent landing pages under /agents with JSON-LD, redirects, full localization (#6683).
+- Web: built-on-Ghostty landing page.
+
+### Changed
+- Merge upstream/main: 37 cmux commits + bonsplit submodule bump (P63).
+- Bonsplit: hug tab content in fixed-width mode; tighten close slot (#153).
+- Make terminal/browser surface tabs hug their content (#6652, #6653).
+- Keep blocking browser automation off main (#6696).
+- Bump Sparkle to 2.9.3 to fix auto-update agent kill on macOS 26 (#6678).
+- CI: route all macOS runners through Blacksmith (#6650); align xcode-select with selected toolchain (#6624).
+
+### Fixed
+- Sidebar lag regression since v0.64.16 (#6612): cut per-row font-modifier + pin-state work (#6613).
+- Codex sidebar status lifecycle (#6609).
+- Sidebar tab selection highlight timing (#6627).
+- Cmd+T opening in home after agent-resume session restore (#6617, #6621).
+- Diff viewer transparency (#6671).
+- iOS initial loading and inline recovery UI (#6698).
+- OpenCode bunfs worker autoresume (#6680).
+- Duplicate iOS companion feature bullet (#6675).
+- Revert "Fix workspace group drag drop intent (#6532)" (#6713) — the original fix caused regressions.
+- Revert sidebar row-height layout feedback (#6625) — that fix regressed.
+
 ## [0.68.0] - 2026-06-23
 
 ### Changed
