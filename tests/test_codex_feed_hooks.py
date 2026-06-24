@@ -27,6 +27,8 @@ CODEX_HOOK_EVENT_LABELS = {
     "PreCompact": "pre_compact",
     "PostCompact": "post_compact",
     "SessionStart": "session_start",
+    "SubagentStart": "subagent_start",
+    "SubagentStop": "subagent_stop",
     "UserPromptSubmit": "user_prompt_submit",
     "Stop": "stop",
 }
@@ -38,6 +40,8 @@ CODEX_HOOK_EVENTS_WITH_MATCHERS = {
     "PreCompact",
     "PostCompact",
     "SessionStart",
+    "SubagentStart",
+    "SubagentStop",
 }
 
 CMUX_CODEX_HOOK_SUBCOMMANDS = (
@@ -49,12 +53,25 @@ CMUX_CODEX_HOOK_SUBCOMMANDS = (
 CMUX_CODEX_FEED_EVENTS = (
     "PreToolUse",
     "PermissionRequest",
+    "PostToolUse",
+    "PreCompact",
+    "PostCompact",
+    "SubagentStart",
+    "SubagentStop",
 )
 
 FAKE_WORKSPACE_ID = "11111111-1111-1111-1111-111111111111"
 FAKE_SURFACE_ID = "22222222-2222-2222-2222-222222222222"
 FAKE_RELAY_ID = "test-relay"
 FAKE_RELAY_TOKEN = b"cmux-test-relay-token-32-bytes!!"
+
+
+def _toml_has_line(content: str, line: str) -> bool:
+    return any(raw.strip() == line for raw in content.splitlines())
+
+
+def _toml_line_count(content: str, line: str) -> int:
+    return sum(1 for raw in content.splitlines() if raw.strip() == line)
 
 
 class FakeCmuxSocket:
@@ -468,8 +485,9 @@ def test_codex_stop_without_turn_keeps_session_wide_monitor(cli_path: str, root:
 def test_codex_prompt_submit_skips_monitor_when_lease_write_fails(cli_path: str, root: Path) -> None:
     socket_path = root / "cmux-monitor-lease-failure.sock"
     transcript_path = root / "codex-session-lease-failure.jsonl"
-    bad_state_dir = root / "hook-state-file"
-    bad_state_dir.write_text("not a directory", encoding="utf-8")
+    state_dir = root / "hook-state-lease-failure"
+    state_dir.mkdir()
+    (state_dir / "codex-monitor-leases").write_text("not a directory", encoding="utf-8")
     transcript_path.write_text("", encoding="utf-8")
 
     session_id = f"codex-monitor-lease-failure-session-{os.getpid()}"
@@ -478,7 +496,7 @@ def test_codex_prompt_submit_skips_monitor_when_lease_write_fails(cli_path: str,
     env["CMUX_SOCKET_PATH"] = str(socket_path)
     env["CMUX_SURFACE_ID"] = FAKE_SURFACE_ID
     env["CMUX_WORKSPACE_ID"] = FAKE_WORKSPACE_ID
-    env["CMUX_AGENT_HOOK_STATE_DIR"] = str(bad_state_dir)
+    env["CMUX_AGENT_HOOK_STATE_DIR"] = str(state_dir)
 
     with FakeCmuxSocket(socket_path, None):
         try:
@@ -867,7 +885,13 @@ def test_codex_monitor_rejects_invalid_owner_pid(cli_path: str, root: Path) -> N
         )
 
 
-def run_feed_hook(cli_path: str, socket_path: Path, payload: dict, decision: dict | None, source: str = "codex") -> tuple[dict, dict]:
+def run_feed_hook_optional_frame(
+    cli_path: str,
+    socket_path: Path,
+    payload: dict,
+    decision: dict | None,
+    source: str = "codex",
+) -> tuple[dict, dict | None]:
     env = os.environ.copy()
     env["CMUX_SURFACE_ID"] = FAKE_SURFACE_ID
     env["CMUX_WORKSPACE_ID"] = FAKE_WORKSPACE_ID
@@ -895,10 +919,21 @@ def run_feed_hook(cli_path: str, socket_path: Path, payload: dict, decision: dic
             raise AssertionError(
                 f"hooks feed failed exit={result.returncode}\nstdout={result.stdout}\nstderr={result.stderr}"
             )
-        if not fake.frames:
-            raise AssertionError("hooks feed did not send feed.push")
         stdout = json.loads(result.stdout.strip() or "{}")
-        return stdout, fake.frames[0]
+        return stdout, fake.frames[0] if fake.frames else None
+
+
+def run_feed_hook(
+    cli_path: str,
+    socket_path: Path,
+    payload: dict,
+    decision: dict | None,
+    source: str = "codex",
+) -> tuple[dict, dict]:
+    stdout, frame = run_feed_hook_optional_frame(cli_path, socket_path, payload, decision, source)
+    if frame is None:
+        raise AssertionError("hooks feed did not send feed.push")
+    return stdout, frame
 
 
 def assert_permission_output(stdout: dict, behavior: str) -> None:
@@ -960,13 +995,14 @@ def cmux_codex_hook_command(subcommand: str) -> str:
 
 def cmux_codex_feed_command(agent_event: str) -> str:
     routed_arguments = f"hooks feed --source codex --event {agent_event}"
+    noop_command = "{ cat >/dev/null 2>/dev/null || true; echo '{}'; }"
     return (
         'cmux_cli="${CMUX_BUNDLED_CLI_PATH:-}"; if [ -z "$cmux_cli" ] || [ ! -x "$cmux_cli" ]; '
         'then cmux_cli="$(command -v cmux 2>/dev/null || true)"; fi; if [ -n "$CMUX_SURFACE_ID" ] '
         '&& [ "$CMUX_CODEX_HOOKS_DISABLED" != "1" ] && [ -n "$cmux_cli" ]; then { '
         f'if [ -n "${{CMUX_SOCKET_PATH:-}}" ]; then "$cmux_cli" --socket "$CMUX_SOCKET_PATH" {routed_arguments}; '
         f'else "$cmux_cli" {routed_arguments}; fi; '
-        "} || echo '{}'; else echo '{}'; fi"
+        f"}} || {noop_command}; else {noop_command}; fi"
     )
 
 
@@ -1106,7 +1142,7 @@ def test_install_adds_codex_permission_request_hook(cli_path: str, root: Path) -
             raise AssertionError(f"missing {event_name} hook group: {hooks!r}")
         if groups[-1]["hooks"][0].get("timeout") != 5:
             raise AssertionError(f"wrong {event_name} timeout: {groups[-1]!r}")
-    for event_name in ["PreToolUse", "PermissionRequest"]:
+    for event_name in CMUX_CODEX_FEED_EVENTS:
         groups = hook_groups.get(event_name)
         if not groups:
             raise AssertionError(f"missing {event_name} hook group: {hooks!r}")
@@ -1117,7 +1153,7 @@ def test_install_adds_codex_permission_request_hook(cli_path: str, root: Path) -
             raise AssertionError(f"wrong {event_name} timeout: {groups[-1]!r}")
 
     config_toml = (codex_home / "config.toml").read_text(encoding="utf-8")
-    if "hooks = true" not in config_toml:
+    if not _toml_has_line(config_toml, "hooks = true"):
         raise AssertionError(f"hooks feature was not enabled: {config_toml!r}")
     if "codex_hooks" in config_toml:
         raise AssertionError(f"deprecated codex_hooks feature was written: {config_toml!r}")
@@ -1394,7 +1430,7 @@ def test_install_migrates_legacy_codex_hooks_feature(cli_path: str, root: Path) 
     config_toml = (codex_home / "config.toml").read_text(encoding="utf-8")
     if "codex_hooks" in config_toml:
         raise AssertionError(f"deprecated codex_hooks feature was preserved: {config_toml!r}")
-    if "hooks = true" not in config_toml:
+    if not _toml_has_line(config_toml, "hooks = true"):
         raise AssertionError(f"hooks feature was not enabled: {config_toml!r}")
     if "apps = true" not in config_toml:
         raise AssertionError(f"existing feature setting was not preserved: {config_toml!r}")
@@ -1426,7 +1462,7 @@ def test_install_migrates_dotted_codex_hooks_feature(cli_path: str, root: Path) 
     config_toml = (codex_home / "config.toml").read_text(encoding="utf-8")
     if "features.codex_hooks" in config_toml or "[features]" in config_toml:
         raise AssertionError(f"dotted legacy config was rewritten incorrectly: {config_toml!r}")
-    if "features.hooks = true" not in config_toml:
+    if not _toml_has_line(config_toml, "features.hooks = true"):
         raise AssertionError(f"dotted hooks feature was not enabled: {config_toml!r}")
     if "features.apps = true" not in config_toml:
         raise AssertionError(f"existing dotted feature setting was not preserved: {config_toml!r}")
@@ -1457,7 +1493,7 @@ def test_uninstall_preserves_existing_codex_hooks_feature(cli_path: str, root: P
             )
 
     config_toml = (codex_home / "config.toml").read_text(encoding="utf-8")
-    if "hooks = true" not in config_toml:
+    if not _toml_has_line(config_toml, "hooks = true"):
         raise AssertionError(f"pre-existing hooks feature was removed: {config_toml!r}")
     if "apps = true" not in config_toml:
         raise AssertionError(f"existing feature setting was not preserved: {config_toml!r}")
@@ -1494,10 +1530,10 @@ def test_install_codex_hooks_only_edits_real_features_table(cli_path: str, root:
     if result.returncode != 0:
         raise AssertionError(
             f"hooks codex install failed exit={result.returncode}\nstdout={result.stdout}\nstderr={result.stderr}"
-        )
+    )
 
     config_toml = config_path.read_text(encoding="utf-8")
-    if config_toml.count("hooks = true") != 1:
+    if _toml_line_count(config_toml, "hooks = true") != 1:
         raise AssertionError(f"hooks should be inserted exactly once: {config_toml!r}")
     if "codex_hooks" in config_toml:
         raise AssertionError(f"deprecated codex_hooks feature was written: {config_toml!r}")
@@ -1537,7 +1573,7 @@ def test_uninstall_codex_hooks_removes_empty_features_table_from_install(cli_pat
         )
 
     installed_config = config_path.read_text(encoding="utf-8")
-    if "[features]" not in installed_config or "hooks = true" not in installed_config:
+    if "[features]" not in installed_config or not _toml_has_line(installed_config, "hooks = true"):
         raise AssertionError(f"install should add the hooks feature table: {installed_config!r}")
     if "codex_hooks" in installed_config:
         raise AssertionError(f"install should not add deprecated codex_hooks: {installed_config!r}")
@@ -1584,9 +1620,9 @@ def test_uninstall_restores_disabled_codex_hooks_feature(cli_path: str, root: Pa
             )
 
     config_toml = (codex_home / "config.toml").read_text(encoding="utf-8")
-    if "hooks = false" not in config_toml:
+    if not _toml_has_line(config_toml, "hooks = false"):
         raise AssertionError(f"pre-existing disabled hooks feature was not restored: {config_toml!r}")
-    if "hooks = true" in config_toml:
+    if _toml_has_line(config_toml, "hooks = true"):
         raise AssertionError(f"cmux-owned hooks feature was not removed: {config_toml!r}")
     if "apps = true" not in config_toml:
         raise AssertionError(f"existing feature setting was not preserved: {config_toml!r}")
@@ -1617,9 +1653,9 @@ def test_uninstall_restores_disabled_dotted_codex_hooks_feature(cli_path: str, r
             )
 
     config_toml = (codex_home / "config.toml").read_text(encoding="utf-8")
-    if "features.hooks = false" not in config_toml:
+    if not _toml_has_line(config_toml, "features.hooks = false"):
         raise AssertionError(f"pre-existing disabled dotted hooks feature was not restored: {config_toml!r}")
-    if "features.hooks = true" in config_toml:
+    if _toml_has_line(config_toml, "features.hooks = true"):
         raise AssertionError(f"cmux-owned dotted hooks feature was not removed: {config_toml!r}")
     if "features.apps = true" not in config_toml:
         raise AssertionError(f"existing dotted feature setting was not preserved: {config_toml!r}")
@@ -1649,11 +1685,11 @@ def test_install_scans_features_past_bracketed_array(cli_path: str, root: Path) 
                 f"hooks codex {action} failed exit={result.returncode}\nstdout={result.stdout}\nstderr={result.stderr}"
             )
         config_toml = (codex_home / "config.toml").read_text(encoding="utf-8")
-        if action == "install" and config_toml.count("hooks = true") != 1:
+        if action == "install" and _toml_line_count(config_toml, "hooks = true") != 1:
             raise AssertionError(f"install wrote duplicate hooks settings: {config_toml!r}")
 
     config_toml = (codex_home / "config.toml").read_text(encoding="utf-8")
-    if "hooks = false" not in config_toml or "hooks = true" in config_toml:
+    if not _toml_has_line(config_toml, "hooks = false") or _toml_has_line(config_toml, "hooks = true"):
         raise AssertionError(f"uninstall did not restore hooks after bracketed array: {config_toml!r}")
     if "[1, 2]" not in config_toml:
         raise AssertionError(f"bracketed array content was not preserved: {config_toml!r}")
@@ -1928,7 +1964,7 @@ def test_install_enables_hooks_when_stale_trust_marker_captures_dotted_feature(
         )
 
     config_toml = config_path.read_text(encoding="utf-8")
-    if "hooks = true" not in config_toml and "features.hooks = true" not in config_toml:
+    if not _toml_has_line(config_toml, "hooks = true") and not _toml_has_line(config_toml, "features.hooks = true"):
         raise AssertionError(f"install did not enable Codex hooks: {config_toml!r}")
     if 'trusted_hash = "sha256:stale"' in config_toml:
         raise AssertionError(f"stale cmux hook trust was preserved: {config_toml!r}")
@@ -2431,6 +2467,293 @@ def test_codex_pre_tool_use_is_telemetry_not_actionable(cli_path: str, root: Pat
         raise AssertionError(f"wrong PreToolUse event: {frame!r}")
 
 
+def test_codex_lifecycle_feed_events_stay_telemetry_and_distinct(cli_path: str, root: Path) -> None:
+    event_payloads = {
+        "PostToolUse": {
+            "session_id": "codex-session",
+            "turn_id": "turn-post-tool",
+            "cwd": "/tmp/project",
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Bash",
+            "tool_input": {"command": "printf hi"},
+            "tool_response": {"exit_code": 0, "stdout": "hi", "stderr": ""},
+        },
+        "PreCompact": {
+            "session_id": "codex-session",
+            "turn_id": "turn-pre-compact",
+            "cwd": "/tmp/project",
+            "hook_event_name": "PreCompact",
+            "trigger": "manual",
+        },
+        "PostCompact": {
+            "session_id": "codex-session",
+            "turn_id": "turn-post-compact",
+            "cwd": "/tmp/project",
+            "hook_event_name": "PostCompact",
+            "trigger": "manual",
+        },
+        "SubagentStart": {
+            "session_id": "codex-session",
+            "turn_id": "turn-subagent-start",
+            "cwd": "/tmp/project",
+            "hook_event_name": "SubagentStart",
+            "agent_id": "agent-1",
+            "agent_type": "general",
+        },
+        "SubagentStop": {
+            "session_id": "codex-session",
+            "turn_id": "turn-subagent-stop",
+            "cwd": "/tmp/project",
+            "hook_event_name": "SubagentStop",
+            "agent_id": "agent-1",
+            "agent_type": "general",
+        },
+    }
+
+    for event_name, payload in event_payloads.items():
+        stdout, frame = run_feed_hook(
+            cli_path,
+            root / f"cmux-codex-{event_name}.sock",
+            payload,
+            None,
+        )
+        if stdout != {}:
+            raise AssertionError(f"Codex {event_name} telemetry should not emit a decision: {stdout!r}")
+        params = frame["params"]
+        if params.get("wait_timeout_seconds") != 0:
+            raise AssertionError(f"Codex {event_name} should not wait for Feed reply: {frame!r}")
+        event = params["event"]
+        if event.get("hook_event_name") != event_name or event.get("_source") != "codex":
+            raise AssertionError(f"Codex {event_name} should stay distinct in Feed, got {event!r}")
+        if event_name == "PostToolUse":
+            tool_input = event.get("tool_input")
+            if not isinstance(tool_input, dict):
+                raise AssertionError(f"Codex PostToolUse should forward tool metadata, got {event!r}")
+            if tool_input.get("exit_code") != payload["tool_response"]["exit_code"]:
+                raise AssertionError(f"Codex PostToolUse should preserve result metadata, got {event!r}")
+            if "stdout" in tool_input or "stderr" in tool_input:
+                raise AssertionError(f"Codex PostToolUse should omit command output, got {event!r}")
+
+
+def test_codex_post_tool_use_redacts_tool_output(cli_path: str, root: Path) -> None:
+    large_stdout = "x" * (80 * 1024)
+    payload = {
+        "session_id": "codex-session",
+        "turn_id": "turn-large-post-tool",
+        "cwd": "/tmp/project",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Bash",
+        "tool_input": {"command": "python3 noisy.py"},
+        "tool_response": {
+            "exit_code": 42,
+            "status": "failed",
+            "stdout": large_stdout,
+            "stderr": "short stderr",
+            "private_blob": "y" * (80 * 1024),
+        },
+    }
+
+    stdout, frame = run_feed_hook(
+        cli_path,
+        root / "cmux-codex-large-posttool.sock",
+        payload,
+        None,
+    )
+    if stdout != {}:
+        raise AssertionError(f"Codex PostToolUse telemetry should not emit a decision: {stdout!r}")
+    params = frame["params"]
+    if params.get("wait_timeout_seconds") != 0:
+        raise AssertionError(f"Codex PostToolUse should not wait for Feed reply: {frame!r}")
+    event = params["event"]
+    tool_input = event.get("tool_input")
+    if not isinstance(tool_input, dict):
+        raise AssertionError(f"Codex PostToolUse should forward summarized tool_input: {event!r}")
+    if tool_input.get("_cmux_sanitized") is not True:
+        raise AssertionError(f"PostToolUse response was not marked sanitized: {tool_input!r}")
+    if tool_input.get("exit_code") != 42 or tool_input.get("status") != "failed":
+        raise AssertionError(f"large PostToolUse response did not preserve metadata: {tool_input!r}")
+    if "stdout" in tool_input or "stderr" in tool_input or "private_blob" in tool_input:
+        raise AssertionError(f"unrecognized large PostToolUse fields should be omitted: {tool_input!r}")
+    if tool_input.get("stdout_text_omitted") is not True:
+        raise AssertionError(f"stdout omission marker was not recorded: {tool_input!r}")
+    if tool_input.get("stderr_text_omitted") is not True:
+        raise AssertionError(f"stderr omission marker was not recorded: {tool_input!r}")
+
+
+def test_codex_post_tool_use_accepts_native_event_label(cli_path: str, root: Path) -> None:
+    payload = {
+        "session_id": "codex-session",
+        "turn_id": "turn-native-post-tool",
+        "cwd": "/tmp/project",
+        "event": "post_tool_use",
+        "tool_name": "Bash",
+        "tool_input": {"command": "printf hi"},
+        "tool_response": {
+            "exit_code": 7,
+            "stdout": "hi",
+        },
+    }
+
+    stdout, frame = run_feed_hook(
+        cli_path,
+        root / "cmux-codex-native-posttool.sock",
+        payload,
+        None,
+    )
+    if stdout != {}:
+        raise AssertionError(f"native Codex post_tool_use telemetry should not emit a decision: {stdout!r}")
+    event = frame["params"]["event"]
+    if event.get("hook_event_name") != "PostToolUse":
+        raise AssertionError(f"native Codex post_tool_use should classify as PostToolUse: {event!r}")
+    tool_input = event.get("tool_input")
+    if not isinstance(tool_input, dict):
+        raise AssertionError(f"native Codex post_tool_use should forward sanitized metadata: {event!r}")
+    if tool_input.get("exit_code") != 7 or "stdout" in tool_input:
+        raise AssertionError(f"native Codex post_tool_use should omit command output: {event!r}")
+
+
+def test_codex_post_tool_use_oversize_payload_is_dropped_before_decode(cli_path: str, root: Path) -> None:
+    payload = {
+        "session_id": "codex-session",
+        "turn_id": "turn-oversize-post-tool",
+        "cwd": "/tmp/project",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Bash",
+        "tool_input": {"command": "python3 very_noisy.py"},
+        "tool_response": {
+            "exit_code": 0,
+            "stdout": "x" * (1024 * 1024 + 128),
+        },
+    }
+
+    stdout, frame = run_feed_hook_optional_frame(
+        cli_path,
+        root / "cmux-codex-oversize-posttool.sock",
+        payload,
+        None,
+    )
+    if stdout != {}:
+        raise AssertionError(f"oversize Codex PostToolUse should fall back to empty output: {stdout!r}")
+    if frame is not None:
+        raise AssertionError(f"oversize Codex PostToolUse should not send feed.push: {frame!r}")
+
+
+def test_codex_lifecycle_oversize_payload_is_dropped_before_decode(cli_path: str, root: Path) -> None:
+    payload = {
+        "session_id": "codex-session",
+        "turn_id": "turn-oversize-pre-compact",
+        "cwd": "/tmp/project",
+        "hook_event_name": "PreCompact",
+        "transcript": "x" * (1024 * 1024 + 128),
+    }
+
+    stdout, frame = run_feed_hook_optional_frame(
+        cli_path,
+        root / "cmux-codex-oversize-precompact.sock",
+        payload,
+        None,
+    )
+    if stdout != {}:
+        raise AssertionError(f"oversize Codex PreCompact should fall back to empty output: {stdout!r}")
+    if frame is not None:
+        raise AssertionError(f"oversize Codex PreCompact should not send feed.push: {frame!r}")
+
+
+def test_codex_post_tool_use_keeps_cwd_from_tool_input(cli_path: str, root: Path) -> None:
+    payload = {
+        "session_id": "codex-session",
+        "turn_id": "turn-post-tool-cwd",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Bash",
+        "tool_input": {
+            "command": "printf hi",
+            "cwd": "/tmp/request-cwd",
+        },
+        "tool_response": {
+            "exit_code": 0,
+            "stdout": "hi",
+        },
+    }
+
+    stdout, frame = run_feed_hook(
+        cli_path,
+        root / "cmux-codex-posttool-cwd.sock",
+        payload,
+        None,
+    )
+    if stdout != {}:
+        raise AssertionError(f"Codex PostToolUse telemetry should not emit a decision: {stdout!r}")
+    event = frame["params"]["event"]
+    if event.get("cwd") != "/tmp/request-cwd":
+        raise AssertionError(f"Codex PostToolUse should keep cwd from tool_input: {event!r}")
+    tool_input = event.get("tool_input")
+    if not isinstance(tool_input, dict):
+        raise AssertionError(f"Codex PostToolUse should forward sanitized tool_response metadata: {event!r}")
+    if tool_input.get("exit_code") != 0 or "stdout" in tool_input:
+        raise AssertionError(f"Codex PostToolUse should forward metadata without stdout: {event!r}")
+
+
+def test_codex_post_tool_use_without_response_keeps_request_input(cli_path: str, root: Path) -> None:
+    payload = {
+        "session_id": "codex-session",
+        "turn_id": "turn-post-tool-request-only",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Bash",
+        "tool_input": {
+            "command": "printf hi",
+            "cwd": "/tmp/request-cwd",
+        },
+    }
+
+    stdout, frame = run_feed_hook(
+        cli_path,
+        root / "cmux-codex-posttool-request-only.sock",
+        payload,
+        None,
+    )
+    if stdout != {}:
+        raise AssertionError(f"Codex PostToolUse telemetry should not emit a decision: {stdout!r}")
+    event = frame["params"]["event"]
+    tool_input = event.get("tool_input")
+    if tool_input != payload["tool_input"]:
+        raise AssertionError(f"Codex PostToolUse without response should preserve request input: {event!r}")
+    if isinstance(tool_input, dict) and tool_input.get("_cmux_sanitized") is True:
+        raise AssertionError(f"request input fallback should not be sanitized: {event!r}")
+
+
+def test_non_codex_post_tool_use_keeps_request_input(cli_path: str, root: Path) -> None:
+    payload = {
+        "session_id": "antigravity-session",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "run_command",
+        "tool_input": {
+            "command": "cat important.txt",
+            "cwd": "/tmp/antigravity-cwd",
+            "path": "important.txt",
+        },
+        "tool_response": {
+            "stdout": "secret output that must not replace the request input",
+            "exit_code": 0,
+        },
+    }
+
+    stdout, frame = run_feed_hook(
+        cli_path,
+        root / "cmux-antigravity-posttool.sock",
+        payload,
+        None,
+        source="antigravity",
+    )
+    if stdout != {}:
+        raise AssertionError(f"Antigravity PostToolUse telemetry should not emit a decision: {stdout!r}")
+    event = frame["params"]["event"]
+    tool_input = event.get("tool_input")
+    if tool_input != payload["tool_input"]:
+        raise AssertionError(f"non-Codex PostToolUse should preserve request input: {event!r}")
+    if isinstance(tool_input, dict) and tool_input.get("_cmux_sanitized") is True:
+        raise AssertionError(f"non-Codex request input should not be sanitized: {event!r}")
+
+
 def test_claude_subagent_stop_stays_distinct_feed_telemetry(cli_path: str, root: Path) -> None:
     stdout, frame = run_feed_hook(
         cli_path,
@@ -2503,6 +2826,14 @@ def main() -> int:
             test_codex_permission_request_is_nonblocking_telemetry(cli_path, root)
             test_codex_permission_decisions_do_not_block_approval_reviewer(cli_path, root)
             test_codex_pre_tool_use_is_telemetry_not_actionable(cli_path, root)
+            test_codex_lifecycle_feed_events_stay_telemetry_and_distinct(cli_path, root)
+            test_codex_post_tool_use_redacts_tool_output(cli_path, root)
+            test_codex_post_tool_use_accepts_native_event_label(cli_path, root)
+            test_codex_post_tool_use_oversize_payload_is_dropped_before_decode(cli_path, root)
+            test_codex_lifecycle_oversize_payload_is_dropped_before_decode(cli_path, root)
+            test_codex_post_tool_use_keeps_cwd_from_tool_input(cli_path, root)
+            test_codex_post_tool_use_without_response_keeps_request_input(cli_path, root)
+            test_non_codex_post_tool_use_keeps_request_input(cli_path, root)
             test_claude_subagent_stop_stays_distinct_feed_telemetry(cli_path, root)
         except Exception as exc:
             print(f"FAIL: {exc}")
