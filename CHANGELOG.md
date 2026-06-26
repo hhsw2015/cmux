@@ -2,6 +2,49 @@
 
 All notable changes to cmux are documented here.
 
+## [0.70.0] - 2026-06-25
+
+### Added
+- Sleepy Mode: menubar screensaver + caffeinate (#6740).
+- iOS Computers: "Add Computer" row at end of list (#6802).
+- iOS landing: centered TestFlight + GitHub CTA at bottom (#6782).
+- Web Download button: platform picker (#6679).
+- Basic auth modal support (#2500).
+
+### Changed
+- Merge upstream/main: 35 cmux commits + bonsplit submodule bump (P64).
+- Bonsplit: stabilize tab shortcut hint width (#154).
+- Migrate TS typecheck to tsgo (TypeScript 7 native preview) (#6733).
+- Remove Cancel button from iOS sign-in screen (#6797).
+- iOS landing: size two hero phones like gallery images (#6779).
+- Remote-tmux: place mirror new tab per cmux newTabPosition, inheriting active tab cwd (#6439).
+- ci(reload-build): build CmuxIrohFFI xcframework on the iOS lane (#6716).
+
+### Fixed
+- Clear iOS workspaces when computers are forgotten (#6771).
+- Smooth iOS keyboard tracking.
+- Tab bar modifier-hold layout shift (#6786).
+- macOS 27 symbol launch crash (#6728).
+- ssh-tmux remote path and attach seeding (#6778).
+- Scope iOS workspaces by Mac and build tag (#6772).
+- Gate iOS onboarding only on seen state (#6783).
+- iOS Computers remove confirmation row anchoring (#6770).
+- Fit user prompt bubble width on first render (#6727).
+- Bound waitlist email validation with fail-open timeouts (#6765).
+- Assert minimum tmux 3.2 for cmux ssh-tmux (#6755).
+- Reject undeliverable waitlist emails (MX + disposable check) (#6735).
+- Default workspace-scoped commands to caller's workspace, not the focused one (#6757).
+- Remote SSH workspace cwd tracking (#6747).
+- Restore WebAuthn bridge injection (#6718).
+- iOS auth error handling (#6752).
+- Coalesce duplicate iOS paired Macs (#6737).
+- Only double precise scroll deltas for gesture devices (high-res mouse runaway scroll) (#6449).
+- iOS: accurate connection error + per-route Ping on Computers screen (#6730).
+- macOS auth handoff for non-Chrome browsers.
+- Animate iOS page images in on scroll like home page (#6729).
+- Open local HTML previews without stealing focus.
+- Canvas keyboard shortcut routing (#6704).
+
 ## [0.69.0] - 2026-06-24
 
 ### Added
