@@ -2,6 +2,58 @@
 
 All notable changes to cmux are documented here.
 
+## [0.71.0] - 2026-06-30
+
+### Added
+- Make the right-sidebar Dock a full panel container (terminals + browsers + splits) (#6219).
+- Right-sidebar Dock: cross-container surface transfer (live drag between main split area and Dock).
+- agent-session: reliable tracking system + Codex picker GUI + debug trace (#6798).
+- Stream agent prose to the iOS chat as it generates (default-off) (#6731).
+- Bonsplit: icon-only display for pinned browser tabs (#157) + shortcut hint + click-to-mute preservation.
+- Present option to proceed anyway on invalid SSL cert error (#3711) — browser SSL trust bypass via message handler.
+- Re-land #6532: Fix workspace group drag drop intent (#6724) — same bug, new approach.
+- Always enable agent prose streaming for codex (#7066).
+- Update built-in Pi hook integration (#7008).
+- Add notifications.suppressOnlyFocusedSurface to narrow implicit notification withdraw (#6893).
+
+### Changed
+- Merge upstream/main: 42 cmux commits + bonsplit submodule bump (P65).
+- Reclaim hidden terminal renderers on memory pressure (#7050).
+- Preserve plain ANTHROPIC_MODEL inside cmux so Opus keeps Max-plan 1M window (#7059).
+- Move logBackground I/O off the main thread (async background-log writer) (#6823).
+- Cache git dirty snapshots between watcher events (#6795).
+- Bound app termination with a force-exit watchdog (#6758) (#6837).
+- Gate DEV/staging builds off the public Sparkle update train (#6817).
+- Resolve update to the latest available version at install time (#6366) (#6853).
+
+### Fixed
+- Align iOS workspace toolbar titles (#7056).
+- Dock terminal reattach on move (#7055).
+- Browser mTLS client certificate challenges (#7040).
+- Browser webview divider resizing (#7038).
+- Claude shim mutual exec loop (#7010).
+- Browser: don't let unfocused omnibar submit on physical Enter (#6250) (#6818).
+- iOS: run voice-dictation audio activation off the main thread (fix mic-button animation lag) (#6868).
+- Guard workspace sidebar LazyVStack against layout re-livelock (#6384) (#6870).
+- iOS edge swipe-back over terminal/browser surfaces (#6824).
+- iOS: collapse composer band after send (fix stale-tall measurement) (#6811).
+- zsh shell integration printing `file exists` under noclobber (#6714) (#6815).
+- Remote tmux: open shared ControlMaster before the attach burst so all sessions mirror (#6732) (#6839).
+- macOS 27 launch crash in restore-path content views (#6745) (#6890).
+- Non-existent commands in /docs/api CLI reference (#5469) (#6851).
+- Notification-list layout thrash on launch (#5794) (#6886).
+- Never park the main thread waiting on a socket callback (#5830) (#6860).
+- Native fullscreen unreachable on the main window (#5933) (#6830).
+- Stale sidebar agent status refresh (#6804).
+- iOS pairing stuck on "Checking…": honor manual fallback sign-in callback after popup ends (#6819).
+- Garbled Claude Code TUI in cmux ssh remote workspaces (#6352) (#6831).
+- iOS: fit attachment/image chat bubble to capped width (#6355) (#6820).
+- Light-theme white-on-white from host/surface theme divergence (#6411) (#6896).
+- Workspace color picker hue drift (#6762).
+- Cmd+I (Show Notifications) breaking italics in browser text editors (#6862).
+- Emit fish-safe resume cwd-guard without POSIX brace grouping (#6328).
+- Deflake display resolution liveness UI test (#6062).
+
 ## [0.70.0] - 2026-06-25
 
 ### Added
