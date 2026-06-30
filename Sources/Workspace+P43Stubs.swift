@@ -45,7 +45,6 @@ extension WorkspaceGroupNewPlacement {
 
 
 extension Workspace {
-    var layoutMode: WorkspaceLayoutMode { get { .splits } set {} }
     var canvasModel: CanvasModel { CanvasModel(metricsProvider: { CanvasMetrics() }) }
 }
 

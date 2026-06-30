@@ -184,16 +184,8 @@ cmux list-workspaces --json`}
       <Cmd
         name="new-workspace"
         desc={t("newWorkspaceDesc")}
-        cli={`cmux new-workspace
-cmux new-workspace --name "Build Server" --cwd ~/projects/app`}
-        socket={`{"id":"ws-new","method":"workspace.create","params":{"name":"Build Server","cwd":"~/projects/app"}}`}
-      />
-      <Cmd
-        name="rename-workspace"
-        desc={t("renameWorkspaceDesc")}
-        cli={`cmux rename-workspace "New Title"
-cmux rename-workspace --workspace workspace:2 "New Title"`}
-        socket={`{"id":"ws-rename","method":"workspace.rename","params":{"workspace_id":"<id>","title":"New Title"}}`}
+        cli={`cmux new-workspace`}
+        socket={`{"id":"ws-new","method":"workspace.create","params":{}}`}
       />
       <Cmd
         name="select-workspace"
@@ -225,15 +217,23 @@ cmux new-split down`}
         socket={`{"id":"split-new","method":"surface.split","params":{"direction":"right"}}`}
       />
       <Cmd
-        name="list-surfaces"
-        desc={t("listSurfacesDesc")}
-        cli={`# socket-only (no CLI wrapper)`}
+        name="list-panels"
+        desc={t("listPanelsDesc")}
+        cli={`cmux list-panels
+cmux list-panels --json`}
         socket={`{"id":"surface-list","method":"surface.list","params":{}}`}
       />
       <Cmd
-        name="focus-surface"
+        name="list-pane-surfaces"
+        desc={t("listPaneSurfacesDesc")}
+        cli={`cmux list-pane-surfaces
+cmux list-pane-surfaces --json`}
+        socket={`{"id":"pane-surfaces","method":"pane.surfaces","params":{}}`}
+      />
+      <Cmd
+        name="focus-panel"
         desc={t("focusSurfaceDesc")}
-        cli={`# socket-only (no CLI wrapper)`}
+        cli={`cmux focus-panel --panel <id>`}
         socket={`{"id":"surface-focus","method":"surface.focus","params":{"surface_id":"<id>"}}`}
       />
 
@@ -243,16 +243,26 @@ cmux new-split down`}
         name="send"
         desc={t("sendDesc")}
         cli={`cmux send "echo hello"
-cmux send --surface surface:4 "deploy"
 cmux send "ls -la\\n"`}
         socket={`{"id":"send-text","method":"surface.send_text","params":{"text":"echo hello\\n"}}`}
       />
       <Cmd
         name="send-key"
         desc={t("sendKeyDesc")}
-        cli={`cmux send-key enter
-cmux send-key --surface surface:4 enter`}
+        cli={`cmux send-key enter`}
         socket={`{"id":"send-key","method":"surface.send_key","params":{"key":"enter"}}`}
+      />
+      <Cmd
+        name="send --surface"
+        desc={t("sendSurfaceDesc")}
+        cli={`cmux send --surface <id> "command"`}
+        socket={`{"id":"send-surface","method":"surface.send_text","params":{"surface_id":"<id>","text":"command"}}`}
+      />
+      <Cmd
+        name="send-key --surface"
+        desc={t("sendKeySurfaceDesc")}
+        cli={`cmux send-key --surface <id> enter`}
+        socket={`{"id":"send-key-surface","method":"surface.send_key","params":{"surface_id":"<id>","key":"enter"}}`}
       />
 
       <DocsHeading level={2} id="notification-commands">{t("notificationCommands")}</DocsHeading>
@@ -280,39 +290,38 @@ cmux list-notifications --json`}
 
       <DocsHeading level={2} id="sidebar-metadata">{t("sidebarMetadata")}</DocsHeading>
       <p>{t("sidebarMetadataDesc")}</p>
-      <Callout type="warn">{t("sidebarSocketNote")}</Callout>
 
       <Cmd
         name="set-status"
         desc={t("setStatusDesc")}
         cli={`cmux set-status build "compiling" --icon hammer --color "#ff9500" --priority 80
 cmux set-status deploy "v1.2.3" --workspace workspace:2`}
-        socket={`// CLI only (no v2 socket method)`}
+        socket={`set_status build compiling --icon=hammer --color=#ff9500 --priority=80 --tab=<workspace-uuid>`}
       />
       <Cmd
         name="clear-status"
         desc={t("clearStatusDesc")}
         cli={`cmux clear-status build`}
-        socket={`// CLI only (no v2 socket method)`}
+        socket={`clear_status build --tab=<workspace-uuid>`}
       />
       <Cmd
         name="list-status"
         desc={t("listStatusDesc")}
         cli={`cmux list-status`}
-        socket={`// CLI only (no v2 socket method)`}
+        socket={`list_status --tab=<workspace-uuid>`}
       />
       <Cmd
         name="set-progress"
         desc={t("setProgressDesc")}
         cli={`cmux set-progress 0.5 --label "Building..."
 cmux set-progress 1.0 --label "Done"`}
-        socket={`// CLI only (no v2 socket method)`}
+        socket={`set_progress 0.5 --label=Building... --tab=<workspace-uuid>`}
       />
       <Cmd
         name="clear-progress"
         desc={t("clearProgressDesc")}
         cli={`cmux clear-progress`}
-        socket={`// CLI only (no v2 socket method)`}
+        socket={`clear_progress --tab=<workspace-uuid>`}
       />
       <Cmd
         name="log"
@@ -320,27 +329,27 @@ cmux set-progress 1.0 --label "Done"`}
         cli={`cmux log "Build started"
 cmux log --level error --source build "Compilation failed"
 cmux log --level success -- "All 42 tests passed"`}
-        socket={`// CLI only (no v2 socket method)`}
+        socket={`log --level=error --source=build --tab=<workspace-uuid> -- Compilation failed`}
       />
       <Cmd
         name="clear-log"
         desc={t("clearLogDesc")}
         cli={`cmux clear-log`}
-        socket={`// CLI only (no v2 socket method)`}
+        socket={`clear_log --tab=<workspace-uuid>`}
       />
       <Cmd
         name="list-log"
         desc={t("listLogDesc")}
         cli={`cmux list-log
 cmux list-log --limit 5`}
-        socket={`// CLI only (no v2 socket method)`}
+        socket={`list_log --limit=5 --tab=<workspace-uuid>`}
       />
       <Cmd
         name="sidebar-state"
         desc={t("sidebarStateDesc")}
         cli={`cmux sidebar-state
 cmux sidebar-state --workspace workspace:2`}
-        socket={`// CLI only (no v2 socket method)`}
+        socket={`sidebar_state --tab=<workspace-uuid>`}
       />
 
       <DocsHeading level={2} id="utility-commands">{t("utilityCommands")}</DocsHeading>

@@ -2,8 +2,8 @@ import CmuxFoundation
 import CoreGraphics
 import Foundation
 
-enum SidebarDropPlanner {
-    static func indicator(
+struct SidebarDropPlanner {
+    func indicator(
         draggedTabId: UUID?,
         targetTabId: UUID?,
         tabIds: [UUID],
@@ -45,7 +45,7 @@ enum SidebarDropPlanner {
         return indicatorForInsertionPosition(legalInsertionPosition, tabIds: tabIds)
     }
 
-    static func targetIndex(
+    func targetIndex(
         draggedTabId: UUID,
         targetTabId: UUID?,
         indicator: SidebarDropIndicator?,
@@ -100,7 +100,7 @@ enum SidebarDropPlanner {
     ///   - pointerY: Pointer y within the hovered row, used to pick the edge.
     ///   - targetHeight: The hovered row's height, paired with `pointerY`.
     /// - Returns: The clamped insertion index and the indicator to render.
-    static func crossWindowInsertion(
+    func crossWindowInsertion(
         targetTabId: UUID?,
         draggedIsPinned: Bool,
         indicator: SidebarDropIndicator?,
@@ -140,7 +140,7 @@ enum SidebarDropPlanner {
     /// dragged into a window with no existing pins must still land at the front
     /// (index `0`), not wherever the pointer happens to be, otherwise it would
     /// sit below unpinned rows and break the leading-pinned-segment invariant.
-    private static func legalCrossWindowInsertionPosition(
+    private func legalCrossWindowInsertionPosition(
         proposedInsertionPosition: Int,
         draggedIsPinned: Bool,
         tabIds: [UUID],
@@ -162,7 +162,7 @@ enum SidebarDropPlanner {
     }
 
     /// Returns whether sidebar rows should publish frame anchors for workspace drop targeting.
-    static func shouldCollectWorkspaceDropTargets(
+    func shouldCollectWorkspaceDropTargets(
         draggedTabId: UUID?,
         isBonsplitWorkspaceDropActive: Bool = false
     ) -> Bool {
@@ -174,7 +174,7 @@ enum SidebarDropPlanner {
         case existingWorkspace(UUID)
     }
 
-    static func workspaceAction(
+    func workspaceAction(
         for point: CGPoint,
         targets: [WorkspaceDropTarget]
     ) -> WorkspaceDropAction? {
@@ -200,7 +200,7 @@ enum SidebarDropPlanner {
         )
     }
 
-    private static func workspaceAction(
+    private func workspaceAction(
         for point: CGPoint,
         in target: WorkspaceDropTarget,
         orderedTargets: [WorkspaceDropTarget]
@@ -224,7 +224,7 @@ enum SidebarDropPlanner {
         return .existingWorkspace(target.workspaceId)
     }
 
-    private static func legalNewWorkspaceInsertionIndex(
+    private func legalNewWorkspaceInsertionIndex(
         _ proposedInsertion: Int,
         orderedTargets: [WorkspaceDropTarget]
     ) -> Int {
@@ -237,7 +237,7 @@ enum SidebarDropPlanner {
         return max(clamped, pinnedCount)
     }
 
-    private static func workspaceIndicator(
+    private func workspaceIndicator(
         forInsertionIndex insertionIndex: Int,
         orderedTargets: [WorkspaceDropTarget]
     ) -> SidebarDropIndicator {
@@ -248,7 +248,7 @@ enum SidebarDropPlanner {
         return SidebarDropIndicator(tabId: orderedTargets[clampedInsertion].workspaceId, edge: .top)
     }
 
-    private static func indicatorForInsertionPosition(_ insertionPosition: Int, tabIds: [UUID]) -> SidebarDropIndicator {
+    private func indicatorForInsertionPosition(_ insertionPosition: Int, tabIds: [UUID]) -> SidebarDropIndicator {
         let clampedInsertion = max(0, min(insertionPosition, tabIds.count))
         if clampedInsertion >= tabIds.count {
             return SidebarDropIndicator(tabId: nil, edge: .bottom)
@@ -256,7 +256,7 @@ enum SidebarDropPlanner {
         return SidebarDropIndicator(tabId: tabIds[clampedInsertion], edge: .top)
     }
 
-    private static func insertionPositionForIndicator(_ indicator: SidebarDropIndicator, tabIds: [UUID]) -> Int? {
+    private func insertionPositionForIndicator(_ indicator: SidebarDropIndicator, tabIds: [UUID]) -> Int? {
         if let tabId = indicator.tabId {
             guard let targetTabIndex = tabIds.firstIndex(of: tabId) else { return nil }
             return indicator.edge == .bottom ? targetTabIndex + 1 : targetTabIndex
@@ -264,12 +264,12 @@ enum SidebarDropPlanner {
         return tabIds.count
     }
 
-    private static func preferredEdge(fromIndex: Int, targetTabId: UUID, tabIds: [UUID]) -> SidebarDropEdge {
+    private func preferredEdge(fromIndex: Int, targetTabId: UUID, tabIds: [UUID]) -> SidebarDropEdge {
         guard let targetIndex = tabIds.firstIndex(of: targetTabId) else { return .top }
         return fromIndex < targetIndex ? .bottom : .top
     }
 
-    private static func legalInsertionPosition(
+    private func legalInsertionPosition(
         draggedTabId: UUID,
         proposedInsertionPosition: Int,
         tabIds: [UUID],
@@ -299,13 +299,13 @@ enum SidebarDropPlanner {
         return clampedInsertion
     }
 
-    static func edgeForPointer(locationY: CGFloat, targetHeight: CGFloat) -> SidebarDropEdge {
+    func edgeForPointer(locationY: CGFloat, targetHeight: CGFloat) -> SidebarDropEdge {
         guard targetHeight > 0 else { return .top }
         let clampedY = min(max(locationY, 0), targetHeight)
         return clampedY < (targetHeight / 2) ? .top : .bottom
     }
 
-    private static func resolvedTargetIndex(from sourceIndex: Int, insertionPosition: Int, totalCount: Int) -> Int {
+    private func resolvedTargetIndex(from sourceIndex: Int, insertionPosition: Int, totalCount: Int) -> Int {
         let clampedInsertion = max(0, min(insertionPosition, totalCount))
         let adjusted = clampedInsertion > sourceIndex ? clampedInsertion - 1 : clampedInsertion
         return max(0, min(adjusted, max(0, totalCount - 1)))
