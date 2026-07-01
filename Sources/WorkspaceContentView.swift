@@ -6,7 +6,6 @@ import CmuxFoundation
 import Bonsplit
 import CmuxWorkspaces
 import CmuxTerminal
-
 enum TmuxOverlayExperimentTarget: String, CaseIterable, Codable, Sendable {
     case surface
     case bonsplitPane
@@ -20,7 +19,6 @@ enum TmuxOverlayExperimentTarget: String, CaseIterable, Codable, Sendable {
         self == .tmuxActivePane
     }
 }
-
 struct TmuxOverlayExperimentSettings {
     static let enabledKey = "tmuxOverlayExperimentEnabled"
     static let targetKey = "tmuxOverlayExperimentTarget"
@@ -144,8 +142,9 @@ struct WorkspaceContentView: View {
     private var workspacePresentationMode = WorkspacePresentationModeSettings.defaultMode.rawValue
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject var notificationStore: TerminalNotificationStore
-
-    private var isMinimalMode: Bool { WorkspacePresentationModeSettings.mode(for: workspacePresentationMode) == .minimal }
+#if DEBUG
+    @Environment(\.minimalModeInvalidationProbe) private var minimalModeInvalidationProbe
+#endif
 
     static func panelVisibleInUI(
         isWorkspaceVisible: Bool,
@@ -159,6 +158,9 @@ struct WorkspaceContentView: View {
     }
 
     var body: some View {
+#if DEBUG
+        let _ = { minimalModeInvalidationProbe.workspaceContentBody?() }()
+#endif
         let appearance = PanelAppearance.fromConfig(config)
         let usesWorkspacePaneOverlay = TmuxOverlayExperimentSettings.target().usesWorkspacePaneOverlay
         let isWorkspaceManuallyUnread = notificationStore.hasManualUnread(forTabId: workspace.id)
@@ -420,7 +422,7 @@ struct WorkspaceContentView: View {
                 }
             }
         }
-        .ignoresSafeArea(.container, edges: (isMinimalMode && !isFullScreen) ? .top : [])
+        .modifier(WorkspaceContentMinimalModeSafeAreaModifier(isFullScreen: isFullScreen))
         .onChange(of: topTabsVisibility) { _, new in
             // Visibility setting changed (user toggled in Settings). Make sure
             // the controller's resting baseline reflects the new mode.

@@ -1483,9 +1483,9 @@ extension Workspace {
                 approvalStoreURL: SurfaceResumeApprovalStore.defaultURL()
             )
             let remoteStartupCommand = remoteTerminalStartupCommand()
-            let restoredBindingLaunch: SurfaceResumeStartupLaunch? = if remoteStartupCommand != nil {
-                effectiveResumeBindingForStartup?
-                    .startupInputWithLauncherScript(allowLauncherScript: false)
+            let restoresRemoteWorkspaceTerminalSnapshot = remoteStartupCommand != nil && snapshot.terminal?.isRemoteTerminal != false
+            let restoredBindingLaunch: SurfaceResumeStartupLaunch? = if restoresRemoteWorkspaceTerminalSnapshot {
+                effectiveResumeBindingForStartup?.remoteStartupInputWithLauncherScript(allowLauncherScript: false)
                     .map(SurfaceResumeStartupLaunch.input)
             } else {
                 effectiveResumeBindingForStartup.flatMap {
@@ -1600,8 +1600,6 @@ extension Workspace {
                 snapshot.terminal?.isRemoteTerminal == false &&
                 restoredRemotePTYAttachCommand == nil
             let effectiveRemoteStartupCommand = suppressWorkspaceRemoteStartupCommand ? nil : remoteStartupCommand
-            let restoresRemoteWorkspaceTerminalSnapshot =
-                remoteConfiguration != nil && snapshot.terminal?.isRemoteTerminal == true
             let localWorkingDirectory = effectiveRemoteStartupCommand == nil &&
                 restoredRemotePTYAttachCommand == nil &&
                 !restoresRemoteWorkspaceTerminalSnapshot &&
