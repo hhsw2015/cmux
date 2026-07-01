@@ -2,6 +2,36 @@
 
 All notable changes to cmux are documented here.
 
+## [0.72.0] - 2026-07-01
+
+### Added
+- Empty workspace group entrypoints (#7061).
+
+### Changed
+- Merge upstream/main: 22 cmux commits (P66).
+- Use full-height primary terminal output on iOS (#7071).
+
+### Fixed
+- Preserve iOS chat scroll momentum (#7109).
+- Refine iOS workspace picker loading state (#7114).
+- Sidebar scroll render storm (#7117).
+- Recover iOS terminal render pipeline stalls (#7098).
+- iOS Mac switching from workspace picker (#7096).
+- Revert "Flatten mobile terminal switcher menu" (#7097).
+- iOS workspace filter machine snapshots (#7095).
+- iOS workspace title toolbar island (#7092).
+- Minimal mode toggle relayout hang (#7076).
+- oh-my-zsh agent auto-resume (#7089).
+- Workspace number shortcut rebinding (#5616).
+- Mobile chat shortcut scroll edge blur (#7051).
+- iOS Mac picker device parity (#7083).
+- iOS chat keyboard scroll edge bleed (#7072).
+- Browser downloads from subframes (#6756).
+- Keep iOS workspace toolbar visible before sessions (#7078).
+- iOS chat transcript expansion anchoring (#7057).
+- Titlebar SF Symbol raster sizing (#7074).
+- Keep mobile chat GUI cached during reconnect (#7064).
+
 ## [0.71.0] - 2026-06-30
 
 ### Added
