@@ -2,6 +2,53 @@
 
 All notable changes to cmux are documented here.
 
+## [0.73.0] - 2026-07-03
+
+### Added
+- Zoom shortcuts for text file previews (#7157).
+- Arc cookie import (#7224).
+- Configurable TextBox submit actions (#6656).
+- Give every window its own independent Dock (#7144).
+- RTL terminal shaping support (#7019).
+- Route terminal file URL links to the OS (#7122).
+
+### Changed
+- Merge upstream/main: 37 cmux commits + submodule bumps (P67).
+- ghostty submodule: 120c6c68c → 963fdcc92 (RTL shaping + render-grid span fix; renderer_realized retained).
+- vendor/bonsplit submodule: bump to include tab focus width fix (#155).
+- Keep managed default theme when user sets individual color keys (#7217).
+- Rescue split/new-tab cwd inheritance while a resumed agent holds the pane (#7155, #7165).
+- Gate agent notifications on background work + per-category settings (#7129).
+- perf(sidebar): throttle immediate observation publisher to coalesce agent title bursts (#6807).
+- Decouple scroll from full-window relayout (drop NSWindow.didUpdate follow-up wake) (#6801).
+- Keep forkable sessions with stale pids (#6803).
+- iOS: rebuild the disconnected Your Computers screen as a real list (#7156).
+
+### Fixed
+- iOS render grid row replay after resize (#7176).
+- iOS terminal typing render-grid drift (#7175).
+- iOS terminal cold attach first paint (#7172).
+- iOS render-grid load garble (#7159, #7171).
+- iOS terminal: fill available vertical space; fix stale viewport echo letterbox (#7150).
+- Run file explorer git status without optional locks (#7173).
+- iOS toolbar glass and lifecycle (#7116).
+- Scrub Claude resume env before nested exec.
+- iOS GUI chat top flash (#7108).
+- iOS bottom-scroll viewport anchoring (#7153).
+- Tab bar width shift on surface focus (#6812).
+- Allow account switching after native sign-in (#7146).
+- iOS render grid column drift.
+- iOS workspace back button rendering as an oversized glass square (#7148).
+- remote-tmux: recover interactive SSH auth when a ProxyCommand transport closes silently (#7020).
+- Report_pwd display labels as file roots (#4608).
+- Browser pane: keep loopback bypass for *.localhost under "Exclude simple hostnames" (#6827).
+- Allow Cmd-Space IME switching in workspace description editor (#6956).
+- remote-tmux: strip the screen/tmux ESC k window-title escape from mirror output (#7023).
+- Open the ssh-tmux auth ControlMaster in the foreground (drop -f) for a deterministic handoff (#7063).
+- Keep iOS chat top edge visible during keyboard (#7112).
+- iOS: let sideloaded dev builds pair with release Macs (--prod-auth) and explain cross-channel QR failures truthfully (#7149).
+- Fix cmux iOS toolbar regression.
+
 ## [0.72.0] - 2026-07-01
 
 ### Added
