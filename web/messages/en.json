@@ -1004,15 +1004,23 @@
           "scrollSpeed": "Multiplier applied to terminal scroll wheel and trackpad deltas. Higher values scroll faster; lower values scroll slower.",
           "showTextBoxOnNewTerminals": "Show the beta TextBox input by default for newly created workspaces, terminal tabs, and terminal splits.",
           "focusTextBoxOnNewTerminals": "Focus the beta TextBox input by default for newly created workspaces, terminal tabs, and terminal splits. Focusing also shows the TextBox.",
-          "surfaceHibernation": {
-            "enabled": "Enable Surface Hibernation.",
-            "idleSeconds": "Minimum seconds without input or focus before the live-surface cap may reclaim a background shell terminal. A short confirmation settle window (~60s) still applies on top of this.",
-            "unmountedIdleSeconds": "Seconds a workspace must stay unmounted (hidden) — with its terminal quiet — before its idle shell surfaces hibernate even when the live-surface cap is not exceeded.",
-            "maxLiveSurfaces": "Maximum simultaneously live terminal surfaces to keep before cmux hibernates eligible background terminals, oldest first. Every live surface counts toward the limit; only idle, non-busy, non-visible ones are reclaimed."
-          }
+          "textBoxDefaultSubmitAction": "Default TextBox submit action ID for new terminal sessions. Use text-entry for plain input or one of the configured action IDs.",
+          "textBoxSubmitActions": "Configurable TextBox submit actions shown on the submit button, Shift-Tab cycle, and right-click menu.",
+          "textBoxSubmitActionId": "Stable action ID referenced by terminal.textBoxDefaultSubmitAction.",
+          "textBoxSubmitActionTitle": "Menu label for this submit action.",
+          "textBoxSubmitActionKind": "Whether this action submits plain Text Entry or expands a shell command template.",
+          "textBoxSubmitActionCommandTemplate": "Shell command template for commandTemplate actions. Include {{prompt}} to shell-quote the prompt into the command.",
+          "textBoxSubmitActionPreservePromptAfterLaunch": "When true, launch commandTemplate without the prompt and keep the prompt in the TextBox for the active agent.",
+          "textBoxSubmitActionSystemImage": "Fallback SF Symbol name shown on the submit button.",
+          "textBoxSubmitActionAssetName": "Optional app asset catalog image name shown on the submit button.",
+          "textBoxSubmitActionImagePath": "Optional PNG or image file path shown on the submit button. Tilde is expanded.",
+          "textBoxSubmitActionBackgroundColorHex": "Action color metadata as RGB or RGBA hex. The submit button fill stays white and only changes opacity between enabled and disabled states."
         },
         "notifications": {
-          "suppressOnlyFocusedSurface": "When enabled, a notification banner is auto-withdrawn only when its surface is the exact focused surface. A banner delivered for a non-focused surface in the currently visible workspace stays up until you focus that surface (or click/dismiss it), instead of being retracted when the workspace becomes visible. Off preserves the legacy workspace-visibility withdraw."
+          "suppressOnlyFocusedSurface": "When enabled, a notification banner is auto-withdrawn only when its surface is the exact focused surface. A banner delivered for a non-focused surface in the currently visible workspace stays up until you focus that surface (or click/dismiss it), instead of being retracted when the workspace becomes visible. Off preserves the legacy workspace-visibility withdraw.",
+          "agentPermissionPrompt": "Notify when an agent (e.g. Claude Code) is blocked waiting for your permission to run a tool. On by default, since this is the alert you must act on to unblock the agent.",
+          "agentTurnComplete": "When to notify that an agent finished a turn. whenIdle (default) suppresses the notification while the agent still has a running background task or a pending scheduled wakeup, so you are pinged once work truly drains. always notifies on every turn end; never disables it.",
+          "agentIdleReminder": "Notify when an agent has been idle waiting for your input (about 60s after a turn ends). Suppressed while background work from the last turn is still pending, so a running build or watcher does not trigger a false waiting alert."
         },
         "browser": {
           "defaultSearchEngine": "Default search engine for non-URL browser address bar queries. Use custom with customSearchEngineURLTemplate for arbitrary providers.",
@@ -1049,7 +1057,7 @@
           "defaultLayout": "Default layout for newly opened diff viewers. The toolbar layout toggle persists the user's last choice; an explicit `cmux diff --layout` option overrides both."
         },
         "shortcuts": {
-          "when": "Optional per-action context predicates (VS Code-style `when` clauses), keyed by cmux action id. Each value is a boolean expression over context keys combined with !, &&, ||, and parentheses. Boolean keys: sidebarFocus, browserFocus, markdownFocus, terminalFocus, commandPaletteVisible, terminalFindVisible, workspaceCanvasLayout. Typed keys support comparisons: the string sidebarMode (files, find, sessions, feed, or dock) and the integers paneCount and workspaceCount. Comparison operators are ==, !=, =~ (regex), <, <=, >, >=, and `in [a, b]`; an unknown or absent key reads as false. The boolean literals true and false are also accepted; `key == false` is the same as `!key`. The action's shortcut only fires (and only conflicts with other shortcuts) when the clause holds. Examples: { \"selectWorkspaceByNumber\": \"!sidebarFocus\" } selects workspaces with Ctrl+1–9 everywhere except when the right sidebar is focused; { \"selectSurfaceByNumber\": \"sidebarMode == 'find' && paneCount > 1\" } scopes a binding to the Find sidebar when the workspace has multiple panes.",
+          "when": "Optional per-action context predicates (VS Code-style `when` clauses), keyed by cmux action id. Each value is a boolean expression over context keys combined with !, &&, ||, and parentheses. Boolean keys: sidebarFocus, browserFocus, markdownFocus, filePreviewTextEditorFocus, terminalFocus, commandPaletteVisible, terminalFindVisible, workspaceCanvasLayout. Typed keys support comparisons: the string sidebarMode (files, find, sessions, feed, or dock) and the integers paneCount and workspaceCount. Comparison operators are ==, !=, =~ (regex), <, <=, >, >=, and `in [a, b]`; an unknown or absent key reads as false. The boolean literals true and false are also accepted; `key == false` is the same as `!key`. The action's shortcut only fires (and only conflicts with other shortcuts) when the clause holds. Examples: { \"selectWorkspaceByNumber\": \"!sidebarFocus\" } selects workspaces with Ctrl+1–9 everywhere except when the right sidebar is focused; { \"selectSurfaceByNumber\": \"sidebarMode == 'find' && paneCount > 1\" } scopes a binding to the Find sidebar when the workspace has multiple panes.",
           "showModifierHoldHints": "Show shortcut-hint chips while holding Cmd or Control."
         }
       },
@@ -1275,7 +1283,6 @@
       "workspaceCommands": "Workspace commands",
       "listWorkspacesDesc": "List all open workspaces.",
       "newWorkspaceDesc": "Create a new workspace.",
-      "renameWorkspaceDesc": "Rename a workspace's title. Note: create uses name, rename uses title.",
       "selectWorkspaceDesc": "Switch to a specific workspace.",
       "currentWorkspaceDesc": "Get the currently active workspace.",
       "closeWorkspaceDesc": "Close a workspace.",
@@ -1295,7 +1302,6 @@
       "clearNotificationsDesc": "Clear all notifications.",
       "sidebarMetadata": "Sidebar metadata commands",
       "sidebarMetadataDesc": "Set status pills, progress bars, and log entries in the sidebar for any workspace. Useful for build scripts, CI integrations, and AI coding agents that want to surface state at a glance.",
-      "sidebarSocketNote": "Sidebar status, progress, and log entries are CLI-only. There is no v2 JSON-RPC socket method for them yet, so drive these through the cmux CLI.",
       "setStatusDesc": "Set a sidebar status pill. Use a unique key so different tools can manage their own entries.",
       "clearStatusDesc": "Remove a sidebar status entry by key.",
       "listStatusDesc": "List all sidebar status entries for a workspace.",
@@ -2009,7 +2015,8 @@
   "afterSignIn": {
     "title": "Signed in to cmux",
     "body": "If cmux did not open automatically, use the button below.",
-    "button": "Return to cmux"
+    "button": "Return to cmux",
+    "switchAccountButton": "Use a different account"
   },
   "landing": {
     "bestTerminal": {

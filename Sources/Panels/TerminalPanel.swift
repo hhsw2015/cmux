@@ -96,6 +96,8 @@ final class TerminalPanel: Panel, ObservableObject {
     /// "exited" overlay so the user knows the process is gone.
     @Published private(set) var herdrPaneExited: Bool = false
 
+    let shellActivity = TerminalPanelShellActivityModel()
+    let textBoxState = TerminalPanelTextBoxState()
     @Published var isTextBoxActive: Bool = false
     @Published var textBoxContent: String = ""
     @Published var textBoxAttachments: [TextBoxAttachment] = []
@@ -155,6 +157,22 @@ final class TerminalPanel: Panel, ObservableObject {
 
     var displayIcon: String? {
         "terminal.fill"
+    }
+
+    func updateShellActivityState(_ state: PanelShellActivityState) {
+        if shellActivity.state != state {
+            shellActivity.state = state
+        }
+        textBoxState.updateShellActivityState(state)
+    }
+
+    func recordTextBoxLaunchCommand(_ command: String) {
+        guard let boundedContext = TextBoxAgentDetection.boundedLaunchCommandContext(from: command) else { return }
+        textBoxState.recordLaunchCommand(boundedContext)
+    }
+
+    func clearTextBoxLaunchCommand() {
+        textBoxState.clearLaunchCommand()
     }
 
     var isDirty: Bool {
@@ -288,6 +306,31 @@ final class TerminalPanel: Panel, ObservableObject {
             externalIo: externalIo
         )
         self.init(workspaceId: workspaceId, surface: surface)
+        if Self.startsAtOwnedPrompt(
+            configTemplate: configTemplate,
+            initialCommand: initialCommand,
+            tmuxStartCommand: tmuxStartCommand,
+            initialInput: initialInput
+        ) {
+            updateShellActivityState(.promptIdle)
+        }
+    }
+
+    private static func startsAtOwnedPrompt(
+        configTemplate: CmuxSurfaceConfigTemplate?,
+        initialCommand: String?,
+        tmuxStartCommand: String?,
+        initialInput: String?
+    ) -> Bool {
+        isBlank(initialCommand) &&
+            isBlank(tmuxStartCommand) &&
+            isBlank(initialInput) &&
+            isBlank(configTemplate?.command) &&
+            isBlank(configTemplate?.initialInput)
+    }
+
+    private static func isBlank(_ value: String?) -> Bool {
+        value?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true
     }
 
     func updateTitle(_ newTitle: String) {
@@ -323,9 +366,10 @@ final class TerminalPanel: Panel, ObservableObject {
     func preferTextBoxInputWhenActivated() {
         isTextBoxActive = true
         textBoxInputFocusIntent = .textBox
-        shouldFocusTextBoxWhenAvailable = false
+        shouldFocusTextBoxWhenAvailable = true
         shouldOpenTextBoxFilePickerWhenAvailable = false
         shouldHideTextBoxOnNextEscape = false
+        focusTextBoxIfNeeded()
     }
 
     func showTextBoxInputWhenAvailable() {
@@ -631,7 +675,7 @@ final class TerminalPanel: Panel, ObservableObject {
         }
         textBoxContent = fixture.beforeText + fixture.afterText
         textBoxAttachments = attachment.map { [$0] } ?? []
-        textBoxInputView.installDebugInlineFixture(
+        textBoxInputView.installInlineControlFixture(
             attachment,
             beforeText: fixture.beforeText,
             afterText: fixture.afterText
