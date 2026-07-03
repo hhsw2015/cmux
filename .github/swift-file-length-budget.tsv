@@ -4,7 +4,7 @@
 34697	CLI/cmux.swift
 18880	Sources/ContentView.swift
 18235	Sources/AppDelegate.swift
-15984	Sources/GhosttyTerminalView.swift
+15999	Sources/GhosttyTerminalView.swift
 14508	Sources/Workspace.swift
 14270	Sources/TerminalController.swift
 12398	cmuxTests/AppDelegateShortcutRoutingTests.swift
@@ -69,7 +69,7 @@
 1380	cmuxUITests/MenuKeyEquivalentRoutingUITests.swift
 1363	Sources/CMUXInstalledExtensionSidebarHostView.swift
 1360	Sources/Feed/FeedButtonStyleDebugWindowController.swift
-1324	Sources/GhosttyConfig.swift
+1336	Sources/GhosttyConfig.swift
 1317	Sources/FileExplorerStore.swift
 1310	Sources/HerdrClient/HerdrPanelOpener.swift
 1296	Sources/Feed/FeedCoordinator.swift
@@ -97,7 +97,7 @@
 1027	Packages/macOS/CmuxSettingsUI/Sources/CmuxSettingsUI/Sections/AppSection.swift
 1025	cmuxTests/CmuxSSHURLRequestTests.swift
 1021	cmuxUITests/TerminalCmdClickUITests.swift
-1009	Sources/WorkspaceContentView.swift
+1010	Sources/WorkspaceContentView.swift
 1009	cmuxTests/CmuxTopSnapshotScopeTests.swift
 1002	Packages/iOS/CmuxMobileShell/Tests/CmuxMobileShellTests/PairedMacBackupTests.swift
 1000	cmuxTests/DockSocketLifecycleTests.swift

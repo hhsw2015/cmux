@@ -1269,6 +1269,18 @@ struct GhosttyConfig {
         guard let newConfigFileSize else { return true }
         return newConfigFileSize == 0
     }
+
+    /// P67 shim: forward the appearance summary to the package's canonical
+    /// `CmuxTerminalCore.GhosttyConfig` implementation. Fork's local
+    /// `GhosttyConfig` still exists for the many members upstream removed
+    /// (quickTerminalPosition, sidebarAppearance*, etc.) but new upstream
+    /// call sites (GhosttyTerminalView.userAppearanceConfigSummary) reference
+    /// the summary type through this shadowing type.
+    typealias UserAppearanceConfigSummary = CmuxTerminalCore.GhosttyConfig.UserAppearanceConfigSummary
+
+    static func userAppearanceConfigSummary(configPaths: [String]) -> UserAppearanceConfigSummary {
+        CmuxTerminalCore.GhosttyConfig.userAppearanceConfigSummary(configPaths: configPaths)
+    }
 }
 
 extension NSColor {

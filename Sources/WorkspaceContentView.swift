@@ -252,6 +252,7 @@ struct WorkspaceContentView: View {
                         workspace.bonsplitController.focusPane(paneId)
                     }
                 } else {
+                    let isSplit = workspace.bonsplitController.allPaneIds.count > 1 || workspace.bonsplitController.allTabIds.count > 1
                     WorkspacePanelContentHostView(
                         workspace: workspace,
                         panel: panel,

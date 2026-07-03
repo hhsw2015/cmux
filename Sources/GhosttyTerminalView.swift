@@ -5046,10 +5046,10 @@ final class TerminalSurface: Identifiable, ObservableObject {
 
     @discardableResult
     @MainActor
-    func applyMobileViewportLimit(columns: Int, rows: Int, reason: String) -> Bool {
+    func applyMobileViewportLimit(columns: Int, rows: Int, reason: String) -> (columns: Int, rows: Int)? {
         guard let surface = liveSurfaceForGhosttyAccess(reason: "applyMobileViewportLimit") else {
             hostedView.setMobileViewportBorder(size: nil, drawRight: false, drawBottom: false)
-            return false
+            return nil
         }
         let size = ghostty_surface_size(surface)
         let cellWidth = max(1, Int(size.cell_width_px))
@@ -5091,12 +5091,12 @@ final class TerminalSurface: Identifiable, ObservableObject {
         )
         #endif
 
-        guard sizeChanged else { return false }
+        guard sizeChanged else { return (columns: max(1, columns), rows: max(1, rows)) }
         ghostty_surface_set_size(surface, appliedWidth, appliedHeight)
         lastPixelWidth = appliedWidth
         lastPixelHeight = appliedHeight
         ghostty_surface_refresh(surface)
-        return true
+        return (columns: max(1, columns), rows: max(1, rows))
     }
 
     @discardableResult
@@ -15980,5 +15980,20 @@ struct GhosttyTerminalView: NSViewRepresentable {
         coordinator.hostedView = nil
 
         nsView.subviews.forEach { $0.removeFromSuperview() }
+    }
+}
+
+// P67 shim for DockSplitStore+SurfaceTransfer: fork's local `TerminalSurface`
+// (in this file) predates the CmuxTerminal package's split-out API. Upstream
+// callers now use `foregroundProcessID()`; provide the same here by calling
+// libghostty directly.
+extension TerminalSurface {
+    @MainActor
+    func foregroundProcessID() -> Int? {
+        guard let surface = liveSurfaceForGhosttyAccess(reason: "foregroundProcessID") else {
+            return nil
+        }
+        let pid = ghostty_surface_foreground_pid(surface)
+        return pid > 0 ? Int(pid) : nil
     }
 }
