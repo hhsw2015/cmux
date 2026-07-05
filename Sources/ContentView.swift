@@ -637,8 +637,10 @@ private final class WindowTmuxWorkspacePaneOverlayController: NSObject {
             rootView: TmuxWorkspacePaneOverlayView(
                 unreadRects: [],
                 flashRect: nil,
+                activePaneBorderRect: nil,
+                activePaneBorderColorHex: nil,
                 flashStartedAt: nil,
-                flashReason: nil
+                flashReason: nil,
             )
         )
         super.init()
@@ -702,8 +704,10 @@ private final class WindowTmuxWorkspacePaneOverlayController: NSObject {
             hostingView.rootView = TmuxWorkspacePaneOverlayView(
                 unreadRects: model.unreadRects,
                 flashRect: model.flashRect,
+                activePaneBorderRect: nil,
+                activePaneBorderColorHex: nil,
                 flashStartedAt: model.flashStartedAt,
-                flashReason: model.flashReason
+                flashReason: model.flashReason,
             )
             containerView.alphaValue = 1
             containerView.isHidden = false
@@ -713,8 +717,10 @@ private final class WindowTmuxWorkspacePaneOverlayController: NSObject {
             hostingView.rootView = TmuxWorkspacePaneOverlayView(
                 unreadRects: [],
                 flashRect: nil,
+                activePaneBorderRect: nil,
+                activePaneBorderColorHex: nil,
                 flashStartedAt: nil,
-                flashReason: nil
+                flashReason: nil,
             )
             containerView.alphaValue = 0
             containerView.isHidden = true
