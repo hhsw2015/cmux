@@ -2,6 +2,13 @@
 
 All notable changes to cmux are documented here.
 
+## [0.74.0] - 2026-07-05
+
+### Changed
+- Merge upstream/main: 26 cmux commits (client config API, ssh RemoteCommand fix, mouse OSC 22 cursor shape, iOS chat/theme, cmuxd-remote v2 protocol, Fork Conversation menu).
+- ghostty submodule: 963fdcc92 → 261def7df (merge manaflow/main +276 including kitty/gfx generation stamps, selection gesture, glyf rasterize, VOUCHED updates).
+- Wire 14 new upstream Sources/*.swift files to pbxproj (PaneChromeSettings, ForkConversation menu, Mobile AgentChat lifecycle, MobileHostTerminalTheme, SurfaceResumeCommandCanonicalizer+CodexUpdateCheck).
+
 ## [0.73.0] - 2026-07-03
 
 ### Added
