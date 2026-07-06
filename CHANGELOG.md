@@ -2,6 +2,12 @@
 
 All notable changes to cmux are documented here.
 
+## [0.75.0] - 2026-07-06
+
+### Changed
+- Merge upstream/main: 27 cmux commits (CMUX Vault cloud sync CLI + multi-tenant backend + dashboard, Codex session restore authority fix, control socket CLI handling off main thread, client config env guard for local builds, sidebar inline rename with IME + double-click support, macOS-15 CI → WarpBuild).
+- Resolve `.github/swift-file-length-budget.tsv` conflicts by keeping the max cap per path so fork's larger files stay tracked.
+
 ## [0.74.0] - 2026-07-05
 
 ### Changed
