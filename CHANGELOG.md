@@ -2,6 +2,11 @@
 
 All notable changes to cmux are documented here.
 
+## [0.78.0] - 2026-07-06
+
+### Changed
+- Merge upstream/main: 2 cmux commits (Claude Code PushNotification tool bridged into cmux notifications, localized compare SEO pages).
+
 ## [0.77.0] - 2026-07-06
 
 ### Changed
