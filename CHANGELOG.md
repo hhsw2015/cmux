@@ -2,6 +2,14 @@
 
 All notable changes to cmux are documented here.
 
+## [0.77.0] - 2026-07-06
+
+### Changed
+- Merge upstream/main: 50 cmux commits (Pro pricing + Stripe checkout with webhook-driven entitlements, subrouter tenant management with Stack teams + AI accounts dashboard, `__internal_flags` feature flag inspector, mobile connect titlebar accessory, symlink-aware settings config watcher, resume suspended Cloud VMs on demand).
+- Resolve `Sources/Update/UpdateTitlebarAccessory.swift` to keep both `rightSidebarToggleIdentifier` (fork) and `mobileConnectIdentifier` (upstream).
+- Resolve `Sources/cmuxApp.swift` to keep both `cmux.quickTerminal` (fork) and `cmux.proBadgeDebug` (upstream) shortcut ids.
+- Resolve `.github/swift-file-length-budget.tsv` conflicts with per-path max cap.
+
 ## [0.76.0] - 2026-07-06
 
 ### Changed
