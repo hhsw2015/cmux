@@ -40496,13 +40496,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usage: cmux sessions list [options]\n       cmux sessions [options]\n\nPrint saved agent session records from ~/.cmuxterm/*-hook-sessions.json.\nThis command does not require a running cmux socket.\n\nOptions:\n  --agent <name>        Filter to one agent, for example codex or claude\n  --session <id>        Filter to one agent session id\n  --workspace <id>      Filter to one saved workspace id\n  --surface <id>        Filter to one saved surface id\n  --cwd <text>          Filter by saved cwd or launch working directory\n  --state-dir <path>    Override hook state directory\n  --codex-home <path>   Override the default Codex home used for transcript checks\n  --limit <n>           Limit text output (default: 100)\n  --all                 Print all matches\n  --json                Print structured JSON\n\nCodex rows include whether the saved id exists in CODEX_HOME/session_index.jsonl\nand whether a matching transcript file exists under CODEX_HOME/sessions or\nCODEX_HOME/archived_sessions.\n\nCompatibility aliases:\n  cmux sessions debug [options]\n  cmux session-debug [options]"
+            "value": "Usage: cmux sessions list [options]\n       cmux sessions [options]\n\nPrint saved agent session records from ~/.cmuxterm/*-hook-sessions.json.\nThis command does not require a running cmux socket.\nBy default, broad output shows active, restorable, or transcript-backed records.\nPass --all to inspect every saved hook record.\n\nOptions:\n  --agent <name>        Filter to one agent, for example codex or claude\n  --session <id>        Filter to one agent session id\n  --workspace <id>      Filter to one saved workspace id\n  --surface <id>        Filter to one saved surface id\n  --cwd <text>          Filter by saved cwd or launch working directory\n  --state-dir <path>    Override hook state directory\n  --codex-home <path>   Override the default Codex home used for transcript checks\n  --limit <n>           Limit text output (default: 100)\n  --all                 Print all matches\n  --json                Print structured JSON\n\nCodex rows include whether the saved id exists in CODEX_HOME/session_index.jsonl\nand whether a matching transcript file exists under CODEX_HOME/sessions or\nCODEX_HOME/archived_sessions.\n\nCompatibility aliases:\n  cmux sessions debug [options]\n  cmux session-debug [options]"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usage: cmux sessions list [options]\n       cmux sessions [options]\n\n~/.cmuxterm/*-hook-sessions.json から保存済みエージェントセッション記録を表示します。\nこのコマンドは実行中の cmux ソケットを必要としません。\n\nOptions:\n  --agent <name>        1 つのエージェントに絞り込みます。例: codex または claude\n  --session <id>        1 つのエージェントセッション ID に絞り込みます\n  --workspace <id>      保存済みワークスペース ID に絞り込みます\n  --surface <id>        保存済みサーフェス ID に絞り込みます\n  --cwd <text>          保存済み cwd または起動時の作業ディレクトリで絞り込みます\n  --state-dir <path>    フック状態ディレクトリを上書きします\n  --codex-home <path>   トランスクリプト確認に使う既定の Codex ホームを上書きします\n  --limit <n>           テキスト出力の件数を制限します（既定: 100）\n  --all                 すべての一致を表示します\n  --json                構造化 JSON を出力します\n\nCodex 行には、保存済み ID が CODEX_HOME/session_index.jsonl に存在するか、\n一致するトランスクリプトファイルが CODEX_HOME/sessions または\nCODEX_HOME/archived_sessions に存在するかが含まれます。\n\nCompatibility aliases:\n  cmux sessions debug [options]\n  cmux session-debug [options]"
+            "value": "使用方法: cmux sessions list [options]\n       cmux sessions [options]\n\n~/.cmuxterm/*-hook-sessions.json から保存済みエージェントセッション記録を表示します。\nこのコマンドは実行中の cmux ソケットを必要としません。\n既定では、広範な出力にはアクティブ、復元可能、またはトランスクリプト付きの記録だけを表示します。\n保存済みフック記録をすべて確認するには --all を指定します。\n\nオプション:\n  --agent <name>        1 つのエージェントに絞り込みます。例: codex または claude\n  --session <id>        1 つのエージェントセッション ID に絞り込みます\n  --workspace <id>      保存済みワークスペース ID に絞り込みます\n  --surface <id>        保存済みサーフェス ID に絞り込みます\n  --cwd <text>          保存済み cwd または起動時の作業ディレクトリで絞り込みます\n  --state-dir <path>    フック状態ディレクトリを上書きします\n  --codex-home <path>   トランスクリプト確認に使う既定の Codex ホームを上書きします\n  --limit <n>           テキスト出力の件数を制限します（既定: 100）\n  --all                 すべての一致を表示します\n  --json                構造化 JSON を出力します\n\nCodex 行には、保存済み ID が CODEX_HOME/session_index.jsonl に存在するか、\n一致するトランスクリプトファイルが CODEX_HOME/sessions または\nCODEX_HOME/archived_sessions に存在するかが含まれます。\n\n互換エイリアス:\n  cmux sessions debug [options]\n  cmux session-debug [options]"
           }
         }
       }
@@ -146021,6 +146021,125 @@
           "stringUnit": {
             "state": "translated",
             "value": "控制哪些 HTTP（非 HTTPS）主機可以在 cmux 中開啟而不顯示警告提示。預設包含 localhost、*.localhost、127.0.0.1、::1、0.0.0.0 和 *.localtest.me。"
+          }
+        }
+      }
+    },
+    "sidebar.workspace.rename.field.accessibilityLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename workspace"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペース名を変更"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إعادة تسمية مساحة العمل"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preimenuj radni prostor"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Omdøb arbejdsområde"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arbeitsbereich umbenennen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renombrar espacio de trabajo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renommer l'espace de travail"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rinomina area di lavoro"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작업 공간 이름 변경"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gi arbeidsområdet nytt navn"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zmień nazwę przestrzeni roboczej"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renomear Área de Trabalho"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переименовать рабочее пространство"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เปลี่ยนชื่อเวิร์กสเปซ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışma Alanını Yeniden Adlandır"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перейменувати робочу область"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重命名工作区"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新命名工作區"
           }
         }
       }
