@@ -2898,6 +2898,7 @@ final class UpdateTitlebarAccessoryController {
     private var startupScanWorkItems: [DispatchWorkItem] = []
     private let controlsIdentifier = NSUserInterfaceItemIdentifier("cmux.titlebarControls")
     private let rightSidebarToggleIdentifier = NSUserInterfaceItemIdentifier("cmux.titlebarRightSidebarToggle")
+    private let mobileConnectIdentifier = NSUserInterfaceItemIdentifier("cmux.titlebarMobileConnect")
     private let controlsControllers = NSHashTable<TitlebarControlsAccessoryViewController>.weakObjects()
     private let rightSidebarToggleControllers = NSHashTable<TitlebarRightSidebarToggleAccessoryViewController>.weakObjects()
     private var sidebarTrailingEdgesByWindow: [ObjectIdentifier: CGFloat] = [:]
@@ -3069,6 +3070,12 @@ final class UpdateTitlebarAccessoryController {
             rightSidebarToggleControllers.add(rightToggle)
         }
 
+        if !window.titlebarAccessoryViewControllers.contains(where: { $0.view.identifier == mobileConnectIdentifier }) {
+            let mobileConnect = MobileConnectTitlebarAccessoryViewController()
+            mobileConnect.view.identifier = mobileConnectIdentifier
+            window.addTitlebarAccessoryViewController(mobileConnect)
+        }
+
         attachedWindows.add(window)
         applyAccessoryVisibility(for: window)
 
@@ -3091,7 +3098,8 @@ final class UpdateTitlebarAccessoryController {
             || window.styleMask.contains(.fullScreen)
         for accessory in window.titlebarAccessoryViewControllers
             where accessory.view.identifier == controlsIdentifier
-                || accessory.view.identifier == rightSidebarToggleIdentifier {
+                || accessory.view.identifier == rightSidebarToggleIdentifier
+                || accessory.view.identifier == mobileConnectIdentifier {
             accessory.isHidden = shouldHide
             accessory.view.isHidden = shouldHide
             accessory.view.alphaValue = shouldHide ? 0 : 1
@@ -3106,7 +3114,7 @@ final class UpdateTitlebarAccessoryController {
         }
         let matchingIndices = window.titlebarAccessoryViewControllers.indices.reversed().filter { index in
             let id = window.titlebarAccessoryViewControllers[index].view.identifier
-            return id == controlsIdentifier || id == rightSidebarToggleIdentifier
+            return id == controlsIdentifier || id == rightSidebarToggleIdentifier || id == mobileConnectIdentifier
         }
         guard !matchingIndices.isEmpty || attachedWindows.contains(window) else { return }
 
