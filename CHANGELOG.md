@@ -2,6 +2,12 @@
 
 All notable changes to cmux are documented here.
 
+## [0.76.0] - 2026-07-06
+
+### Changed
+- Merge upstream/main: 39 cmux commits (KeyboardShortcutsSection virtualized NSTableView list with recycling + wheel forwarding, ShortcutListModel extraction, serialized shortcut binding writes with rollback invalidation, workspace drag payload eager-materialization on main thread, sidebar inline rename enter-commit + font-magnification fixes).
+- Consolidate `SidebarTabDragPayload`: dropped fork's inline enum in ContentView.swift, extended upstream's extracted `Sources/Sidebar/SidebarTabDragPayload.swift` struct with `currentProcessMarkerType` + `hasTransferType(in:)`.
+
 ## [0.75.0] - 2026-07-06
 
 ### Changed
