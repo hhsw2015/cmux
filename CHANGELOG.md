@@ -2,6 +2,13 @@
 
 All notable changes to cmux are documented here.
 
+## [0.79.0] - 2026-07-07
+
+### Changed
+- Merge upstream/main: 50 cmux commits (fork validation cache/PID identity, TestFlight external review retries + auto-submit, remote agent cwd trust hardening, iOS terminal picker refresh scroll reset, VM lifecycle in `cloud ls`, `cmux ai-accounts` CLI upload, host-scoped custom terminal upload commands, mux TUI docs + API/CLI spec, dev toolchains baked into Cloud VM base image, main window stranded-screen re-clamp, closed window regression test, sidebar directory reports moved to support file).
+- Merge bonsplit submodule: 3 upstream commits (tab item view + BonsplitController tests).
+- Fork-side dedup after merge: dropped duplicate `SurfaceResumeBindingIndex` / `ProcessDetectedResumeIndexes` / `setCustomTitle` blocks that upstream extracted; dropped upstream's `closeTabWarningDefaults` / `agentSessionAutoResumeDefaults` stored properties on `Workspace` (fork's init discards those params).
+
 ## [0.78.0] - 2026-07-06
 
 ### Changed
