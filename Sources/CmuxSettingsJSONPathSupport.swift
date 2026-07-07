@@ -391,6 +391,7 @@ extension CmuxSettingsFileStore {
         "terminal.quickTerminalInitialCommand",
         "terminal.quickTerminalWorkingDirectory",
         "terminal.quickTerminalInitialInput",
+        "terminal.uploadCommands",
         "notifications.dockBadge",
         "notifications.showInMenuBar",
         "notifications.unreadPaneRing",

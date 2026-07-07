@@ -140,6 +140,7 @@ extension RestorableAgentSessionIndex {
                 snapshot: snapshot,
                 updatedAt: capturedAt,
                 processIDs: scopedProcessIDsByPanelKey[key] ?? [],
+                agentProcessIDs: [process.pid],
                 sessionIDSource: sessionIDResolution.source
             )
         }
@@ -238,6 +239,7 @@ extension RestorableAgentSessionIndex {
         var openCodeProcesses: [
             (
                 panelKey: PanelKey,
+                processID: Int,
                 observed: VaultObservedAgentProcess,
                 environment: [String: String],
                 workingDirectory: String?,
@@ -265,6 +267,7 @@ extension RestorableAgentSessionIndex {
             let panelKey = PanelKey(workspaceId: workspaceId, panelId: panelId)
             openCodeProcesses.append((
                 panelKey: panelKey,
+                processID: process.pid,
                 observed: observed,
                 environment: processArguments.environment,
                 workingDirectory: cwd,
@@ -328,6 +331,7 @@ extension RestorableAgentSessionIndex {
                 snapshot: snapshot,
                 updatedAt: capturedAt,
                 processIDs: scopedProcessIDsByPanelKey[process.panelKey] ?? [],
+                agentProcessIDs: [process.processID],
                 sessionIDSource: .explicit
             )
         }
@@ -910,19 +914,15 @@ private extension CmuxVaultAgentSessionIDSource {
 
 private extension CmuxTopProcessSnapshot {
     func cmuxScopedProcessIDsByPanelKey() -> [RestorableAgentSessionIndex.PanelKey: Set<Int>] {
-        var processIDsByPanelKey: [RestorableAgentSessionIndex.PanelKey: Set<Int>] = [:]
+        var result: [RestorableAgentSessionIndex.PanelKey: Set<Int>] = [:]
         for process in cmuxScopedProcesses() {
-            guard let workspaceId = process.cmuxWorkspaceID,
-                  let panelId = process.cmuxSurfaceID else {
-                continue
+            if let workspaceId = process.cmuxWorkspaceID, let panelId = process.cmuxSurfaceID {
+                result[.init(workspaceId: workspaceId, panelId: panelId), default: []].insert(process.pid)
             }
-            let key = RestorableAgentSessionIndex.PanelKey(workspaceId: workspaceId, panelId: panelId)
-            processIDsByPanelKey[key, default: []].insert(process.pid)
         }
-        return processIDsByPanelKey
+        return result
     }
 }
-
 private extension Array where Element == String {
     var hasOpenCodeForkFlag: Bool {
         contains { $0 == "--fork" || $0.hasPrefix("--fork=") }

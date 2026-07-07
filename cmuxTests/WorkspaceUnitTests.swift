@@ -3293,7 +3293,6 @@ final class WorkspaceCreationWorkingDirectoryInheritanceTests: XCTestCase {
 
         try body()
     }
-
     private func makeDetachedWorkspaceTestTransfer(
         sourceWorkspaceId: UUID,
         directory: String? = nil,
@@ -3311,6 +3310,7 @@ final class WorkspaceCreationWorkingDirectoryInheritanceTests: XCTestCase {
             isLoading: false,
             isPinned: false,
             directory: directory,
+            directoryIsTrustedRemoteReport: false,
             directoryDisplayLabel: nil,
             ttyName: nil,
             cachedTitle: nil,
@@ -6860,7 +6860,7 @@ final class WorkspacePanelGitBranchTests: XCTestCase {
             return
         }
 
-        workspace.updatePanelDirectory(panelId: firstPanelId, directory: liveDirectory)
+        workspace.updateRemotePanelDirectory(panelId: firstPanelId, directory: liveDirectory)
 
         let orderedPanelIds = workspace.sidebarOrderedPanelIds()
         XCTAssertEqual(orderedPanelIds, [firstPanelId, requestedPanel.id])

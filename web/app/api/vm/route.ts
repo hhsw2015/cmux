@@ -83,6 +83,7 @@ export async function GET(request: Request): Promise<Response> {
       const vms = entries.map((entry) => ({
         id: entry.providerVmId,
         provider: entry.provider,
+        status: entry.status,
         image: entry.image,
         imageVersion: entry.imageVersion,
         createdAt: entry.createdAt,
@@ -315,6 +316,8 @@ export async function POST(request: Request): Promise<Response> {
               action: "Retry with a fresh `cmux vm new`. If it fails again, copy the details and contact support.",
               details: {
                 idempotencyKeySet: !!err.idempotencyKey,
+                failureCode: err.code,
+                failureMessage: err.message,
               },
             });
           }

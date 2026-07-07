@@ -12,6 +12,7 @@ import {
 import type { AttachEndpoint, SSHEndpoint, VMHandle } from "../services/vms/drivers";
 import { VmProviderGateway, type VmProviderGatewayShape } from "../services/vms/providerGateway";
 import {
+  FAILED_CREATE_RETRY_WINDOW_MS,
   VmRepository,
   VmRepositoryLive,
   type CloudVmRow,
@@ -19,6 +20,7 @@ import {
 } from "../services/vms/repository";
 import {
   VmCreateCreditsInsufficientError,
+  VmCreateFailedError,
   VmCreateInProgressError,
   VmDatabaseError,
   VmLimitExceededError,
@@ -31,6 +33,7 @@ import {
   execVm,
   openAttachEndpoint,
   openSshEndpoint,
+  reconcileVmProviderStatuses,
 } from "../services/vms/workflows";
 
 const runDbTests = process.env.CMUX_DB_TEST === "1";
@@ -934,6 +937,7 @@ describe("VM Effect workflows", () => {
       deleteBillingGrant: () => Effect.void,
       beginCreate: () => Effect.succeed({ inserted: true, vm: requested }),
       activeLimitCandidates: () => Effect.succeed([]),
+      reconciliationCandidates: () => Effect.succeed([]),
       markProviderObservedStatus: () => Effect.succeed(false),
       markCreateRunning: () => Effect.succeed(running),
       markCreateFailed: () => Effect.void,
@@ -1641,6 +1645,118 @@ describe("VM Effect workflows", () => {
     expect(oldVm?.destroyedAt).toBeInstanceOf(Date);
   });
 
+  dbTest("cron reconcile updates drifted rows from provider status", async () => {
+    if (!sql) throw new Error("test database not initialized");
+    await sql`truncate cloud_vm_billing_grants, cloud_vm_usage_events, cloud_vm_leases, cloud_vms restart identity cascade`;
+    await sql`
+      insert into cloud_vms (user_id, billing_team_id, billing_plan_id, provider, provider_vm_id, image_id, status, updated_at)
+      values ('user-workflow-reconcile-drift', 'team-workflow-reconcile-drift', 'free', 'freestyle', 'provider-vm-reconcile-drift', 'snapshot-test', 'running', now() - interval '10 minutes')
+    `;
+
+    const provider: VmProviderGatewayShape = {
+      ...unusedProviderGateway(),
+      getStatus: () => Effect.succeed("paused" as const),
+    };
+
+    const result = await Effect.runPromise(
+      reconcileVmProviderStatuses().pipe(Effect.provide(providerLayer(provider))),
+    );
+
+    expect(result).toEqual({
+      checked: 1,
+      updated: 1,
+      destroyed: 0,
+      skipped: 0,
+      skippedNoGetStatus: false,
+    });
+
+    const [vm] = await sql<{ status: string }[]>`
+      select status from cloud_vms
+      where provider_vm_id = 'provider-vm-reconcile-drift'
+    `;
+    expect(vm?.status).toBe("paused");
+  });
+
+  dbTest("cron reconcile skips destroyed rows", async () => {
+    if (!sql) throw new Error("test database not initialized");
+    await sql`truncate cloud_vm_billing_grants, cloud_vm_usage_events, cloud_vm_leases, cloud_vms restart identity cascade`;
+    await sql`
+      insert into cloud_vms (user_id, billing_team_id, billing_plan_id, provider, provider_vm_id, image_id, status, destroyed_at, updated_at)
+      values
+        ('user-workflow-reconcile-live', 'team-workflow-reconcile-skip', 'free', 'freestyle', 'provider-vm-reconcile-live', 'snapshot-test', 'running', null, now() - interval '10 minutes'),
+        ('user-workflow-reconcile-destroyed', 'team-workflow-reconcile-skip', 'free', 'freestyle', 'provider-vm-reconcile-destroyed', 'snapshot-test', 'destroyed', now(), now() - interval '20 minutes')
+    `;
+
+    const statusCalls: string[] = [];
+    const provider: VmProviderGatewayShape = {
+      ...unusedProviderGateway(),
+      getStatus: (_provider, vmId) =>
+        Effect.sync(() => {
+          statusCalls.push(vmId);
+          return "paused" as const;
+        }),
+    };
+
+    const result = await Effect.runPromise(
+      reconcileVmProviderStatuses().pipe(Effect.provide(providerLayer(provider))),
+    );
+
+    expect(result.checked).toBe(1);
+    expect(statusCalls).toEqual(["provider-vm-reconcile-live"]);
+    const [destroyedVm] = await sql<{ status: string }[]>`
+      select status from cloud_vms
+      where provider_vm_id = 'provider-vm-reconcile-destroyed'
+    `;
+    expect(destroyedVm?.status).toBe("destroyed");
+  });
+
+  dbTest("cron reconcile respects the batch limit and oldest-updated ordering", async () => {
+    if (!sql) throw new Error("test database not initialized");
+    await sql`truncate cloud_vm_billing_grants, cloud_vm_usage_events, cloud_vm_leases, cloud_vms restart identity cascade`;
+    for (let index = 0; index < 5; index += 1) {
+      await sql`
+        insert into cloud_vms (user_id, billing_team_id, billing_plan_id, provider, provider_vm_id, image_id, status, updated_at)
+        values (
+          ${`user-workflow-reconcile-batch-${index}`},
+          'team-workflow-reconcile-batch',
+          'free',
+          'freestyle',
+          ${`provider-vm-reconcile-batch-${index}`},
+          'snapshot-test',
+          'running',
+          now() - (${5 - index}::text || ' minutes')::interval
+        )
+      `;
+    }
+
+    const statusCalls: string[] = [];
+    const provider: VmProviderGatewayShape = {
+      ...unusedProviderGateway(),
+      getStatus: (_provider, vmId) =>
+        Effect.sync(() => {
+          statusCalls.push(vmId);
+          return "paused" as const;
+        }),
+    };
+
+    const result = await Effect.runPromise(
+      reconcileVmProviderStatuses({ limit: 2 }).pipe(Effect.provide(providerLayer(provider))),
+    );
+
+    expect(result.checked).toBe(2);
+    expect(result.updated).toBe(2);
+    expect(statusCalls).toEqual([
+      "provider-vm-reconcile-batch-0",
+      "provider-vm-reconcile-batch-1",
+    ]);
+    const [{ pausedCount }] = await sql<{ pausedCount: string }[]>`
+      select count(*)::text as "pausedCount" from cloud_vms
+      where billing_team_id = 'team-workflow-reconcile-batch'
+        and status = 'paused'
+    `;
+    expect(pausedCount).toBe("2");
+  });
+
   dbTest("returns in-progress for concurrent same-key creates before active limit checks", async () => {
     if (!sql) throw new Error("test database not initialized");
     const testSql = sql;
@@ -2002,9 +2118,28 @@ describe("VM Effect workflows", () => {
     `;
     expect(failedVm).toMatchObject({
       status: "failed",
-      failureCode: "billing_reserve_failed",
+      failureCode: "billing_credits_insufficient",
       providerVmId: null,
     });
+
+    const retryError = await Effect.runPromise(
+      createVm({
+        userId: "user-workflow-credit-empty",
+        billingCustomerType: "team",
+        billingTeamId: "team-workflow-credit-empty",
+        billingPlanId: "free",
+        maxActiveVms: 1,
+        provider: "freestyle",
+        image: "snapshot-credit-empty",
+        idempotencyKey: "credit-empty-1",
+      }).pipe(
+        Effect.flip,
+        Effect.provide(providerLayer(provider, billing)),
+      ),
+    );
+    expect(retryError).toBeInstanceOf(VmCreateCreditsInsufficientError);
+    expect(retryError).not.toBeInstanceOf(VmCreateFailedError);
+    expect(createCalls).toBe(0);
 
     const usageEvents = await sql<{ eventType: string }[]>`
       select event_type as "eventType" from cloud_vm_usage_events
@@ -2050,17 +2185,177 @@ describe("VM Effect workflows", () => {
     expect(recovered.providerVmId).toBe("provider-vm-credit-recovered");
   });
 
+  dbTest("concurrent cross-team retries of one idempotency key create exactly one provider VM", async () => {
+    if (!sql) throw new Error("test database not initialized");
+    await sql`truncate cloud_vm_billing_grants, cloud_vm_usage_events, cloud_vm_leases, cloud_vms restart identity cascade`;
+
+    await sql`
+      insert into cloud_vms (
+        user_id, billing_team_id, billing_plan_id, provider, image_id, status,
+        idempotency_key, failure_code, failure_message, updated_at
+      )
+      values (
+        'user-workflow-race-retry', 'team-race-a', 'free', 'freestyle', 'snapshot-race-old', 'failed',
+        'race-retry-1', 'billing_credits_insufficient', 'no credits',
+        ${new Date(Date.now() - FAILED_CREATE_RETRY_WINDOW_MS - 1_000)}
+      )
+    `;
+
+    let createCalls = 0;
+    const provider: VmProviderGatewayShape = {
+      create: () =>
+        Effect.promise(async () => {
+          createCalls += 1;
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          return {
+            provider: "freestyle" as const,
+            providerVmId: `provider-vm-race-${createCalls}`,
+            status: "running" as const,
+            image: "snapshot-race-new",
+            createdAt: Date.now(),
+          };
+        }),
+      destroy: () => Effect.void,
+      exec: () => Effect.succeed({ exitCode: 0, stdout: "", stderr: "" }),
+      openAttach: () => Effect.fail(new Error("unused") as never),
+      openSSH: () => Effect.fail(new Error("unused") as never),
+      revokeSSHIdentity: () => Effect.void,
+    };
+
+    const attempt = (team: string) =>
+      Effect.runPromise(
+        createVm({
+          userId: "user-workflow-race-retry",
+          billingCustomerType: "team",
+          billingTeamId: team,
+          billingPlanId: "free",
+          maxActiveVms: 10,
+          provider: "freestyle",
+          image: "snapshot-race-new",
+          idempotencyKey: "race-retry-1",
+        }).pipe(Effect.provide(providerLayer(provider))),
+      );
+
+    const results = await Promise.allSettled([attempt("team-race-a"), attempt("team-race-b")]);
+    // Exactly one racer may win the row and reach the provider; the loser
+    // must observe the in-progress row instead of double-creating.
+    expect(createCalls).toBe(1);
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    expect(fulfilled.length).toBeGreaterThanOrEqual(1);
+
+    const rows = await sql<{ status: string }[]>`
+      select status from cloud_vms where idempotency_key = 'race-retry-1'
+    `;
+    expect(rows).toHaveLength(1);
+  });
+
+  dbTest("retries a stale failed create record after the retry window", async () => {
+    if (!sql) throw new Error("test database not initialized");
+    await sql`truncate cloud_vm_billing_grants, cloud_vm_usage_events, cloud_vm_leases, cloud_vms restart identity cascade`;
+
+    await sql`
+      insert into cloud_vms (
+        user_id,
+        billing_team_id,
+        billing_plan_id,
+        provider,
+        image_id,
+        status,
+        idempotency_key,
+        failure_code,
+        failure_message,
+        updated_at
+      )
+      values (
+        'user-workflow-stale-failed',
+        'team-workflow-stale-failed',
+        'free',
+        'freestyle',
+        'snapshot-stale-old',
+        'failed',
+        'stale-failed-1',
+        'create',
+        'provider timed out',
+        ${new Date(Date.now() - FAILED_CREATE_RETRY_WINDOW_MS - 1_000)}
+      )
+    `;
+
+    let createCalls = 0;
+    const provider: VmProviderGatewayShape = {
+      create: () =>
+        Effect.sync(() => {
+          createCalls += 1;
+          return {
+            provider: "freestyle" as const,
+            providerVmId: "provider-vm-stale-recovered",
+            status: "running" as const,
+            image: "snapshot-stale-new",
+            createdAt: Date.now(),
+          };
+        }),
+      destroy: () => Effect.void,
+      exec: () => Effect.succeed({ exitCode: 0, stdout: "", stderr: "" }),
+      openAttach: () => Effect.fail(new Error("unused") as never),
+      openSSH: () => Effect.fail(new Error("unused") as never),
+      revokeSSHIdentity: () => Effect.void,
+    };
+
+    const recovered = await Effect.runPromise(
+      createVm({
+        userId: "user-workflow-stale-failed",
+        billingCustomerType: "team",
+        billingTeamId: "team-workflow-stale-failed",
+        billingPlanId: "free",
+        maxActiveVms: 1,
+        provider: "freestyle",
+        image: "snapshot-stale-new",
+        idempotencyKey: "stale-failed-1",
+      }).pipe(Effect.provide(providerLayer(provider))),
+    );
+
+    expect(recovered.providerVmId).toBe("provider-vm-stale-recovered");
+    expect(createCalls).toBe(1);
+
+    const [row] = await sql<{
+      total: number;
+      status: string;
+      failureCode: string | null;
+      failureMessage: string | null;
+      imageId: string;
+    }[]>`
+      select
+        count(*) over ()::int as total,
+        status,
+        failure_code as "failureCode",
+        failure_message as "failureMessage",
+        image_id as "imageId"
+      from cloud_vms
+      where user_id = 'user-workflow-stale-failed'
+    `;
+    expect(row).toMatchObject({
+      total: 1,
+      status: "running",
+      failureCode: null,
+      failureMessage: null,
+      imageId: "snapshot-stale-new",
+    });
+  });
+
   dbTest("refunds a reserved Stack Auth credit when provider create fails", async () => {
     if (!sql) throw new Error("test database not initialized");
     await sql`truncate cloud_vm_billing_grants, cloud_vm_usage_events, cloud_vm_leases, cloud_vms restart identity cascade`;
 
+    let createCalls = 0;
     const provider: VmProviderGatewayShape = {
       create: () =>
-        Effect.fail(new VmProviderOperationError({
-          provider: "freestyle",
-          operation: "create",
-          cause: new Error("provider unavailable"),
-        })),
+        Effect.gen(function* () {
+          createCalls += 1;
+          return yield* Effect.fail(new VmProviderOperationError({
+            provider: "freestyle",
+            operation: "create",
+            cause: new Error("provider unavailable"),
+          }));
+        }),
       destroy: () => Effect.void,
       exec: () => Effect.succeed({ exitCode: 0, stdout: "", stderr: "" }),
       openAttach: () => Effect.fail(new Error("unused") as never),
@@ -2099,6 +2394,30 @@ describe("VM Effect workflows", () => {
     ).rejects.toThrow();
 
     expect(refundCalls).toBe(1);
+    expect(createCalls).toBe(1);
+
+    const retryError = await Effect.runPromise(
+      createVm({
+        userId: "user-workflow-credit-refund",
+        billingCustomerType: "team",
+        billingTeamId: "team-workflow-credit-refund",
+        billingPlanId: "free",
+        maxActiveVms: 1,
+        provider: "freestyle",
+        image: "snapshot-credit-refund",
+        idempotencyKey: "credit-refund-1",
+      }).pipe(
+        Effect.flip,
+        Effect.provide(providerLayer(provider, billing)),
+      ),
+    );
+    expect(retryError).toBeInstanceOf(VmCreateFailedError);
+    expect(retryError).toMatchObject({
+      code: "create",
+      message: "provider unavailable",
+    });
+    expect(createCalls).toBe(1);
+
     const usageEvents = await sql<{ eventType: string }[]>`
       select event_type as "eventType" from cloud_vm_usage_events
       where user_id = 'user-workflow-credit-refund'
@@ -2321,6 +2640,7 @@ function testWorkflowRepo(input: {
     deleteBillingGrant: () => Effect.void,
     beginCreate: () => unusedDatabaseEffect("beginCreate"),
     activeLimitCandidates: () => Effect.succeed([]),
+    reconciliationCandidates: () => Effect.succeed([]),
     markProviderObservedStatus: (update) =>
       input.markProviderObservedStatus
         ? input.markProviderObservedStatus(update)
