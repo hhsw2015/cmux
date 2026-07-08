@@ -2,6 +2,16 @@
 
 All notable changes to cmux are documented here.
 
+## [0.83.0] - 2026-07-08
+
+### Fixed
+- Top tab group: switching a top tab now updates `selectedLayoutTabId`, so the previous group's inner tab strip is preserved and the ×/switch clicks route through the delegate (bonsplit `d69bd7f`).
+- Top tab bar restored auto-hide default (hover-reveal via NSTrackingArea probe that never wins hit-tests, so tab-strip clicks pass through).
+
+### Changed
+- Merge upstream/main: 37 cmux commits (WebKit-native DevTools redock between window and panel, docked Web Inspector redock, inspector focus handoff, DevTools lifecycle stabilization + close-chord routing + reattach intent preservation, main-window fit after display topology changes, cmuxTests access-level fixes).
+- Fork-side: kept `isVisibleSideDockSiblingCandidate` helper in `BrowserPanel.swift` (upstream refactor inlined it but fork still calls it explicitly).
+
 ## [0.82.0] - 2026-07-08
 
 ### Changed
