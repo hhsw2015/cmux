@@ -2,6 +2,12 @@
 
 All notable changes to cmux are documented here.
 
+## [0.82.0] - 2026-07-08
+
+### Changed
+- Merge upstream/main: 72 cmux commits (mux server/client control commands including 8 protocol-6 verbs, agent-chat browser-surface UI, undo routing away from AppKit menu, sidebar scroll preservation on workspace close, billing team resolution for multi-team users, `stableId` for durable deep links, workspace `sessionRestoreIdentityExclusions` + `tabStripCloseButtonByTabId`, Codex Security scan fixes, macOS CI gated behind linux preflight, SDK OIDC publish workflows).
+- Fork-side dedup: dropped duplicate `panelIdFromSurfaceId` / `surfaceIdFromPanelId` / `paneId(forPanelId:)` / `indexInPane(forPanelId:)` inline copies from Workspace.swift (fork already provides them via `Workspace+WorkspaceSurfaceTreeReading.swift` extension).
+
 ## [0.81.0] - 2026-07-08
 
 ### Changed
