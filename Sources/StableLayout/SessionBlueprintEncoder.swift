@@ -184,6 +184,13 @@ enum SessionBlueprintEncoder {
                 command: "",
                 cwd: nil
             )
+        case .cloudVMLoading:
+            return .init(
+                splitPath: splitPath,
+                kind: "cloudVMLoading",
+                command: "",
+                cwd: nil
+            )
         case .agentSession:
             return .init(
                 splitPath: splitPath,
