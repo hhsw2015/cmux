@@ -23,9 +23,9 @@ enum WorkspaceTopTabsVisibility: String, CaseIterable, Sendable {
         case .always:
             return .always
         case .auto:
-            // Resting baseline: bar hidden regardless of tab count. The host
-            // view flips this to .always while the pointer hovers the top
-            // edge so the bar reveals on demand.
+            // Resting baseline: bar hidden. Host view flips this to
+            // .always while the pointer hovers the top edge sliver so the
+            // bar reveals on demand.
             return .never
         case .never:
             return .never

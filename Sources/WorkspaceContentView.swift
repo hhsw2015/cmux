@@ -408,20 +408,28 @@ struct WorkspaceContentView: View {
                 ZStack(alignment: .top) {
                     topTabsView
                     if topTabsVisibility == .auto {
-                        // Hover trigger zone. Resting size is a 12px sliver on
-                        // the top edge so it doesn't intercept clicks meant for
-                        // the layout below. While hovering, expand to ~40px so
-                        // the pointer can move horizontally over the revealed
-                        // tab bar without exiting the zone (which would cause
-                        // an immediate hide-flicker).
-                        Color.clear
-                            .frame(height: topTabsHoverActive ? 40 : 12)
-                            .contentShape(Rectangle())
-                            .onHover { hovering in
+                        // Hover trigger + follow-along zone using AppKit
+                        // NSTrackingArea (via TopTabsHoverProbe). Unlike a
+                        // SwiftUI `Color.clear.onHover` overlay this does
+                        // NOT intercept hit-tests for mouse-down events —
+                        // the tab strip below still gets its clicks — but
+                        // does deliver enter/exit callbacks for the entire
+                        // 40px strip region while it is revealed. This
+                        // gives us "reveal on hover, keep revealed while
+                        // pointer stays inside the tab strip, hide on
+                        // exit" without swallowing top-tab close/select.
+                        TopTabsHoverProbe(
+                            revealedHeight: 40,
+                            armedHeight: 12,
+                            isRevealed: topTabsHoverActive,
+                            onHoverChange: { hovering in
                                 topTabsHoverActive = hovering
                                 workspace.topTabController.configuration.tabBarVisibility =
                                     hovering ? .always : .never
                             }
+                        )
+                        .frame(height: topTabsHoverActive ? 40 : 12)
+                        .allowsHitTesting(false)
                     }
                 }
             }

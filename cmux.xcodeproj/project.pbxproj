@@ -1472,6 +1472,7 @@
 		9AD17755EFD688B35D3E7875 /* AppScrollerStylePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BEF0B72C3264186A8DBFC0C /* AppScrollerStylePolicy.swift */; };
 		4AFE032F120D79AB96794E44 /* PreferredEditorSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58084425904B4B63D9581D13 /* PreferredEditorSettings.swift */; };
 		39B8DAB85CCAE13ACD0E7157 /* SidebarScrollViewConfigurator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7491F5BBF443E95687BDA68 /* SidebarScrollViewConfigurator.swift */; };
+		B7C7A7B7A7B7A7B7A7B7A7B8 /* TopTabsHoverProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7C7A7B7A7B7A7B7A7B7A7B7 /* TopTabsHoverProbe.swift */; };
 		82E2C7CCB62F0FA34D8D4EB4 /* SessionPersistenceDebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE9B71DE69CE9BB38EF088AE /* SessionPersistenceDebugLog.swift */; };
 		7B9C99031ABEAAB9D4F8DF72 /* SessionPersistenceFeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24CC19B593C4345B19AE3CE7 /* SessionPersistenceFeatureFlags.swift */; };
 		32F70F965C6A74F47CACA5BA /* SessionExitTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50F018F4E72A92F5E888125D /* SessionExitTracker.swift */; };
@@ -3051,6 +3052,7 @@
 		8BEF0B72C3264186A8DBFC0C /* AppScrollerStylePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppScrollerStylePolicy.swift"; sourceTree = "<group>"; };
 		58084425904B4B63D9581D13 /* PreferredEditorSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PreferredEditorSettings.swift"; sourceTree = "<group>"; };
 		C7491F5BBF443E95687BDA68 /* SidebarScrollViewConfigurator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SidebarScrollViewConfigurator.swift"; sourceTree = "<group>"; };
+		B7C7A7B7A7B7A7B7A7B7A7B7 /* TopTabsHoverProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TopTabsHoverProbe.swift"; sourceTree = "<group>"; };
 		AE9B71DE69CE9BB38EF088AE /* SessionPersistenceDebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SessionPersistenceDebugLog.swift"; sourceTree = "<group>"; };
 		24CC19B593C4345B19AE3CE7 /* SessionPersistenceFeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SessionPersistenceFeatureFlags.swift"; sourceTree = "<group>"; };
 		50F018F4E72A92F5E888125D /* SessionExitTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SessionExitTracker.swift"; sourceTree = "<group>"; };
@@ -4282,6 +4284,7 @@
 				8BEF0B72C3264186A8DBFC0C /* AppScrollerStylePolicy.swift */,
 				58084425904B4B63D9581D13 /* PreferredEditorSettings.swift */,
 				C7491F5BBF443E95687BDA68 /* SidebarScrollViewConfigurator.swift */,
+				B7C7A7B7A7B7A7B7A7B7A7B7 /* TopTabsHoverProbe.swift */,
 				AE9B71DE69CE9BB38EF088AE /* SessionPersistenceDebugLog.swift */,
 				24CC19B593C4345B19AE3CE7 /* SessionPersistenceFeatureFlags.swift */,
 				50F018F4E72A92F5E888125D /* SessionExitTracker.swift */,
@@ -6200,6 +6203,7 @@
 				9AD17755EFD688B35D3E7875 /* AppScrollerStylePolicy.swift in Sources */,
 				4AFE032F120D79AB96794E44 /* PreferredEditorSettings.swift in Sources */,
 				39B8DAB85CCAE13ACD0E7157 /* SidebarScrollViewConfigurator.swift in Sources */,
+				B7C7A7B7A7B7A7B7A7B7A7B8 /* TopTabsHoverProbe.swift in Sources */,
 				82E2C7CCB62F0FA34D8D4EB4 /* SessionPersistenceDebugLog.swift in Sources */,
 				7B9C99031ABEAAB9D4F8DF72 /* SessionPersistenceFeatureFlags.swift in Sources */,
 				32F70F965C6A74F47CACA5BA /* SessionExitTracker.swift in Sources */,

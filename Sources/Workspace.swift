@@ -3227,6 +3227,7 @@ final class Workspace: Identifiable, ObservableObject {
             autoCloseEmptyPanes: true,
             contentViewLifecycle: .keepAllAlive,
             newTabPosition: .current,
+            tabBarVisibility: .always,
             appearance: appearance
         )
     }
@@ -13741,6 +13742,19 @@ extension Workspace: BonsplitDelegate {
         // Suppress the per-move selection churn of a reactive mirror-tab reorder
         // (the user's selection/focus is restored explicitly afterwards).
         guard !isApplyingRemoteTmuxTabReorder else { return }
+        // The top-tab strip has its own BonsplitController — clicks on a top
+        // tab are layoutTab switches, not tab-in-pane selections. Route them
+        // through selectTopLevelTab so `selectedLayoutTabId` moves. Without
+        // this, `applyTabSelection` looks up `tab.id` inside the *previously
+        // active layout*'s bonsplitController (a Tab that never existed
+        // there), the lookup fails silently, and SwiftUI keeps rendering
+        // the previously-active layoutTab's inner-tab strip while the top
+        // strip visually shows the newly-selected group — inner tabs
+        // disappear from the user's point of view.
+        if controller === topTabController {
+            _ = selectTopLevelTab(id: tab.id.uuid, reassertAppKitFocus: false)
+            return
+        }
         applyTabSelection(tabId: tab.id, inPane: pane)
         if let layout = layoutTab(containing: controller) {
             syncTopLevelTabMetadata(for: layout)
