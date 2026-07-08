@@ -2,6 +2,15 @@
 
 All notable changes to cmux are documented here.
 
+## [0.81.0] - 2026-07-08
+
+### Changed
+- Merge upstream/main: 49 cmux commits (per-monitor window geometry LRU + reconciliation, workspace notification submenu, notification scrollPosition, iOS native drag & drop in workspace list, Dock pane drop routing #7529 with bidirectional regression tests, display reconfiguration tracking, CoreGraphics mirror-state signatures).
+- Fork-side dedup after upstream extractions: dropped duplicate `TerminalNotification` struct + `TerminalNotificationKind` + `cmuxNotificationAppended` (upstream moved to standalone `Sources/TerminalNotification.swift`), removed union-merge duplicates of `PaneChromeSettings.swift` and `handleRemoteTmuxSessionEndedKeepingWorkspaceOpenIfNeeded()`.
+- Add `scrollPosition`, `kind` to `TerminalNotification` (merged both fork and upstream fields).
+- Add `configFrames` to `SessionWorkspaceSnapshot` for per-display-configuration remembered frames.
+- Stub `remoteTmuxKeepWorkspaceOpenAfterSessionEnd` + related state on `Workspace` so upstream's remote-tmux keep-open handlers compile against the fork.
+
 ## [0.80.0] - 2026-07-08
 
 ### Changed
