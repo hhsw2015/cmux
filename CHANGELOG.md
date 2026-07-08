@@ -2,6 +2,15 @@
 
 All notable changes to cmux are documented here.
 
+## [0.80.0] - 2026-07-08
+
+### Changed
+- Merge upstream/main: 154 cmux commits (memory-pressure renderer reclamation with `releaseRenderer()` mailbox handshake, cloudVMLoading surface kind, single-default cloud terminal session restore path, `onTabFullWidthToggleRequest` from Bonsplit, browser panel search-overlay focus yield + tear-down hardening, browser close review follow-ups, dashboard nav updates, sidebar / drag / tab context menu improvements, i18n).
+- Merge bonsplit submodule: 7 upstream commits (`SplitViewController+TabDrag` extraction, `TabContextAction` additions, tab bar + tab item rewrites, extensive tests).
+- Restore `closeTabWarningDefaults` / `agentSessionAutoResumeDefaults` stored properties on `Workspace` (previous release dropped them, but upstream's `WorkspaceCloseTabsBatching` extension needs them).
+- Add `.cloudVMLoading` case to `SurfaceKind` namespace + `SessionBlueprintEncoder` switch; strip `.rawValue` accesses since fork's `SurfaceKind` is a namespace of `static let` strings.
+- Fork's inline `GhosttyTerminalView.releaseRenderer()` now returns `Bool` (matches upstream `TerminalSurface+Renderer` API) so the memory-pressure controller can count reclaimed renderers.
+
 ## [0.79.0] - 2026-07-07
 
 ### Changed
