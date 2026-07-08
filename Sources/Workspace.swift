@@ -155,6 +155,7 @@ extension Workspace {
         let workspaceNotificationSnapshots = notificationSnapshots(surfaceId: nil)
         return SessionWorkspaceSnapshot(
             workspaceId: id,
+            stableId: stableId,
             processTitle: processTitle,
             customTitle: customTitle,
             customTitleSource: effectiveCustomTitleSource,
@@ -181,10 +182,18 @@ extension Workspace {
     }
 
     @discardableResult
-    func restoreSessionSnapshot(_ snapshot: SessionWorkspaceSnapshot) -> [UUID: UUID] {
+    func restoreSessionSnapshot(_ snapshot: SessionWorkspaceSnapshot, excludingStableIdentities: Set<UUID> = []) -> [UUID: UUID] {
         let previousSuppressClosedPanelHistory = suppressClosedPanelHistory
         suppressClosedPanelHistory = true
         defer { suppressClosedPanelHistory = previousSuppressClosedPanelHistory }
+        sessionRestoreIdentityExclusions.beginRestore(excluding: excludingStableIdentities)
+        defer { sessionRestoreIdentityExclusions.endRestore() }
+
+        // Legacy snapshots keep the fresh id; duplicate reopens exclude live ids.
+        if let persistedStableId = snapshot.stableId,
+           sessionRestoreIdentityExclusions.shouldAdopt(persistedStableId) {
+            stableId = persistedStableId
+        }
 
         restoredTerminalScrollbackByPanelId.removeAll(keepingCapacity: false)
 #if DEBUG
@@ -738,6 +747,7 @@ extension Workspace {
         }
         return SessionPanelSnapshot(
             id: panelId,
+            stableSurfaceId: panel.stableSurfaceId,
             type: panel.panelType,
             title: panelTitle,
             customTitle: customTitle,
@@ -1944,6 +1954,8 @@ extension Workspace {
     }
 
     func applySessionPanelMetadata(_ snapshot: SessionPanelSnapshot, toPanelId panelId: UUID) {
+        adoptPersistedStableSurfaceId(from: snapshot, panelId: panelId)
+
         if let title = snapshot.title?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty {
             panelTitles[panelId] = title
         }
@@ -2283,6 +2295,8 @@ final class Workspace: Identifiable, ObservableObject {
     // ponytail: per-panel tmux client tty cache used by detached-pane cleanup; preserved from af11efd26.
     var surfaceTmuxClientTTYNames: [UUID: String] = [:]
 
+    /// Restart-stable workspace identifier persisted for durable deep links.
+    private(set) var stableId = UUID()
     /// When this workspace instance came into existence in this app session
     /// (creation, or restore at launch). The mobile list's last-activity
     /// fallback: a workspace that never fired a notification still carries a
@@ -3801,9 +3815,10 @@ final class Workspace: Identifiable, ObservableObject {
     private var closeHistoryEligiblePanelIds: Set<UUID> = []
     private var suppressClosedPanelHistory = false
     private var tabCloseButtonCloseTabIds: Set<TabID> = []
-
-    /// Deterministic tab selection to apply after a tab closes.
-    /// Keyed by the closing tab ID, value is the tab ID we want to select next.
+    /// Stable identities not re-adopted by the in-flight snapshot restore.
+    let sessionRestoreIdentityExclusions = SessionRestoreIdentityExclusions()
+    private var tabStripCloseButtonByTabId: [TabID: Bool] = [:]
+    /// Deterministic tab selection to apply after a tab closes, keyed by closing tab ID.
     private var postCloseSelectTabId: [TabID: TabID] = [:]
     private var postCloseClearSplitZoomTabIds: Set<TabID> = []
     /// Panel IDs that were in a pane when a pane-close operation was approved.
@@ -3888,11 +3903,6 @@ final class Workspace: Identifiable, ObservableObject {
     }
 #endif
 
-    func panelIdFromSurfaceId(_ surfaceId: TabID) -> UUID? {
-        layoutTabs.first { $0.surfaceIdToPanelId[surfaceId] != nil }?
-            .surfaceIdToPanelId[surfaceId]
-    }
-
     func markExplicitClose(surfaceId: TabID) {
         explicitUserCloseTabIds.insert(surfaceId)
         closeHistoryEligibleTabIds.insert(surfaceId)
@@ -3958,15 +3968,6 @@ final class Workspace: Identifiable, ObservableObject {
     func markTabCloseButtonClose(surfaceId: TabID) {
         explicitUserCloseTabIds.insert(surfaceId)
         tabCloseButtonCloseTabIds.insert(surfaceId)
-    }
-
-    func surfaceIdFromPanelId(_ panelId: UUID) -> TabID? {
-        for layout in layoutTabs {
-            if let surfaceId = layout.surfaceIdToPanelId.first(where: { $0.value == panelId })?.key {
-                return surfaceId
-            }
-        }
-        return nil
     }
 
     /// Compatibility shim for upstream call sites authored against the
@@ -8832,6 +8833,8 @@ final class Workspace: Identifiable, ObservableObject {
             tmuxStartCommand: trimmedCommand,
             additionalEnvironment: startupEnvironmentMergingWorkspaceEnvironment([:])
         )
+        // Cloud VM loading swaps replace the panel object but keep the logical tab identity.
+        replacementPanel.adoptStableSurfaceId(loadingPanel.stableSurfaceId)
         configureNewTerminalPanel(replacementPanel)
         panels[pair.key] = replacementPanel
         panelTitles[pair.key] = replacementPanel.displayTitle
@@ -8954,6 +8957,8 @@ final class Workspace: Identifiable, ObservableObject {
             additionalEnvironment: additionalEnvironment,
             focusPlacement: focusPlacement
         )
+        // Respawn replaces the panel object but keeps the logical tab identity.
+        replacementPanel.adoptStableSurfaceId(oldPanel.stableSurfaceId)
         configureNewTerminalPanel(
             replacementPanel,
             allowTextBoxFocusDefault: shouldFocus && allowTextBoxFocusDefault
@@ -9955,14 +9960,6 @@ final class Workspace: Identifiable, ObservableObject {
         return closed
     }
 
-    func paneId(forPanelId panelId: UUID) -> PaneID? {
-        guard let tabId = surfaceIdFromPanelId(panelId),
-              let controller = bonsplitController(containingSurfaceId: tabId) else { return nil }
-        return controller.allPaneIds.first { paneId in
-            controller.tabs(inPane: paneId).contains(where: { $0.id == tabId })
-        }
-    }
-
     private func applyInitialSplitDividerPosition(
         _ position: CGFloat?,
         sourcePaneId: PaneID,
@@ -10003,13 +10000,6 @@ final class Workspace: Identifiable, ObservableObject {
             return splitTreeContainsPane(paneId, in: split.first)
                 || splitTreeContainsPane(paneId, in: split.second)
         }
-    }
-
-    func indexInPane(forPanelId panelId: UUID) -> Int? {
-        guard let tabId = surfaceIdFromPanelId(panelId),
-              let paneId = paneId(forPanelId: panelId),
-              let controller = bonsplitController(containingSurfaceId: tabId) else { return nil }
-        return controller.tabs(inPane: paneId).firstIndex(where: { $0.id == tabId })
     }
 
     /// Returns the nearest right-side sibling pane for browser/file-preview placement.
