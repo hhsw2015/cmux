@@ -2744,6 +2744,15 @@ final class Workspace: Identifiable, ObservableObject {
     private var pendingRemoteDisconnectReplacement: PendingRemoteDisconnectReplacement?
     var remoteDisconnectPlaceholderPanelIds: Set<UUID> = []
 
+    /// Upstream feature: keep a remote-tmux mirror workspace visible after the
+    /// SSH session dies, so the user can still see the last known state instead
+    /// of the workspace vanishing. Off by default in fork.
+    var remoteTmuxKeepWorkspaceOpenAfterSessionEnd: Bool = false
+    var remoteTmuxKeepWorkspaceOpenTabIds: Set<TabID> = []
+    var remoteTmuxWorkspaceCloseButtonByTabId: [TabID: Bool] = [:]
+    var remoteTmuxWorkspaceCloseButton: Bool? { nil }
+    var remoteTmuxKeepWorkspaceOpen: Bool { remoteTmuxKeepWorkspaceOpenAfterSessionEnd }
+
     private static let remoteErrorStatusKey = "remote.error"
     private static let remotePortConflictStatusKey = "remote.port_conflicts"
     private static let remoteNotificationCooldown: TimeInterval = 5 * 60
@@ -4106,6 +4115,25 @@ final class Workspace: Identifiable, ObservableObject {
     private func selectTopLevelTab(containing controller: BonsplitController, reassertAppKitFocus: Bool = true) -> Bool {
         guard let layout = layoutTab(containing: controller) else { return false }
         return selectTopLevelTab(id: layout.id, reassertAppKitFocus: reassertAppKitFocus)
+    }
+
+    func handleRemoteTmuxSessionEndedKeepingWorkspaceOpenIfNeeded() -> Bool {
+        guard remoteTmuxKeepWorkspaceOpenAfterSessionEnd else { return false }
+        let panelIds = remoteTmuxKeepWorkspaceOpenTabIds.compactMap { panelIdFromSurfaceId($0) }
+        remoteTmuxKeepWorkspaceOpenTabIds.removeAll(); detachRemoteTmuxMirrorKeptOpenLocallyIfNeeded()
+        for panelId in panelIds { _ = closePanel(panelId, force: true) }
+        if panels.isEmpty { _ = createReplacementTerminalPanel() }
+        return true
+    }
+    @discardableResult func detachRemoteTmuxMirrorKeptOpenLocallyIfNeeded() -> Bool {
+        guard isRemoteTmuxMirror else { return false }
+        pendingRemoteDisconnectReplacement = nil; remoteTmuxKeepWorkspaceOpenAfterSessionEnd = false; isRemoteTmuxMirror = false; remoteTmuxWindowMirrors.removeAll()
+        AppDelegate.shared?.remoteTmuxController.detachMirrorWorkspaceKeptOpenLocally(workspaceId: id)
+        return true
+    }
+    private func clearRemoteTmuxWorkspaceCloseIntent(tabId: TabID) {
+        remoteTmuxWorkspaceCloseButtonByTabId.removeValue(forKey: tabId); remoteTmuxKeepWorkspaceOpenTabIds.remove(tabId)
+        if remoteTmuxKeepWorkspaceOpenTabIds.isEmpty { remoteTmuxKeepWorkspaceOpenAfterSessionEnd = false }
     }
 
     @discardableResult
@@ -6069,13 +6097,6 @@ final class Workspace: Identifiable, ObservableObject {
     /// single-surface ``PanelContentView``. Owned by ``RemoteTmuxSessionMirror``;
     /// the view layer only reads it.
     private(set) var remoteTmuxWindowMirrors: [UUID: RemoteTmuxWindowMirror] = [:]
-
-    /// Upstream-introduced API stub: cmux fork has no "keep workspace open
-    /// after remote tmux session ended" mode yet, so always returns false
-    /// to let callers fall through to the default cleanup path.
-    func handleRemoteTmuxSessionEndedKeepingWorkspaceOpenIfNeeded() -> Bool {
-        false
-    }
 
     func discardBrowserPanelSubscription(panelId _: UUID, panel: (any Panel)?) {
         guard let browserPanel = panel as? BrowserPanel else { return }
@@ -13674,6 +13695,17 @@ extension Workspace: BonsplitDelegate {
                 pendingRemoteDisconnectReplacement = nil
                 scheduleTerminalGeometryReconcile()
                 return
+            }
+
+            if remoteTmuxWorkspaceCloseButton != nil {
+                detachRemoteTmuxMirrorKeptOpenLocallyIfNeeded()
+                let manager = owningTabManager ?? AppDelegate.shared?.tabManagerFor(tabId: id) ?? AppDelegate.shared?.tabManager
+                if let manager, manager.tabs.count > 1 { manager.closeWorkspace(self, recordHistory: false); scheduleTerminalGeometryReconcile(); return }
+                if let manager, let appDelegate = AppDelegate.shared, appDelegate.mainWindowContexts.count > 1,
+                   let windowId = appDelegate.windowId(for: manager) { appDelegate.discardMainWindowWithoutClosedHistory(windowId: windowId); scheduleTerminalGeometryReconcile(); return }
+            }
+            if remoteTmuxKeepWorkspaceOpen {
+                detachRemoteTmuxMirrorKeptOpenLocallyIfNeeded()
             }
 
             #if DEBUG
