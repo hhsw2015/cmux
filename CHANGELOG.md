@@ -2,6 +2,13 @@
 
 All notable changes to cmux are documented here.
 
+## [0.84.0] - 2026-07-09
+
+### Changed
+- Merge upstream/main: 48 cmux commits + bonsplit `ad4c94e` (mux pluggable sidebar plugins, tmux/zellij keybindings, iOS TestFlight production lane, agent-chat virtualization + scroll anchoring, fork-fallback residuals fixes, memoized process-arg reads, tab icon shift fix, cmux TUI `npx cmux`/`uvx cmux` distribution, ClaudeForkFallbackSessionIndexTests migration, Save Workspace Layout sanitize).
+- Fork side: kept monolithic `RemoteTmuxControlConnection.swift` + fork's `SurfaceKind` enum shim + `AgentHookNotificationStatus` enum in CLI; skipped upstream RemoteTmux mirror rewrite (fork build path unused; ponytail comment stays).
+- New file: `Sources/RemoteTmuxPaneHeader.swift` wired back after take-theirs pbxproj lost it.
+
 ## [0.83.0] - 2026-07-08
 
 ### Fixed
