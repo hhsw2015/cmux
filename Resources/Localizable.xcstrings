@@ -31306,23 +31306,6 @@
         }
       }
     },
-    "cloud.overlay.reconnect.button": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reconnect"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "再接続"
-          }
-        }
-      }
-    },
     "cli.error.dismissNotificationSelector": {
       "extractionState": "manual",
       "localizations": {
@@ -31397,25 +31380,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "workspace requires a subcommand. Try: list, create, env, close, rename, select, reconnect, disconnect, group"
+            "value": "workspace requires a subcommand. Try: list, create, env, close, rename, select, reconnect, disconnect, loading, group"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "workspace にはサブコマンドが必要です。利用可能: list, create, env, close, rename, select, reconnect, disconnect, group"
+            "value": "workspace にはサブコマンドが必要です。利用可能: list, create, env, close, rename, select, reconnect, disconnect, loading, group"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "workspace에는 하위 명령이 필요합니다. 사용 가능: list, create, env, close, rename, select, reconnect, disconnect, group"
+            "value": "workspace에는 하위 명령이 필요합니다. 사용 가능: list, create, env, close, rename, select, reconnect, disconnect, loading, group"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "workspace потребує підкоманди. Доступні: list, create, env, close, rename, select, reconnect, disconnect, group"
+            "value": "workspace потребує підкоманди. Доступні: list, create, env, close, rename, select, reconnect, disconnect, loading, group"
           }
         }
       }
@@ -31426,25 +31409,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Unknown workspace subcommand: %@. Try: list, create, env, close, rename, select, reconnect, disconnect, group"
+            "value": "Unknown workspace subcommand: %@. Try: list, create, env, close, rename, select, reconnect, disconnect, loading, group"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "不明な workspace サブコマンド: %@。利用可能: list, create, env, close, rename, select, reconnect, disconnect, group"
+            "value": "不明な workspace サブコマンド: %@。利用可能: list, create, env, close, rename, select, reconnect, disconnect, loading, group"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "알 수 없는 workspace 하위 명령: %@. 사용 가능: list, create, env, close, rename, select, reconnect, disconnect, group"
+            "value": "알 수 없는 workspace 하위 명령: %@. 사용 가능: list, create, env, close, rename, select, reconnect, disconnect, loading, group"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Невідома підкоманда workspace: %@. Доступні: list, create, env, close, rename, select, reconnect, disconnect, group"
+            "value": "Невідома підкоманда workspace: %@. Доступні: list, create, env, close, rename, select, reconnect, disconnect, loading, group"
           }
         }
       }
@@ -41771,23 +41754,6 @@
         }
       }
     },
-    "cli.sshPtyAttach.remoteSessionLostRespawn": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] remote session was lost; starting a new shell."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] リモートセッションが失われました。新しいシェルを開始します。"
-          }
-        }
-      }
-    },
     "cli.socket.error.conflictingEnvironment": {
       "extractionState": "manual",
       "localizations": {
@@ -42430,627 +42396,19 @@
         }
       }
     },
-    "cli.ssh.autoReconnect.status": {
+    "cli.sshPtyAttach.remoteSessionLostRespawn": {
       "extractionState": "manual",
       "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] انتهى ssh بالحالة %s؛ جارٍ إعادة الاتصال (المحاولة %s/%s)."
-          }
-        },
-        "bs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh je završio sa statusom %s; ponovno povezivanje (pokušaj %s/%s)."
-          }
-        },
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh afsluttede med status %s; genopretter forbindelse (forsøg %s/%s)."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh wurde mit Status %s beendet; erneuter Verbindungsaufbau (Versuch %s/%s)."
-          }
-        },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "[cmux] ssh exited with status %s; reconnecting (attempt %s/%s)."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh terminó con el estado %s; reconectando (intento %s/%s)."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh s’est arrêté avec l’état %s ; reconnexion (tentative %s/%s)."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh è terminato con stato %s; riconnessione in corso (tentativo %s/%s)."
+            "value": "[cmux] remote session was lost; starting a new shell."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "[cmux] ssh はステータス %s で終了しました。再接続しています（試行 %s/%s）。"
-          }
-        },
-        "km": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh បានបញ្ចប់ដោយស្ថានភាព %s; កំពុងភ្ជាប់ឡើងវិញ (ការព្យាយាម %s/%s)។"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh가 상태 %s로 종료되었습니다. 다시 연결 중입니다(시도 %s/%s)."
-          }
-        },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh avsluttet med status %s; kobler til på nytt (forsøk %s/%s)."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh zakończył działanie ze statusem %s; ponowne łączenie (próba %s/%s)."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh saiu com status %s; reconectando (tentativa %s/%s)."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh завершился со статусом %s; переподключение (попытка %s/%s)."
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh ออกจากการทำงานด้วยสถานะ %s; กำลังเชื่อมต่อใหม่ (ครั้งที่ %s/%s)"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh %s durumuyla çıktı; yeniden bağlanıyor (deneme %s/%s)."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh завершився зі статусом %s; повторне підключення (спроба %s/%s)."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh 已退出，状态为 %s；正在重新连接（第 %s/%s 次）。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh 已結束，狀態為 %s；正在重新連線（第 %s/%s 次）。"
-          }
-        }
-      }
-    },
-    "cli.ssh.autoReconnect.stopHint": {
-      "extractionState": "manual",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] أغلق هذا الجزء أو اضغط Ctrl-C لإيقاف إعادة الاتصال."
-          }
-        },
-        "bs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] zatvorite ovo okno ili pritisnite Ctrl-C za zaustavljanje ponovnog povezivanja."
-          }
-        },
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] luk denne rude, eller tryk Ctrl-C for at stoppe genoprettelsen."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] schließen Sie diesen Bereich oder drücken Sie Ctrl-C, um das erneute Verbinden zu stoppen."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] close this pane or press Ctrl-C to stop reconnecting."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] cierra este panel o pulsa Ctrl-C para detener la reconexión."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] fermez ce volet ou appuyez sur Ctrl-C pour arrêter la reconnexion."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] chiudi questo riquadro o premi Ctrl-C per interrompere la riconnessione."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] 再接続を停止するには、このペインを閉じるか Ctrl-C を押してください。"
-          }
-        },
-        "km": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] បិទផ្ទាំងនេះ ឬចុច Ctrl-C ដើម្បីបញ្ឈប់ការភ្ជាប់ឡើងវិញ។"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] 다시 연결을 중지하려면 이 창을 닫거나 Ctrl-C를 누르세요."
-          }
-        },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] lukk denne ruten eller trykk Ctrl-C for å stoppe ny tilkobling."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] zamknij ten panel albo naciśnij Ctrl-C, aby zatrzymać ponowne łączenie."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] feche este painel ou pressione Ctrl-C para interromper a reconexão."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] закройте эту панель или нажмите Ctrl-C, чтобы остановить переподключение."
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ปิดบานหน้าต่างนี้หรือกด Ctrl-C เพื่อหยุดการเชื่อมต่อใหม่"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] yeniden bağlanmayı durdurmak için bu bölmeyi kapatın veya Ctrl-C'ye basın."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] закрийте цю панель або натисніть Ctrl-C, щоб зупинити повторне підключення."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] 关闭此窗格或按 Ctrl-C 停止重新连接。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] 關閉此窗格或按 Ctrl-C 停止重新連線。"
-          }
-        }
-      }
-    },
-    "cli.ssh.manualReconnectPrompt.detail": {
-      "extractionState": "manual",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ربما تم إيقاف الجهاز الافتراضي البعيد مؤقتًا أو حذفه أو فقد الاتصال بالشبكة."
-          }
-        },
-        "bs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] udaljeni VM je možda pauziran, uništen ili je izgubio mrežu."
-          }
-        },
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] den eksterne VM kan være sat på pause, slettet eller have mistet netværket."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] die Remote-VM wurde möglicherweise angehalten, gelöscht oder hat die Netzwerkverbindung verloren."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] the remote VM may have been paused, destroyed, or lost network."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] la VM remota puede estar pausada, destruida o sin conexión de red."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] la VM distante a peut-être été suspendue, détruite ou a perdu le réseau."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] la VM remota potrebbe essere stata messa in pausa, eliminata o aver perso la rete."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] リモート VM は一時停止、削除、またはネットワーク切断された可能性があります。"
-          }
-        },
-        "km": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] VM ពីចម្ងាយអាចត្រូវបានផ្អាក លុបចោល ឬបាត់បង់បណ្តាញ។"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] 원격 VM이 일시 중지, 삭제되었거나 네트워크 연결이 끊겼을 수 있습니다."
-          }
-        },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] den eksterne VM-en kan være satt på pause, slettet eller ha mistet nettverket."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] zdalna VM mogła zostać wstrzymana, usunięta lub utracić sieć."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] a VM remota pode ter sido pausada, destruída ou perdido a rede."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] удаленная VM могла быть приостановлена, удалена или потерять сеть."
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] VM ระยะไกลอาจถูกพัก ถูกลบ หรือสูญเสียการเชื่อมต่อเครือข่าย"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] uzak VM duraklatılmış, silinmiş veya ağ bağlantısını kaybetmiş olabilir."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] віддалену VM могло бути призупинено, видалено або вона втратила мережу."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] 远程 VM 可能已暂停、被销毁或失去网络连接。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] 遠端 VM 可能已暫停、被刪除或失去網路連線。"
-          }
-        }
-      }
-    },
-    "cli.ssh.manualReconnectPrompt.prompt": {
-      "extractionState": "manual",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] اضغط Enter لإغلاق هذا الجزء. اضغط r ثم Enter لإعادة الاتصال."
-          }
-        },
-        "bs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] pritisnite Enter za zatvaranje ovog okna. Pritisnite r pa Enter za ponovno povezivanje."
-          }
-        },
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] tryk på Enter for at lukke denne rude. Tryk på r og derefter Enter for at genoprette forbindelsen."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] drücken Sie Enter, um diesen Bereich zu schließen. Drücken Sie r und dann Enter zum erneuten Verbinden."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] press Enter to close this pane. Press r then Enter to reconnect."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] pulsa Enter para cerrar este panel. Pulsa r y luego Enter para reconectar."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] appuyez sur Entrée pour fermer ce volet. Appuyez sur r puis Entrée pour reconnecter."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] premi Invio per chiudere questo riquadro. Premi r e poi Invio per riconnettere."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] 閉じるには Enter を押してください。再接続するには r を押して Enter を押してください。"
-          }
-        },
-        "km": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ចុច Enter ដើម្បីបិទផ្ទាំងនេះ។ ចុច r បន្ទាប់មក Enter ដើម្បីភ្ជាប់ឡើងវិញ។"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] 이 창을 닫으려면 Enter를 누르세요. 다시 연결하려면 r을 누른 뒤 Enter를 누르세요."
-          }
-        },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] trykk Enter for å lukke denne ruten. Trykk r og deretter Enter for å koble til på nytt."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] naciśnij Enter, aby zamknąć ten panel. Naciśnij r, a potem Enter, aby połączyć ponownie."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] pressione Enter para fechar este painel. Pressione r e depois Enter para reconectar."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] нажмите Enter, чтобы закрыть эту панель. Нажмите r, затем Enter, чтобы переподключиться."
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] กด Enter เพื่อปิดบานหน้าต่างนี้ กด r แล้วกด Enter เพื่อเชื่อมต่อใหม่"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] bu bölmeyi kapatmak için Enter'a basın. Yeniden bağlanmak için r sonra Enter'a basın."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] натисніть Enter, щоб закрити цю панель. Натисніть r, потім Enter, щоб повторно підключитися."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] 按 Enter 关闭此窗格。按 r 后再按 Enter 重新连接。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] 按 Enter 關閉此窗格。按 r 再按 Enter 重新連線。"
-          }
-        }
-      }
-    },
-    "cli.ssh.manualReconnectPrompt.status": {
-      "extractionState": "manual",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] انتهى ssh بالحالة %s."
-          }
-        },
-        "bs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh je završio sa statusom %s."
-          }
-        },
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh afsluttede med status %s."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh wurde mit Status %s beendet."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh exited with status %s."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh terminó con el estado %s."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh s’est arrêté avec l’état %s."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh è terminato con stato %s."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh はステータス %s で終了しました。"
-          }
-        },
-        "km": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh បានបញ្ចប់ដោយមានស្ថានភាព %s។"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh가 상태 %s로 종료되었습니다."
-          }
-        },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh avsluttet med status %s."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh zakończył działanie ze statusem %s."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh saiu com status %s."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh завершился со статусом %s."
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh ออกจากการทำงานด้วยสถานะ %s"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh %s durumuyla çıktı."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh завершився зі статусом %s."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh 已退出，状态为 %s。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "[cmux] ssh 已結束，狀態為 %s。"
+            "value": "[cmux] リモートセッションが失われました。新しいシェルを開始します。"
           }
         }
       }
@@ -44262,31 +43620,1694 @@
         }
       }
     },
+    "cli.error.workspaceLoadingInvalidId": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invalid --id '%@'. Use letters, digits, '.', '_', or '-' (no spaces)."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無効な --id '%@' です。英数字、'.'、'_'、'-' のみ使用できます（空白不可）。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잘못된 --id '%@'입니다. 영문자, 숫자, '.', '_', '-'만 사용할 수 있습니다(공백 불가)."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Неприпустимий --id '%@'. Використовуйте літери, цифри, '.', '_' або '-' (без пробілів)."
+          }
+        }
+      }
+    },
+    "cli.error.workspaceLoadingInvalidState": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invalid state '%@'. Expected on or off. %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無効な状態 '%@' です。on または off を指定してください。%@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잘못된 상태 '%@'입니다. on 또는 off를 지정하세요. %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Неприпустимий стан '%@'. Очікується on або off. %@"
+          }
+        }
+      }
+    },
+    "cli.error.workspaceLoadingNoWorkspace": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No workspace resolved. Run inside a cmux workspace or pass --workspace <id>."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースを特定できませんでした。cmux のワークスペース内で実行するか、--workspace <id> を指定してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "워크스페이스를 확인할 수 없습니다. cmux 워크스페이스 안에서 실행하거나 --workspace <id>를 지정하세요."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося визначити робочий простір. Запустіть у робочому просторі cmux або передайте --workspace <id>."
+          }
+        }
+      }
+    },
+    "cli.workspaceLoading.usage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usage: cmux workspace loading <on|off> [--id <name>] [--workspace <id>] [--window <id>] [--json]"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使い方: cmux workspace loading <on|off> [--id <name>] [--workspace <id>] [--window <id>] [--json]"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사용법: cmux workspace loading <on|off> [--id <name>] [--workspace <id>] [--window <id>] [--json]"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Використання: cmux workspace loading <on|off> [--id <name>] [--workspace <id>] [--window <id>] [--json]"
+          }
+        }
+      }
+    },
+    "settings.app.loadingSpinnerPosition": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "موضع مؤشر التحميل"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pozicija indikatora učitavanja"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Placering af indlæsningsindikator"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Position des Ladeindikators"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading Spinner Position"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posición del indicador de carga"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Position de l’indicateur de chargement"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posizione dell’indicatore di caricamento"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読み込みスピナーの位置"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로딩 스피너 위치"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plassering av lasteindikator"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pozycja wskaźnika ładowania"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posição do indicador de carregamento"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Положение индикатора загрузки"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตำแหน่งตัวบ่งชี้การโหลด"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yükleme göstergesi konumu"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Розташування індикатора завантаження"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加载指示器位置"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "載入指示器位置"
+          }
+        }
+      }
+    },
+    "settings.app.loadingSpinnerPosition.left": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يسار"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lijevo"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Venstre"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Links"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Left"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Izquierda"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gauche"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sinistra"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "왼쪽"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Venstre"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lewo"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esquerda"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слева"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ซ้าย"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sol"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ліворуч"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左"
+          }
+        }
+      }
+    },
+    "settings.app.loadingSpinnerPosition.right": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يمين"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desno"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Højre"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechts"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Right"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Derecha"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Droite"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destra"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오른쪽"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Høyre"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prawo"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direita"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Справа"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ขวา"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sağ"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Праворуч"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右"
+          }
+        }
+      }
+    },
+    "settings.app.loadingSpinnerPosition.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إظهار المؤشر على يسار صف مساحة العمل (بمشاركة موضع شارة غير المقروء) أو على يمينه."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prikazuje indikator lijevo (dijeli mjesto sa značkom nepročitanog) ili desno u redu radnog prostora."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Viser indikatoren til venstre (deler plads med ulæst-mærket) eller til højre i arbejdsområdets række."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeigt den Indikator links (teilt den Platz mit der Ungelesen-Plakette) oder rechts in der Arbeitsbereichszeile."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show the spinner on the left (sharing the unread badge slot) or the right of the workspace row."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muestra el indicador a la izquierda (compartiendo el espacio de la insignia de no leídos) o a la derecha de la fila del espacio de trabajo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Affiche l’indicateur à gauche (partageant l’emplacement du badge non lu) ou à droite de la ligne de l’espace de travail."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra l’indicatore a sinistra (condividendo lo spazio del badge non letti) o a destra della riga dello spazio di lavoro."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スピナーをワークスペース行の左（未読バッジの位置を共有）または右に表示します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "워크스페이스 행의 왼쪽(읽지 않음 배지 자리 공유) 또는 오른쪽에 스피너를 표시합니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Viser indikatoren til venstre (deler plass med ulest-merket) eller til høyre i arbeidsområderaden."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokazuje wskaźnik po lewej stronie (współdzieląc miejsce z plakietką nieprzeczytanych) lub po prawej stronie wiersza obszaru roboczego."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra o indicador à esquerda (compartilhando o espaço do selo de não lidos) ou à direita da linha do espaço de trabalho."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показывает индикатор слева (совместно со значком непрочитанного) или справа в строке рабочего пространства."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แสดงตัวบ่งชี้ทางซ้าย (ใช้ตำแหน่งเดียวกับป้ายยังไม่ได้อ่าน) หรือทางขวาของแถวเวิร์กสเปซ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Göstergeyi çalışma alanı satırının solunda (okunmamış rozetiyle aynı yeri paylaşır) veya sağında gösterir."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показує індикатор ліворуч (спільно зі значком непрочитаного) або праворуч у рядку робочого простору."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在工作区行的左侧（与未读标记共用位置）或右侧显示指示器。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在工作區列的左側（與未讀標記共用位置）或右側顯示指示器。"
+          }
+        }
+      }
+    },
+    "settings.app.notificationBadgePosition": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "موضع شارة الإشعارات"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pozicija značke obavijesti"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Placering af notifikationsmærke"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Position der Benachrichtigungsplakette"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notification Badge Position"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posición de la insignia de notificaciones"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Position du badge de notification"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posizione del badge di notifica"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通知バッジの位置"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "알림 배지 위치"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plassering av varselmerke"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pozycja plakietki powiadomień"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posição do selo de notificação"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Положение значка уведомлений"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตำแหน่งป้ายการแจ้งเตือน"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildirim rozeti konumu"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Розташування значка сповіщень"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通知标记位置"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通知標記位置"
+          }
+        }
+      }
+    },
+    "settings.app.notificationBadgePosition.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إظهار شارة الإشعارات غير المقروءة على يسار صف مساحة العمل أو على يمينه."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prikazuje značku nepročitanih obavijesti lijevo ili desno u redu radnog prostora."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Viser ulæst-notifikationsmærket til venstre eller højre i arbejdsområdets række."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeigt die Ungelesen-Plakette links oder rechts in der Arbeitsbereichszeile."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show the unread notification badge on the left or the right of the workspace row."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muestra la insignia de notificaciones no leídas a la izquierda o a la derecha de la fila del espacio de trabajo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Affiche le badge de notifications non lues à gauche ou à droite de la ligne de l’espace de travail."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra il badge delle notifiche non lette a sinistra o a destra della riga dello spazio di lavoro."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未読通知バッジをワークスペース行の左または右に表示します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "읽지 않은 알림 배지를 워크스페이스 행의 왼쪽 또는 오른쪽에 표시합니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Viser ulest-varselmerket til venstre eller høyre i arbeidsområderaden."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokazuje plakietkę nieprzeczytanych powiadomień po lewej lub prawej stronie wiersza obszaru roboczego."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra o selo de notificações não lidas à esquerda ou à direita da linha do espaço de trabalho."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показывает значок непрочитанных уведомлений слева или справа в строке рабочего пространства."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แสดงป้ายการแจ้งเตือนที่ยังไม่ได้อ่านทางซ้ายหรือทางขวาของแถวเวิร์กสเปซ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okunmamış bildirim rozetini çalışma alanı satırının solunda veya sağında gösterir."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показує значок непрочитаних сповіщень ліворуч або праворуч у рядку робочого простору."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在工作区行的左侧或右侧显示未读通知标记。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在工作區列的左側或右側顯示未讀通知標記。"
+          }
+        }
+      }
+    },
+    "settings.app.showAgentActivity": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إظهار مؤشر التحميل"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prikaži indikator učitavanja"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vis indlæsningsindikator"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ladeindikator anzeigen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Loading Spinner"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar indicador de carga"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher l’indicateur de chargement"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra indicatore di caricamento"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読み込みスピナーを表示"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로딩 스피너 표시"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vis lasteindikator"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaż wskaźnik ładowania"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar indicador de carregamento"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показывать индикатор загрузки"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แสดงตัวบ่งชี้การโหลด"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yükleme göstergesini göster"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показувати індикатор завантаження"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示加载指示器"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "顯示載入指示器"
+          }
+        }
+      }
+    },
+    "settings.app.showAgentActivity.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إظهار مؤشر تحميل على مساحات العمل التي بها وكلاء برمجة قيد التشغيل أو عمليات تحميل نشطة. يبقى ظاهرًا حتى عند إخفاء تفاصيل الشريط الجانبي."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prikazuje indikator učitavanja na radnim prostorima s pokrenutim agentima za kodiranje ili aktivnim učitavanjima. Ostaje vidljiv i kada su detalji bočne trake skriveni."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Viser en indlæsningsindikator på arbejdsområder med kørende kodningsagenter eller aktive indlæsninger. Forbliver synlig, selv når sidepanelets detaljer er skjult."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeigt einen Ladeindikator auf Arbeitsbereichen mit laufenden Coding-Agenten oder aktiven Ladevorgängen. Bleibt sichtbar, auch wenn Seitenleisten-Details ausgeblendet sind."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show a loading spinner on workspaces with running coding agents or active loaders. Stays visible even when sidebar details are hidden."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muestra un indicador de carga en los espacios de trabajo con agentes de código en ejecución o cargas activas. Permanece visible incluso cuando los detalles de la barra lateral están ocultos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Affiche un indicateur de chargement sur les espaces de travail avec des agents de codage en cours ou des chargements actifs. Reste visible même lorsque les détails de la barre latérale sont masqués."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra un indicatore di caricamento negli spazi di lavoro con agenti di codifica in esecuzione o caricamenti attivi. Rimane visibile anche quando i dettagli della barra laterale sono nascosti."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "実行中のコーディングエージェントまたはアクティブなローダーがあるワークスペースに読み込みスピナーを表示します。サイドバーの詳細を非表示にしても表示され続けます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "실행 중인 코딩 에이전트 또는 활성 로더가 있는 워크스페이스에 로딩 스피너를 표시합니다. 사이드바 세부 정보를 숨겨도 계속 표시됩니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Viser en lasteindikator på arbeidsområder med aktive kodeagenter eller aktive lastinger. Forblir synlig selv når sidefeltdetaljer er skjult."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokazuje wskaźnik ładowania w obszarach roboczych z uruchomionymi agentami kodowania lub aktywnymi ładowaniami. Pozostaje widoczny nawet po ukryciu szczegółów paska bocznego."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra um indicador de carregamento nos espaços de trabalho com agentes de codificação em execução ou carregamentos ativos. Permanece visível mesmo quando os detalhes da barra lateral estão ocultos."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показывает индикатор загрузки в рабочих пространствах с запущенными агентами кодирования или активными загрузками. Остаётся видимым, даже если детали боковой панели скрыты."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แสดงตัวบ่งชี้การโหลดบนเวิร์กสเปซที่มีเอเจนต์เขียนโค้ดกำลังทำงานหรือมีการโหลดที่ใช้งานอยู่ ยังคงแสดงแม้ซ่อนรายละเอียดแถบด้านข้าง"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışan kodlama aracıları veya etkin yüklemeler olan çalışma alanlarında bir yükleme göstergesi gösterir. Kenar çubuğu ayrıntıları gizliyken bile görünür kalır."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показує індикатор завантаження в робочих просторах із запущеними агентами кодування або активними завантаженнями. Залишається видимим, навіть якщо деталі бічної панелі приховано."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在有正在运行的编码代理或活动加载任务的工作区上显示加载指示器。即使隐藏侧边栏详细信息也会保持显示。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在有執行中的編碼代理或作用中載入工作的工作區上顯示載入指示器。即使隱藏側邊欄詳細資訊也會保持顯示。"
+          }
+        }
+      }
+    },
+    "settings.search.alias.setting.app.loading-spinner-position": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.loadingSpinnerPosition loading spinner position left right leading trailing side workspace تحميل مؤشر يسار يمين موضع"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.loadingSpinnerPosition loading spinner position left right leading trailing side workspace učitavanje indikator lijevo desno pozicija"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.loadingSpinnerPosition loading spinner position left right leading trailing side workspace indlæsning indikator venstre højre placering"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.loadingSpinnerPosition loading spinner position left right leading trailing side workspace laden Indikator links rechts Position"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.loadingSpinnerPosition loading spinner position left right leading trailing side workspace"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.loadingSpinnerPosition loading spinner position left right leading trailing side workspace carga indicador izquierda derecha posición"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.loadingSpinnerPosition loading spinner position left right leading trailing side workspace chargement indicateur gauche droite position"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.loadingSpinnerPosition loading spinner position left right leading trailing side workspace caricamento indicatore sinistra destra posizione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.loadingSpinnerPosition loading spinner position left right leading trailing side workspace 読み込み スピナー 位置 左 右 サイド"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.loadingSpinnerPosition loading spinner position left right leading trailing side workspace 로딩 스피너 왼쪽 오른쪽 위치"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.loadingSpinnerPosition loading spinner position left right leading trailing side workspace lasting indikator venstre høyre plassering"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.loadingSpinnerPosition loading spinner position left right leading trailing side workspace ładowanie wskaźnik lewo prawo pozycja"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.loadingSpinnerPosition loading spinner position left right leading trailing side workspace carregamento indicador esquerda direita posição"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.loadingSpinnerPosition loading spinner position left right leading trailing side workspace загрузка индикатор слева справа положение"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.loadingSpinnerPosition loading spinner position left right leading trailing side workspace โหลด ตัวบ่งชี้ ซ้าย ขวา ตำแหน่ง"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.loadingSpinnerPosition loading spinner position left right leading trailing side workspace yükleme gösterge sol sağ konum"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.loadingSpinnerPosition loading spinner position left right leading trailing side workspace завантаження індикатор ліворуч праворуч розташування"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.loadingSpinnerPosition loading spinner position left right leading trailing side workspace 加载 指示器 左 右 位置"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.loadingSpinnerPosition loading spinner position left right leading trailing side workspace 載入 指示器 左 右 位置"
+          }
+        }
+      }
+    },
+    "settings.search.alias.setting.app.notification-badge-position": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.notificationBadgePosition notification unread badge position left right leading trailing side workspace تحميل مؤشر يسار يمين موضع"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.notificationBadgePosition notification unread badge position left right leading trailing side workspace učitavanje indikator lijevo desno pozicija"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.notificationBadgePosition notification unread badge position left right leading trailing side workspace indlæsning indikator venstre højre placering"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.notificationBadgePosition notification unread badge position left right leading trailing side workspace laden Indikator links rechts Position"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.notificationBadgePosition notification unread badge position left right leading trailing side workspace"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.notificationBadgePosition notification unread badge position left right leading trailing side workspace carga indicador izquierda derecha posición"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.notificationBadgePosition notification unread badge position left right leading trailing side workspace chargement indicateur gauche droite position"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.notificationBadgePosition notification unread badge position left right leading trailing side workspace caricamento indicatore sinistra destra posizione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.notificationBadgePosition notification unread badge position left right leading trailing side workspace 通知 未読 バッジ 位置 左 右 サイド"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.notificationBadgePosition notification unread badge position left right leading trailing side workspace 로딩 스피너 왼쪽 오른쪽 위치"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.notificationBadgePosition notification unread badge position left right leading trailing side workspace lasting indikator venstre høyre plassering"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.notificationBadgePosition notification unread badge position left right leading trailing side workspace ładowanie wskaźnik lewo prawo pozycja"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.notificationBadgePosition notification unread badge position left right leading trailing side workspace carregamento indicador esquerda direita posição"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.notificationBadgePosition notification unread badge position left right leading trailing side workspace загрузка индикатор слева справа положение"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.notificationBadgePosition notification unread badge position left right leading trailing side workspace โหลด ตัวบ่งชี้ ซ้าย ขวา ตำแหน่ง"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.notificationBadgePosition notification unread badge position left right leading trailing side workspace yükleme gösterge sol sağ konum"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.notificationBadgePosition notification unread badge position left right leading trailing side workspace завантаження індикатор ліворуч праворуч розташування"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.notificationBadgePosition notification unread badge position left right leading trailing side workspace 加载 指示器 左 右 位置"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.notificationBadgePosition notification unread badge position left right leading trailing side workspace 載入 指示器 左 右 位置"
+          }
+        }
+      }
+    },
+    "settings.search.alias.setting.app.show-agent-activity": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.showAgentActivity loading spinner active coding agent agents running activity تحميل مؤشر يسار يمين موضع"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.showAgentActivity loading spinner active coding agent agents running activity učitavanje indikator lijevo desno pozicija"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.showAgentActivity loading spinner active coding agent agents running activity indlæsning indikator venstre højre placering"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.showAgentActivity loading spinner active coding agent agents running activity laden Indikator links rechts Position"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.showAgentActivity loading spinner active coding agent agents running activity"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.showAgentActivity loading spinner active coding agent agents running activity carga indicador izquierda derecha posición"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.showAgentActivity loading spinner active coding agent agents running activity chargement indicateur gauche droite position"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.showAgentActivity loading spinner active coding agent agents running activity caricamento indicatore sinistra destra posizione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.showAgentActivity loading spinner active coding agent agents running activity 読み込み スピナー アクティブ コーディング エージェント 実行中 アクティビティ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.showAgentActivity loading spinner active coding agent agents running activity 로딩 스피너 왼쪽 오른쪽 위치"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.showAgentActivity loading spinner active coding agent agents running activity lasting indikator venstre høyre plassering"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.showAgentActivity loading spinner active coding agent agents running activity ładowanie wskaźnik lewo prawo pozycja"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.showAgentActivity loading spinner active coding agent agents running activity carregamento indicador esquerda direita posição"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.showAgentActivity loading spinner active coding agent agents running activity загрузка индикатор слева справа положение"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.showAgentActivity loading spinner active coding agent agents running activity โหลด ตัวบ่งชี้ ซ้าย ขวา ตำแหน่ง"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.showAgentActivity loading spinner active coding agent agents running activity yükleme gösterge sol sağ konum"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.showAgentActivity loading spinner active coding agent agents running activity завантаження індикатор ліворуч праворуч розташування"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.showAgentActivity loading spinner active coding agent agents running activity 加载 指示器 左 右 位置"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sidebar.showAgentActivity loading spinner active coding agent agents running activity 載入 指示器 左 右 位置"
+          }
+        }
+      }
+    },
+    "sidebar.agentActivity.tooltip.many": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جارٍ التحميل (%lld مهام نشطة)"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Učitavanje (%lld aktivnih zadataka)"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indlæser (%lld aktive opgaver)"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird geladen (%lld aktive Aufgaben)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading (%lld active tasks)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando (%lld tareas activas)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chargement (%lld tâches actives)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caricamento (%lld attività attive)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読み込み中（アクティブなタスク %lld 件）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로딩 중(활성 작업 %lld개)"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laster (%lld aktive oppgaver)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ładowanie (%lld aktywnych zadań)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carregando (%lld tarefas ativas)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загрузка (%lld активных задач)"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังโหลด (งานที่ทำงานอยู่ %lld รายการ)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yükleniyor (%lld etkin görev)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завантаження (%lld активних завдань)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在加载（%lld 个活跃任务）"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在載入（%lld 個作用中任務）"
+          }
+        }
+      }
+    },
+    "sidebar.agentActivity.tooltip.one": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جارٍ التحميل (مهمة نشطة واحدة)"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Učitavanje (1 aktivan zadatak)"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indlæser (1 aktiv opgave)"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird geladen (1 aktive Aufgabe)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading (1 active task)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando (1 tarea activa)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chargement (1 tâche active)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caricamento (1 attività attiva)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読み込み中（アクティブなタスク 1 件）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로딩 중(활성 작업 1개)"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laster (1 aktiv oppgave)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ładowanie (1 aktywne zadanie)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carregando (1 tarefa ativa)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загрузка (1 активная задача)"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังโหลด (งานที่ทำงานอยู่ 1 รายการ)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yükleniyor (1 etkin görev)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завантаження (1 активне завдання)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在加载（1 个活跃任务）"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在載入（1 個作用中任務）"
+          }
+        }
+      }
+    },
     "cli.workspace.usage": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usage: cmux workspace <subcommand> [flags]\n\nCanonical noun for workspace operations. Legacy verbs\n(new-workspace, list-workspaces, close-workspace,\nrename-workspace, select-workspace) keep working and print a\none-time deprecation hint pointing here.\n\nSubcommands:\n  list                    List workspaces in a window\n  create [flags]          Create a workspace (same flags as new-workspace,\n                          including --env KEY=VALUE and --env-file <path>)\n  env [workspace] [--mask]\n                          Print a workspace's configured environment\n                          variables (--mask redacts the values)\n  close <workspace>       Close a workspace\n  rename <workspace> --title <new>\n  select <workspace>      Make a workspace active\n  reconnect [workspace]   Reconnect a remote (SSH) workspace, including one\n                          whose automatic reconnect paused because the host\n                          was unreachable\n  disconnect [workspace]  Stop a remote (SSH) workspace's connection\n  group <subcommand>      Workspace group operations (see cmux workspace-group --help)\n\nenv/reconnect/disconnect accept a positional handle or --workspace\n<id|ref|index>, defaulting to the caller's workspace, then the\nselected one (of --window's window when given).\n\nExamples:\n  cmux workspace list --json\n  cmux workspace create --name Build --cwd ~/projects/myapp\n  cmux workspace create --cwd . --env AWS_PROFILE=prod --env-file ./.cmux.env\n  cmux workspace env workspace:3 --mask\n  cmux workspace close workspace:3\n  cmux workspace reconnect\n  cmux workspace disconnect --workspace workspace:3"
+            "value": "Usage: cmux workspace <subcommand> [flags]\n\nCanonical noun for workspace operations. Legacy verbs\n(new-workspace, list-workspaces, close-workspace,\nrename-workspace, select-workspace) keep working and print a\none-time deprecation hint pointing here.\n\nSubcommands:\n  list                    List workspaces in a window\n  create [flags]          Create a workspace (same flags as new-workspace,\n                          including --env KEY=VALUE and --env-file <path>)\n  env [workspace] [--mask]\n                          Print a workspace's configured environment\n                          variables (--mask redacts the values)\n  close <workspace>       Close a workspace\n  rename <workspace> --title <new>\n  select <workspace>      Make a workspace active\n  reconnect [workspace]   Reconnect a remote (SSH) workspace, including one\n                          whose automatic reconnect paused because the host\n                          was unreachable\n  disconnect [workspace]  Stop a remote (SSH) workspace's connection\n  loading <on|off> [--id <name>]\n                          Toggle the workspace's loading spinner. Each --id\n                          is a separate loader that stacks; omit for one\n                          default loader.\n  group <subcommand>      Workspace group operations (see cmux workspace-group --help)\n\nenv/reconnect/disconnect accept a positional handle or --workspace\n<id|ref|index>, defaulting to the caller's workspace, then the\nselected one (of --window's window when given).\n\nExamples:\n  cmux workspace list --json\n  cmux workspace create --name Build --cwd ~/projects/myapp\n  cmux workspace create --cwd . --env AWS_PROFILE=prod --env-file ./.cmux.env\n  cmux workspace env workspace:3 --mask\n  cmux workspace close workspace:3\n  cmux workspace reconnect\n  cmux workspace disconnect --workspace workspace:3\n  cmux workspace loading on\n  cmux workspace loading on --id build\n  cmux workspace loading off"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "使い方: cmux workspace <サブコマンド> [フラグ]\n\nワークスペース操作の正規の名前空間です。従来の動詞コマンド\n(new-workspace、list-workspaces、close-workspace、\nrename-workspace、select-workspace) は引き続き動作し、ここを指す\n非推奨ヒントを一度だけ表示します。\n\nサブコマンド:\n  list                    ウィンドウ内のワークスペースを一覧表示\n  create [flags]          ワークスペースを作成 (new-workspace と同じフラグ。\n                          --env KEY=VALUE と --env-file <path> を含む)\n  env [workspace] [--mask]\n                          ワークスペースに設定された環境変数を表示\n                          (--mask は値を伏せ字にします)\n  close <workspace>       ワークスペースを閉じる\n  rename <workspace> --title <new>\n  select <workspace>      ワークスペースをアクティブにする\n  reconnect [workspace]   リモート (SSH) ワークスペースを再接続。ホストに\n                          到達できず自動再接続が一時停止したものも含む\n  disconnect [workspace]  リモート (SSH) ワークスペースの接続を停止\n  group <subcommand>      ワークスペースグループ操作 (cmux workspace-group --help を参照)\n\nenv/reconnect/disconnect は位置引数のハンドルまたは --workspace\n<id|ref|index> を受け付け、省略時は呼び出し元のワークスペース、\n次に選択中のワークスペース (--window 指定時はそのウィンドウ) を\n対象にします。\n\n例:\n  cmux workspace list --json\n  cmux workspace create --name Build --cwd ~/projects/myapp\n  cmux workspace create --cwd . --env AWS_PROFILE=prod --env-file ./.cmux.env\n  cmux workspace env workspace:3 --mask\n  cmux workspace close workspace:3\n  cmux workspace reconnect\n  cmux workspace disconnect --workspace workspace:3"
+            "value": "使い方: cmux workspace <サブコマンド> [フラグ]\n\nワークスペース操作の正規の名前空間です。従来の動詞コマンド\n(new-workspace、list-workspaces、close-workspace、\nrename-workspace、select-workspace) は引き続き動作し、ここを指す\n非推奨ヒントを一度だけ表示します。\n\nサブコマンド:\n  list                    ウィンドウ内のワークスペースを一覧表示\n  create [flags]          ワークスペースを作成 (new-workspace と同じフラグ。\n                          --env KEY=VALUE と --env-file <path> を含む)\n  env [workspace] [--mask]\n                          ワークスペースに設定された環境変数を表示\n                          (--mask は値を伏せ字にします)\n  close <workspace>       ワークスペースを閉じる\n  rename <workspace> --title <new>\n  select <workspace>      ワークスペースをアクティブにする\n  reconnect [workspace]   リモート (SSH) ワークスペースを再接続。ホストに\n                          到達できず自動再接続が一時停止したものも含む\n  disconnect [workspace]  リモート (SSH) ワークスペースの接続を停止\n  loading <on|off> [--id <name>]\n                          ワークスペースの読み込みスピナーを切り替え。--id ごとに\n                          別のローダーとして積み重なり、省略時は既定の 1 つを\n                          切り替えます\n  group <subcommand>      ワークスペースグループ操作 (cmux workspace-group --help を参照)\n\nenv/reconnect/disconnect は位置引数のハンドルまたは --workspace\n<id|ref|index> を受け付け、省略時は呼び出し元のワークスペース、\n次に選択中のワークスペース (--window 指定時はそのウィンドウ) を\n対象にします。\n\n例:\n  cmux workspace list --json\n  cmux workspace create --name Build --cwd ~/projects/myapp\n  cmux workspace create --cwd . --env AWS_PROFILE=prod --env-file ./.cmux.env\n  cmux workspace env workspace:3 --mask\n  cmux workspace close workspace:3\n  cmux workspace reconnect\n  cmux workspace disconnect --workspace workspace:3\n  cmux workspace loading on\n  cmux workspace loading on --id build\n  cmux workspace loading off"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "사용법: cmux workspace <하위 명령> [플래그]\n\n워크스페이스 작업의 표준 네임스페이스입니다. 기존 동사형 명령\n(new-workspace, list-workspaces, close-workspace,\nrename-workspace, select-workspace)은 계속 작동하며 이곳을\n가리키는 사용 중단 안내를 한 번 표시합니다.\n\n하위 명령:\n  list                    창의 워크스페이스 목록 표시\n  create [flags]          워크스페이스 생성 (new-workspace와 동일한 플래그.\n                          --env KEY=VALUE 및 --env-file <path> 포함)\n  env [workspace] [--mask]\n                          워크스페이스에 설정된 환경 변수 표시\n                          (--mask는 값을 가립니다)\n  close <workspace>       워크스페이스 닫기\n  rename <workspace> --title <new>\n  select <workspace>      워크스페이스를 활성화\n  reconnect [workspace]   원격 (SSH) 워크스페이스 재연결. 호스트에 연결할\n                          수 없어 자동 재연결이 일시 중지된 경우 포함\n  disconnect [workspace]  원격 (SSH) 워크스페이스 연결 중지\n  group <subcommand>      워크스페이스 그룹 작업 (cmux workspace-group --help 참고)\n\nenv/reconnect/disconnect는 위치 핸들 또는 --workspace\n<id|ref|index>를 받으며, 기본값은 호출자의 워크스페이스, 그다음\n선택된 워크스페이스입니다 (--window 지정 시 해당 창 기준).\n\n예시:\n  cmux workspace list --json\n  cmux workspace create --name Build --cwd ~/projects/myapp\n  cmux workspace create --cwd . --env AWS_PROFILE=prod --env-file ./.cmux.env\n  cmux workspace env workspace:3 --mask\n  cmux workspace close workspace:3\n  cmux workspace reconnect\n  cmux workspace disconnect --workspace workspace:3"
+            "value": "사용법: cmux workspace <하위 명령> [플래그]\n\n워크스페이스 작업의 표준 네임스페이스입니다. 기존 동사형 명령\n(new-workspace, list-workspaces, close-workspace,\nrename-workspace, select-workspace)은 계속 작동하며 이곳을\n가리키는 사용 중단 안내를 한 번 표시합니다.\n\n하위 명령:\n  list                    창의 워크스페이스 목록 표시\n  create [flags]          워크스페이스 생성 (new-workspace와 동일한 플래그.\n                          --env KEY=VALUE 및 --env-file <path> 포함)\n  env [workspace] [--mask]\n                          워크스페이스에 설정된 환경 변수 표시\n                          (--mask는 값을 가립니다)\n  close <workspace>       워크스페이스 닫기\n  rename <workspace> --title <new>\n  select <workspace>      워크스페이스를 활성화\n  reconnect [workspace]   원격 (SSH) 워크스페이스 재연결. 호스트에 연결할\n                          수 없어 자동 재연결이 일시 중지된 경우 포함\n  disconnect [workspace]  원격 (SSH) 워크스페이스 연결 중지\n  loading <on|off> [--id <name>]\n                          워크스페이스 로딩 스피너 전환. --id마다 별도의\n                          로더로 누적되며, 생략 시 기본 로더 하나를 전환\n  group <subcommand>      워크스페이스 그룹 작업 (cmux workspace-group --help 참고)\n\nenv/reconnect/disconnect는 위치 핸들 또는 --workspace\n<id|ref|index>를 받으며, 기본값은 호출자의 워크스페이스, 그다음\n선택된 워크스페이스입니다 (--window 지정 시 해당 창 기준).\n\n예시:\n  cmux workspace list --json\n  cmux workspace create --name Build --cwd ~/projects/myapp\n  cmux workspace create --cwd . --env AWS_PROFILE=prod --env-file ./.cmux.env\n  cmux workspace env workspace:3 --mask\n  cmux workspace close workspace:3\n  cmux workspace reconnect\n  cmux workspace disconnect --workspace workspace:3\n  cmux workspace loading on\n  cmux workspace loading on --id build\n  cmux workspace loading off"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Використання: cmux workspace <підкоманда> [прапорці]\n\nКанонічний простір імен для операцій з робочими просторами.\nЗастарілі дієслівні команди (new-workspace, list-workspaces,\nclose-workspace, rename-workspace, select-workspace) продовжують\nпрацювати й одноразово показують підказку про застарілість, що\nвказує сюди.\n\nПідкоманди:\n  list                    Список робочих просторів у вікні\n  create [flags]          Створити робочий простір (ті самі прапорці, що й\n                          new-workspace, зокрема --env KEY=VALUE та --env-file <path>)\n  env [workspace] [--mask]\n                          Показати налаштовані змінні середовища робочого\n                          простору (--mask приховує значення)\n  close <workspace>       Закрити робочий простір\n  rename <workspace> --title <new>\n  select <workspace>      Зробити робочий простір активним\n  reconnect [workspace]   Перепідключити віддалений (SSH) робочий простір,\n                          зокрема той, де автоматичне перепідключення\n                          призупинено через недосяжний хост\n  disconnect [workspace]  Зупинити з'єднання віддаленого (SSH) робочого простору\n  group <subcommand>      Операції з групами робочих просторів (див. cmux workspace-group --help)\n\nenv/reconnect/disconnect приймають позиційний дескриптор або --workspace\n<id|ref|index>; типово використовується робочий простір викликача,\nдалі — вибраний (у вікні з --window, якщо задано).\n\nПриклади:\n  cmux workspace list --json\n  cmux workspace create --name Build --cwd ~/projects/myapp\n  cmux workspace create --cwd . --env AWS_PROFILE=prod --env-file ./.cmux.env\n  cmux workspace env workspace:3 --mask\n  cmux workspace close workspace:3\n  cmux workspace reconnect\n  cmux workspace disconnect --workspace workspace:3"
+            "value": "Використання: cmux workspace <підкоманда> [прапорці]\n\nКанонічний простір імен для операцій з робочими просторами.\nЗастарілі дієслівні команди (new-workspace, list-workspaces,\nclose-workspace, rename-workspace, select-workspace) продовжують\nпрацювати й одноразово показують підказку про застарілість, що\nвказує сюди.\n\nПідкоманди:\n  list                    Список робочих просторів у вікні\n  create [flags]          Створити робочий простір (ті самі прапорці, що й\n                          new-workspace, зокрема --env KEY=VALUE та --env-file <path>)\n  env [workspace] [--mask]\n                          Показати налаштовані змінні середовища робочого\n                          простору (--mask приховує значення)\n  close <workspace>       Закрити робочий простір\n  rename <workspace> --title <new>\n  select <workspace>      Зробити робочий простір активним\n  reconnect [workspace]   Перепідключити віддалений (SSH) робочий простір,\n                          зокрема той, де автоматичне перепідключення\n                          призупинено через недосяжний хост\n  disconnect [workspace]  Зупинити з'єднання віддаленого (SSH) робочого простору\n  loading <on|off> [--id <name>]\n                          Перемкнути індикатор завантаження робочого простору.\n                          Кожен --id — окремий лоадер; без --id перемикається\n                          один типовий\n  group <subcommand>      Операції з групами робочих просторів (див. cmux workspace-group --help)\n\nenv/reconnect/disconnect приймають позиційний дескриптор або --workspace\n<id|ref|index>; типово використовується робочий простір викликача,\nдалі — вибраний (у вікні з --window, якщо задано).\n\nПриклади:\n  cmux workspace list --json\n  cmux workspace create --name Build --cwd ~/projects/myapp\n  cmux workspace create --cwd . --env AWS_PROFILE=prod --env-file ./.cmux.env\n  cmux workspace env workspace:3 --mask\n  cmux workspace close workspace:3\n  cmux workspace reconnect\n  cmux workspace disconnect --workspace workspace:3\n  cmux workspace loading on\n  cmux workspace loading on --id build\n  cmux workspace loading off"
           }
         }
       }
@@ -44345,6 +45366,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Помилка SSH (%@): %@"
+          }
+        }
+      }
+    },
+    "cloud.overlay.reconnect.button": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconnect"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再接続"
           }
         }
       }
@@ -49485,6 +50523,23 @@
         }
       }
     },
+    "command.cmuxConfig.builtInSubtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cmux"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cmux"
+          }
+        }
+      }
+    },
     "command.cmuxConfig.customTitle": {
       "extractionState": "manual",
       "localizations": {
@@ -49634,6 +50689,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Codex"
+          }
+        }
+      }
+    },
+    "command.cmuxConfig.defaultOpenCodeTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenCode"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenCode"
           }
         }
       }
@@ -51867,6 +52939,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "連接 iPhone/iPad"
+          }
+        }
+      }
+    },
+    "command.newAgentChat.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent Chat"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent Chat"
+          }
+        }
+      }
+    },
+    "command.newAgentChat.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New agent chat"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しいエージェントチャット"
           }
         }
       }
@@ -58793,6 +59899,23 @@
         }
       }
     },
+    "command.toggleFullWidthTab.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toggle Full Width Tab"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全幅タブを切り替え"
+          }
+        }
+      }
+    },
     "command.toggleLeftSidebar.title": {
       "localizations": {
         "ar": {
@@ -59230,23 +60353,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "終端機版面"
-          }
-        }
-      }
-    },
-    "command.toggleFullWidthTab.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Toggle Full Width Tab"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "全幅タブを切り替え"
           }
         }
       }
@@ -70781,6 +71887,23 @@
         }
       }
     },
+    "debug.menu.splitButtonLayoutDebug": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Split Button Layout Debug…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分割ボタンレイアウトのデバッグ…"
+          }
+        }
+      }
+    },
     "debug.menu.startupAppearanceDebug": {
       "extractionState": "manual",
       "localizations": {
@@ -70934,23 +72057,6 @@
         }
       }
     },
-    "debug.menu.splitButtonLayoutDebug": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Split Button Layout Debug…"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "分割ボタンレイアウトのデバッグ…"
-          }
-        }
-      }
-    },
     "debug.splitButtonLayout.alwaysHover": {
       "extractionState": "manual",
       "localizations": {
@@ -71015,40 +72121,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "クラウド分割ボタン"
-          }
-        }
-      }
-    },
-    "debug.splitButtonLayout.inUse": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "In Use"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "使用中"
-          }
-        }
-      }
-    },
-    "debug.splitButtonLayout.innerPadding": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Inner Padding and Width"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "内側の余白と幅"
           }
         }
       }
@@ -71121,6 +72193,40 @@
         }
       }
     },
+    "debug.splitButtonLayout.inUse": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In Use"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用中"
+          }
+        }
+      }
+    },
+    "debug.splitButtonLayout.innerPadding": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inner Padding and Width"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内側の余白と幅"
+          }
+        }
+      }
+    },
     "debug.splitButtonLayout.liveNote": {
       "extractionState": "manual",
       "localizations": {
@@ -71134,193 +72240,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "変更はライブで反映されます。"
-          }
-        }
-      }
-    },
-    "debug.splitButtonLayout.padding.bottom": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bottom"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "下"
-          }
-        }
-      }
-    },
-    "debug.splitButtonLayout.padding.leading": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Leading"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "前"
-          }
-        }
-      }
-    },
-    "debug.splitButtonLayout.padding.top": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Top"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "上"
-          }
-        }
-      }
-    },
-    "debug.splitButtonLayout.padding.trailing": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Trailing"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "後"
-          }
-        }
-      }
-    },
-    "debug.splitButtonLayout.plusClicks": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Plus clicks: %d"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "プラスのクリック数: %d"
-          }
-        }
-      }
-    },
-    "debug.splitButtonLayout.plusSegment": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Plus Segment"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "プラスセグメント"
-          }
-        }
-      }
-    },
-    "debug.splitButtonLayout.resetPadding": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reset Padding and Widths"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "余白と幅をリセット"
-          }
-        }
-      }
-    },
-    "debug.splitButtonLayout.sectionWidth": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Section Width"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "セクション幅"
-          }
-        }
-      }
-    },
-    "debug.splitButtonLayout.windowTitle": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Split Button Layout"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "分割ボタンレイアウト"
-          }
-        }
-      }
-    },
-    "debug.splitButtonLayout.width.caretOffset": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Caret Width Offset"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "キャレット幅オフセット"
-          }
-        }
-      }
-    },
-    "debug.splitButtonLayout.width.plusOffset": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Plus Width Offset"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "プラス幅オフセット"
           }
         }
       }
@@ -71461,6 +72380,142 @@
         }
       }
     },
+    "debug.splitButtonLayout.padding.bottom": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bottom"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下"
+          }
+        }
+      }
+    },
+    "debug.splitButtonLayout.padding.leading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leading"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前"
+          }
+        }
+      }
+    },
+    "debug.splitButtonLayout.padding.top": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Top"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上"
+          }
+        }
+      }
+    },
+    "debug.splitButtonLayout.padding.trailing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trailing"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "後"
+          }
+        }
+      }
+    },
+    "debug.splitButtonLayout.plusClicks": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plus clicks: %d"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プラスのクリック数: %d"
+          }
+        }
+      }
+    },
+    "debug.splitButtonLayout.plusSegment": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plus Segment"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プラスセグメント"
+          }
+        }
+      }
+    },
+    "debug.splitButtonLayout.resetPadding": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset Padding and Widths"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "余白と幅をリセット"
+          }
+        }
+      }
+    },
+    "debug.splitButtonLayout.sectionWidth": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Section Width"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "セクション幅"
+          }
+        }
+      }
+    },
     "debug.splitButtonLayout.title": {
       "extractionState": "manual",
       "localizations": {
@@ -71474,6 +72529,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "ボタン背景色"
+          }
+        }
+      }
+    },
+    "debug.splitButtonLayout.width.caretOffset": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caret Width Offset"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キャレット幅オフセット"
+          }
+        }
+      }
+    },
+    "debug.splitButtonLayout.width.plusOffset": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plus Width Offset"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プラス幅オフセット"
+          }
+        }
+      }
+    },
+    "debug.splitButtonLayout.windowTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Split Button Layout"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分割ボタンレイアウト"
           }
         }
       }
@@ -77815,6 +78921,57 @@
         }
       }
     },
+    "dialog.cmuxConfig.disclosure.cwd": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cwd: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "作業ディレクトリ: %@"
+          }
+        }
+      }
+    },
+    "dialog.cmuxConfig.disclosure.cwdCommand": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cwd %1$@: %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "作業ディレクトリ %1$@: %2$@"
+          }
+        }
+      }
+    },
+    "dialog.cmuxConfig.disclosure.url": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "url: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "URL: %@"
+          }
+        }
+      }
+    },
     "dialog.defaultTerminal.setFailed.title": {
       "extractionState": "manual",
       "localizations": {
@@ -78453,6 +79610,91 @@
           "stringUnit": {
             "state": "translated",
             "value": "刪除此群組？"
+          }
+        }
+      }
+    },
+    "dialog.deleteWorkspaceLayout.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キャンセル"
+          }
+        }
+      }
+    },
+    "dialog.deleteWorkspaceLayout.delete": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "削除"
+          }
+        }
+      }
+    },
+    "dialog.deleteWorkspaceLayout.failedTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't Delete Workspace Layout"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースレイアウトを削除できませんでした"
+          }
+        }
+      }
+    },
+    "dialog.deleteWorkspaceLayout.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Removes “%1$@” from %2$@. Workspaces it already created stay open."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%1$@」を %2$@ から削除します。作成済みのワークスペースはそのまま残ります。"
+          }
+        }
+      }
+    },
+    "dialog.deleteWorkspaceLayout.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete Workspace Layout?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースレイアウトを削除しますか?"
           }
         }
       }
@@ -79902,6 +81144,23 @@
         }
       }
     },
+    "dialog.newWorkspaceDefault.failedTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't Update Default"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デフォルトを更新できませんでした"
+          }
+        }
+      }
+    },
     "dialog.quitCmux.message": {
       "extractionState": "manual",
       "localizations": {
@@ -80969,6 +82228,477 @@
           "stringUnit": {
             "state": "translated",
             "value": "重新命名工作區"
+          }
+        }
+      }
+    },
+    "dialog.saveWorkspaceLayout.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キャンセル"
+          }
+        }
+      }
+    },
+    "dialog.saveWorkspaceLayout.commandTooLongMessage": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أمر واحد أو أكثر من الأوامر الملتقطة أطول من %lld بايت UTF-8 ولا يمكن إعادة تشغيلها بشكل موثوق من تخطيط محفوظ. اختصرها قبل الحفظ."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jedna ili više snimljenih komandi duže su od %lld UTF-8 bajtova i ne mogu se pouzdano ponovo pokrenuti iz spremljenog rasporeda. Skratite ih prije spremanja."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En eller flere registrerede kommandoer er længere end %lld UTF-8-byte og kan ikke afspilles pålideligt fra et gemt layout. Gør dem kortere, før du gemmer."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein oder mehrere erfasste Befehle sind länger als %lld UTF-8-Bytes und können aus einem gespeicherten Layout nicht zuverlässig erneut ausgeführt werden. Kürze sie vor dem Speichern."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One or more captured commands are longer than %lld UTF-8 bytes and cannot be replayed reliably from a saved layout. Shorten them before saving."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uno o más comandos capturados superan los %lld bytes UTF-8 y no pueden reproducirse de forma fiable desde un diseño guardado. Acórtalos antes de guardar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une ou plusieurs commandes capturées dépassent %lld octets UTF-8 et ne peuvent pas être relancées de manière fiable depuis une disposition enregistrée. Raccourcissez-les avant d’enregistrer."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uno o più comandi acquisiti superano %lld byte UTF-8 e non possono essere rieseguiti in modo affidabile da un layout salvato. Accorciali prima di salvare."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取得したコマンドの一部が %lld UTF-8 バイトを超えているため、保存したレイアウトから確実に再実行できません。保存する前に短くしてください。"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ពាក្យបញ្ជាដែលបានចាប់យកមួយ ឬច្រើន វែងជាង %lld បៃ UTF-8 ហើយមិនអាចដំណើរការឡើងវិញពីប្លង់ដែលបានរក្សាទុកបានយ៉ាងទុកចិត្ត។ សូមបង្រួមវាមុនពេលរក្សាទុក។"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "캡처된 명령 하나 이상이 %lld UTF-8바이트보다 길어 저장된 레이아웃에서 안정적으로 다시 실행할 수 없습니다. 저장하기 전에 줄이세요."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Én eller flere fangede kommandoer er lengre enn %lld UTF-8-byte og kan ikke kjøres på nytt pålitelig fra et lagret oppsett. Forkort dem før du lagrer."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jedno lub więcej przechwyconych poleceń ma więcej niż %lld bajtów UTF-8 i nie można ich niezawodnie odtworzyć z zapisanego układu. Skróć je przed zapisaniem."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um ou mais comandos capturados têm mais de %lld bytes UTF-8 e não podem ser reexecutados de forma confiável a partir de um layout salvo. Encurte-os antes de salvar."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Одна или несколько захваченных команд длиннее %lld байт UTF-8 и не могут надежно запускаться из сохраненного макета. Сократите их перед сохранением."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คำสั่งที่จับไว้หนึ่งรายการขึ้นไปยาวเกิน %lld ไบต์ UTF-8 และไม่สามารถเรียกใช้ซ้ำจากเลย์เอาต์ที่บันทึกไว้ได้อย่างน่าเชื่อถือ โปรดย่อให้สั้นลงก่อนบันทึก"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yakalanan komutlardan biri veya daha fazlası %lld UTF-8 bayttan uzun ve kaydedilmiş bir düzenden güvenilir şekilde yeniden çalıştırılamaz. Kaydetmeden önce kısaltın."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Одна або кілька захоплених команд довші за %lld байтів UTF-8 і не можуть надійно запускатися зі збереженого макета. Скоротіть їх перед збереженням."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一个或多个捕获的命令超过 %lld 个 UTF-8 字节，无法从已保存的布局中可靠地重新运行。请先缩短再保存。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一個或多個擷取的指令超過 %lld 個 UTF-8 位元組，無法從已儲存的佈局可靠地重新執行。請先縮短再儲存。"
+          }
+        }
+      }
+    },
+    "dialog.saveWorkspaceLayout.commandTooLongTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الأمر طويل جدًا للحفظ"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Komanda je preduga za spremanje"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kommandoen er for lang til at gemme"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Befehl ist zu lang zum Speichern"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Command Too Long to Save"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El comando es demasiado largo para guardarlo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commande trop longue à enregistrer"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comando troppo lungo da salvare"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コマンドが長すぎて保存できません"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ពាក្យបញ្ជាវែងពេក មិនអាចរក្សាទុកបាន"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "명령이 너무 길어 저장할 수 없음"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kommandoen er for lang til å lagres"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polecenie jest zbyt długie do zapisania"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comando longo demais para salvar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Команда слишком длинная для сохранения"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คำสั่งยาวเกินกว่าจะบันทึก"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Komut kaydetmek için çok uzun"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Команда задовга для збереження"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "命令太长，无法保存"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "指令太長，無法儲存"
+          }
+        }
+      }
+    },
+    "dialog.saveWorkspaceLayout.commandsHeader": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commands that will be saved and re-run:"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存され再実行されるコマンド:"
+          }
+        }
+      }
+    },
+    "dialog.saveWorkspaceLayout.defaultName": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workspace"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペース"
+          }
+        }
+      }
+    },
+    "dialog.saveWorkspaceLayout.envHeader": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Environment variables whose values will be saved:"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "値が保存される環境変数:"
+          }
+        }
+      }
+    },
+    "dialog.saveWorkspaceLayout.failedTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't Save Workspace Layout"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースレイアウトを保存できませんでした"
+          }
+        }
+      }
+    },
+    "dialog.saveWorkspaceLayout.makeDefaultCheckbox": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use as default for new workspaces"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規ワークスペースのデフォルトとして使用"
+          }
+        }
+      }
+    },
+    "dialog.saveWorkspaceLayout.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saves this workspace as a reusable layout in %@. It appears in the new-workspace menu and the Command Palette."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このワークスペースを再利用可能なレイアウトとして %@ に保存します。新規ワークスペースメニューとコマンドパレットに表示されます。"
+          }
+        }
+      }
+    },
+    "dialog.saveWorkspaceLayout.namePlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Layout name"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "レイアウト名"
+          }
+        }
+      }
+    },
+    "dialog.saveWorkspaceLayout.ok": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
+    },
+    "dialog.saveWorkspaceLayout.save": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存"
+          }
+        }
+      }
+    },
+    "dialog.saveWorkspaceLayout.skippedNote": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld panels have no layout representation (previews, viewers, …) and will be left out."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 個のパネルはレイアウトで表現できないため(プレビュー、ビューアなど)、保存されません。"
+          }
+        }
+      }
+    },
+    "dialog.saveWorkspaceLayout.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save Workspace Layout"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースレイアウトを保存"
+          }
+        }
+      }
+    },
+    "dialog.saveWorkspaceLayout.urlsHeader": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "URLs that will be saved:"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存される URL:"
           }
         }
       }
@@ -98009,6 +99739,40 @@
         }
       }
     },
+    "error.cmuxConfigActionSaver.malformedConfig": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ isn't a valid JSON object, so the workspace layout couldn't be updated. Fix the file and try again."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ は有効な JSON オブジェクトではないため、ワークスペースレイアウトを更新できませんでした。ファイルを修正して再試行してください。"
+          }
+        }
+      }
+    },
+    "error.cmuxConfigActionSaver.unreadableConfig": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't read %@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ を読み込めませんでした。"
+          }
+        }
+      }
+    },
     "error.defaultTerminal.registrationFailed": {
       "extractionState": "manual",
       "localizations": {
@@ -98585,6 +100349,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "すべての上書きをクリア"
+          }
+        }
+      }
+    },
+    "featureFlags.cloudVM.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shows Cloud VM entrypoints in the new-workspace dropdown and command palette."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規ワークスペースのドロップダウンとコマンドパレットにクラウドVMのエントリーポイントを表示します。"
+          }
+        }
+      }
+    },
+    "featureFlags.cloudVM.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cloud VM UI"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "クラウドVM UI"
           }
         }
       }
@@ -115086,6 +116884,108 @@
         }
       }
     },
+    "menu.newWorkspace.customizeLayouts": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Customize Workspace Layouts…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースレイアウトをカスタマイズ…"
+          }
+        }
+      }
+    },
+    "menu.newWorkspace.defaultLayoutNone": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "None (Blank Terminal)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "なし（空のターミナル）"
+          }
+        }
+      }
+    },
+    "menu.newWorkspace.defaultLayoutSubmenu": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default for New Workspace"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規ワークスペースのデフォルト"
+          }
+        }
+      }
+    },
+    "menu.newWorkspace.deleteLayoutAlternate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete “%@”"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」を削除"
+          }
+        }
+      }
+    },
+    "menu.newWorkspace.deleteLayoutSubmenu": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete Workspace Layout"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースレイアウトを削除"
+          }
+        }
+      }
+    },
+    "menu.newWorkspace.saveWorkspaceAsLayout": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save Workspace as Layout…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースをレイアウトとして保存…"
+          }
+        }
+      }
+    },
     "menu.notifications.clearAll": {
       "extractionState": "manual",
       "localizations": {
@@ -122917,6 +124817,74 @@
         }
       }
     },
+    "notification.agentChat.serverUnavailable.bodyDefault": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cmux couldn't reach %@. Start the server with cmux-chat or configure agentChat.startCommand in cmux.json."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cmux は %@ に接続できませんでした。cmux-chat でサーバーを起動するか、cmux.json で agentChat.startCommand を設定してください。"
+          }
+        }
+      }
+    },
+    "notification.agentChat.serverUnavailable.bodyWithCommand": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cmux couldn't reach %@. Start it with: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cmux は %@ に接続できませんでした。次のコマンドで起動してください: %@"
+          }
+        }
+      }
+    },
+    "notification.agentChat.serverUnavailable.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opened Agent Chat"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent Chat を開きました"
+          }
+        }
+      }
+    },
+    "notification.agentChat.serverUnavailable.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent chat server isn't running"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent Chat サーバーが起動していません"
+          }
+        }
+      }
+    },
     "notificationHook.failure.body": {
       "extractionState": "manual",
       "localizations": {
@@ -130269,10 +132237,52 @@
     "remoteTmux.pane.close": {
       "extractionState": "manual",
       "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إغلاق اللوحة"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zatvori okno"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Luk rude"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bereich schließen"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Close Pane"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrar panel"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fermer le volet"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiudi riquadro"
           }
         },
         "ja": {
@@ -130280,16 +132290,124 @@
             "state": "translated",
             "value": "ペインを閉じる"
           }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "បិទ​ផ្ទាំង"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "창 닫기"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lukk rute"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zamknij panel"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fechar painel"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Закрыть панель"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปิดบานหน้าต่าง"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bölmeyi kapat"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Закрити панель"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭窗格"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "關閉窗格"
+          }
         }
       }
     },
     "remoteTmux.pane.splitDown": {
       "extractionState": "manual",
       "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تقسيم للأسفل"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podijeli dolje"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opdel nedad"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach unten teilen"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Split Down"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dividir hacia abajo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diviser vers le bas"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dividi in basso"
           }
         },
         "ja": {
@@ -130297,22 +132415,196 @@
             "state": "translated",
             "value": "下に分割"
           }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "បំបែក​ចុះ​ក្រោម"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아래로 분할"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Del nedover"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podziel w dół"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dividir para baixo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разделить вниз"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แยกลงด้านล่าง"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aşağı böl"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Розділити донизу"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "向下拆分"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "向下分割"
+          }
         }
       }
     },
     "remoteTmux.pane.splitRight": {
       "extractionState": "manual",
       "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تقسيم لليمين"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podijeli desno"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opdel til højre"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechts teilen"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Split Right"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dividir a la derecha"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diviser à droite"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dividi a destra"
+          }
+        },
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "右に分割"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "បំបែក​ទៅ​ស្ដាំ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오른쪽으로 분할"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Del til høyre"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podziel w prawo"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dividir à direita"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разделить вправо"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แยกไปทางขวา"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sağa böl"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Розділити праворуч"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "向右拆分"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "向右分割"
           }
         }
       }
@@ -132591,23 +134883,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pro サブスクリプションは有効です。Stripe で請求管理やキャンセルができます。"
-          }
-        }
-      }
-    },
-    "settings.account.pro.externalSubtitle": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your subscription is managed by our previous billing system. Contact support to make changes."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "サブスクリプションは以前の請求システムで管理されています。変更するにはサポートにお問い合わせください。"
           }
         }
       }
@@ -209612,131 +211887,6 @@
         }
       }
     },
-    "terminalContextMenu.reconnectPane": {
-      "extractionState": "manual",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "إعادة توصيل الجزء"
-          }
-        },
-        "bs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ponovo poveži okno"
-          }
-        },
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Genopret forbindelse til rude"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bereich erneut verbinden"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reconnect Pane"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reconectar panel"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reconnecter le volet"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Riconnetti riquadro"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ペインを再接続"
-          }
-        },
-        "km": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ភ្ជាប់ផ្ទាំងឡើងវិញ"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "창 재연결"
-          }
-        },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Koble til rute på nytt"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Połącz panel ponownie"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reconectar painel"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Переподключить панель"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "เชื่อมต่อบานหน้าต่างใหม่"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bölmeyi yeniden bağla"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Повторно підключити панель"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重新连接窗格"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重新連線窗格"
-          }
-        }
-      }
-    },
     "terminalContextMenu.resetTerminal": {
       "extractionState": "manual",
       "localizations": {
@@ -223016,6 +225166,23 @@
         }
       }
     },
+    "workspace.agentChat.defaultTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent Chat"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent Chat"
+          }
+        }
+      }
+    },
     "workspace.closeBlocked.message": {
       "extractionState": "manual",
       "localizations": {
@@ -228441,550 +230608,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld 則未讀"
-          }
-        }
-      }
-    },
-    "command.cmuxConfig.builtInSubtitle": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "cmux"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "cmux"
-          }
-        }
-      }
-    },
-    "command.cmuxConfig.defaultOpenCodeTitle": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "OpenCode"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "OpenCode"
-          }
-        }
-      }
-    },
-    "dialog.cmuxConfig.disclosure.cwd": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "cwd: %@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "作業ディレクトリ: %@"
-          }
-        }
-      }
-    },
-    "dialog.cmuxConfig.disclosure.cwdCommand": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "cwd %1$@: %2$@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "作業ディレクトリ %1$@: %2$@"
-          }
-        }
-      }
-    },
-    "dialog.cmuxConfig.disclosure.url": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "url: %@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "URL: %@"
-          }
-        }
-      }
-    },
-    "dialog.deleteWorkspaceLayout.cancel": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancel"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "キャンセル"
-          }
-        }
-      }
-    },
-    "dialog.deleteWorkspaceLayout.delete": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "削除"
-          }
-        }
-      }
-    },
-    "dialog.deleteWorkspaceLayout.failedTitle": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Couldn't Delete Workspace Layout"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ワークスペースレイアウトを削除できませんでした"
-          }
-        }
-      }
-    },
-    "dialog.deleteWorkspaceLayout.message": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Removes “%1$@” from %2$@. Workspaces it already created stay open."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "「%1$@」を %2$@ から削除します。作成済みのワークスペースはそのまま残ります。"
-          }
-        }
-      }
-    },
-    "dialog.deleteWorkspaceLayout.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete Workspace Layout?"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ワークスペースレイアウトを削除しますか?"
-          }
-        }
-      }
-    },
-    "dialog.saveWorkspaceLayout.cancel": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancel"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "キャンセル"
-          }
-        }
-      }
-    },
-    "dialog.saveWorkspaceLayout.commandsHeader": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Commands that will be saved and re-run:"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "保存され再実行されるコマンド:"
-          }
-        }
-      }
-    },
-    "dialog.saveWorkspaceLayout.defaultName": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Workspace"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ワークスペース"
-          }
-        }
-      }
-    },
-    "dialog.saveWorkspaceLayout.envHeader": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Environment variables whose values will be saved:"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "値が保存される環境変数:"
-          }
-        }
-      }
-    },
-    "dialog.saveWorkspaceLayout.failedTitle": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Couldn't Save Workspace Layout"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ワークスペースレイアウトを保存できませんでした"
-          }
-        }
-      }
-    },
-    "dialog.saveWorkspaceLayout.message": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Saves this workspace as a reusable layout in %@. It appears in the new-workspace menu and the Command Palette."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "このワークスペースを再利用可能なレイアウトとして %@ に保存します。新規ワークスペースメニューとコマンドパレットに表示されます。"
-          }
-        }
-      }
-    },
-    "dialog.saveWorkspaceLayout.namePlaceholder": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Layout name"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "レイアウト名"
-          }
-        }
-      }
-    },
-    "dialog.saveWorkspaceLayout.makeDefaultCheckbox": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Use as default for new workspaces"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "新規ワークスペースのデフォルトとして使用"
-          }
-        }
-      }
-    },
-    "dialog.saveWorkspaceLayout.ok": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "OK"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "OK"
-          }
-        }
-      }
-    },
-    "dialog.newWorkspaceDefault.failedTitle": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Couldn't Update Default"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "デフォルトを更新できませんでした"
-          }
-        }
-      }
-    },
-    "dialog.saveWorkspaceLayout.save": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Save"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "保存"
-          }
-        }
-      }
-    },
-    "dialog.saveWorkspaceLayout.skippedNote": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld panels have no layout representation (previews, viewers, …) and will be left out."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld 個のパネルはレイアウトで表現できないため(プレビュー、ビューアなど)、保存されません。"
-          }
-        }
-      }
-    },
-    "dialog.saveWorkspaceLayout.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Save Workspace Layout"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ワークスペースレイアウトを保存"
-          }
-        }
-      }
-    },
-    "dialog.saveWorkspaceLayout.urlsHeader": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "URLs that will be saved:"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "保存される URL:"
-          }
-        }
-      }
-    },
-    "error.cmuxConfigActionSaver.malformedConfig": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ isn't a valid JSON object, so the workspace layout couldn't be updated. Fix the file and try again."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ は有効な JSON オブジェクトではないため、ワークスペースレイアウトを更新できませんでした。ファイルを修正して再試行してください。"
-          }
-        }
-      }
-    },
-    "error.cmuxConfigActionSaver.unreadableConfig": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Couldn't read %@."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ を読み込めませんでした。"
-          }
-        }
-      }
-    },
-    "menu.newWorkspace.customizeLayouts": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Customize Workspace Layouts…"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ワークスペースレイアウトをカスタマイズ…"
-          }
-        }
-      }
-    },
-    "menu.newWorkspace.deleteLayoutAlternate": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete “%@”"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "「%@」を削除"
-          }
-        }
-      }
-    },
-    "menu.newWorkspace.deleteLayoutSubmenu": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete Workspace Layout"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ワークスペースレイアウトを削除"
-          }
-        }
-      }
-    },
-    "menu.newWorkspace.defaultLayoutSubmenu": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Default for New Workspace"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "新規ワークスペースのデフォルト"
-          }
-        }
-      }
-    },
-    "menu.newWorkspace.defaultLayoutNone": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "None (Blank Terminal)"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "なし（空のターミナル）"
-          }
-        }
-      }
-    },
-    "menu.newWorkspace.saveWorkspaceAsLayout": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Save Workspace as Layout…"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ワークスペースをレイアウトとして保存…"
           }
         }
       }

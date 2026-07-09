@@ -48,6 +48,7 @@ const sectionOrder = [
   "actions",
   "ui",
   "commands",
+  "agentChat",
   "browser",
   "markdown",
   "fileEditor",
@@ -140,6 +141,11 @@ function buildSettingsFileExample(t: ConfigurationTranslation) {
 
   // "workspaceGroups": {
   //   "newWorkspacePlacement": "afterCurrent"
+  // },
+
+  // "agentChat": {
+  //   "url": "http://127.0.0.1:7739",
+  //   "startCommand": "cmux-chat"
   // },
 
   // "shortcuts": {

@@ -27,7 +27,7 @@ import Network
 import CoreText
 
 #if DEBUG
-private func debugWorkspaceDescriptionPreview(_ text: String?, limit: Int = 120) -> String {
+func debugWorkspaceDescriptionPreview(_ text: String?, limit: Int = 120) -> String {
     guard let text else { return "nil" }
     let escaped = text
         .replacingOccurrences(of: "\\", with: "\\\\")
@@ -480,6 +480,7 @@ extension Workspace {
                     )
                 }
                 invalidatedRestoredAgentFingerprintsByPanelId.removeValue(forKey: panelId)
+                syncTerminalTabAgentIconAsset(forPanelId: panelId)
             }
         }
         let hibernationState = (panel as? TerminalPanel)?.agentHibernationState
@@ -1829,15 +1830,12 @@ extension Workspace {
                 ZmxPanelBindingCache.record(zmx, panelId: terminalPanel.id)
             }
             if let restorableAgent {
-                restoredAgentSnapshotsByPanelId[terminalPanel.id] = restorableAgent
-                if restoredAgentWillRunStartupCommand {
-                    restoredAgentResumeStatesByPanelId[terminalPanel.id] = .autoResumeCommandRunning
-                } else if restoredAgentWillRunStartupInput {
-                    restoredAgentResumeStatesByPanelId[terminalPanel.id] = .awaitingAutoResumeCommand
-                } else {
-                    restoredAgentResumeStatesByPanelId[terminalPanel.id] = .manualResumeAvailable
-                }
-                invalidatedRestoredAgentFingerprintsByPanelId.removeValue(forKey: terminalPanel.id)
+                seedSessionRestoredAgentIconState(
+                    panelId: terminalPanel.id,
+                    restorableAgent: restorableAgent,
+                    willRunStartupCommand: restoredAgentWillRunStartupCommand,
+                    willRunStartupInput: restoredAgentWillRunStartupInput
+                )
                 if let restoredHibernation,
                    restorableAgent.resumeCommand != nil {
                     terminalPanel.enterAgentHibernation(
@@ -1847,15 +1845,12 @@ extension Workspace {
                     )
                 }
             } else {
-                restoredAgentSnapshotsByPanelId.removeValue(forKey: terminalPanel.id)
-                if restoredAgentWillRunStartupCommand {
-                    restoredAgentResumeStatesByPanelId[terminalPanel.id] = .autoResumeCommandRunning
-                } else if restoredAgentWillRunStartupInput {
-                    restoredAgentResumeStatesByPanelId[terminalPanel.id] = .awaitingAutoResumeCommand
-                } else {
-                    restoredAgentResumeStatesByPanelId.removeValue(forKey: terminalPanel.id)
-                }
-                invalidatedRestoredAgentFingerprintsByPanelId.removeValue(forKey: terminalPanel.id)
+                seedSessionRestoredAgentIconState(
+                    panelId: terminalPanel.id,
+                    restorableAgent: nil,
+                    willRunStartupCommand: restoredAgentWillRunStartupCommand,
+                    willRunStartupInput: restoredAgentWillRunStartupInput
+                )
             }
             // While an auto-resumed agent-hook or restorable-agent launcher
             // holds the pane's foreground no prompt runs, so a stray
@@ -2643,6 +2638,7 @@ final class Workspace: Identifiable, ObservableObject {
         set { sidebarMetadata.panelDirectoryDisplayLabels = newValue }
     }
     @Published var panelTitles: [UUID: String] = [:]
+    var titleDerivedAgentStatusKeysByPanelId: [UUID: String] = [:]
     @Published var panelCustomTitles: [UUID: String] = [:]
     /// Provenance of entries in `panelCustomTitles` (see ``CustomTitleSource``).
     /// An entry may be absent for a title carried across panel moves or
@@ -2932,7 +2928,7 @@ final class Workspace: Identifiable, ObservableObject {
         set { panelDirectories = newValue }
     }
 
-    private var processTitle: String
+    var processTitle: String
 
     enum SurfaceKind {
         static let terminal = "terminal"
@@ -4545,7 +4541,7 @@ final class Workspace: Identifiable, ObservableObject {
         }
     }
 
-    private func resolvedPanelTitle(panelId: UUID, fallback: String) -> String {
+    func resolvedPanelTitle(panelId: UUID, fallback: String) -> String {
         let trimmedFallback = fallback.trimmingCharacters(in: .whitespacesAndNewlines)
         let fallbackTitle = trimmedFallback.isEmpty ? "Tab" : trimmedFallback
         if let custom = panelCustomTitles[panelId]?.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -5309,70 +5305,6 @@ final class Workspace: Identifiable, ObservableObject {
 #endif
     }
 
-    func setAgentLifecycle(
-        key: String,
-        panelId: UUID?,
-        lifecycle: AgentHibernationLifecycleState
-    ) {
-        let targetPanelId = panelId ?? focusedPanelId
-        guard let targetPanelId, panels[targetPanelId] != nil else { return }
-        agentLifecycleStatesByPanelId[targetPanelId, default: [:]][key] = lifecycle
-        recordAgentLifecycleChange(panelId: targetPanelId)
-    }
-
-    @discardableResult
-    func clearAgentLifecycle(key: String, panelId: UUID? = nil) -> Bool {
-        var didClear = false
-        let panelIds = panelId.map { [$0] } ?? Array(agentLifecycleStatesByPanelId.keys)
-        for panelId in panelIds {
-            guard agentLifecycleStatesByPanelId[panelId]?[key] != nil else { continue }
-            agentLifecycleStatesByPanelId[panelId]?.removeValue(forKey: key)
-            if agentLifecycleStatesByPanelId[panelId]?.isEmpty == true {
-                agentLifecycleStatesByPanelId.removeValue(forKey: panelId)
-            }
-            didClear = true
-            recordAgentLifecycleChange(panelId: panelId)
-        }
-        return didClear
-    }
-
-    func clearAgentLifecycleStates(panelId: UUID) {
-        guard agentLifecycleStatesByPanelId.removeValue(forKey: panelId) != nil else { return }
-        recordAgentLifecycleChange(panelId: panelId)
-    }
-
-    func clearAllAgentLifecycleStates() {
-        let panelIds = Array(agentLifecycleStatesByPanelId.keys)
-        guard !panelIds.isEmpty else { return }
-        agentLifecycleStatesByPanelId.removeAll()
-        for panelId in panelIds {
-            recordAgentLifecycleChange(panelId: panelId)
-        }
-    }
-
-    private func recordAgentLifecycleChange(panelId: UUID) {
-        AgentHibernationController.shared.recordAgentLifecycleChange(
-            workspaceId: id,
-            panelId: panelId
-        )
-    }
-
-    func agentHibernationLifecycleState(
-        panelId: UUID,
-        fallback: AgentHibernationLifecycleState?
-    ) -> AgentHibernationLifecycleState {
-        guard let panelStates = agentLifecycleStatesByPanelId[panelId],
-              !panelStates.isEmpty else {
-            return fallback ?? .unknown
-        }
-        let states = Array(panelStates.values)
-        if states.contains(.running) { return .running }
-        if states.contains(.needsInput) { return .needsInput }
-        if states.contains(.unknown) { return .unknown }
-        if states.contains(.idle) { return .idle }
-        return fallback ?? .unknown
-    }
-
     func restorableAgentForHibernation(
         panelId: UUID,
         index: RestorableAgentSessionIndex
@@ -5409,6 +5341,7 @@ final class Workspace: Identifiable, ObservableObject {
         if !keys.isEmpty {
             refreshTrackedAgentPorts()
         }
+        syncTerminalTabAgentIconAsset(forPanelId: panelId)
         terminalPanel.enterAgentHibernation(agent: agent, lastActivityAt: lastActivityAt)
     }
 
@@ -5572,12 +5505,6 @@ final class Workspace: Identifiable, ObservableObject {
             "kind=\(restoredAgent.kind.rawValue) session=\(restoredAgent.sessionId.prefix(8))"
         )
 #endif
-    }
-
-    private func clearRestoredAgentSnapshot(panelId: UUID) {
-        restoredAgentSnapshotsByPanelId.removeValue(forKey: panelId)
-        restoredAgentResumeStatesByPanelId.removeValue(forKey: panelId)
-        restoredResumeSessionWorkingDirectoriesByPanelId.removeValue(forKey: panelId)
     }
 
     private func clearRestoredAgentResumeBinding(
@@ -5879,59 +5806,6 @@ final class Workspace: Identifiable, ObservableObject {
         return discardedCount
     }
 
-    @discardableResult
-    func updatePanelTitle(panelId: UUID, title: String) -> Bool {
-        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return false }
-        var didMutate = false
-        var didMutatePanelTitle = false
-        var didMutateWorkspaceTitle = false
-
-        if panelTitles[panelId] != trimmed {
-            panelTitles[panelId] = trimmed
-            didMutate = true
-            didMutatePanelTitle = true
-        }
-
-        // Update bonsplit tab title only when this panel's title changed.
-        if didMutate,
-           let tabId = surfaceIdFromPanelId(panelId),
-           let panel = panels[panelId] {
-            let baseTitle = panelTitles[panelId] ?? panel.displayTitle
-            let resolvedTitle = resolvedPanelTitle(panelId: panelId, fallback: baseTitle)
-            (bonsplitController(containingSurfaceId: tabId) ?? bonsplitController).updateTab(
-                tabId,
-                title: resolvedTitle,
-                hasCustomTitle: panelCustomTitles[panelId] != nil
-            )
-            syncTopLevelTabMetadata(forPanelId: panelId)
-        }
-
-        // If this is the only panel and no custom title, update workspace title
-        if panels.count == 1, customTitle == nil {
-            if self.title != trimmed {
-                self.title = trimmed
-                didMutate = true
-                didMutateWorkspaceTitle = true
-            }
-            if processTitle != trimmed {
-                processTitle = trimmed
-            }
-        }
-
-#if DEBUG
-        if didMutate {
-            cmuxDebugLog(
-                "workspace.title.updatePanel workspace=\(id.uuidString.prefix(5)) " +
-                "panel=\(panelId.uuidString.prefix(5)) panels=\(panels.count) custom=\(customTitle == nil ? 0 : 1) " +
-                "panelChanged=\(didMutatePanelTitle ? 1 : 0) workspaceChanged=\(didMutateWorkspaceTitle ? 1 : 0) " +
-                "title=\"\(debugWorkspaceDescriptionPreview(trimmed, limit: 80))\""
-            )
-        }
-#endif
-        return didMutate
-    }
-
     func pruneSurfaceMetadata(validSurfaceIds: Set<UUID>) {
         for panelId in Array(pendingTerminalInputObserversByPanelId.keys) where !validSurfaceIds.contains(panelId) {
             removePendingTerminalInputObservers(forPanelId: panelId)
@@ -5941,6 +5815,7 @@ final class Workspace: Identifiable, ObservableObject {
         remoteDirectoryTrustRequiredPanelIds = remoteDirectoryTrustRequiredPanelIds.filter { validSurfaceIds.contains($0) }
         remoteDirectoryReportPanelIds = remoteDirectoryReportPanelIds.filter { validSurfaceIds.contains($0) }
         panelTitles = panelTitles.filter { validSurfaceIds.contains($0.key) }
+        titleDerivedAgentStatusKeysByPanelId = titleDerivedAgentStatusKeysByPanelId.filter { validSurfaceIds.contains($0.key) }
         panelCustomTitles = panelCustomTitles.filter { validSurfaceIds.contains($0.key) }
         panelCustomTitleSources = panelCustomTitleSources.filter { validSurfaceIds.contains($0.key) }
         pinnedPanelIds = pinnedPanelIds.filter { validSurfaceIds.contains($0) }
@@ -8699,8 +8574,8 @@ final class Workspace: Identifiable, ObservableObject {
             context: GHOSTTY_SURFACE_CONTEXT_SPLIT,
             configTemplate: nil
         )
-        // ponytail: fork TS doesn't expose manualIO; remote-tmux mirror feature
-        // is unused in fork build path. onInput is dropped here.
+        // ponytail: fork TS doesn't expose manualIO/onManualSizeApplied;
+        // remote-tmux mirror feature is unused in fork build path. onInput dropped.
         _ = onInput
         surface.onManualGridResize = onResize
         let newPanel = TerminalPanel(workspaceId: id, surface: surface)
@@ -8846,6 +8721,7 @@ final class Workspace: Identifiable, ObservableObject {
             title: replacementPanel.displayTitle,
             icon: .some(replacementPanel.displayIcon),
             iconImageData: .some(nil),
+            iconAsset: .some(terminalTabAgentIconAsset(forPanelId: pair.key)),
             kind: .some(SurfaceKind.terminal),
             hasCustomTitle: false,
             isDirty: replacementPanel.isDirty,
@@ -8982,6 +8858,7 @@ final class Workspace: Identifiable, ObservableObject {
             title: resolvedTitle,
             icon: .some(replacementPanel.displayIcon),
             iconImageData: .some(nil),
+            iconAsset: .some(terminalTabAgentIconAsset(forPanelId: panelId)),
             kind: .some(SurfaceKind.terminal),
             hasCustomTitle: customTitle != nil,
             isDirty: replacementPanel.isDirty,
@@ -10578,9 +10455,7 @@ final class Workspace: Identifiable, ObservableObject {
             surfaceTmuxClientTTYNames.removeValue(forKey: detached.panelId)
         }
         syncRemotePortScanTTYs()
-        if let cachedTitle = detached.cachedTitle {
-            panelTitles[detached.panelId] = cachedTitle
-        }
+        seedTitleDerivedTerminalAgentState(from: detached)
         if let customTitle = detached.customTitle {
             panelCustomTitles[detached.panelId] = customTitle
             panelCustomTitleSources[detached.panelId] = detached.customTitleSource ?? .user
@@ -10609,6 +10484,7 @@ final class Workspace: Identifiable, ObservableObject {
             hasCustomTitle: detached.customTitle?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false,
             icon: detached.icon,
             iconImageData: detached.iconImageData,
+            iconAsset: terminalTabAgentIconAsset(forPanelId: detached.panelId),
             kind: detached.kind,
             isDirty: detached.panel.isDirty,
             isLoading: detached.isLoading,
@@ -10624,6 +10500,7 @@ final class Workspace: Identifiable, ObservableObject {
             surfaceTmuxClientTTYNames.removeValue(forKey: detached.panelId)
             surfaceResumeBindingsByPanelId.removeValue(forKey: detached.panelId)
             restoredResumeSessionWorkingDirectoriesByPanelId.removeValue(forKey: detached.panelId)
+            titleDerivedAgentStatusKeysByPanelId.removeValue(forKey: detached.panelId)
             syncRemotePortScanTTYs()
             panelTitles.removeValue(forKey: detached.panelId)
             panelCustomTitles.removeValue(forKey: detached.panelId)
@@ -10671,18 +10548,7 @@ final class Workspace: Identifiable, ObservableObject {
             toTabId: id,
             surfaceId: detached.panelId
         )
-        if let restorableAgent = detached.restorableAgent {
-            restoredAgentSnapshotsByPanelId[detached.panelId] = restorableAgent
-            invalidatedRestoredAgentFingerprintsByPanelId.removeValue(forKey: detached.panelId)
-        } else {
-            restoredAgentSnapshotsByPanelId.removeValue(forKey: detached.panelId)
-            invalidatedRestoredAgentFingerprintsByPanelId.removeValue(forKey: detached.panelId)
-        }
-        if let resumeState = detached.restorableAgentResumeState {
-            restoredAgentResumeStatesByPanelId[detached.panelId] = resumeState
-        } else {
-            restoredAgentResumeStatesByPanelId.removeValue(forKey: detached.panelId)
-        }
+        seedDetachedRestoredAgentState(from: detached)
         if let resumeSessionWorkingDirectory = detached.restoredResumeSessionWorkingDirectory {
             restoredResumeSessionWorkingDirectoriesByPanelId[detached.panelId] = resumeSessionWorkingDirectory
         } else {
@@ -10694,6 +10560,7 @@ final class Workspace: Identifiable, ObservableObject {
             surfaceResumeBindingsByPanelId.removeValue(forKey: detached.panelId)
         }
         adoptDetachedAgentRuntimeState(detached.agentRuntime)
+        syncTerminalTabAgentIconAsset(forPanelId: detached.panelId)
         if let markdownPanel = detached.panel as? MarkdownPanel,
            panelSubscriptions[markdownPanel.id] == nil {
             installMarkdownPanelSubscription(markdownPanel)
@@ -14269,12 +14136,9 @@ extension Workspace: BonsplitDelegate {
             switch builtInAction {
             case .newWorkspace:
                 owningTabManager?.addWorkspace()
+            case .newAgentChat: performSurfaceTabBarNewAgentChatAction(presentingWindow: presentingWindow)
             case .cloudVM:
-                _ = AppDelegate.shared?.performCloudVMAction(
-                    tabManager: owningTabManager,
-                    preferredWindow: presentingWindow,
-                    debugSource: "surfaceTabBar.cloudVM"
-                )
+                _ = AppDelegate.shared?.performCloudVMAction(tabManager: owningTabManager, preferredWindow: presentingWindow, debugSource: "surfaceTabBar.cloudVM")
             case .mobileConnect:
                 MobilePairingWindowController.shared.show()
             case .newTerminal, .newBrowser, .splitRight, .splitDown:

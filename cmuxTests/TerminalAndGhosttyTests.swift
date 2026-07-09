@@ -4749,7 +4749,6 @@ final class GhosttySurfaceOverlayTests: XCTestCase {
     }
 }
 
-
 @MainActor
 final class TerminalWindowPortalLifecycleTests: XCTestCase {
     private final class ContentViewCountingWindow: NSWindow {
@@ -4766,7 +4765,7 @@ final class TerminalWindowPortalLifecycleTests: XCTestCase {
         }
     }
 
-    private func realizeWindowLayout(_ window: NSWindow) {
+    func realizeWindowLayout(_ window: NSWindow) {
         window.makeKeyAndOrderFront(nil)
         window.displayIfNeeded()
         window.contentView?.layoutSubtreeIfNeeded()
@@ -4774,7 +4773,7 @@ final class TerminalWindowPortalLifecycleTests: XCTestCase {
         window.contentView?.layoutSubtreeIfNeeded()
     }
 
-    private func drainMainQueue() {
+    func drainMainQueue() {
         let expectation = XCTestExpectation(description: "drain main queue")
         DispatchQueue.main.async {
             expectation.fulfill()
