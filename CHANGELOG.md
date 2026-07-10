@@ -2,6 +2,13 @@
 
 All notable changes to cmux are documented here.
 
+## [0.86.0] - 2026-07-10
+
+### Changed
+- Merge upstream/main: 43 cmux commits + bonsplit `01cef60→5e568dd` (6 upstream) + ghostty `85b831a0b→0e302eeeb` (9 upstream). Highlights: App Store profile fetch, live macOS appearance switches, Ghostty custom-shader black-terminal fix + revert, typed window handles, iOS MARKETING_VERSION 1.0.4, agent-chat notification helper split, native auth handoff redirect, macOS 15 blank icon fix, ssh-tmux focus-neutral bookkeeping.
+- Fork side: kept monolithic RemoteTmux stack (dropped upstream extension files + WindowMirrorSplitView + native-metrics + control-topology/mutations refs + Confirmation/TailFingerprintSample splits + NotificationsPopover* splits). Added `workspaceIds: []` to `.mirrored(windowId:)` sites; added `lifecycleID:` at `startPTYBridge` call site; qualified `windowId.windowId.uuidString` for new tuple return.
+- Restored fork's own RemoteTmuxWindowMirrorView.swift + RemoteTmuxLayoutContainer.swift wiring lost during take-theirs pbxproj merge.
+
 ## [0.85.0] - 2026-07-10
 
 ### Changed
