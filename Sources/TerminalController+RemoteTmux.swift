@@ -173,7 +173,7 @@ extension TerminalController {
                 return [
                     "host": host.destination,
                     "mirrored": true,
-                    "window_id": windowId.uuidString,
+                    "window_id": windowId.windowId.uuidString,
                 ]
             case .authRequired(let sshArgv):
                 return [

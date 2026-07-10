@@ -328,7 +328,7 @@ final class RemoteTmuxController {
             guard try await mirrorUnmirroredSessionsIntoDedicatedWindow(host: host, windowId: existing, sessions: sessions) else {
                 throw RemoteTmuxError.unreachable("dedicated window closed during attach for \(host.destination)")
             }
-            return .mirrored(windowId: existing)
+            return .mirrored(windowId: existing, workspaceIds: [])
         }
         // Guard the await gap: a second concurrent attach for the same host must
         // not open a second window.
@@ -370,7 +370,7 @@ final class RemoteTmuxController {
             guard try await mirrorUnmirroredSessionsIntoDedicatedWindow(host: host, windowId: existing, sessions: sessions) else {
                 throw RemoteTmuxError.unreachable("dedicated window closed during attach for \(host.destination)")
             }
-            return .mirrored(windowId: existing)
+            return .mirrored(windowId: existing, workspaceIds: [])
         }
 
         // Bail before creating a window the caller has abandoned. The socket handler
@@ -415,7 +415,7 @@ final class RemoteTmuxController {
            !bootstrap.isRemoteTmuxMirror {
             manager.closeWorkspace(bootstrap, recordHistory: false)
         }
-        return .mirrored(windowId: windowId)
+        return .mirrored(windowId: windowId, workspaceIds: [])
     }
 
     /// Discovers every tmux session on `host` and mirrors each as its own

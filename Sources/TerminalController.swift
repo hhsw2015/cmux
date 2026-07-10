@@ -4333,6 +4333,7 @@ class TerminalController {
         do {
             let endpoint = try controller.startPTYBridge(
                 sessionID: sessionID,
+                lifecycleID: sessionID,
                 attachmentID: attachmentID,
                 command: command?.isEmpty == true ? nil : command,
                 requireExisting: requireExisting,
