@@ -3698,17 +3698,14 @@ final class Workspace: Identifiable, ObservableObject {
         terminalCommandSourcePaths: [String: String],
         workspaceCommands: [String: CmuxResolvedCommand]
     ) {
-        // The default mobile-connect button is remotely toggleable; the flag
-        // is read when buttons are (re)applied, so a dashboard change lands
-        // on the next config reload or launch.
-        let buttons = CmuxFeatureFlags.shared.isMobileConnectButtonEnabled
-            ? buttons
-            : buttons.filter { button in
-                if case .builtIn(let builtInAction) = button.action, builtInAction == .mobileConnect {
-                    return false
-                }
-                return true
-            }
+        // Built-in surface-tab-bar buttons are feature-flagged when applied, so
+        // dashboard changes land on the next config reload or launch.
+        let buttons = buttons.filter { button in
+            guard case .builtIn(let builtInAction) = button.action else { return true }
+            if builtInAction == .mobileConnect { return CmuxFeatureFlags.shared.isMobileConnectButtonEnabled }
+            if builtInAction == .newAgentChat { return CmuxFeatureFlags.shared.isAgentChatUIEnabled }
+            return true
+        }
         let executableButtons = Dictionary(
             uniqueKeysWithValues: buttons.compactMap { button in
                 if button.terminalCommand != nil {
@@ -3869,18 +3866,20 @@ final class Workspace: Identifiable, ObservableObject {
         let splitPanelId: UUID
     }
 
-    // ponytail: split-layout sub-model removed upstream; keep stored backing
-    // for fork's detach-choreography logic.
-    private var pendingDetachedSurfaces: [TabID: DetachedSurfaceTransfer] = [:]
-    private var activeDetachCloseTransactions: Int = 0
-    private var isDetachingCloseTransaction: Bool { activeDetachCloseTransactions > 0 }
-    private var detachingTabIds: Set<TabID> = []
-    /// True while ``reorderRemoteTmuxMirrorTabs(toPanelOrder:)`` is rearranging tabs.
-    /// bonsplit's `reorderTab`/`selectTab`/`focusPane` fire `didSelectTab` /
-    /// `didFocusPane`, each of which runs the full `applyTabSelection` activation
-    /// (focus moves, hibernation resume, focus-LRU record). A reactive tmux-driven
-    /// reorder must not run any of that because the user's selection/focus is unchanged.
-    private var isApplyingRemoteTmuxTabReorder = false
+    /// Captured detach transfer payloads; stored in the split-layout
+    /// sub-model. Mutations go through the model's detach-choreography
+    /// verbs; this read-only view feeds the empty/count checks.
+    private var pendingDetachedSurfaces: [TabID: DetachedSurfaceTransfer] {
+        splitLayout.pendingDetachedSurfaces
+    }
+    /// Open detach-close transaction count; stored in the split-layout
+    /// sub-model, mutated through its transaction verbs.
+    private var activeDetachCloseTransactions: Int {
+        splitLayout.activeDetachCloseTransactions
+    }
+    private var isDetachingCloseTransaction: Bool { splitLayout.isDetachingCloseTransaction }
+    /// Single transaction owner for focus-neutral remote-tmux topology bookkeeping.
+    let remoteTmuxMirrorMutations = RemoteTmuxMirrorMutationCoordinator()
     private var pendingRemoteSurfaceTTYName: String?
     private var pendingRemoteSurfaceTTYSurfaceId: UUID?
     private var pendingRemoteSurfacePortKickReason: PortScanKickReason?
@@ -4516,31 +4515,6 @@ final class Workspace: Identifiable, ObservableObject {
         return nil
     }
 
-    private func surfaceKind(for panel: any Panel) -> String {
-        switch panel.panelType {
-        case .terminal:
-            return SurfaceKind.terminal
-        case .browser:
-            return SurfaceKind.browser
-        case .markdown:
-            return SurfaceKind.markdown
-        case .filePreview:
-            return SurfaceKind.filePreview
-        case .rightSidebarTool:
-            return SurfaceKind.rightSidebarTool
-        case .customSidebar:
-            return SurfaceKind.customSidebar
-        case .agentSession:
-            return SurfaceKind.agentSession
-        case .project:
-            return SurfaceKind.project
-        case .extensionBrowser:
-            return SurfaceKind.extensionBrowser
-        case .cloudVMLoading:
-            return SurfaceKind.cloudVMLoading
-        }
-    }
-
     func resolvedPanelTitle(panelId: UUID, fallback: String) -> String {
         let trimmedFallback = fallback.trimmingCharacters(in: .whitespacesAndNewlines)
         let fallbackTitle = trimmedFallback.isEmpty ? "Tab" : trimmedFallback
@@ -4572,9 +4546,6 @@ final class Workspace: Identifiable, ObservableObject {
         AppDelegate.shared?.notificationStore?.hasVisibleNotificationIndicator(forTabId: id, surfaceId: panelId) ?? false
     }
 
-    private func hasUnreadNotification(panelId: UUID) -> Bool {
-        AppDelegate.shared?.notificationStore?.hasUnreadNotification(forTabId: id, surfaceId: panelId) ?? false
-    }
 
     private func attentionPersistentState() -> WorkspaceAttentionPersistentState {
         let notificationStore = AppDelegate.shared?.notificationStore
@@ -8553,9 +8524,8 @@ final class Workspace: Identifiable, ObservableObject {
     ///
     /// - Parameter focus: when `true`, selects and reasserts AppKit keyboard
     ///   focus onto the created tab (a user-initiated attach). When `false`
-    ///   (socket/background mirroring), the tab is created and selected within
-    ///   its pane but the user's keyboard focus is left untouched, per the
-    ///   socket focus policy.
+    ///   (socket/background mirroring), selection and keyboard focus remain
+    ///   unchanged, per the socket focus policy.
     @discardableResult
     func addRemoteTmuxDisplayPane(
         remotePaneId: Int,
@@ -8565,48 +8535,43 @@ final class Workspace: Identifiable, ObservableObject {
         onInput: @escaping @Sendable (Data) -> Void,
         onResize: (@MainActor @Sendable (_ columns: Int, _ rows: Int) -> Void)? = nil
     ) -> TerminalPanel? {
-        guard let paneId = bonsplitController.focusedPaneId ?? bonsplitController.allPaneIds.first
-        else { return nil }
+        let newPanel = performRemoteTmuxMirrorMutation { () -> TerminalPanel? in
+            guard let paneId = bonsplitController.focusedPaneId ?? bonsplitController.allPaneIds.first
+            else { return nil }
 
-        let title = customTitle ?? String(localized: "remoteTmux.tab.pane", defaultValue: "tmux pane")
-        let surface = TerminalSurface(
-            tabId: id,
-            context: GHOSTTY_SURFACE_CONTEXT_SPLIT,
-            configTemplate: nil
-        )
-        // ponytail: fork TS doesn't expose manualIO/onManualSizeApplied;
-        // remote-tmux mirror feature is unused in fork build path. onInput dropped.
-        _ = onInput
-        surface.onManualGridResize = onResize
-        let newPanel = TerminalPanel(workspaceId: id, surface: surface)
-        configureNewTerminalPanel(
-            newPanel,
-            allowTextBoxFocusDefault: focus && allowTextBoxFocusDefault
-        )
-        panels[newPanel.id] = newPanel
-        panelTitles[newPanel.id] = title
+            let title = customTitle ?? String(localized: "remoteTmux.tab.pane", defaultValue: "tmux pane")
+            let surface = TerminalSurface(
+                tabId: id,
+                context: GHOSTTY_SURFACE_CONTEXT_SPLIT,
+                configTemplate: nil
+            )
+            // ponytail: fork TS doesn't expose manualIO/onManualSizeApplied.
+            _ = onInput
+            surface.onManualGridResize = onResize
+            let newPanel = TerminalPanel(workspaceId: id, surface: surface)
+            configureNewTerminalPanel(
+                newPanel,
+                allowTextBoxFocusDefault: focus && allowTextBoxFocusDefault
+            )
+            panels[newPanel.id] = newPanel
+            panelTitles[newPanel.id] = title
 
-        guard let newTabId = bonsplitController.createTab(
-            title: title,
-            icon: "rectangle.connected.to.line.below",
-            kind: SurfaceKind.terminal,
-            inPane: paneId
-        ) else {
-            panels.removeValue(forKey: newPanel.id)
-            panelTitles.removeValue(forKey: newPanel.id)
-            return nil
+            guard let newTabId = bonsplitController.createTab(
+                title: title,
+                icon: "rectangle.connected.to.line.below",
+                kind: SurfaceKind.terminal,
+                inPane: paneId
+            ) else {
+                panels.removeValue(forKey: newPanel.id)
+                panelTitles.removeValue(forKey: newPanel.id)
+                return nil
+            }
+            bindSurface(newTabId, toPanelId: newPanel.id)
+            return newPanel
         }
-        surfaceIdToPanelId[newTabId] = newPanel.id
-        if focus {
-            bonsplitController.focusPane(paneId)
+        if focus, let newPanel {
+            focusPanel(newPanel.id)
         }
-        bonsplitController.selectTab(newTabId)
-        if focus {
-            newPanel.focus()
-        }
-        // Reassert AppKit first-responder (keyboard focus) only on a user-initiated
-        // attach; a background/socket mirror must not steal focus.
-        applyTabSelection(tabId: newTabId, inPane: paneId, reassertAppKitFocus: focus)
         return newPanel
     }
 
@@ -8715,13 +8680,13 @@ final class Workspace: Identifiable, ObservableObject {
         panels[pair.key] = replacementPanel
         panelTitles[pair.key] = replacementPanel.displayTitle
         seedTerminalInheritanceFontPoints(panelId: pair.key, configTemplate: inheritedConfig)
-
+        let iconPayload = terminalTabAgentIconPayload(forPanelId: pair.key)
         bonsplitController.updateTab(
             tabId,
             title: replacementPanel.displayTitle,
             icon: .some(replacementPanel.displayIcon),
-            iconImageData: .some(nil),
-            iconAsset: .some(terminalTabAgentIconAsset(forPanelId: pair.key)),
+            iconImageData: .some(iconPayload.imageData),
+            iconAsset: .some(iconPayload.assetName),
             kind: .some(SurfaceKind.terminal),
             hasCustomTitle: false,
             isDirty: replacementPanel.isDirty,
@@ -8851,14 +8816,14 @@ final class Workspace: Identifiable, ObservableObject {
         }
         surfaceIdToPanelId[tabId] = panelId
         seedTerminalInheritanceFontPoints(panelId: panelId, configTemplate: inheritedConfig)
-
         let resolvedTitle = resolvedPanelTitle(panelId: panelId, fallback: replacementPanel.displayTitle)
+        let iconPayload = terminalTabAgentIconPayload(forPanelId: panelId)
         bonsplitController.updateTab(
             tabId,
             title: resolvedTitle,
             icon: .some(replacementPanel.displayIcon),
-            iconImageData: .some(nil),
-            iconAsset: .some(terminalTabAgentIconAsset(forPanelId: panelId)),
+            iconImageData: .some(iconPayload.imageData),
+            iconAsset: .some(iconPayload.assetName),
             kind: .some(SurfaceKind.terminal),
             hasCustomTitle: customTitle != nil,
             isDirty: replacementPanel.isDirty,
@@ -10307,10 +10272,10 @@ final class Workspace: Identifiable, ObservableObject {
     /// drag direction is handled by `handleMirrorWindowsReordered`. bonsplit's
     /// `reorderTab` selects+focuses the moved tab (and `selectTab`/`focusPane` fire
     /// the same activation), so the whole operation runs under
-    /// ``isApplyingRemoteTmuxTabReorder`` to suppress that churn — a reactive tmux
-    /// event must not steal focus or resume agents (socket focus policy). The user's
-    /// selection/focus are unchanged, so bonsplit's internal state is just restored
-    /// to match. No-ops when the tabs already match or aren't all in one pane.
+    /// the shared mirror-mutation transaction to suppress that churn — a reactive
+    /// tmux event must not steal focus or resume agents (socket focus policy). The
+    /// user's selection/focus are restored from one snapshot after the reorder.
+    /// No-ops when the tabs already match or aren't all in one pane.
     ///
     /// Known beta limitation: if a *remote* window reorder arrives while the user is
     /// mid tab-drag, this can move tabs under the drag. The trigger is narrow (a
@@ -10331,21 +10296,12 @@ final class Workspace: Identifiable, ObservableObject {
         cmuxDebugLog("remote-tmux: reorder mirror tabs ws=\(id.uuidString.prefix(5)) count=\(desired.count)")
 #endif
 
-        let savedSelectedTabId = bonsplitController.selectedTab(inPane: paneId)?.id
-        let savedFocusedPaneId = bonsplitController.focusedPaneId
-
-        isApplyingRemoteTmuxTabReorder = true
-        defer { isApplyingRemoteTmuxTabReorder = false }
-        for (index, panelId) in desired.enumerated() {
-            guard let tabId = surfaceIdFromPanelId(panelId) else { continue }
-            _ = bonsplitController.reorderTab(tabId, toIndex: index)
+        performRemoteTmuxMirrorMutation {
+            for (index, panelId) in desired.enumerated() {
+                guard let tabId = surfaceIdFromPanelId(panelId) else { continue }
+                _ = bonsplitController.reorderTab(tabId, toIndex: index)
+            }
         }
-        // Restore bonsplit's internal selection + focus (the loop moved them to the
-        // last-reordered tab). cmux's own focus/selection were never touched (the
-        // delegate handlers short-circuited), so this just realigns bonsplit with
-        // the user's unchanged state — no `applyTabSelection` runs.
-        if let savedSelectedTabId { bonsplitController.selectTab(savedSelectedTabId) }
-        if let savedFocusedPaneId { bonsplitController.focusPane(savedFocusedPaneId) }
 
         scheduleTerminalGeometryReconcile()
         return true
@@ -10368,13 +10324,13 @@ final class Workspace: Identifiable, ObservableObject {
         )
 #endif
 
-        detachingTabIds.insert(tabId)
+        splitLayout.detachingTabIds.insert(tabId)
         forceCloseTabIds.insert(tabId)
-        activeDetachCloseTransactions += 1
-        defer { activeDetachCloseTransactions = max(0, activeDetachCloseTransactions - 1) }
+        splitLayout.activeDetachCloseTransactions += 1
+        defer { splitLayout.activeDetachCloseTransactions = max(0, splitLayout.activeDetachCloseTransactions - 1) }
         guard controller.closeTab(tabId) else {
-            detachingTabIds.remove(tabId)
-            pendingDetachedSurfaces.removeValue(forKey: tabId)
+            splitLayout.detachingTabIds.remove(tabId)
+            splitLayout.pendingDetachedSurfaces.removeValue(forKey: tabId)
             forceCloseTabIds.remove(tabId)
 #if DEBUG
             cmuxDebugLog(
@@ -10385,7 +10341,7 @@ final class Workspace: Identifiable, ObservableObject {
             return nil
         }
 
-        var detached = pendingDetachedSurfaces.removeValue(forKey: tabId)
+        var detached = splitLayout.pendingDetachedSurfaces.removeValue(forKey: tabId)
         if shouldSkipControlMasterCleanupAfterDetach, let detachedTransfer = detached, detachedTransfer.isRemoteTerminal {
             skipControlMasterCleanupAfterDetachedRemoteTransfer = true
             if detachedTransfer.remoteCleanupConfiguration == nil {
@@ -10478,13 +10434,14 @@ final class Workspace: Identifiable, ObservableObject {
             restoredUnreadPanelIndicators.removeValue(forKey: detached.panelId)
         }
         let detachedBrowserMuted = (detached.panel as? BrowserPanel)?.isMuted ?? false
-
-        guard let newTabId = controller.createTab(
+        let detachedBrowserPlayingAudio = (detached.panel as? BrowserPanel)?.isPlayingAudio ?? false
+        let detachedIconPayload = terminalTabAgentIconPayload(forDetached: detached)
+        guard let newTabId = bonsplitController.createTab(
             title: detached.title,
             hasCustomTitle: detached.customTitle?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false,
             icon: detached.icon,
-            iconImageData: detached.iconImageData,
-            iconAsset: terminalTabAgentIconAsset(forPanelId: detached.panelId),
+            iconImageData: detachedIconPayload.imageData,
+            iconAsset: detachedIconPayload.assetName,
             kind: detached.kind,
             isDirty: detached.panel.isDirty,
             isLoading: detached.isLoading,
@@ -10739,10 +10696,7 @@ final class Workspace: Identifiable, ObservableObject {
         trigger: FocusPanelTrigger = .standard,
         focusIntent: PanelFocusIntent? = nil
     ) {
-        if let layout = layoutTab(containingPanelId: panelId),
-           selectedLayoutTabId != layout.id {
-            _ = selectTopLevelTab(id: layout.id, reassertAppKitFocus: false)
-        }
+        guard !remoteTmuxMirrorMutations.suppressesFocusActivation else { return }
         markExplicitFocusIntent(on: panelId)
 #if DEBUG
         let pane = bonsplitController.focusedPaneId?.id.uuidString.prefix(5) ?? "nil"
@@ -11361,8 +11315,9 @@ final class Workspace: Identifiable, ObservableObject {
 
     /// Reconcile focus/first-responder convergence.
     /// Coalesce to the next main-queue turn so bonsplit selection/pane mutations settle first.
-    private func scheduleFocusReconcile() {
+    func scheduleFocusReconcile() {
         guard portalRenderingEnabled else { return }
+        guard !remoteTmuxMirrorMutations.suppressesFocusActivation else { return }
 #if DEBUG
         if isDetachingCloseTransaction {
             debugFocusReconcileScheduledDuringDetachCount += 1
@@ -12775,6 +12730,7 @@ extension Workspace: BonsplitDelegate {
         resumeHibernatedAgent: Bool? = nil,
         previousTerminalHostedView: GhosttySurfaceScrollView? = nil
     ) {
+        guard !remoteTmuxMirrorMutations.suppressesFocusActivation else { return }
         pendingTabSelection = PendingTabSelectionRequest(
             tabId: tabId,
             pane: pane,
@@ -13443,7 +13399,7 @@ extension Workspace: BonsplitDelegate {
         let selectTabId = postCloseSelectTabId.removeValue(forKey: tabId)
         let shouldClearSplitZoom = postCloseClearSplitZoomTabIds.remove(tabId) != nil
         let closedBrowserRestoreSnapshot = pendingClosedBrowserRestoreSnapshots.removeValue(forKey: tabId)
-        let isDetaching = detachingTabIds.remove(tabId) != nil || isDetachingCloseTransaction
+        let isDetaching = splitLayout.detachingTabIds.remove(tabId) != nil || isDetachingCloseTransaction
         if shouldClearSplitZoom {
             clearSplitZoom()
         }
@@ -13482,7 +13438,7 @@ extension Workspace: BonsplitDelegate {
             )
             let agentRuntime = agentRuntimeState(forPanelId: panelId)
             let panelDirectory = panelDirectories[panelId]
-            pendingDetachedSurfaces[tabId] = DetachedSurfaceTransfer(
+            splitLayout.pendingDetachedSurfaces[tabId] = DetachedSurfaceTransfer(
                 sourceWorkspaceId: id,
                 panelId: panelId,
                 panel: panel,
@@ -13606,22 +13562,8 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didSelectTab tab: Bonsplit.Tab, inPane pane: PaneID) {
-        // Suppress the per-move selection churn of a reactive mirror-tab reorder
-        // (the user's selection/focus is restored explicitly afterwards).
-        guard !isApplyingRemoteTmuxTabReorder else { return }
-        // The top-tab strip has its own BonsplitController — clicks on a top
-        // tab are layoutTab switches, not tab-in-pane selections. Route them
-        // through selectTopLevelTab so `selectedLayoutTabId` moves. Without
-        // this, `applyTabSelection` looks up `tab.id` inside the *previously
-        // active layout*'s bonsplitController (a Tab that never existed
-        // there), the lookup fails silently, and SwiftUI keeps rendering
-        // the previously-active layoutTab's inner-tab strip while the top
-        // strip visually shows the newly-selected group — inner tabs
-        // disappear from the user's point of view.
-        if controller === topTabController {
-            _ = selectTopLevelTab(id: tab.id.uuid, reassertAppKitFocus: false)
-            return
-        }
+        // Mirror bookkeeping restores selection from its transaction snapshot.
+        guard !remoteTmuxMirrorMutations.suppressesFocusActivation else { return }
         applyTabSelection(tabId: tab.id, inPane: pane)
         if let layout = layoutTab(containing: controller) {
             syncTopLevelTabMetadata(for: layout)
@@ -13749,9 +13691,8 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didFocusPane pane: PaneID) {
-        // See `isApplyingRemoteTmuxTabReorder`: a reactive reorder restores the
-        // prior pane focus itself, without re-running tab activation.
-        guard !isApplyingRemoteTmuxTabReorder else { return }
+        // Mirror bookkeeping restores pane focus without re-running activation.
+        guard !remoteTmuxMirrorMutations.suppressesFocusActivation else { return }
         // When a pane is focused, focus its selected tab's panel
         guard let tab = controller.selectedTab(inPane: pane) else { return }
 #if DEBUG

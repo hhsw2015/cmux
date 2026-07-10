@@ -116884,19 +116884,19 @@
         }
       }
     },
-    "menu.newWorkspace.customizeLayouts": {
+    "menu.newWorkspace.defaultBadge": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Customize Workspace Layouts…"
+            "value": "Default"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ワークスペースレイアウトをカスタマイズ…"
+            "value": "デフォルト"
           }
         }
       }
@@ -116965,6 +116965,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "ワークスペースレイアウトを削除"
+          }
+        }
+      }
+    },
+    "menu.newWorkspace.layoutsHeader": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Layouts"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "レイアウト"
+          }
+        }
+      }
+    },
+    "menu.newWorkspace.manageLayouts": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manage Layouts"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "レイアウトを管理"
           }
         }
       }
@@ -146065,6 +146099,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "新規ワークスペースはフォーカス中のワークスペースの作業ディレクトリで開始します。"
+          }
+        }
+      }
+    },
+    "settings.app.workspaceLayouts": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workspace Layouts"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースレイアウト"
+          }
+        }
+      }
+    },
+    "settings.app.workspaceLayouts.customize": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Customize…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カスタマイズ…"
+          }
+        }
+      }
+    },
+    "settings.app.workspaceLayouts.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit the saved layouts offered in the new-workspace menu."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規ワークスペースメニューに表示される保存済みレイアウトを編集します。"
           }
         }
       }
@@ -211956,6 +212041,131 @@
         }
       }
     },
+    "terminalContextMenu.translateSelection": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ترجمة التحديد"
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prevedi odabrano"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oversæt markering"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auswahl übersetzen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Translate Selection"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducir selección"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduire la sélection"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduci selezione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択範囲を翻訳"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "បកប្រែអត្ថបទដែលបានជ្រើស"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택 항목 번역"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oversett merket område"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przetłumacz zaznaczenie"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduzir seleção"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевести выделенное"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แปลข้อความที่เลือก"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçimi çevir"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перекласти виділене"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻译所选内容"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻譯選取範圍"
+          }
+        }
+      }
+    },
     "terminalContextMenu.triggerFlash": {
       "extractionState": "manual",
       "localizations": {
@@ -230608,6 +230818,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld 則未讀"
+          }
+        }
+      }
+    },
+    "featureFlags.agentChat.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent chat UI"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エージェントチャットUI"
+          }
+        }
+      }
+    },
+    "featureFlags.agentChat.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shows the Agent chat entrypoints in the new-workspace dropdown, command palette, and surface tab bar."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規ワークスペースのドロップダウン、コマンドパレット、サーフェスタブバーにエージェントチャットの入口を表示します。"
+          }
+        }
+      }
+    },
+    "notification.agentChat.serverUnavailable.subtitleLaunchFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not start Agent Chat"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エージェントチャットを起動できませんでした"
           }
         }
       }
