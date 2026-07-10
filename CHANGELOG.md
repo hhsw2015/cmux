@@ -2,6 +2,13 @@
 
 All notable changes to cmux are documented here.
 
+## [0.85.0] - 2026-07-10
+
+### Changed
+- Merge upstream/main: 35 cmux commits + bonsplit `01cef60` (9 upstream) + ghostty `85b831a0b` (126 upstream). Highlights: dynamic-port agent-chat + app-owned sidecar, macOS 15 blank icon fix, AppleLanguages own-writes for zh-Hant, iOS Sentry+MetricKit crash telemetry, iOS surface-teardown deadlock fix, ssh-tmux mirror focus-neutral bookkeeping, SSH PTY input loss + reattach retry fixes, feature-flagged agent-chat UI, plugin manager (mux install from git), reorganized new-workspace dropdown, native Translate Selection.
+- Fork side: kept monolithic RemoteTmuxControlConnection + related classes, mutations of detachingTabIds / activeDetachCloseTransactions / pendingDetachedSurfaces now go through `splitLayout.` (upstream moved them). Qualified `CmuxSettings.AppLanguage` where fork's local enum collided.
+- Dropped upstream RemoteTmuxControlConnection extension splits (+CommandResults/+LayoutPublication/+PaneSubscriptions/+Sizing/+Commands) — fork's monolith is source of truth.
+
 ## [0.84.0] - 2026-07-09
 
 ### Changed
