@@ -2,6 +2,15 @@
 
 All notable changes to cmux are documented here.
 
+## [0.87.0] - 2026-07-11
+
+### Changed
+- Merge upstream/main: 16 cmux commits + bonsplit `01cef60→992a0f5` (2 upstream, incl. BonsplitManagedSplitView). Fork kept monolithic RemoteTmuxControlConnection; dropped upstream extension splits (+ControlConnection.Observation/+Commands/+CommandResults/+LayoutPublication/+PaneSubscriptions/+Sizing).
+- Added Workspace agent-lifecycle helpers: `setAgentLifecycle(key:panelId?:lifecycle:)`, `clearAgentLifecycle(key:panelId?:)`, `hasRunningAgentLifecycle(key:)`, `agentHibernationLifecycleState(panelId:fallback:)`, `clearAllAgentLifecycleStates()`, `enterSurfaceHibernation(panelId:lastActivityAt:)` (stub — returns false since fork routes surface hibernation through Panel path).
+- Added `.completedAgentExit` case to `Workspace.RestoredAgentResumeState` for `RestoredAgentLifecycleCoordinator` compat; added `.herdrInbound` to `CustomTitleSource`.
+- Dropped upstream `TabItemView+WorkspaceContextMenu.swift` (conflicts with fork's inline `workspaceContextMenu`).
+- Wired `TerminalTabAgentIcon.swift`, `RemoteTmuxStdoutPipeReader.swift`, `RemoteTmuxSessionEndAction.swift`, `RemoteTmuxMirrorGeometry.swift`, `RemoteTmuxMirrorFrames.swift`, `RemoteTmuxPaneHeader.swift`, `RemoteTmuxWindowMirrorView.swift`, `RemoteTmuxLayoutContainer.swift` in pbxproj (some regained after take-theirs pruning).
+
 ## [0.86.0] - 2026-07-10
 
 ### Changed
