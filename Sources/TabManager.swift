@@ -956,8 +956,7 @@ class TabManager: ObservableObject {
             initialBrowserOmnibarVisible: initialBrowserOmnibarVisible,
             initialBrowserTransparentBackground: initialBrowserTransparentBackground,
             workspaceEnvironment: workspaceEnvironment,
-            allowTextBoxFocusDefault: allowTextBoxFocusDefault,
-            closeTabWarningDefaults: closeTabWarningDefaults
+            allowTextBoxFocusDefault: allowTextBoxFocusDefault
         )
     }
 

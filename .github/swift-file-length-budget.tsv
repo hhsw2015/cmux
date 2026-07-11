@@ -1,12 +1,12 @@
 # cmux-owned Swift file length budget.
 # Format: max_lines<TAB>relative path
 # Reduce counts as files shrink. CI fails if tracked files exceed this budget.
-35421	CLI/cmux.swift
+35407	CLI/cmux.swift
 18784	Sources/ContentView.swift
 18074	Sources/AppDelegate.swift
 16292	Sources/GhosttyTerminalView.swift
 15094	Sources/TerminalController.swift
-14302	Sources/Workspace.swift
+14367	Sources/Workspace.swift
 12312	cmuxTests/AppDelegateShortcutRoutingTests.swift
 11442	Sources/Panels/BrowserPanel.swift
 10121	cmuxTests/CLINotifyProcessIntegrationRegressionTests.swift
@@ -17,16 +17,16 @@
 7392	cmuxTests/WorkspaceRemoteConnectionTests.swift
 6844	cmuxTests/SessionPersistenceTests.swift
 6526	cmuxTests/GhosttyConfigTests.swift
-6237	Sources/TabManager.swift
+6236	Sources/TabManager.swift
 6106	cmuxTests/TerminalAndGhosttyTests.swift
-6025	Sources/cmuxApp.swift
+6023	Sources/cmuxApp.swift
 5809	Sources/TextBoxInput.swift
 5571	cmuxTests/BrowserConfigTests.swift
 4482	Sources/Panels/FilePreviewPanel.swift
 4367	cmuxTests/BrowserPanelTests.swift
 4284	cmuxTests/TabManagerUnitTests.swift
 4145	cmuxTests/WindowAndDragTests.swift
-3981	Sources/BrowserWindowPortal.swift
+3976	Sources/BrowserWindowPortal.swift
 3934	Sources/Feed/FeedPanelView.swift
 3827	Packages/iOS/CmuxMobileTerminal/Sources/CmuxMobileTerminal/GhosttySurfaceView.swift
 3799	cmuxTests/TabManagerSessionSnapshotTests.swift
@@ -73,9 +73,9 @@
 1336	Sources/GhosttyConfig.swift
 1317	Sources/FileExplorerStore.swift
 1310	Sources/HerdrClient/HerdrPanelOpener.swift
-1296	Sources/Feed/FeedCoordinator.swift
+1298	Sources/Feed/FeedCoordinator.swift
 1295	cmuxTests/MobileHostAuthorizationTests.swift
-1291	Packages/macOS/CmuxTerminalCore/Sources/CmuxTerminalCore/Config/GhosttyConfig.swift
+1290	Packages/macOS/CmuxTerminalCore/Sources/CmuxTerminalCore/Config/GhosttyConfig.swift
 1290	cmuxTests/TextBoxSubmitActionTests.swift
 1285	cmuxUITests/SidebarHelpMenuUITests.swift
 1240	cmuxTests/SidebarOrderingTests.swift
@@ -85,13 +85,13 @@
 1200	Sources/RemoteTmuxController.swift
 1197	cmuxTests/CodexAppServerSessionTests.swift
 1197	cmuxTests/VMDefaultCloudCommandTests.swift
-1172	Sources/VaultAgentProcessScanner.swift
 1162	CLI/CMUXCLI+SettingsCommand.swift
 1147	cmuxTests/PiVaultAgentPersistenceTests.swift
 1119	cmuxTests/AgentHibernationTests.swift
 1093	cmuxUITests/BonsplitTabDragUITests.swift
 1091	Sources/Panels/TerminalPanel.swift
 1087	Packages/macOS/CmuxCommandPalette/Sources/CmuxCommandPalette/Search/CommandPaletteFuzzyMatcher.swift
+1084	Sources/VaultAgentProcessScanner.swift
 1049	cmuxTests/WorkspaceGroupTests.swift
 1038	Sources/AppDelegate+CmuxSSHURL.swift
 1030	Packages/iOS/CmuxMobileShell/Tests/CmuxMobileShellTests/TerminalViewportResyncTests.swift
@@ -124,15 +124,15 @@
 858	Sources/PricingPlansScreen.swift
 845	cmuxTests/SSHStartupSignalLifecycleTests.swift
 841	Sources/App/MainWindowVisibilityController.swift
+838	Sources/TaskManagerTypes.swift
 837	Packages/iOS/CmuxMobileShell/Tests/CmuxMobileShellTests/TerminalOutputDeliveryQueueTests.swift
 834	Sources/MainWindowFocusController.swift
-830	Sources/TaskManagerTypes.swift
 825	Packages/iOS/CmuxMobileShellUI/Sources/CmuxMobileShellUI/TerminalComposerView.swift
 811	Sources/ClosedItemHistory.swift
 810	Packages/macOS/CmuxSwiftRender/Tests/CmuxSwiftRenderTests/SwiftViewInterpreterTests.swift
 810	Sources/HerdrClient/HerdrInboundLayoutSync.swift
+809	Sources/TerminalController+ControlPaneContext.swift
 803	Packages/iOS/CmuxMobilePairedMac/Sources/CmuxMobilePairedMac/MobilePairedMacStore.swift
-802	Sources/TerminalController+ControlPaneContext.swift
 779	cmuxUITests/BrowserOmnibarSuggestionsUITests.swift
 773	Sources/App/MenuBarExtraController.swift
 769	Packages/macOS/CmuxTerminal/Sources/CmuxTerminal/Surface/TerminalSurface+Input.swift
@@ -156,7 +156,6 @@
 699	cmuxTests/TerminalNotificationClearAllTests.swift
 698	cmuxTests/RestorableAgentHookProviderResumeTests.swift
 696	cmuxTests/KeyboardShortcutContextTests.swift
-691	CLI/CMUXCLI+TmuxCompatSupport.swift
 691	Sources/NotificationSoundSettings.swift
 691	cmuxTests/TaskManagerResourcesTests.swift
 690	cmuxTests/SessionIndexViewTests.swift
@@ -166,10 +165,10 @@
 681	Sources/Panels/AgentSessionProcessStore.swift
 680	Sources/FileExplorerSearchController.swift
 677	Packages/macOS/CmuxRemoteSession/Sources/CmuxRemoteSession/Session/RemoteSessionCoordinator+Bootstrap.swift
-676	Packages/macOS/CmuxControlSocket/Sources/CmuxControlSocket/Coordinator/Pane/ControlCommandCoordinator+Pane.swift
 672	cmuxTests/SessionPersistenceResumeBindingTests.swift
 669	Sources/CmuxTopSnapshot.swift
 668	cmuxTests/FeedCoordinatorTests.swift
+667	CLI/CMUXCLI+TmuxCompatSupport.swift
 665	cmuxTests/CLICodexHookTimeoutRegressionTests.swift
 660	Packages/macOS/CmuxRemoteSession/Sources/CmuxRemoteSession/Session/RemoteSessionCoordinator.swift
 657	Packages/iOS/CmuxMobileShell/Tests/CmuxMobileShellTests/MobileShellRenderGridInputCatchUpTests.swift
@@ -214,6 +213,7 @@
 583	Sources/HerdrClient/HerdrEventPump.swift
 580	Packages/macOS/CmuxExtensionKit/Tests/CmuxExtensionKitTests/CmuxExtensionKitTests.swift
 580	cmuxTests/CLIHookNoResponseTests.swift
+579	Packages/macOS/CmuxControlSocket/Sources/CmuxControlSocket/Coordinator/Pane/ControlCommandCoordinator+Pane.swift
 578	Packages/macOS/CmuxWorkspaces/Tests/CmuxWorkspacesTests/WorkspaceCoordinatorTests.swift
 577	Packages/iOS/CmuxMobileShell/Tests/CmuxMobileShellTests/MobileShellRenderGridLivenessTests.swift
 577	cmuxTests/AppearanceSettingsTests.swift
@@ -227,15 +227,17 @@
 561	cmuxTests/GhosttyConfigPathResolverTests.swift
 560	cmuxTests/CLISSHPTYResizeInputTests.swift
 559	CLI/CMUXCLI+AgentHookDefinitions.swift
+559	cmuxTests/RemoteTmuxControlParserTests.swift
 558	Packages/macOS/CmuxGit/Sources/CmuxGit/Parsing/GitMetadataService+Config.swift
-555	cmuxTests/RemoteTmuxControlParserTests.swift
 553	Sources/RightSidebarPanelView.swift
+551	cmuxUITests/AutomationSocketUITests.swift
 550	Sources/CloudVMActionLauncher.swift
 549	Packages/macOS/CmuxControlSocket/Sources/CmuxControlSocket/Coordinator/Sidebar/ControlCommandCoordinator+SidebarMetadataV1.swift
 549	Sources/Panels/BrowserAutomation.swift
 547	Packages/iOS/CmuxMobileShell/Sources/CmuxMobileShell/BackingUpPairedMacStore.swift
 546	Packages/macOS/CmuxSettingsUI/Sources/CmuxSettingsUI/Sections/AutomationSection.swift
 546	Sources/QuickTerminalController.swift
+545	Packages/macOS/CMUXAgentLaunch/Sources/CMUXAgentLaunch/AgentLaunchSanitizerPrimaryPolicies.swift
 544	cmuxUITests/DisplayResolutionRegressionUITests.swift
 540	Packages/Shared/CMUXMobileCore/Sources/CMUXMobileCore/MobileTerminalRenderGridReplay.swift
 539	CLI/CMUXCLI+Themes.swift
@@ -243,8 +245,6 @@
 538	Packages/Shared/CMUXMobileCore/Tests/CMUXMobileCoreTests/MobileTerminalRenderGridTests.swift
 538	Sources/TerminalController+ControlSurfaceContext2.swift
 530	Sources/CmuxEventPublishing.swift
-529	Packages/macOS/CMUXAgentLaunch/Sources/CMUXAgentLaunch/AgentLaunchSanitizerPrimaryPolicies.swift
-528	cmuxUITests/AutomationSocketUITests.swift
 527	CLI/CLISocketPathResolver.swift
 527	cmuxTests/BrowserHTTPBasicAuthPromptTests.swift
 526	Packages/macOS/CMUXAgentLaunch/Sources/CMUXAgentLaunch/Workstream/WorkstreamStore.swift

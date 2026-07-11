@@ -40,7 +40,7 @@ extension Workspace {
             switch restoredAgentResumeStatesByPanelId[panelId] {
             case .some(.awaitingAutoResumeCommand), .some(.autoResumeCommandRunning):
                 recordRestoredAgentRuntimeStatus(agent: agent, panelId: panelId)
-            case .some(.manualResumeAvailable), .some(.observedAgentCommandRunning), .none:
+            case .some(.manualResumeAvailable), .some(.observedAgentCommandRunning), .some(.completedAgentExit), .none:
                 break
             }
         }

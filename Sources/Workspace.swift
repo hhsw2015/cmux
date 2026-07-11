@@ -2812,6 +2812,7 @@ final class Workspace: Identifiable, ObservableObject {
         case awaitingAutoResumeCommand
         case autoResumeCommandRunning
         case observedAgentCommandRunning
+        case completedAgentExit
     }
     var restoredAgentResumeStatesByPanelId: [UUID: RestoredAgentResumeState] = [:]
     var invalidatedRestoredAgentFingerprintsByPanelId: [UUID: Int] = [:]
@@ -5401,6 +5402,68 @@ final class Workspace: Identifiable, ObservableObject {
     /// Capture scrollback and working directory, then free the panel's runtime
     /// surface while keeping the panel in the layout. The shell ends; restoring
     /// starts a fresh one with the captured state replayed.
+    func setAgentLifecycle(key: String, panelId: UUID?, lifecycle: AgentHibernationLifecycleState) {
+        guard let panelId else { return }
+        var states = agentLifecycleStatesByPanelId
+        var perPanel = states[panelId] ?? [:]
+        perPanel[key] = lifecycle
+        states[panelId] = perPanel
+        agentLifecycleStatesByPanelId = states
+    }
+
+    @discardableResult
+    func clearAgentLifecycle(key: String, panelId: UUID?) -> Bool {
+        var states = agentLifecycleStatesByPanelId
+        if let panelId {
+            guard var perPanel = states[panelId], perPanel.removeValue(forKey: key) != nil else {
+                return false
+            }
+            if perPanel.isEmpty {
+                states.removeValue(forKey: panelId)
+            } else {
+                states[panelId] = perPanel
+            }
+            agentLifecycleStatesByPanelId = states
+            return true
+        }
+        // Clear from all panels
+        var changed = false
+        for (pid, var perPanel) in states {
+            if perPanel.removeValue(forKey: key) != nil {
+                changed = true
+                if perPanel.isEmpty {
+                    states.removeValue(forKey: pid)
+                } else {
+                    states[pid] = perPanel
+                }
+            }
+        }
+        if changed { agentLifecycleStatesByPanelId = states }
+        return changed
+    }
+
+    func hasRunningAgentLifecycle(key: String) -> Bool {
+        agentLifecycleStatesByPanelId.values.contains { $0[key] == .running }
+    }
+
+    func agentHibernationLifecycleState(
+        panelId: UUID,
+        fallback: AgentHibernationLifecycleState?
+    ) -> AgentHibernationLifecycleState? {
+        agentLifecycleStatesByPanelId[panelId]?.values.first ?? fallback
+    }
+
+    func clearAgentLifecycleStates(panelId: UUID) {
+        var states = agentLifecycleStatesByPanelId
+        if states.removeValue(forKey: panelId) != nil {
+            agentLifecycleStatesByPanelId = states
+        }
+    }
+
+    func clearAllAgentLifecycleStates() {
+        agentLifecycleStatesByPanelId = [:]
+    }
+
     @discardableResult
     func enterSurfaceHibernation(panelId: UUID, lastActivityAt: Date) -> Bool {
         guard let terminalPanel = panels[panelId] as? TerminalPanel,
@@ -5472,6 +5535,8 @@ final class Workspace: Identifiable, ObservableObject {
                 restoredAgentResumeStatesByPanelId[panelId] = .autoResumeCommandRunning
             case .some(.autoResumeCommandRunning), .some(.observedAgentCommandRunning):
                 break
+            case .some(.completedAgentExit):
+                break
             case .some(.manualResumeAvailable), nil:
                 invalidateRestoredAgentSnapshot(panelId: panelId, restoredAgent: restoredAgent)
             }
@@ -5479,7 +5544,7 @@ final class Workspace: Identifiable, ObservableObject {
             switch restoredAgentResumeStatesByPanelId[panelId] {
             case .some(.autoResumeCommandRunning), .some(.observedAgentCommandRunning):
                 invalidateRestoredAgentSnapshot(panelId: panelId, restoredAgent: restoredAgent)
-            case .some(.awaitingAutoResumeCommand), .some(.manualResumeAvailable), nil:
+            case .some(.awaitingAutoResumeCommand), .some(.manualResumeAvailable), .some(.completedAgentExit), nil:
                 break
             }
         case .unknown:

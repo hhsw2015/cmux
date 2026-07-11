@@ -563,7 +563,7 @@ extension AppDelegate {
                     let lifecycle = workspace.agentHibernationLifecycleState(
                         panelId: panelId,
                         fallback: index.lifecycle(workspaceId: workspace.id, panelId: panelId)
-                    )
+                    ) ?? .idle
                     let isRemoteTerminal = workspace.isRemoteWorkspace ||
                         workspace.isRemoteTerminalSurface(panelId)
                     // Recreating these surfaces would rerun startup commands,

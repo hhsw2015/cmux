@@ -439,7 +439,9 @@ extension FeedCoordinator {
         pendingAttentionStates[target] = attentionState
 
         // Needs-input lifecycle drives the sidebar badge + hibernation state.
-        tab.setAgentLifecycle(key: statusKey, panelId: panelId, lifecycle: .needsInput)
+        if let panelId {
+            tab.setAgentLifecycle(key: statusKey, panelId: panelId, lifecycle: .needsInput)
+        }
         tab.statusEntries[statusKey] = SidebarStatusEntry(
             key: statusKey,
             value: Self.needsInputStatusValue,

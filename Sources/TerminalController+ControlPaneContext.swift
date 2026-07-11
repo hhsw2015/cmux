@@ -527,7 +527,10 @@ extension TerminalController: ControlPaneContext {
             return .noAdjacentBorder(paneID: paneUUID, direction: direction.rawValue)
         }
 
-        let delta = CGFloat(inputs.amount) / candidate.axisPixels
+        guard let amount = inputs.amount else {
+            return .remoteResizeUnavailable(paneID: paneUUID, message: controlPaneResizeInvalidParametersMessage())
+        }
+        let delta = CGFloat(amount) / candidate.axisPixels
         let requested = candidate.dividerPosition + (direction.dividerDeltaSign * delta)
         let clamped = min(max(requested, 0.1), 0.9)
         guard ws.bonsplitController.setDividerPosition(clamped, forSplit: candidate.splitId, fromExternal: true) else {
@@ -541,7 +544,7 @@ extension TerminalController: ControlPaneContext {
             paneID: paneUUID,
             splitID: candidate.splitId,
             direction: direction.rawValue,
-            amount: inputs.amount,
+            amount: amount,
             oldDividerPosition: Double(candidate.dividerPosition),
             newDividerPosition: Double(clamped)
         )
@@ -772,6 +775,10 @@ extension TerminalController: ControlPaneContext {
             paneID: target.id,
             selectedSurfaceID: selectedSurfaceId
         )
+    }
+
+    func controlPaneResizeInvalidParametersMessage() -> String {
+        "invalid parameters"
     }
 }
 
