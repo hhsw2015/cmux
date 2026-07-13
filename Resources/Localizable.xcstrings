@@ -143197,6 +143197,40 @@
         }
       }
     },
+    "settings.app.notificationMessageLineLimit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notification Preview Lines"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通知プレビューの行数"
+          }
+        }
+      }
+    },
+    "settings.app.notificationMessageLineLimit.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maximum lines shown for the latest notification below each workspace title."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "各ワークスペース名の下に表示する最新通知の最大行数です。"
+          }
+        }
+      }
+    },
     "settings.app.showNotificationMessage.subtitle": {
       "extractionState": "manual",
       "localizations": {
