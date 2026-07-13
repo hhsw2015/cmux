@@ -1,18 +1,17 @@
 # cmux-owned Swift file length budget.
 # Format: max_lines<TAB>relative path
 # Reduce counts as files shrink. CI fails if tracked files exceed this budget.
-35407	CLI/cmux.swift
-18784	Sources/ContentView.swift
-18074	Sources/AppDelegate.swift
-16292	Sources/GhosttyTerminalView.swift
-15094	Sources/TerminalController.swift
-14368	Sources/Workspace.swift
-12312	cmuxTests/AppDelegateShortcutRoutingTests.swift
-11442	Sources/Panels/BrowserPanel.swift
-10121	cmuxTests/CLINotifyProcessIntegrationRegressionTests.swift
-7994	CLI/cmux_open.swift
-7809	Sources/Panels/BrowserPanelView.swift
-7615	cmuxTests/WorkspaceUnitTests.swift
+35384	CLI/cmux.swift
+17793	Sources/AppDelegate.swift
+16141	Sources/ContentView.swift
+15005	Sources/TerminalController.swift
+12931	Sources/Workspace.swift
+12501	Sources/GhosttyTerminalView.swift
+12348	cmuxTests/AppDelegateShortcutRoutingTests.swift
+11344	Sources/Panels/BrowserPanel.swift
+9497	cmuxTests/CLINotifyProcessIntegrationRegressionTests.swift
+7968	CLI/cmux_open.swift
+7959	Sources/Panels/BrowserPanelView.swift
 7583	Packages/iOS/CmuxMobileShell/Sources/CmuxMobileShell/MobileShellComposite.swift
 7390	cmuxTests/WorkspaceRemoteConnectionTests.swift
 6844	cmuxTests/SessionPersistenceTests.swift
@@ -33,11 +32,11 @@
 3668	cmuxTests/CLIGenericHookPersistenceTests.swift
 3357	Sources/Update/UpdateTitlebarAccessory.swift
 3314	Sources/CmuxConfig.swift
-2876	Sources/SessionIndexView.swift
-2874	cmuxTests/CMUXOpenCommandTests.swift
-2716	Sources/RestorableAgentSession.swift
-2623	Sources/KeyboardShortcutSettings.swift
-2595	Sources/Panels/CmuxWebView.swift
+2882	Sources/Update/UpdateTitlebarAccessory.swift
+2876	cmuxTests/CMUXOpenCommandTests.swift
+2875	Sources/SessionIndexView.swift
+2558	Sources/KeyboardShortcutSettings.swift
+2562	Sources/Panels/CmuxWebView.swift
 2546	cmuxTests/WorkspaceManualUnreadTests.swift
 2524	cmuxTests/CommandPaletteSearchEngineTests.swift
 2398	Sources/Mobile/MobileHostService.swift

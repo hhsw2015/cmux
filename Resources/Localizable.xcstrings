@@ -187764,127 +187764,229 @@
         }
       }
     },
+    "shortcut.diffViewerNextFile.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Next File"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "差分ビューア: 次のファイル"
+          }
+        }
+      }
+    },
+    "shortcut.diffViewerPreviousFile.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff Viewer: Previous File"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "差分ビューア: 前のファイル"
+          }
+        }
+      }
+    },
+    "shortcut.diffViewerScrollDownEmacs.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Viewers: Scroll Down (Emacs)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ビューア: 下へスクロール（Emacs）"
+          }
+        }
+      }
+    },
+    "shortcut.diffViewerScrollHalfPageDown.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Viewers: Scroll Half Page Down"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ビューア: 半ページ下へスクロール"
+          }
+        }
+      }
+    },
+    "shortcut.diffViewerScrollHalfPageUp.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Viewers: Scroll Half Page Up"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ビューア: 半ページ上へスクロール"
+          }
+        }
+      }
+    },
+    "shortcut.diffViewerScrollUpEmacs.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Viewers: Scroll Up (Emacs)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ビューア: 上へスクロール（Emacs）"
+          }
+        }
+      }
+    },
     "shortcut.diffViewerScrollDown.label": {
       "extractionState": "manual",
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Down"
+            "value": "Viewers: Scroll Down"
           }
         },
         "bs": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Down"
+            "value": "Viewers: Scroll Down"
           }
         },
         "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Down"
+            "value": "Viewers: Scroll Down"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Down"
+            "value": "Viewers: Scroll Down"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Down"
+            "value": "Viewers: Scroll Down"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Down"
+            "value": "Viewers: Scroll Down"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Down"
+            "value": "Viewers: Scroll Down"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Down"
+            "value": "Viewers: Scroll Down"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "差分ビューア: 下へスクロール"
+            "value": "ビューア: 下へスクロール"
           }
         },
         "km": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Down"
+            "value": "Viewers: Scroll Down"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Down"
+            "value": "Viewers: Scroll Down"
           }
         },
         "nb": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Down"
+            "value": "Viewers: Scroll Down"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Down"
+            "value": "Viewers: Scroll Down"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Down"
+            "value": "Viewers: Scroll Down"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Down"
+            "value": "Viewers: Scroll Down"
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Down"
+            "value": "Viewers: Scroll Down"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Down"
+            "value": "Viewers: Scroll Down"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Down"
+            "value": "Viewers: Scroll Down"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Down"
+            "value": "Viewers: Scroll Down"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Down"
+            "value": "Viewers: Scroll Down"
           }
         }
       }
@@ -187895,121 +187997,121 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Bottom"
+            "value": "Viewers: Scroll to Bottom"
           }
         },
         "bs": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Bottom"
+            "value": "Viewers: Scroll to Bottom"
           }
         },
         "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Bottom"
+            "value": "Viewers: Scroll to Bottom"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Bottom"
+            "value": "Viewers: Scroll to Bottom"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Bottom"
+            "value": "Viewers: Scroll to Bottom"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Bottom"
+            "value": "Viewers: Scroll to Bottom"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Bottom"
+            "value": "Viewers: Scroll to Bottom"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Bottom"
+            "value": "Viewers: Scroll to Bottom"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "差分ビューア: 末尾へスクロール"
+            "value": "ビューア: 末尾へスクロール"
           }
         },
         "km": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Bottom"
+            "value": "Viewers: Scroll to Bottom"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Bottom"
+            "value": "Viewers: Scroll to Bottom"
           }
         },
         "nb": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Bottom"
+            "value": "Viewers: Scroll to Bottom"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Bottom"
+            "value": "Viewers: Scroll to Bottom"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Bottom"
+            "value": "Viewers: Scroll to Bottom"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Bottom"
+            "value": "Viewers: Scroll to Bottom"
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Bottom"
+            "value": "Viewers: Scroll to Bottom"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Bottom"
+            "value": "Viewers: Scroll to Bottom"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Bottom"
+            "value": "Viewers: Scroll to Bottom"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Bottom"
+            "value": "Viewers: Scroll to Bottom"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Bottom"
+            "value": "Viewers: Scroll to Bottom"
           }
         }
       }
@@ -188020,121 +188122,121 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Top"
+            "value": "Viewers: Scroll to Top"
           }
         },
         "bs": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Top"
+            "value": "Viewers: Scroll to Top"
           }
         },
         "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Top"
+            "value": "Viewers: Scroll to Top"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Top"
+            "value": "Viewers: Scroll to Top"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Top"
+            "value": "Viewers: Scroll to Top"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Top"
+            "value": "Viewers: Scroll to Top"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Top"
+            "value": "Viewers: Scroll to Top"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Top"
+            "value": "Viewers: Scroll to Top"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "差分ビューア: 先頭へスクロール"
+            "value": "ビューア: 先頭へスクロール"
           }
         },
         "km": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Top"
+            "value": "Viewers: Scroll to Top"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Top"
+            "value": "Viewers: Scroll to Top"
           }
         },
         "nb": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Top"
+            "value": "Viewers: Scroll to Top"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Top"
+            "value": "Viewers: Scroll to Top"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Top"
+            "value": "Viewers: Scroll to Top"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Top"
+            "value": "Viewers: Scroll to Top"
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Top"
+            "value": "Viewers: Scroll to Top"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Top"
+            "value": "Viewers: Scroll to Top"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Top"
+            "value": "Viewers: Scroll to Top"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Top"
+            "value": "Viewers: Scroll to Top"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll to Top"
+            "value": "Viewers: Scroll to Top"
           }
         }
       }
@@ -188145,121 +188247,121 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Up"
+            "value": "Viewers: Scroll Up"
           }
         },
         "bs": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Up"
+            "value": "Viewers: Scroll Up"
           }
         },
         "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Up"
+            "value": "Viewers: Scroll Up"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Up"
+            "value": "Viewers: Scroll Up"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Up"
+            "value": "Viewers: Scroll Up"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Up"
+            "value": "Viewers: Scroll Up"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Up"
+            "value": "Viewers: Scroll Up"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Up"
+            "value": "Viewers: Scroll Up"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "差分ビューア: 上へスクロール"
+            "value": "ビューア: 上へスクロール"
           }
         },
         "km": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Up"
+            "value": "Viewers: Scroll Up"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Up"
+            "value": "Viewers: Scroll Up"
           }
         },
         "nb": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Up"
+            "value": "Viewers: Scroll Up"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Up"
+            "value": "Viewers: Scroll Up"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Up"
+            "value": "Viewers: Scroll Up"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Up"
+            "value": "Viewers: Scroll Up"
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Up"
+            "value": "Viewers: Scroll Up"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Up"
+            "value": "Viewers: Scroll Up"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Up"
+            "value": "Viewers: Scroll Up"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Up"
+            "value": "Viewers: Scroll Up"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diff Viewer: Scroll Up"
+            "value": "Viewers: Scroll Up"
           }
         }
       }
