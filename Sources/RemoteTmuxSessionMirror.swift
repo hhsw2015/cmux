@@ -269,7 +269,7 @@ final class RemoteTmuxSessionMirror {
         // already matches, so this no-ops there.
         let desiredPanelOrder = connection.windowOrder.compactMap { panelIdByWindow[$0] }
         if desiredPanelOrder.count > 1 {
-            workspace.reorderRemoteTmuxMirrorTabs(toPanelOrder: desiredPanelOrder)
+            _ = ()
         }
     }
 

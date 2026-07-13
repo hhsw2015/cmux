@@ -4631,17 +4631,10 @@ final class Workspace: Identifiable, ObservableObject {
         }
         let desiredOrder = pinnedTabs + unpinnedTabs
 
-        if isRemoteTmuxMirror, desiredOrder.map(\.id) != tabs.map(\.id) {
-            let desiredPanelOrder = desiredOrder.compactMap { panelIdFromSurfaceId($0.id) }
-            guard desiredPanelOrder.count == desiredOrder.count else { return false }
-            return performRemoteTmuxMirrorOrderMutation(
-                in: paneId,
-                beforeRollback: beforeMirrorRollback,
-                onVerification: onMirrorVerification
-            ) {
-                reorderRemoteTmuxMirrorTabs(toPanelOrder: desiredPanelOrder)
-            }
-        }
+        // ponytail: fork drops remote-tmux mirror reorder path (helpers moved
+        // to upstream Workspace+RemoteTmuxTabOrder.swift which we don't ship).
+        _ = beforeMirrorRollback
+        _ = onMirrorVerification
 
         for (index, desiredTab) in desiredOrder.enumerated() {
             let currentTabs = controller.tabs(inPane: paneId)
@@ -5440,6 +5433,14 @@ final class Workspace: Identifiable, ObservableObject {
         }
         if changed { agentLifecycleStatesByPanelId = states }
         return changed
+    }
+
+    @discardableResult
+    func reorderSurface(panelId: UUID, toIndex: Int, focus: Bool = false) -> Bool {
+        // ponytail: upstream added workspace-level surface reorder API. Fork routes
+        // through bonsplit directly at call sites; this stub keeps type-checking happy
+        // for TerminalController+ControlSurfaceContext3.swift's surface.reorder path.
+        return false
     }
 
     func hasRunningAgentLifecycle(key: String) -> Bool {

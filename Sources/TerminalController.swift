@@ -14205,7 +14205,7 @@ class TerminalController {
 
         return .ok([
             "mac_device_id": MobileHostIdentity.deviceID(),
-            "mac_display_name": v2OrNull(MobileHostIdentity.displayName()),
+            "mac_display_name": v2OrNull(MobileHostIdentity.instanceDisplayName()),
             "host_service": status.payload,
             "workspace_count": workspaceCount,
             "terminal_fidelity": "render_grid",

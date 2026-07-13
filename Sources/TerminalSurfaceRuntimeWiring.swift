@@ -90,7 +90,7 @@ final class TerminalMobileByteTeeBridge: TerminalByteTeeBinding {
     }
 
     @MainActor
-    func installTee(on surface: ghostty_surface_t, surfaceID: UUID) -> any TerminalByteTeeLease {
+    func installTee(on surface: ghostty_surface_t, workspaceID: UUID, surfaceID: UUID) -> any TerminalByteTeeLease {
         let teeContext = Unmanaged.passRetained(MobileTerminalByteTeeUserdata(surfaceID: surfaceID))
         ghostty_surface_set_pty_tee_cb(
             surface,

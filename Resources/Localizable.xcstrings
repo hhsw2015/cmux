@@ -1820,6 +1820,23 @@
         }
       }
     },
+    "agent.ollama.displayName": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ollama"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ollama"
+          }
+        }
+      }
+    },
     "agent.generic.notification.subtitle.error": {
       "extractionState": "manual",
       "localizations": {
@@ -43741,6 +43758,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@: не вдалося прочитати --env-file '%@': %@"
+          }
+        }
+      }
+    },
+    "cli.error.sshSessionAttachWorkspaceRequiresValue": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ssh-session-attach: --workspace requires a value"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ssh-session-attach: --workspace の値を指定してください"
           }
         }
       }

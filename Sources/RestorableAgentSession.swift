@@ -754,26 +754,6 @@ struct SessionRestorableAgentSnapshot: Codable, Sendable {
     var launchCommand: AgentLaunchCommandSnapshot?
     var registration: CmuxVaultAgentRegistration? = nil
 
-    var resumeCommand: String? {
-        AgentResumeCommandBuilder.resumeShellCommand(
-            kind: kind,
-            sessionId: sessionId,
-            launchCommand: launchCommand,
-            workingDirectory: workingDirectory,
-            registrationOverride: registration
-        )
-    }
-
-    var forkCommand: String? {
-        AgentResumeCommandBuilder.forkShellCommand(
-            kind: kind,
-            sessionId: sessionId,
-            launchCommand: launchCommand,
-            workingDirectory: workingDirectory,
-            registrationOverride: registration
-        )
-    }
-
     func resumeStartupInput(
         fileManager: FileManager = .default,
         temporaryDirectory: URL = FileManager.default.temporaryDirectory,
@@ -880,16 +860,6 @@ struct SessionRestorableAgentSnapshot: Codable, Sendable {
     }
 }
 
-extension SessionRestorableAgentSnapshot {
-    var agentDisplayName: String {
-        if let name = registration?.name.trimmingCharacters(in: .whitespacesAndNewlines),
-           !name.isEmpty {
-            return name
-        }
-        return kind.displayName
-    }
-}
-
 private enum AgentResumeScriptStore {
     private static let directoryName = "cmux-agent-resume"
     private static let scriptTTL: TimeInterval = 24 * 60 * 60
@@ -979,6 +949,7 @@ struct RestorableAgentSessionIndex: Sendable {
         case explicit
         case inferredLatestSessionFile
         case forkParentFallback
+        case relaunchOnly
     }
 
     typealias ProcessDetectedSnapshotEntry = (
