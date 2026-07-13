@@ -2,6 +2,18 @@
 
 All notable changes to cmux are documented here.
 
+## [0.88.0] - 2026-07-13
+
+### Changed
+- Merge upstream/main: 43 cmux commits + bonsplit `992a0f5→310d346` (18 upstream, incl. BonsplitDividerCursors) + ghostty `0e302eeeb→5ae712a89` (pin adjusted to inherit upstream cmux's PR #108 `ghostty_surface_read_screen_tail_vt` symbol).
+- Rebuilt GhosttyKit.xcframework locally with zig 0.15.2 for the `5ae712a89` ghostty pin.
+- Fork side: dropped ~10 upstream new files (RemoteTmuxController+Attach/+CommandFactories/+LifecycleMutations, RemoteTmuxSessionMirror+WindowReconciliation, TerminalController+MobileAttachTicket/+SocketListenerRearm/+SocketClientCapability, Workspace+RemoteTmuxTabOrder/+RemoteDisconnectPlaceholder, TerminalPanel+SessionScrollbackReplay, RemoteDisconnectPreparationService, BrowserAddressBarFocusSelectionIntent). Added Workspace stubs: `reorderSurface(panelId:toIndex:focus:)`, kept `setAgentLifecycle`/`clearAgentLifecycle`/`hasRunningAgentLifecycle` from P80.
+- Fixed fork's TerminalController: `MobileHostIdentity.displayName()` → `.instanceDisplayName()`.
+- Wired `RemoteTmuxSessionMirror+Helpers.swift`, `MobileTerminalByteTee.swift`; used SOURCE_ROOT paths for previously-broken file refs.
+- Fixed `TerminalMobileByteTeeBridge.installTee` signature to match package protocol (added `workspaceID:` param).
+- Dropped `workspace.reorderRemoteTmuxMirrorTabs` call site (fork doesn't ship the extension).
+- CommandPalette: `weak let observedWindow` → `weak var observedWindow` compile fix.
+
 ## [0.87.0] - 2026-07-11
 
 ### Changed
