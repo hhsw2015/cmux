@@ -316,7 +316,8 @@ enum AgentResumeCommandBuilder {
         launchCommand: AgentLaunchCommandSnapshot?,
         workingDirectory: String?,
         registrationOverride: CmuxVaultAgentRegistration? = nil,
-        includeWorkingDirectoryPrefix: Bool = true
+        includeWorkingDirectoryPrefix: Bool = true,
+        observedPermissionMode: String? = nil
     ) -> String? {
         let customRegistration = registrationOverride
         guard !sessionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
@@ -325,7 +326,8 @@ enum AgentResumeCommandBuilder {
                   sessionId: sessionId,
                   launchCommand: launchCommand,
                   workingDirectory: workingDirectory,
-                  customRegistration: customRegistration
+                  customRegistration: customRegistration,
+                  observedPermissionMode: observedPermissionMode
               ),
               !argv.isEmpty else {
             return nil
@@ -347,7 +349,8 @@ enum AgentResumeCommandBuilder {
         launchCommand: AgentLaunchCommandSnapshot?,
         workingDirectory: String?,
         registrationOverride: CmuxVaultAgentRegistration? = nil,
-        includeWorkingDirectoryPrefix: Bool = true
+        includeWorkingDirectoryPrefix: Bool = true,
+        observedPermissionMode: String? = nil
     ) -> String? {
         let customRegistration = registrationOverride
         guard !sessionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
@@ -356,7 +359,8 @@ enum AgentResumeCommandBuilder {
                   sessionId: sessionId,
                   launchCommand: launchCommand,
                   workingDirectory: workingDirectory,
-                  customRegistration: customRegistration
+                  customRegistration: customRegistration,
+                  observedPermissionMode: observedPermissionMode
               ),
               !argv.isEmpty else {
             return nil
@@ -487,7 +491,8 @@ enum AgentResumeCommandBuilder {
         sessionId: String,
         launchCommand: AgentLaunchCommandSnapshot?,
         workingDirectory: String?,
-        customRegistration: CmuxVaultAgentRegistration?
+        customRegistration: CmuxVaultAgentRegistration?,
+        observedPermissionMode: String? = nil
     ) -> [String]? {
         switch AgentResumeArgv().launcherResolution(
             launcher: launchCommand?.launcher,
@@ -525,7 +530,8 @@ enum AgentResumeCommandBuilder {
             kind: kind.rawValue,
             sessionId: sessionId,
             executablePath: launchCommand?.executablePath,
-            arguments: launchCommand?.arguments ?? []
+            arguments: launchCommand?.arguments ?? [],
+            observedPermissionMode: observedPermissionMode
         )
     }
 
@@ -534,7 +540,8 @@ enum AgentResumeCommandBuilder {
         sessionId: String,
         launchCommand: AgentLaunchCommandSnapshot?,
         workingDirectory: String?,
-        customRegistration: CmuxVaultAgentRegistration?
+        customRegistration: CmuxVaultAgentRegistration?,
+        observedPermissionMode: String? = nil
     ) -> [String]? {
         let forkArgv = AgentForkArgv()
         switch forkArgv.launcherResolution(
@@ -564,7 +571,8 @@ enum AgentResumeCommandBuilder {
             kind: kind.rawValue,
             sessionId: sessionId,
             executablePath: launchCommand?.executablePath,
-            arguments: launchCommand?.arguments ?? []
+            arguments: launchCommand?.arguments ?? [],
+            observedPermissionMode: observedPermissionMode
         )
     }
 
@@ -753,6 +761,9 @@ struct SessionRestorableAgentSnapshot: Codable, Sendable {
     var workingDirectory: String?
     var launchCommand: AgentLaunchCommandSnapshot?
     var registration: CmuxVaultAgentRegistration? = nil
+    /// Last hook-observed permission mode; re-applied as `--permission-mode` on
+    /// user-owned claude resume/fork when no explicit launch flag covers it.
+    var permissionMode: String? = nil
 
     func resumeStartupInput(
         fileManager: FileManager = .default,
@@ -1214,7 +1225,8 @@ struct RestorableAgentSessionIndex: Sendable {
                         codexCwdLookup: codexCwdLookup
                     ),
                     launchCommand: effectiveRecord.launchCommand,
-                    registration: registration
+                    registration: registration,
+                    permissionMode: effectiveRecord.lastPermissionMode
                 )
                 let key = PanelKey(workspaceId: workspaceId, panelId: panelId)
                 let sessionKey = SessionKey(kind: kind, sessionId: normalizedSessionId)
