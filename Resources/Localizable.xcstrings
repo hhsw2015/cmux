@@ -1633,6 +1633,57 @@
         }
       }
     },
+    "agent.deliveryTarget.error.invalidPid": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PID must be a positive integer"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PID は正の整数でなければなりません。"
+          }
+        }
+      }
+    },
+    "agent.deliveryTarget.error.notFound": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No live delivery target"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有効な配信先が見つかりません。"
+          }
+        }
+      }
+    },
+    "agent.deliveryTarget.error.unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delivery target resolution is unavailable; retry after cmux finishes starting."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配信先の解決を利用できません。cmux の起動が完了してから再試行してください。"
+          }
+        }
+      }
+    },
     "agent.generic.notification.body.approvalNeeded": {
       "extractionState": "manual",
       "localizations": {
