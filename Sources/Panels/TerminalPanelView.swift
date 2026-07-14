@@ -129,6 +129,9 @@ struct TerminalPanelView: View {
                     onToggleFocus: {
                         _ = panel.focusTextBoxInputOrTerminal()
                     },
+                    onSelectSubmitAction: { actionID in
+                        panel.textBoxState.selectSubmitAction(actionID)
+                    },
                     onRecordLaunchCommand: { command in
                         panel.recordTextBoxLaunchCommand(command)
                     },
