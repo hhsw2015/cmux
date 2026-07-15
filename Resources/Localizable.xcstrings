@@ -191386,6 +191386,74 @@
         }
       }
     },
+    "shortcut.moveSurfaceLeft.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move Surface Left"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーフェスを左へ移動"
+          }
+        }
+      }
+    },
+    "shortcut.moveSurfaceRight.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move Surface Right"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーフェスを右へ移動"
+          }
+        }
+      }
+    },
+    "shortcut.moveWorkspaceDown.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move Workspace Down"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースを下へ移動"
+          }
+        }
+      }
+    },
+    "shortcut.moveWorkspaceUp.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move Workspace Up"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースを上へ移動"
+          }
+        }
+      }
+    },
     "shortcut.newBrowserWorkspace.label": {
       "extractionState": "manual",
       "localizations": {
