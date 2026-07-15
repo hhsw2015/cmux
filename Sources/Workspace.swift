@@ -3300,8 +3300,8 @@ final class Workspace: Identifiable, ObservableObject {
         }
         controller.tabContextForkConversationAvailabilityProvider = { [weak self] tabId, _ in
             guard let self,
-                  let panelId = self.panelIdFromSurfaceId(tabId) else { return false }
-            return self.canForkAgentConversationFromPanel(panelId)
+                  let panelId = self.panelIdFromSurfaceId(tabId) else { return .hidden }
+            return self.canForkAgentConversationFromPanel(panelId) ? .available : .hidden
         }
         controller.tabContextForkConversationDefaultActionProvider = { _, _ in
             AgentConversationForkDefaultSettings.current().tabContextAction
