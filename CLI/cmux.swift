@@ -14636,13 +14636,8 @@ struct CMUXCLI {
         }
 
         if subcommand == "viewport" {
-            let sid = try requireSurface()
-            guard subArgs.count >= 2,
-                  let width = Int(subArgs[0]),
-                  let height = Int(subArgs[1]) else {
-                throw CLIError(message: "browser viewport requires: <width> <height>")
-            }
-            let payload = try client.sendV2(method: "browser.viewport.set", params: ["surface_id": sid, "width": width, "height": height])
+            let params = try Self.browserViewportSetParams(subArgs, surfaceID: requireSurface())
+            let payload = try client.sendV2(method: "browser.viewport.set", params: params)
             output(payload, fallback: "OK")
             return
         }
@@ -17016,7 +17011,7 @@ struct CMUXCLI {
               state <save|load> <path>
               addinitscript|addscript [--script <js> | <js>]
               addstyle [--css <css> | <css>]
-              viewport <width> <height>
+              \(Self.browserViewportHelp)
               geolocation|geo <latitude> <longitude>
               offline <true|false>
               trace <start|stop> [path]

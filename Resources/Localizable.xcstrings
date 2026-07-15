@@ -31306,6 +31306,91 @@
         }
       }
     },
+    "browser.viewport.error.attachedBrowserInspector": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close or detach the browser inspector before changing the browser viewport"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ブラウザのビューポートを変更する前にブラウザインスペクタを閉じるか切り離してください"
+          }
+        }
+      }
+    },
+    "browser.viewport.error.dimensionsOutOfRange": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Viewport dimensions must be between 1 and 4096"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ビューポートの寸法は 1 から 4096 の範囲で指定してください"
+          }
+        }
+      }
+    },
+    "browser.viewport.error.elementFullscreen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exit browser element fullscreen before changing the browser viewport"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ブラウザのビューポートを変更する前に、ブラウザの要素フルスクリーンを終了してください"
+          }
+        }
+      }
+    },
+    "browser.viewport.error.renderGeometryTooLarge": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Viewport and page zoom exceed browser render limits"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ビューポートとページズームがブラウザのレンダリング上限を超えています"
+          }
+        }
+      }
+    },
+    "browser.viewport.error.requiresIntegerDimensions": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "browser.viewport.set requires integer width and height"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "browser.viewport.set には整数の width と height が必要です"
+          }
+        }
+      }
+    },
     "canvas.commandScrollHint": {
       "extractionState": "manual",
       "localizations": {
@@ -31782,6 +31867,40 @@
         }
       }
     },
+    "cli.browser.error.viewportRequiresSizeOrReset": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "browser viewport requires: <width> <height> | reset"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "browser viewport には <width> <height> または reset が必要です"
+          }
+        }
+      }
+    },
+    "cli.browser.error.viewportResetAdditionalArguments": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "browser viewport reset does not accept additional arguments"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "browser viewport reset は追加の引数を受け付けません"
+          }
+        }
+      }
+    },
     "cli.browser.help.keyboardNaming": {
       "extractionState": "manual",
       "localizations": {
@@ -31795,6 +31914,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "名前付きキーは Playwright/W3C の名前に従います。Space、Spacebar、space は DOM key \" \" と code \"Space\" を送信し、--key ' ' では生の DOM key を渡せます。"
+          }
+        }
+      }
+    },
+    "cli.browser.help.viewportEmulationDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Emulate an exact 1...4096 CSS-pixel viewport inside the pane without resizing it"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペインのサイズを変更せず、正確な 1...4096 CSS ピクセルのビューポートをエミュレートします"
+          }
+        }
+      }
+    },
+    "cli.browser.help.viewportPresentationDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The page is aspect-fitted in the existing pane; reset restores native pane sizing"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ページは既存のペイン内にアスペクトフィットされ、reset でペイン本来のサイズに戻ります"
+          }
+        }
+      }
+    },
+    "cli.browser.help.viewportRenderLimitDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oversized viewport and page-zoom combinations return structured render-limit details"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大きすぎるビューポートとページズームの組み合わせでは、レンダリング上限の詳細が構造化形式で返されます"
+          }
+        }
+      }
+    },
+    "cli.browser.help.viewportUsage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "viewport <width> <height> | reset"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "viewport <width> <height> | reset"
           }
         }
       }
