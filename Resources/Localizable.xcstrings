@@ -19213,6 +19213,506 @@
         }
       }
     },
+    "browser.automation.error.documentReadinessTimedOut": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "انتهت مهلة انتظار جاهزية مستند المتصفح."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Isteklo je vrijeme čekanja da dokument preglednika bude spreman."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidsfristen for at vente på, at browserdokumentet blev klar, udløb."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeitüberschreitung beim Warten auf die Bereitschaft des Browserdokuments."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Timed out waiting for the browser document to become ready"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se agotó el tiempo de espera para que el documento del navegador estuviera listo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le délai d’attente de la disponibilité du document du navigateur a expiré."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tempo scaduto durante l'attesa che il documento del browser fosse pronto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ブラウザドキュメントの準備完了を待機中にタイムアウトしました。"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "អស់ពេលរង់ចាំឱ្យឯកសារកម្មវិធីរុករករួចរាល់។"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "브라우저 문서가 준비되기를 기다리는 동안 시간이 초과되었습니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidsavbrudd under venting på at nettleserdokumentet skulle bli klart."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przekroczono limit czasu oczekiwania na gotowość dokumentu przeglądarki."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O tempo de espera para que o documento do navegador ficasse pronto expirou."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Истекло время ожидания готовности документа браузера."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หมดเวลารอให้เอกสารเบราว์เซอร์พร้อม"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tarayıcı belgesinin hazır olması beklenirken zaman aşımına uğradı."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевищено час очікування готовності документа браузера."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等待浏览器文档就绪超时。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等待瀏覽器文件就緒逾時。"
+          }
+        }
+      }
+    },
+    "browser.automation.error.javaScriptTimedOut": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "انتهت مهلة انتظار نتيجة JavaScript."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Isteklo je vrijeme čekanja na JavaScript rezultat."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidsfristen for at vente på JavaScript-resultatet udløb."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeitüberschreitung beim Warten auf das JavaScript-Ergebnis."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Timed out waiting for JavaScript result"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se agotó el tiempo de espera del resultado de JavaScript."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le délai d’attente du résultat JavaScript a expiré."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tempo scaduto durante l'attesa del risultato JavaScript."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JavaScript の結果を待機中にタイムアウトしました。"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "អស់ពេលរង់ចាំលទ្ធផល JavaScript។"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JavaScript 결과를 기다리는 동안 시간이 초과되었습니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidsavbrudd under venting på JavaScript-resultatet."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przekroczono limit czasu oczekiwania na wynik JavaScript."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O tempo de espera pelo resultado do JavaScript expirou."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Истекло время ожидания результата JavaScript."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หมดเวลารอผลลัพธ์ JavaScript"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JavaScript sonucu beklenirken zaman aşımına uğradı."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевищено час очікування результату JavaScript."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等待 JavaScript 结果超时。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等待 JavaScript 結果逾時。"
+          }
+        }
+      }
+    },
+    "browser.automation.error.recovered": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "توقف سطح المتصفح عن الاستجابة وتمت استعادته. أعد محاولة الأمر."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Površina preglednika prestala je odgovarati i oporavljena je. Pokušajte naredbu ponovo."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Browserfladen holdt op med at svare og blev gendannet. Prøv kommandoen igen."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Browseroberfläche reagierte nicht mehr und wurde wiederhergestellt. Versuche den Befehl erneut."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The browser surface stopped responding and was recovered. Retry the command."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La superficie del navegador dejó de responder y se recuperó. Vuelve a intentar el comando."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La surface du navigateur ne répondait plus et a été restaurée. Réessayez la commande."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La superficie del browser ha smesso di rispondere ed è stata ripristinata. Riprova il comando."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ブラウザサーフェスが応答しなくなったため復旧しました。コマンドを再試行してください。"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ផ្ទៃកម្មវិធីរុករកបានឈប់ឆ្លើយតប ហើយត្រូវបានស្ដារឡើងវិញ។ សូមសាកល្បងពាក្យបញ្ជាម្តងទៀត។"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "브라우저 화면이 응답하지 않아 복구되었습니다. 명령을 다시 시도하세요."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nettleserflaten sluttet å svare og ble gjenopprettet. Prøv kommandoen på nytt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Powierzchnia przeglądarki przestała odpowiadać i została odzyskana. Ponów polecenie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A superfície do navegador parou de responder e foi recuperada. Tente o comando novamente."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поверхность браузера перестала отвечать и была восстановлена. Повторите команду."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "พื้นผิวเบราว์เซอร์หยุดตอบสนองและได้รับการกู้คืนแล้ว โปรดลองใช้คำสั่งอีกครั้ง"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tarayıcı yüzeyi yanıt vermeyi durdurdu ve kurtarıldı. Komutu yeniden deneyin."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поверхня браузера перестала відповідати та була відновлена. Повторіть команду."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "浏览器表面停止响应，现已恢复。请重试该命令。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "瀏覽器介面停止回應，現已復原。請重試該命令。"
+          }
+        }
+      }
+    },
+    "browser.automation.error.superseded": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تمت استعادة سطح المتصفح بالفعل. أعد محاولة الأمر."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Površina preglednika je već oporavljena. Pokušajte naredbu ponovo."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Browserfladen er allerede blevet gendannet. Prøv kommandoen igen."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Browseroberfläche wurde bereits wiederhergestellt. Versuche den Befehl erneut."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The browser surface was already recovered. Retry the command."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La superficie del navegador ya se recuperó. Vuelve a intentar el comando."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La surface du navigateur a déjà été restaurée. Réessayez la commande."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La superficie del browser è già stata ripristinata. Riprova il comando."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ブラウザサーフェスはすでに復旧されています。コマンドを再試行してください。"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ផ្ទៃកម្មវិធីរុករកត្រូវបានស្ដារឡើងវិញរួចហើយ។ សូមសាកល្បងពាក្យបញ្ជាម្តងទៀត។"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "브라우저 화면이 이미 복구되었습니다. 명령을 다시 시도하세요."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nettleserflaten er allerede gjenopprettet. Prøv kommandoen på nytt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Powierzchnia przeglądarki została już odzyskana. Ponów polecenie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A superfície do navegador já foi recuperada. Tente o comando novamente."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поверхность браузера уже восстановлена. Повторите команду."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "พื้นผิวเบราว์เซอร์ได้รับการกู้คืนแล้ว โปรดลองใช้คำสั่งอีกครั้ง"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tarayıcı yüzeyi zaten kurtarıldı. Komutu yeniden deneyin."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поверхню браузера вже відновлено. Повторіть команду."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "浏览器表面已恢复。请重试该命令。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "瀏覽器介面已復原。請重試該命令。"
+          }
+        }
+      }
+    },
     "browser.contextMenu.openLinkInDefaultBrowser": {
       "extractionState": "manual",
       "localizations": {
@@ -28922,6 +29422,131 @@
           "stringUnit": {
             "state": "translated",
             "value": "重新載入"
+          }
+        }
+      }
+    },
+    "browser.screenshot.error.automationTimedOut": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "انتهت مهلة انتظار لقطة شاشة المتصفح."
+          }
+        },
+        "bs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Isteklo je vrijeme čekanja na snimak ekrana preglednika."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidsgrænsen for at vente på browserskærmbilledet blev overskredet."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeitüberschreitung beim Warten auf den Browser-Screenshot."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Timed out waiting for the browser screenshot."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se agotó el tiempo de espera de la captura de pantalla del navegador."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Délai d’attente dépassé pour la capture d’écran du navigateur."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tempo scaduto in attesa dello screenshot del browser."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ブラウザのスクリーンショットを待機中にタイムアウトしました。"
+          }
+        },
+        "km": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "អស់ពេលរង់ចាំរូបថតអេក្រង់កម្មវិធីរុករក។"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "브라우저 스크린샷을 기다리는 동안 시간이 초과되었습니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidsavbrudd mens det ble ventet på skjermbildet fra nettleseren."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upłynął limit czasu oczekiwania na zrzut ekranu przeglądarki."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O tempo limite de espera pela captura de tela do navegador foi excedido."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Время ожидания снимка экрана браузера истекло."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หมดเวลารอภาพหน้าจอของเบราว์เซอร์"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tarayıcı ekran görüntüsü beklenirken zaman aşımına uğradı."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Час очікування знімка екрана браузера минув."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等待浏览器截图超时。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等待瀏覽器螢幕截圖逾時。"
           }
         }
       }
