@@ -2,6 +2,13 @@
 
 All notable changes to cmux are documented here.
 
+## [0.89.0] - 2026-07-15
+
+### Changed
+- Sync submodules: ghostty `5ae712a89→366c801e0` (29 upstream, incl. wrapped URL cmd-click v2, formatter improvements), bonsplit `992a0f5→53b62878c` (18 upstream, incl. BonsplitDividerCursors).
+- Fork side: `tabContextForkConversationAvailabilityProvider` now returns new `TabContextForkConversationAvailability` enum (`.hidden`/`.refreshing`/`.available`) instead of Bool.
+- cmux upstream merge (87 commits) not integrated in this release — deferred due to escalating RemoteTmux/Workspace/Panel API divergence. Will land in a future pass.
+
 ## [0.88.0] - 2026-07-13
 
 ### Changed
