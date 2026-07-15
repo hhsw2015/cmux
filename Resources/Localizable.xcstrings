@@ -31157,6 +31157,23 @@
         }
       }
     },
+    "cli.browser.help.keyboardNaming": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Named keys follow Playwright/W3C names. Space, Spacebar, and space emit DOM key \" \" with code \"Space\"; --key ' ' passes the raw DOM key."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名前付きキーは Playwright/W3C の名前に従います。Space、Spacebar、space は DOM key \" \" と code \"Space\" を送信し、--key ' ' では生の DOM key を渡せます。"
+          }
+        }
+      }
+    },
     "cli.claude-hook.error.invalidSurface": {
       "extractionState": "manual",
       "localizations": {
