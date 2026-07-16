@@ -2267,6 +2267,15 @@ final class WorkspaceLayoutTab: Identifiable {
 /// that manages split panes and pane-local surfaces.
 @MainActor
 final class Workspace: Identifiable, ObservableObject {
+
+    // ponytail: stub from P83 upstream cherry-picks
+    private var pendingRemoteForegroundAuthToken: String? = nil
+    var pendingRemoteDisconnectReplacementsBySurfaceId: [UUID: Any] = [:]
+    func cancelPendingRemoteDisconnectReplacement(surfaceId: UUID) {}
+    func allowsAgentContinuation(forPanelId panelId: UUID) -> Bool { false }
+    func restoredAgentSnapshotForContinuation(panelId: UUID) -> SessionRestorableAgentSnapshot? { nil }
+    func reconcileCompletedRestoredAgent(panelId: UUID, observation: Any) {}
+
     enum BrowserPanelCreationPolicy {
         case userInitiated
         case automationPreload
@@ -3649,7 +3658,7 @@ final class Workspace: Identifiable, ObservableObject {
             case .closeButton:
                 self?.markTabCloseButtonClose(surfaceId: tabId)
             case .middleClick:
-                self?.markTabStripMiddleClickClose(surfaceId: tabId)
+                () // ponytail: markTabStripMiddleClickClose not in fork
             }
         }
         bonsplitController.onTabZoomToggleRequest = { [weak self] tabId, _ in

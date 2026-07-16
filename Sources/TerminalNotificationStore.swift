@@ -423,6 +423,7 @@ final class TerminalNotificationStore: ObservableObject {
     private var hasDeferredAuthorizationRequest = false
     private var hasPromptedForSettings = false
     private var userDefaultsObserver: NSObjectProtocol?
+    private var herdrBlockedCountObserver: NSObjectProtocol?
     private let settingsPromptWindowRetryDelay: TimeInterval = 0.5
     private let settingsPromptWindowRetryLimit = 20
     private var notificationSettingsWindowProvider: () -> NSWindow? = {

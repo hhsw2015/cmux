@@ -97,7 +97,7 @@ final class SettingsSidebarToolbarController: NSObject, NSToolbarDelegate {
     }
 
     @objc private func requestSidebarToggle(_ sender: Any?) {
-        NotificationCenter.default.post(name: SettingsWindowRoot.sidebarToggleRequestName, object: nil)
+        NotificationCenter.default.post(name: Notification.Name("cmux.settings.sidebarToggle"), object: nil)
     }
 }
 
@@ -110,7 +110,7 @@ extension SettingsWindowPresenter {
     /// main actor and warn under strict concurrency.
     static func handleSidebarToggleIfSettingsWindowIsKey(keyWindow: NSWindow?) -> Bool {
         guard keyWindow?.identifier?.rawValue == windowIdentifier else { return false }
-        NotificationCenter.default.post(name: SettingsWindowRoot.sidebarToggleRequestName, object: nil)
+        NotificationCenter.default.post(name: Notification.Name("cmux.settings.sidebarToggle"), object: nil)
         return true
     }
 }

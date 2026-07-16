@@ -2636,6 +2636,11 @@ final class BrowserPortalAnchorView: NSView {
 
 @MainActor
 final class BrowserPanel: Panel, ObservableObject {
+    // ponytail: stub from P83 cherry-picks
+    var didTearDownWebViewForRelease: Bool = false
+    func tearDownCurrentWebViewForRelease(_ webView: WKWebView, reason: String) {}
+    static func tearDownWebViewForRelease(_ webView: WKWebView, reason: String) {}
+
     /// Popup windows owned by this panel (for lifecycle cleanup)
     private var popupControllers: [BrowserPopupWindowController] = []
 

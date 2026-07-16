@@ -1251,6 +1251,9 @@ class TabManager: ObservableObject {
         releaseBackgroundWorkspaceMount(for: workspaceId)
     }
 
+    // ponytail: stub - fork doesn't have shouldRetainBackgroundWorkspaceMount
+    func shouldRetainBackgroundWorkspaceMount(for workspaceId: UUID) -> Bool { true }
+
     func retainBackgroundWorkspaceMount(for workspaceId: UUID) {
         guard shouldRetainBackgroundWorkspaceMount(for: workspaceId) else { return }
         var updated = mountedBackgroundWorkspaceLoadIds

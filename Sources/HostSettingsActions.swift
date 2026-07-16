@@ -101,7 +101,7 @@ final class HostSettingsActions: SettingsHostActions {
         }
     }
 
-    func applyLanguageOverride(_ language: AppLanguage) {
+    func applyLanguageOverride(_ language: CmuxSettings.AppLanguage) {
         LanguageSettingsStore(defaults: .standard).applyLanguageOverride(language)
     }
 
