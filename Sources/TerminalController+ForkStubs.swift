@@ -1,23 +1,26 @@
 import CmuxControlSocket
+import CmuxPanes
+import Bonsplit
 import Foundation
 
 // ponytail: fork-only TerminalController stubs after upstream merge
 extension TerminalController {
-    var controlTabManager: TabManager? { tabManager }
-    func controlSystemTreeWorkspaceNode(routing: ControlRoutingSelectors) -> Any? { nil }
+    // ponytail: controlTabManager now in TerminalController+RemoteTmuxControlTopology.swift
+    // ponytail: controlSystemTreeWorkspaceNode now in TerminalController+ControlSystemContext.swift
     nonisolated func v2RefreshRemoteTmuxAwarePaneAndSurfaceRefs(_ params: [String: Any]) {}
+    nonisolated func v2RefreshRemoteTmuxAwarePaneAndSurfaceRefs(workspace: Workspace) {}
+    static func remoteTmuxControlPaneRemovalHandler() -> @MainActor (PaneID, UUID?) -> Void { { _, _ in } }
+    static func remoteTmuxControlSurfaceRemovalHandler() -> @MainActor (UUID) -> Void { { _ in } }
 }
 
 
 // ponytail: fork-only RemoteTmuxController.attachHost stub after upstream merge
 extension RemoteTmuxController {
-    enum WindowTarget { case current, dedicatedNewWindow }
     enum AttachOutcome {
         case mirrored(UUID, [UUID])
         case authRequired([String])
     }
-    func attachHost(host: RemoteTmuxHost, windowTarget: WindowTarget, activate: Bool) async throws -> AttachOutcome {
-        // ponytail: not wired up - returns empty mirrored
+    func attachHost(host: RemoteTmuxHost, windowTarget: RemoteTmuxAttachWindowTarget, activate: Bool) async throws -> AttachOutcome {
         return .mirrored(UUID(), [])
     }
 }
