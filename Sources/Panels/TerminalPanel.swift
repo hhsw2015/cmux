@@ -37,6 +37,7 @@ enum AgentHibernationResumePreparation: Equatable {
 final class TerminalPanel: Panel, ObservableObject {
     // ponytail: WorkspaceProjectBridge expects these
     var zmxSessionName: String? { nil }
+    var surfaceHibernationState: Any? { nil }
     var keepAlive: Bool {
         get { false }
         set { }

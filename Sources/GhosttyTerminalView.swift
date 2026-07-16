@@ -2719,7 +2719,7 @@ class GhosttyApp {
                 if let callbackSurfaceId, app.closeWindowDockRuntimeSurface(surfaceId: callbackSurfaceId, force: true) { return }
                 if let callbackTabId, let callbackSurfaceId,
                    let manager = app.tabManagerFor(tabId: callbackTabId) ?? app.tabManager {
-                    manager.closePanelAfterChildExited(tabId: callbackTabId, surfaceId: callbackSurfaceId, runtimeSurface: callbackRuntimeSurface)
+                    manager.closePanelAfterChildExited(tabId: callbackTabId, surfaceId: callbackSurfaceId)
                 }
             }
             // Always report handled so Ghostty doesn't print the fallback prompt.

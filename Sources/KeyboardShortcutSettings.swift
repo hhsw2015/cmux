@@ -203,6 +203,7 @@ enum KeyboardShortcutSettings {
             case .showHideAllWindows: return String(localized: "settings.globalHotkey.shortcut", defaultValue: "Show/Hide All Windows")
             case .globalSearch: return String(localized: "shortcut.globalSearch.label", defaultValue: "Global Search")
             case .newWindow: return String(localized: "shortcut.newWindow.label", defaultValue: "New Window")
+            case .toggleQuickTerminal: return String(localized: "shortcut.toggleQuickTerminal.label", defaultValue: "Toggle Quick Terminal")
             case .closeWindow: return String(localized: "shortcut.closeWindow.label", defaultValue: "Close Window")
             case .toggleFullScreen: return String(localized: "command.toggleFullScreen.title", defaultValue: "Toggle Full Screen")
             case .quit: return String(localized: "menu.quitCmux", defaultValue: "Quit cmux")
@@ -344,6 +345,8 @@ enum KeyboardShortcutSettings {
                 return StoredShortcut(key: "f", command: true, shift: false, option: true, control: false)
             case .newWindow:
                 return StoredShortcut(key: "n", command: true, shift: true, option: false, control: false)
+            case .toggleQuickTerminal:
+                return StoredShortcut(key: "`", command: true, shift: false, option: true, control: false)
             case .closeWindow:
                 return StoredShortcut(key: "w", command: true, shift: false, option: false, control: true)
             case .toggleFullScreen:

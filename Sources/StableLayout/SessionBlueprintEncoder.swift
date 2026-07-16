@@ -60,14 +60,7 @@ enum SessionBlueprintEncoder {
         let panelsById = Dictionary(uniqueKeysWithValues: ws.panels.map { ($0.id, $0) })
 
         var topTabs: [SessionBlueprint.TopTab] = []
-        if let layoutTabs = ws.layoutTabs, !layoutTabs.isEmpty {
-            for tab in layoutTabs {
-                let name = tab.title?.nonEmptyOrNil
-                topTabs.append(SessionBlueprint.TopTab(
-                    name: name,
-                    entries: entries(layout: tab.layout, panelsById: panelsById)
-                ))
-            }
+        if false, let _ = ws.layoutTabs {  // ponytail: fork stubs layoutTabs
         } else {
             topTabs.append(SessionBlueprint.TopTab(
                 name: nil,
@@ -132,7 +125,6 @@ enum SessionBlueprintEncoder {
             // expects to read the file and see what each pane was running.
             let cmd: String = {
                 if let agent = term?.agent?.resumeCommand, !agent.isEmpty { return agent }
-                if let zmxName = term?.zmx?.zmxSessionName, !zmxName.isEmpty { return "zmx attach \(zmxName)" }
                 if let tmux = term?.tmuxStartCommand, !tmux.isEmpty { return tmux }
                 return "$SHELL"
             }()
@@ -198,6 +190,8 @@ enum SessionBlueprintEncoder {
                 command: panel.agentSession?.providerID.rawValue ?? "",
                 cwd: panel.agentSession?.workingDirectory
             )
+        case .workspaceTodo:
+            return .init(splitPath: splitPath, kind: "workspaceTodo", command: "", cwd: nil)
         case .customSidebar:
             return .init(
                 splitPath: splitPath,

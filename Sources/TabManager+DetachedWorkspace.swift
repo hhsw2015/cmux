@@ -34,7 +34,7 @@ extension TabManager {
         let capturedTabs = tabs
         let capturedSelectedTabId = sourceWorkspace?.id
 
-        return withExtendedLifetime((capturedTabs, sourceWorkspace, detached.panel)) {
+        return withExtendedLifetime((capturedTabs, sourceWorkspace, detached.panel)) { () -> Workspace? in
             let inheritedDirectory = implicitWorkingDirectoryForNewWorkspace(from: sourceWorkspace)
             let font = inheritedTerminalFontPointsForNewWorkspace(workspace: sourceWorkspace)
             let snapshot = workspaceCreationSnapshotLite(
@@ -74,7 +74,7 @@ extension TabManager {
             applyCreationChromeInheritance(to: newWorkspace, from: sourceWorkspace ?? capturedTabs.first)
             newWorkspace.owningTabManager = self
             if title != nil {
-                newWorkspace.setCustomTitle(title)
+                newWorkspace.setCustomTitle(title, source: .user)
             }
             wireClosedBrowserTracking(for: newWorkspace)
 

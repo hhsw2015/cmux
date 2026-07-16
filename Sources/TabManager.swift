@@ -1119,7 +1119,7 @@ class TabManager: ObservableObject {
             )
             newWorkspace.owningTabManager = self
             if title != nil {
-                newWorkspace.setCustomTitle(title)
+                newWorkspace.setCustomTitle(title, source: .user)
             }
             wireClosedBrowserTracking(for: newWorkspace)
             if eagerLoadTerminal && !select {
@@ -5858,7 +5858,6 @@ extension TabManager {
                 $0.sessionSnapshot(
                     includeScrollback: includeScrollback,
                     restorableAgentIndex: restorableAgentIndex,
-                    defaults: defaults,
                     surfaceResumeBindingIndex: surfaceResumeBindingIndex
                 )
             }

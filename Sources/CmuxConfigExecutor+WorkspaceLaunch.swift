@@ -152,7 +152,7 @@ extension CmuxConfigExecutor {
             workingDirectory: resolvedCwd,
             workspaceEnvironment: wsDef.env ?? [:]
         )
-        newWorkspace.setCustomTitle(workspaceName)
+        newWorkspace.setCustomTitle(workspaceName, source: .user)
         if let color = wsDef.color {
             newWorkspace.setCustomColor(color)
         }
