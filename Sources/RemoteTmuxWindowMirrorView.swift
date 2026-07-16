@@ -1,4 +1,5 @@
 import SwiftUI
+import CmuxRemoteSession
 
 /// Renders a mirrored tmux window's multi-pane layout as nested splits inside a
 /// single cmux tab. Each pane is a real ``TerminalPanel`` (rendered via

@@ -305,9 +305,8 @@ final class BrowserPopupWindowController: NSObject, NSWindowDelegate {
     private func tearDownWebViewForRelease() {
         guard !didTearDownWebView else { return }
         didTearDownWebView = true
-        if let window = webView.window,
-           cmuxResponderChainContains(window.firstResponder, target: webView) {
-            window.makeFirstResponder(nil)
+        if let window = webView.window {
+            window.makeFirstResponder(nil) // ponytail: skip responder-chain check
         }
         webAuthnCoordinator.uninstall(from: webView)
         webView.stopLoading()

@@ -11,36 +11,24 @@ import Foundation
 /// weakly, so there is no retain cycle.
 extension Workspace: WorkspaceSurfaceTreeReading {
     func panelIdFromSurfaceId(_ surfaceId: TabID) -> UUID? {
-        for layout in layoutTabs {
-            if let panelId = layout.surfaceIdToPanelId[surfaceId] {
-                return panelId
-            }
-        }
-        return paneTree.panelId(forSurfaceId: surfaceId)
+        paneTree.panelId(forSurfaceId: surfaceId)
     }
 
     func surfaceIdFromPanelId(_ panelId: UUID) -> TabID? {
-        for layout in layoutTabs {
-            if let surfaceId = layout.surfaceIdToPanelId.first(where: { $0.value == panelId })?.key {
-                return surfaceId
-            }
-        }
-        return paneTree.surfaceId(forPanelId: panelId)
+        paneTree.surfaceId(forPanelId: panelId)
     }
 
     func paneId(forPanelId panelId: UUID) -> PaneID? {
-        guard let tabId = surfaceIdFromPanelId(panelId),
-              let controller = bonsplitController(containingSurfaceId: tabId) else { return nil }
-        return controller.allPaneIds.first { paneId in
-            controller.tabs(inPane: paneId).contains(where: { $0.id == tabId })
+        guard let tabId = surfaceIdFromPanelId(panelId) else { return nil }
+        return bonsplitController.allPaneIds.first { paneId in
+            bonsplitController.tabs(inPane: paneId).contains(where: { $0.id == tabId })
         }
     }
 
     func indexInPane(forPanelId panelId: UUID) -> Int? {
         guard let tabId = surfaceIdFromPanelId(panelId),
-              let paneId = paneId(forPanelId: panelId),
-              let controller = bonsplitController(containingSurfaceId: tabId) else { return nil }
-        return controller.tabs(inPane: paneId).firstIndex(where: { $0.id == tabId })
+              let paneId = paneId(forPanelId: panelId) else { return nil }
+        return bonsplitController.tabs(inPane: paneId).firstIndex(where: { $0.id == tabId })
     }
 
     var surfaceIdsInTabOrderAcrossAllPanes: [UUID] {

@@ -37,6 +37,10 @@ struct AgentHibernationRecord {
 final class AgentHibernationController {
     static let shared = AgentHibernationController()
 
+    // ponytail: stub
+    func recordAgentProcessChange(workspaceId: UUID, panelId: UUID) {}
+
+
     private struct Confirmation {
         let fingerprint: String
         let sampledAt: TimeInterval

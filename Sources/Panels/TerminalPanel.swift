@@ -35,6 +35,10 @@ enum AgentHibernationResumePreparation: Equatable {
 /// This allows TerminalSurface to be used within the bonsplit-based layout system.
 @MainActor
 final class TerminalPanel: Panel, ObservableObject {
+    // ponytail: WorkspaceProjectBridge expects these
+    var zmxSessionName: String? { nil }
+    var keepAlive: Bool { false }
+
     private enum TextBoxInputFocusIntent: Equatable {
         case hidden
         case terminal

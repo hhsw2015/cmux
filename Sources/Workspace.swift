@@ -1935,10 +1935,15 @@ typealias ClosedBrowserPanelRestoreSnapshot = CmuxBrowser.ClosedBrowserPanelRest
 @MainActor
 final class Workspace: Identifiable, ObservableObject {
     // ponytail: fork-only stubs
-    var isDeadHerdrStub: Bool { false }
+    func isDeadHerdrStub() -> Bool { false }
     func markAllTabsForceCloseable() {}
     func bonsplitController(containingPaneId: PaneID) -> BonsplitController? { nil }
+    func bonsplitController(forLayoutTabId layoutTabId: UUID) -> BonsplitController? { nil }
+    var layoutTabId: UUID? { nil }
     func herdrInboundSplit(direction: Any, panelId: UUID, source: String) {}
+    func restoredAgentSnapshotForContinuation(panelId: UUID) -> Any? { nil }
+    func allowsAgentContinuation(forPanelId panelId: UUID) -> Bool { false }
+    func reconcileCompletedRestoredAgent(panelId: UUID, observation: Any) {}
 
     enum BrowserPanelCreationPolicy {
         case userInitiated

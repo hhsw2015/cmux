@@ -14,6 +14,22 @@ enum RendererRealizationSettings {
 
     static let didChangeNotification = SurfaceHibernationSettings.didChangeNotification
 
+    static let enabledKey = "surfaceHibernationEnabled"
+    static let idleSecondsKey = "surfaceHibernationIdleSeconds"
+    static let maxWarmRenderersKey = "surfaceHibernationMaxLiveSurfaces"
+
+    static func sanitizedIdleSeconds(_ candidate: TimeInterval) -> TimeInterval {
+        min(max(candidate, 60), 86400 * 30)
+    }
+
+    static func sanitizedMaxWarmRenderers(_ candidate: Int) -> Int {
+        min(max(candidate, 1), 200)
+    }
+
+    static func notifyDidChange(notificationCenter: NotificationCenter = .default) {
+        notificationCenter.post(name: didChangeNotification, object: nil)
+    }
+
     static func values(defaults: UserDefaults = .standard) -> Values {
         let v = SurfaceHibernationSettings.values(defaults: defaults)
         return Values(
