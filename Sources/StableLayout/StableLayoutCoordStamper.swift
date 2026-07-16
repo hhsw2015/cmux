@@ -29,20 +29,8 @@ enum StableLayoutCoordStamper {
         var out = workspace
         let workspaceTitle = effectiveTitle(custom: workspace.customTitle, fallback: workspace.processTitle)
         var coordsById: [UUID: StableLayoutCoord] = [:]
-        if let tabs = workspace.layoutTabs, !tabs.isEmpty {
-            for tab in tabs {
-                // Match StableLayoutCoord(rawValue:) round-trip semantics: an empty
-                // tab title round-trips back as `nil`, so emit `nil` here too to
-                // keep stamped coords identical across re-stamps.
-                let tabTitle: String? = {
-                    guard let t = tab.title, !t.isEmpty else { return nil }
-                    return t
-                }()
-                walk(layout: tab.layout, splitPath: "", workspaceTitle: workspaceTitle, topTabTitle: tabTitle, into: &coordsById)
-            }
-        } else {
-            walk(layout: workspace.layout, splitPath: "", workspaceTitle: workspaceTitle, topTabTitle: nil, into: &coordsById)
-        }
+        // ponytail: fork lacks workspace.layoutTabs, only single layout
+        walk(layout: workspace.layout, splitPath: "", workspaceTitle: workspaceTitle, topTabTitle: nil, into: &coordsById)
 
         out.panels = workspace.panels.map { panel in
             var p = panel

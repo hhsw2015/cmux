@@ -1,6 +1,5 @@
 import AppKit
 import Darwin
-import CmuxWorkspaces
 import Foundation
 
 struct AgentHibernationPanelKey: Hashable, Sendable {
@@ -13,57 +12,35 @@ struct AgentHibernationRecord {
     let key: AgentHibernationPanelKey
     let workspace: Workspace
     let terminalPanel: TerminalPanel
-    /// Present when the panel runs a restorable coding agent; nil for plain
-    /// shells, which hibernate through the shell-restart mechanism instead.
-    let agent: SessionRestorableAgentSnapshot?
+    let agent: SessionRestorableAgentSnapshot
     let lifecycle: AgentHibernationLifecycleState
     let hasUnconfirmedTerminalInput: Bool
     let lastActivityAt: TimeInterval
     let isProtected: Bool
-    let isBusy: Bool
-    let canRestartShell: Bool
-    let workspaceUnmountedAt: TimeInterval?
-    let runtimeSurfaceCreatedAt: TimeInterval
     let hasLiveProcess: Bool
     let processIDs: Set<Int>
-
-    var mechanism: SurfaceHibernationMechanism? {
-        if agent != nil { return .agentResume }
-        return canRestartShell ? .shellRestart : nil
-    }
 }
 
 @MainActor
 final class AgentHibernationController {
     static let shared = AgentHibernationController()
 
-    // ponytail: stub
-    func recordAgentProcessChange(workspaceId: UUID, panelId: UUID) {}
-
-
-    private struct Confirmation {
-        let fingerprint: String
-        let sampledAt: TimeInterval
-        let dueAt: TimeInterval
-    }
-
-    private struct TailFingerprintSample {
-        let fingerprint: String
-        let stableSince: TimeInterval
-    }
+    static let unableToProtectRetrySeconds: TimeInterval = 120
 
     private let timerQueue = DispatchQueue(label: "com.cmux.agent-hibernation", qos: .utility)
     private var timer: DispatchSourceTimer?
     private var settingsObserver: NSObjectProtocol?
-    private var surfaceSettingsObserver: NSObjectProtocol?
-    private var defaultsObserver: NSObjectProtocol?
-    private var activityByPanel: [AgentHibernationPanelKey: TimeInterval] = [:]
-    private var terminalInputByPanel: [AgentHibernationPanelKey: TimeInterval] = [:]
-    private var pendingCommandLineByPanel: [AgentHibernationPanelKey: TimeInterval] = [:]
-    private var lastCommandStartByPanel: [AgentHibernationPanelKey: TimeInterval] = [:]
-    private var seenLivePanelKeys: Set<AgentHibernationPanelKey> = []
-    private var trackingEnabledAt: TimeInterval?
-    private var lifecycleChangeByPanel: [AgentHibernationPanelKey: TimeInterval] = [:]
+    var activityByPanel: [AgentHibernationPanelKey: TimeInterval] = [:]
+    var terminalInputByPanel: [AgentHibernationPanelKey: TimeInterval] = [:]
+    var lifecycleChangeByPanel: [AgentHibernationPanelKey: TimeInterval] = [:]
+    var teardownValidationEpochByPanel: [AgentHibernationPanelKey: UInt64] = [:]
+    var teardownValidationGeneration: UInt64 = 0
+    var unableToProtectByPanel: [AgentHibernationPanelKey: UnableToProtectMarker] = [:]
+    var postTeardownRestoreTasksByTranscriptPath: [String: PostTeardownRestoreTask] = [:]
+    var postTeardownRestoreDrainTask: Task<Void, Never>?
+    var postSnapshotValidationIndexSequence: UInt64 = 0
+    var postSnapshotValidationIndexTask: PostSnapshotValidationIndexTask?
+    private var teardownInFlightByPanel: [AgentHibernationPanelKey: InFlightTeardown] = [:]
     private var confirmations: [AgentHibernationPanelKey: Confirmation] = [:]
     private var tailFingerprintSamples: [AgentHibernationPanelKey: TailFingerprintSample] = [:]
 
@@ -80,29 +57,7 @@ final class AgentHibernationController {
             queue: .main
         ) { _ in
             Task { @MainActor in
-                AgentHibernationController.shared.updateTimerForCurrentSettings()
-            }
-        }
-        surfaceSettingsObserver = NotificationCenter.default.addObserver(
-            forName: SurfaceHibernationSettings.didChangeNotification,
-            object: nil,
-            queue: .main
-        ) { _ in
-            Task { @MainActor in
-                AgentHibernationController.shared.updateTimerForCurrentSettings()
-            }
-        }
-        // The Settings window writes the enabled keys straight to UserDefaults
-        // without posting the dedicated change notifications, so reconcile the
-        // timer on any defaults change as well; the reconcile is a cheap
-        // idempotent read of two booleans.
-        defaultsObserver = NotificationCenter.default.addObserver(
-            forName: UserDefaults.didChangeNotification,
-            object: nil,
-            queue: .main
-        ) { _ in
-            Task { @MainActor in
-                AgentHibernationController.shared.updateTimerForCurrentSettings()
+                AgentHibernationController.shared.recordSettingsChange()
             }
         }
         updateTimerForCurrentSettings()
@@ -117,14 +72,6 @@ final class AgentHibernationController {
             NotificationCenter.default.removeObserver(settingsObserver)
             self.settingsObserver = nil
         }
-        if let surfaceSettingsObserver {
-            NotificationCenter.default.removeObserver(surfaceSettingsObserver)
-            self.surfaceSettingsObserver = nil
-        }
-        if let defaultsObserver {
-            NotificationCenter.default.removeObserver(defaultsObserver)
-            self.defaultsObserver = nil
-        }
     }
 
     func recordTerminalInput(workspaceId: UUID, panelId: UUID, recordedAt: Date? = nil) {
@@ -132,40 +79,6 @@ final class AgentHibernationController {
         let recordedAt = recordedAt ?? Date()
         let key = recordActivity(workspaceId: workspaceId, panelId: panelId, recordedAt: recordedAt)
         terminalInputByPanel[key] = recordedAt.timeIntervalSince1970
-        // Any input may leave editable text at the prompt — a bare return can
-        // open a PS2 continuation (unclosed quote, heredoc), so no keystroke
-        // proves the line settled. Only the shell's own prompt transitions
-        // clear this; see recordShellActivityTransition.
-        pendingCommandLineByPanel[key] = recordedAt.timeIntervalSince1970
-    }
-
-    /// Shell-integration prompt transitions are the only trustworthy signal
-    /// that the editable command line settled: preexec marks the moment input
-    /// was consumed into a command, and the following precmd (prompt idle)
-    /// clears pending input recorded before that consumption. Input typed
-    /// while a command runs stays pending — it reappears editable at the next
-    /// prompt — and PS2 continuations never produce these transitions at all.
-    func recordShellActivityTransition(
-        workspaceId: UUID,
-        panelId: UUID,
-        state: PanelShellActivityState,
-        recordedAt: Date? = nil
-    ) {
-        guard AgentHibernationTrackingGate.isEnabled() else { return }
-        let key = AgentHibernationPanelKey(workspaceId: workspaceId, panelId: panelId)
-        let now = (recordedAt ?? Date()).timeIntervalSince1970
-        switch state {
-        case .commandRunning:
-            lastCommandStartByPanel[key] = now
-        case .promptIdle:
-            if let pendingAt = pendingCommandLineByPanel[key],
-               let commandStartAt = lastCommandStartByPanel[key],
-               pendingAt <= commandStartAt {
-                pendingCommandLineByPanel.removeValue(forKey: key)
-            }
-        case .unknown:
-            break
-        }
     }
 
     func recordTerminalFocus(workspaceId: UUID, panelId: UUID, recordedAt: Date? = nil) {
@@ -181,22 +94,35 @@ final class AgentHibernationController {
         lifecycleChangeByPanel[key] = recordedAt.timeIntervalSince1970
     }
 
+    func recordAgentProcessChange(workspaceId: UUID, panelId: UUID, recordedAt: Date? = nil) {
+        guard AgentHibernationTrackingGate.isEnabled() else { return }
+        let recordedAt = recordedAt ?? Date()
+        recordActivity(workspaceId: workspaceId, panelId: panelId, recordedAt: recordedAt)
+    }
+
     @discardableResult
     private func recordActivity(workspaceId: UUID, panelId: UUID, recordedAt: Date) -> AgentHibernationPanelKey {
         let key = AgentHibernationPanelKey(workspaceId: workspaceId, panelId: panelId)
         activityByPanel[key] = recordedAt.timeIntervalSince1970
+        bumpTeardownValidationEpoch(key)
         confirmations.removeValue(forKey: key)
+        unableToProtectByPanel.removeValue(forKey: key)
         return key
     }
 
+    private func bumpTeardownValidationEpoch(_ key: AgentHibernationPanelKey) {
+        teardownValidationEpochByPanel[key] = (teardownValidationEpochByPanel[key] ?? 0) &+ 1
+    }
+
+    private func recordSettingsChange() {
+        teardownValidationGeneration = teardownValidationGeneration &+ 1
+        confirmations.removeAll(keepingCapacity: false)
+        unableToProtectByPanel.removeAll(keepingCapacity: false)
+        updateTimerForCurrentSettings()
+    }
+
     private func updateTimerForCurrentSettings() {
-        let enabled = AgentHibernationSettings.isEnabled() || SurfaceHibernationSettings.isEnabled()
-        if enabled, !AgentHibernationTrackingGate.isEnabled() {
-            // Input typed while tracking was off was never recorded, so panels
-            // that already existed are conservatively seeded as having pending
-            // command-line input when they are first evaluated.
-            trackingEnabledAt = Date().timeIntervalSince1970
-        }
+        let enabled = AgentHibernationSettings.isEnabled()
         AgentHibernationTrackingGate.setEnabled(enabled)
         guard enabled else {
             timer?.cancel()
@@ -210,30 +136,11 @@ final class AgentHibernationController {
         timer.setEventHandler {
             let now = Date()
             Task.detached(priority: .utility) {
-                guard AgentHibernationSettings.isEnabled() || SurfaceHibernationSettings.isEnabled() else {
-                    return
-                }
-                // The full index load is an expensive disk/process scan that
-                // only the opt-in agent mechanism needs. Surface-only ticks
-                // still recognize restored agent panels through the in-memory
-                // workspace snapshots and protect running agents via the busy
-                // gates instead.
-                let index = AgentHibernationSettings.isEnabled()
-                    ? await RestorableAgentSessionIndex.loadIncludingProcessDetectedSnapshots()
-                    : .empty
+                let index = await RestorableAgentSessionIndex.loadIncludingProcessDetectedSnapshots()
                 await MainActor.run {
-                    // Re-read on the main actor: the user may have disabled
-                    // hibernation while the index load was in flight, and a
-                    // stale enabled snapshot must not reach evaluate.
-                    let agentSettings = AgentHibernationSettings.values()
-                    let surfaceSettings = SurfaceHibernationSettings.values()
-                    guard agentSettings.enabled || surfaceSettings.enabled else { return }
-                    AgentHibernationController.shared.evaluate(
-                        index: index,
-                        agentSettings: agentSettings,
-                        surfaceSettings: surfaceSettings,
-                        now: now
-                    )
+                    let settings = AgentHibernationSettings.values()
+                    guard settings.enabled else { return }
+                    AgentHibernationController.shared.evaluate(index: index, settings: settings, now: now)
                 }
             }
         }
@@ -243,11 +150,10 @@ final class AgentHibernationController {
 
     private func evaluate(
         index: RestorableAgentSessionIndex,
-        agentSettings: AgentHibernationSettings.Values,
-        surfaceSettings: SurfaceHibernationSettings.Values,
+        settings: AgentHibernationSettings.Values,
         now: Date
     ) {
-        guard agentSettings.enabled || surfaceSettings.enabled else {
+        guard settings.enabled else {
             AgentHibernationTrackingGate.setEnabled(false)
             clearTrackingState()
             return
@@ -258,140 +164,153 @@ final class AgentHibernationController {
             index: index,
             activityByPanel: activityByPanel,
             terminalInputByPanel: terminalInputByPanel,
-            pendingCommandLineByPanel: pendingCommandLineByPanel,
             lifecycleChangeByPanel: lifecycleChangeByPanel
         )
         let nowTime = now.timeIntervalSince1970
         let isLiveByKey = Dictionary(uniqueKeysWithValues: records.map { record in
-            (record.key, Self.isRecordLive(record))
-        })
-        for record in records where record.agent == nil && (isLiveByKey[record.key] ?? false) {
-            guard seenLivePanelKeys.insert(record.key).inserted else { continue }
-            if let trackingEnabledAt, record.runtimeSurfaceCreatedAt < trackingEnabledAt {
-                // The surface predates tracking: its prompt may hold typed
-                // text we never saw. Treat it as pending until a prompt
-                // transition proves the command line settled.
-                pendingCommandLineByPanel[record.key] = nowTime
-            }
-        }
-        let liveCount = isLiveByKey.values.filter { $0 }.count
-        let liveRestorableCount = records.filter { record in
-            record.agent != nil && (isLiveByKey[record.key] ?? false)
-        }.count
-        // Tail fingerprints detect output-only activity (a hidden build still
-        // streaming) and cost a terminal text read per candidate, so only
-        // maintain them while some rule could actually select panels.
-        let agentCapPressure = agentSettings.enabled && liveRestorableCount >= agentSettings.maxLiveTerminals
-        let surfaceCapPressure = surfaceSettings.enabled && liveCount >= surfaceSettings.maxLiveSurfaces
-        let unmountedPressure = surfaceSettings.enabled && records.contains { record in
-            guard let workspaceUnmountedAt = record.workspaceUnmountedAt else { return false }
-            return nowTime - workspaceUnmountedAt >= surfaceSettings.unmountedIdleSeconds
-        }
-        let shouldMaintainTailSamples = agentCapPressure || surfaceCapPressure || unmountedPressure
-        var inputsByKey: [AgentHibernationPanelKey: SurfaceHibernationPlannerInput] = [:]
-        let plannerInputs = records.map { record -> SurfaceHibernationPlannerInput in
-            var input = SurfaceHibernationPlannerInput(
-                key: record.key,
-                mechanism: record.mechanism,
-                isLive: isLiveByKey[record.key] ?? false,
-                isProtected: record.isProtected,
-                isBusy: record.isBusy,
-                lifecycle: record.lifecycle,
-                hasUnconfirmedTerminalInput: record.hasUnconfirmedTerminalInput,
-                lastActivityAt: record.lastActivityAt,
-                workspaceUnmountedAt: record.workspaceUnmountedAt
+            (
+                record.key,
+                (record.terminalPanel.surface.hasLiveSurface || record.hasLiveProcess) &&
+                    !record.terminalPanel.isAgentHibernated
             )
-            if shouldMaintainTailSamples,
-               input.isLive,
-               SurfaceHibernationPlanner.isEvictable(input, agentSettings: agentSettings),
-               let tailActivityAt = updateTailFingerprintSample(record: record, now: nowTime) {
-                input.lastActivityAt = max(input.lastActivityAt, tailActivityAt)
+        })
+        let liveRestorableCount = isLiveByKey.values.filter { $0 }.count
+        let shouldMaintainTailSamples = liveRestorableCount >= settings.maxLiveTerminals
+        var effectiveActivityByKey: [AgentHibernationPanelKey: TimeInterval] = [:]
+        let plannerInputs = records.map { record in
+            let isLive = isLiveByKey[record.key] ?? false
+            var effectiveLastActivityAt = record.lastActivityAt
+            if record.hasLiveProcess {
+                bumpTeardownValidationEpoch(record.key)
+                tailFingerprintSamples.removeValue(forKey: record.key)
+                confirmations.removeValue(forKey: record.key)
+                unableToProtectByPanel.removeValue(forKey: record.key)
             }
-            inputsByKey[record.key] = input
-            return input
+            if shouldMaintainTailSamples,
+               isLive,
+               !record.isProtected,
+               !record.hasLiveProcess,
+               record.lifecycle.allowsHibernation,
+               !record.hasUnconfirmedTerminalInput,
+               let tailActivityAt = updateTailFingerprintSample(record: record, now: nowTime) {
+                effectiveLastActivityAt = max(record.lastActivityAt, tailActivityAt)
+            }
+            effectiveActivityByKey[record.key] = effectiveLastActivityAt
+            let unableToProtectMarkerApplies = unableToProtectMarkerStillApplies(
+                for: record,
+                lastActivityAt: effectiveLastActivityAt,
+                now: nowTime
+            )
+            return AgentHibernationPlannerInput(
+                key: record.key,
+                hasRestorableAgent: true,
+                isLive: isLive,
+                hasLiveProcess: record.hasLiveProcess,
+                isProtected: record.isProtected,
+                lifecycle: record.lifecycle,
+                isTemporarilyUnableToProtect: unableToProtectMarkerApplies,
+                hasUnconfirmedTerminalInput: record.hasUnconfirmedTerminalInput,
+                lastActivityAt: effectiveLastActivityAt
+            )
         }
-        let selectedKeys = SurfaceHibernationPlanner.selectedPanelKeys(
+        let selectedKeys = AgentHibernationPlanner.selectedPanelKeys(
             inputs: plannerInputs,
-            agentSettings: agentSettings,
-            surfaceSettings: surfaceSettings,
+            settings: settings,
             now: nowTime
         )
         let currentKeys = Set(records.map(\.key))
         pruneTrackingState(currentKeys: currentKeys, selectedKeys: selectedKeys)
 
-        for record in records where selectedKeys.contains(record.key) {
-            guard let input = inputsByKey[record.key] else { continue }
-            evaluateConfirmation(
+        let confirmedTeardowns = records.compactMap { record -> ConfirmedTeardownRequest? in
+            guard selectedKeys.contains(record.key) else { return nil }
+            return evaluateConfirmation(
                 record: record,
-                input: input,
-                agentSettings: agentSettings,
-                surfaceSettings: surfaceSettings,
+                effectiveLastActivityAt: effectiveActivityByKey[record.key] ?? record.lastActivityAt,
+                settings: settings,
                 now: nowTime
             )
         }
-    }
-
-    private static func isRecordLive(_ record: AgentHibernationRecord) -> Bool {
-        (record.terminalPanel.surface.hasLiveSurface || (record.agent != nil && record.hasLiveProcess)) &&
-            !record.terminalPanel.isAgentHibernated &&
-            !record.terminalPanel.isSurfaceHibernated
+        if !confirmedTeardowns.isEmpty { beginConfirmedTeardowns(confirmedTeardowns) }
     }
 
     private func evaluateConfirmation(
         record: AgentHibernationRecord,
-        input: SurfaceHibernationPlannerInput,
-        agentSettings: AgentHibernationSettings.Values,
-        surfaceSettings: SurfaceHibernationSettings.Values,
+        effectiveLastActivityAt: TimeInterval,
+        settings: AgentHibernationSettings.Values,
         now: TimeInterval
-    ) {
-        guard input.isLive,
-              SurfaceHibernationPlanner.isEvictable(input, agentSettings: agentSettings) else {
+    ) -> ConfirmedTeardownRequest? {
+        guard record.lifecycle.allowsHibernation,
+              !record.hasUnconfirmedTerminalInput,
+              !record.isProtected,
+              !record.hasLiveProcess,
+              record.terminalPanel.surface.hasLiveSurface,
+              !record.terminalPanel.isAgentHibernated else {
             confirmations.removeValue(forKey: record.key)
-            return
+            unableToProtectByPanel.removeValue(forKey: record.key)
+            return nil
         }
+        if teardownInFlightByPanel[record.key] != nil { confirmations.removeValue(forKey: record.key); return nil }
 
         if let confirmation = confirmations[record.key] {
-            guard now >= confirmation.dueAt else { return }
-            guard input.lastActivityAt <= confirmation.sampledAt else {
+            guard now >= confirmation.dueAt else { return nil }
+            guard effectiveLastActivityAt <= confirmation.sampledAt else {
                 confirmations.removeValue(forKey: record.key)
-                return
+                return nil
             }
             guard let fingerprint = hibernationFingerprint(for: record),
                   fingerprint == confirmation.fingerprint else {
                 confirmations.removeValue(forKey: record.key)
-                return
+                return nil
             }
+            let requestID = UUID()
+            teardownInFlightByPanel[record.key] = InFlightTeardown(requestID: requestID)
             confirmations.removeValue(forKey: record.key)
-            hibernate(record: record, effectiveLastActivityAt: input.lastActivityAt)
-            return
+            return ConfirmedTeardownRequest(
+                record: record,
+                confirmationFingerprint: confirmation.fingerprint,
+                effectiveLastActivityAt: effectiveLastActivityAt,
+                requestID: requestID,
+                epoch: teardownValidationEpochByPanel[record.key] ?? 0,
+                generation: teardownValidationGeneration
+            )
         }
 
-        guard let fingerprint = hibernationFingerprint(for: record) else { return }
-        let confirmationSeconds = record.agent != nil
-            ? agentSettings.confirmationSeconds
-            : surfaceSettings.confirmationSeconds
+        guard let fingerprint = hibernationFingerprint(for: record) else { return nil }
+        if let marker = unableToProtectByPanel[record.key],
+           Self.unableToProtectMarkerStillApplies(
+               marker,
+               fingerprint: fingerprint,
+               lastActivityAt: effectiveLastActivityAt,
+               now: now
+           ) {
+            return nil
+        }
+        unableToProtectByPanel.removeValue(forKey: record.key)
         confirmations[record.key] = Confirmation(
             fingerprint: fingerprint,
             sampledAt: now,
-            dueAt: now + confirmationSeconds
+            dueAt: now + settings.confirmationSeconds
         )
+        return nil
     }
 
-    private func hibernate(record: AgentHibernationRecord, effectiveLastActivityAt: TimeInterval) {
-        let lastActivityAt = Date(timeIntervalSince1970: effectiveLastActivityAt)
-        if let agent = record.agent {
-            terminateScopedProcessesForHibernation(record: record)
-            record.workspace.enterAgentHibernation(
-                panelId: record.key.panelId,
-                agent: agent,
-                lastActivityAt: lastActivityAt
-            )
-        } else {
-            _ = record.workspace.enterSurfaceHibernation(
-                panelId: record.key.panelId,
-                lastActivityAt: lastActivityAt
-            )
+    private func unableToProtectMarkerStillApplies(
+        for record: AgentHibernationRecord,
+        lastActivityAt: TimeInterval,
+        now: TimeInterval
+    ) -> Bool {
+        guard let marker = unableToProtectByPanel[record.key],
+              let fingerprint = hibernationFingerprint(for: record),
+              Self.unableToProtectMarkerStillApplies(
+                  marker,
+                  fingerprint: fingerprint,
+                  lastActivityAt: lastActivityAt,
+                  now: now
+              ) else {
+            unableToProtectByPanel.removeValue(forKey: record.key)
+            return false
         }
+        return true
     }
 
     private func updateTailFingerprintSample(
@@ -399,7 +318,7 @@ final class AgentHibernationController {
         now: TimeInterval
     ) -> TimeInterval? {
         guard !record.terminalPanel.isAgentHibernated,
-              record.terminalPanel.surface.hasLiveSurface || record.hasLiveProcess,
+              record.terminalPanel.surface.hasLiveSurface,
               let fingerprint = hibernationFingerprint(for: record) else {
             tailFingerprintSamples.removeValue(forKey: record.key)
             confirmations.removeValue(forKey: record.key)
@@ -427,30 +346,24 @@ final class AgentHibernationController {
         return stableSince
     }
 
-    private func hibernationFingerprint(for record: AgentHibernationRecord) -> String? {
-        if let tail = tailFingerprint(for: record.terminalPanel) {
-            return Self.scrollbackFingerprint(tail: tail, processIDs: record.processIDs)
-        }
-        guard let agent = record.agent,
-              record.hasLiveProcess,
-              !record.terminalPanel.surface.hasLiveSurface else { return nil }
-        return Self.processFallbackFingerprint(
-            kind: agent.kind,
-            sessionId: agent.sessionId,
-            processIDs: record.processIDs
-        )
+    func hibernationFingerprint(for record: AgentHibernationRecord) -> String? {
+        guard let tail = tailFingerprint(for: record.terminalPanel) else { return nil }
+        return Self.scrollbackFingerprint(tail: tail, processIDs: record.processIDs)
+    }
+
+    static func unableToProtectMarkerStillApplies(
+        _ marker: UnableToProtectMarker,
+        fingerprint: String,
+        lastActivityAt: TimeInterval,
+        now: TimeInterval
+    ) -> Bool {
+        marker.fingerprint == fingerprint &&
+            marker.lastActivityAt == lastActivityAt &&
+            now < marker.retryAfter
     }
 
     nonisolated static func scrollbackFingerprint(tail: String, processIDs: Set<Int>) -> String {
         "scrollback:\(processIdentityFingerprint(processIDs)):\(tail)"
-    }
-
-    nonisolated static func processFallbackFingerprint(
-        kind: RestorableAgentKind,
-        sessionId: String,
-        processIDs: Set<Int>
-    ) -> String {
-        "process:\(kind.rawValue):\(sessionId):\(processIdentityFingerprint(processIDs))"
     }
 
     nonisolated static func tailFingerprintStableSince(
@@ -478,7 +391,7 @@ final class AgentHibernationController {
         )
     }
 
-    private func terminateScopedProcessesForHibernation(record: AgentHibernationRecord) {
+    func terminateScopedProcessesForHibernation(record: AgentHibernationRecord) {
         guard !record.processIDs.isEmpty else { return }
         let currentProcessID = getpid()
         let currentProcessGroupID = getpgrp()
@@ -502,12 +415,14 @@ final class AgentHibernationController {
     }
 
     private func clearTrackingState() {
+        cancelPostTeardownRestoreTasks()
+        teardownValidationGeneration = teardownValidationGeneration &+ 1
         activityByPanel.removeAll(keepingCapacity: false)
         terminalInputByPanel.removeAll(keepingCapacity: false)
-        pendingCommandLineByPanel.removeAll(keepingCapacity: false)
-        lastCommandStartByPanel.removeAll(keepingCapacity: false)
-        seenLivePanelKeys.removeAll(keepingCapacity: false)
         lifecycleChangeByPanel.removeAll(keepingCapacity: false)
+        teardownValidationEpochByPanel.removeAll(keepingCapacity: false)
+        unableToProtectByPanel.removeAll(keepingCapacity: false)
+        teardownInFlightByPanel.removeAll(keepingCapacity: false)
         confirmations.removeAll(keepingCapacity: false)
         tailFingerprintSamples.removeAll(keepingCapacity: false)
     }
@@ -518,109 +433,18 @@ final class AgentHibernationController {
     ) {
         activityByPanel = activityByPanel.filter { currentKeys.contains($0.key) }
         terminalInputByPanel = terminalInputByPanel.filter { currentKeys.contains($0.key) }
-        pendingCommandLineByPanel = pendingCommandLineByPanel.filter { currentKeys.contains($0.key) }
-        lastCommandStartByPanel = lastCommandStartByPanel.filter { currentKeys.contains($0.key) }
-        seenLivePanelKeys = seenLivePanelKeys.filter { currentKeys.contains($0) }
         lifecycleChangeByPanel = lifecycleChangeByPanel.filter { currentKeys.contains($0.key) }
+        teardownValidationEpochByPanel = teardownValidationEpochByPanel.filter { currentKeys.contains($0.key) }
+        unableToProtectByPanel = unableToProtectByPanel.filter { currentKeys.contains($0.key) }
+        teardownInFlightByPanel = teardownInFlightByPanel.filter { currentKeys.contains($0.key) }
         confirmations = confirmations.filter { key, _ in
             currentKeys.contains(key) && selectedKeys.contains(key)
         }
         tailFingerprintSamples = tailFingerprintSamples.filter { currentKeys.contains($0.key) }
     }
-}
 
-extension AppDelegate {
-    @MainActor
-    func agentHibernationRecords(
-        index: RestorableAgentSessionIndex,
-        activityByPanel: [AgentHibernationPanelKey: TimeInterval],
-        terminalInputByPanel: [AgentHibernationPanelKey: TimeInterval],
-        pendingCommandLineByPanel: [AgentHibernationPanelKey: TimeInterval],
-        lifecycleChangeByPanel: [AgentHibernationPanelKey: TimeInterval]
-    ) -> [AgentHibernationRecord] {
-        var records: [AgentHibernationRecord] = []
-        var seenManagers: Set<ObjectIdentifier> = []
-
-        func visit(tabManager manager: TabManager, visibleWorkspaceId: UUID?) {
-            let managerId = ObjectIdentifier(manager)
-            guard seenManagers.insert(managerId).inserted else { return }
-            for workspace in manager.tabs {
-                let workspaceIsVisible = visibleWorkspaceId == workspace.id
-                let visiblePanelIds = workspaceIsVisible
-                    ? workspace.surfaceHibernationProtectedPanelIdsForCurrentLayout()
-                    : []
-                let workspaceUnmountedAt = workspaceIsVisible
-                    ? nil
-                    : workspace.portalRenderingDisabledAt?.timeIntervalSince1970
-                for (panelId, panel) in workspace.panels {
-                    guard let terminalPanel = panel as? TerminalPanel else {
-                        continue
-                    }
-                    let agent = workspace.restorableAgentForHibernation(panelId: panelId, index: index)
-                    let key = AgentHibernationPanelKey(workspaceId: workspace.id, panelId: panelId)
-                    let indexActivity = index.updatedAt(workspaceId: workspace.id, panelId: panelId) ?? 0
-                    let localActivity = activityByPanel[key] ?? 0
-                    let terminalInputAt = terminalInputByPanel[key] ?? 0
-                    let lifecycleChangeAt = lifecycleChangeByPanel[key] ?? 0
-                    let createdAt = terminalPanel.surface.debugRuntimeSurfaceCreatedAt()?.timeIntervalSince1970
-                        ?? terminalPanel.surface.debugCreatedAt().timeIntervalSince1970
-                    let lifecycle = workspace.agentHibernationLifecycleState(
-                        panelId: panelId,
-                        fallback: index.lifecycle(workspaceId: workspace.id, panelId: panelId)
-                    ) ?? .idle
-                    let isRemoteTerminal = workspace.isRemoteWorkspace ||
-                        workspace.isRemoteTerminalSurface(panelId)
-                    // Recreating these surfaces would rerun startup commands,
-                    // reattach remote PTYs, or drop queued input, so they are
-                    // never shell-restarted.
-                    let canRestartShell = agent == nil &&
-                        !isRemoteTerminal &&
-                        !terminalPanel.surface.hasDeferredStartupWorkForBackgroundStart()
-                    // Busy means freeing the PTY could kill live work: the
-                    // shell-integration state reports a running command (or
-                    // Ghostty's prompt heuristic says we are not at one), the
-                    // terminal serves a listening port, or — for shell-restart
-                    // candidates — background jobs hang off the prompt shell
-                    // without any prompt or output signal of their own.
-                    let isBusy = workspace.panelNeedsConfirmClose(
-                        panelId: panelId,
-                        fallbackNeedsConfirmClose: terminalPanel.needsConfirmClose()
-                    ) ||
-                        (canRestartShell &&
-                            (!(workspace.surfaceListeningPorts[panelId] ?? []).isEmpty ||
-                                terminalPanel.surface.foregroundProcessHasChildren()))
-                    records.append(
-                        AgentHibernationRecord(
-                            key: key,
-                            workspace: workspace,
-                            terminalPanel: terminalPanel,
-                            agent: agent,
-                            lifecycle: lifecycle,
-                            hasUnconfirmedTerminalInput: agent != nil
-                                ? terminalInputAt > lifecycleChangeAt
-                                : pendingCommandLineByPanel[key] != nil,
-                            lastActivityAt: max(indexActivity, localActivity, createdAt),
-                            isProtected: workspaceIsVisible && visiblePanelIds.contains(panelId),
-                            isBusy: isBusy,
-                            canRestartShell: canRestartShell,
-                            workspaceUnmountedAt: workspaceUnmountedAt,
-                            runtimeSurfaceCreatedAt: createdAt,
-                            hasLiveProcess: index.hasLiveProcess(workspaceId: workspace.id, panelId: panelId),
-                            processIDs: index.processIDs(workspaceId: workspace.id, panelId: panelId)
-                        )
-                    )
-                }
-            }
-        }
-
-        for context in mainWindowContexts.values {
-            let visibleWorkspaceId = context.window?.isVisible == true ? context.tabManager.selectedTabId : nil
-            visit(tabManager: context.tabManager, visibleWorkspaceId: visibleWorkspaceId)
-        }
-        if let tabManager {
-            visit(tabManager: tabManager, visibleWorkspaceId: nil)
-        }
-
-        return records
+    func clearInFlightTeardown(_ key: AgentHibernationPanelKey, requestID: UUID) {
+        guard teardownInFlightByPanel[key]?.requestID == requestID else { return }
+        teardownInFlightByPanel.removeValue(forKey: key)
     }
 }

@@ -1,4 +1,5 @@
 import AppKit
+import CmuxSettingsUI
 import SwiftUI
 import UniformTypeIdentifiers
 

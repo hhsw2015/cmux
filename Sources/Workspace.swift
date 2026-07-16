@@ -1934,6 +1934,13 @@ typealias ClosedBrowserPanelRestoreSnapshot = CmuxBrowser.ClosedBrowserPanelRest
 /// Each workspace contains one BonsplitController that manages split panes and nested surfaces.
 @MainActor
 final class Workspace: Identifiable, ObservableObject {
+    // ponytail: CustomTitleSource re-added after removing Workspace+TitleOwnership.swift
+    enum CustomTitleSource: String, Codable, Sendable {
+        case user
+        case auto
+        case herdrInbound
+    }
+
     // ponytail: fork-only stubs
     func isDeadHerdrStub() -> Bool { false }
     func markAllTabsForceCloseable() {}
@@ -1941,9 +1948,23 @@ final class Workspace: Identifiable, ObservableObject {
     func bonsplitController(forLayoutTabId layoutTabId: UUID) -> BonsplitController? { nil }
     var layoutTabId: UUID? { nil }
     func herdrInboundSplit(direction: Any, panelId: UUID, source: String) {}
-    func restoredAgentSnapshotForContinuation(panelId: UUID) -> Any? { nil }
+    func herdrInboundSplit(paneId: PaneID, orientation: Any, initialDividerPosition: CGFloat) -> PaneID? { nil }
+    func restoredAgentSnapshotForContinuation(panelId: UUID) -> SessionRestorableAgentSnapshot? { nil }
     func allowsAgentContinuation(forPanelId panelId: UUID) -> Bool { false }
     func reconcileCompletedRestoredAgent(panelId: UUID, observation: Any) {}
+    @discardableResult
+    func setCustomTitle(_ title: String?, source: CustomTitleSource) -> Bool { false }
+    func setCustomDescription(_ description: String?) {}
+    func applyProcessTitle(_ title: String) {}
+    var titleDerivedAgentStatusKeysByPanelId: [UUID: String] {
+        get { [:] }
+        set { }
+    }
+    var hasCustomTitle: Bool { false }
+    var effectiveCustomTitleSource: CustomTitleSource? { nil }
+    func selectNextTopLevelTab() {}
+    func selectPreviousTopLevelTab() {}
+    func newTopLevelTerminalTab() {}
 
     enum BrowserPanelCreationPolicy {
         case userInitiated

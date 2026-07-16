@@ -1,11 +1,12 @@
 import Foundation
+import CmuxTerminal
 import CmuxTerminalCore
 import CMUXAgentLaunch
 import OSLog
 
 extension TerminalSurface {
-    typealias ClaudeCommandShim = TerminalSurfaceClaudeCommandShim
-    typealias CmuxContextEnvironment = TerminalSurfaceCmuxContextEnvironment
+    // ponytail: aliases now provided by package
+
 
     static let managedTerminalType = "xterm-256color"
     static let managedTerminalProgram = "ghostty"

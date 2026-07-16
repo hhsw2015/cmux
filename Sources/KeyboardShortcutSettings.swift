@@ -68,6 +68,7 @@ enum KeyboardShortcutSettings {
         case showHideAllWindows
         case globalSearch
         case newWindow
+        case toggleQuickTerminal
         case closeWindow
         case toggleFullScreen
         case quit

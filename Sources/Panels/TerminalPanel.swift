@@ -37,7 +37,10 @@ enum AgentHibernationResumePreparation: Equatable {
 final class TerminalPanel: Panel, ObservableObject {
     // ponytail: WorkspaceProjectBridge expects these
     var zmxSessionName: String? { nil }
-    var keepAlive: Bool { false }
+    var keepAlive: Bool {
+        get { false }
+        set { }
+    }
 
     private enum TextBoxInputFocusIntent: Equatable {
         case hidden

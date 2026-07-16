@@ -5743,19 +5743,11 @@ extension TabManager {
     }
 
     private static func hashSurfaceHibernationPanelState(
-        _ state: SurfaceHibernationPanelState?,
+        _ state: Any?,
         into hasher: inout Hasher
     ) {
-        guard let state else {
-            hasher.combine(false)
-            return
-        }
-
-        // The captured scrollback is immutable while hibernated, so the
-        // timestamps uniquely identify the transition without hashing it.
-        hasher.combine(true)
-        hasher.combine(state.hibernatedAt.timeIntervalSince1970)
-        hasher.combine(state.lastActivityAt.timeIntervalSince1970)
+        // ponytail: fork's TerminalPanel lacks hibernation state; hash presence only
+        hasher.combine(state != nil)
     }
 
     nonisolated private static func hashSurfaceResumeBindingSnapshot(

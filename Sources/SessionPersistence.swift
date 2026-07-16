@@ -1619,6 +1619,7 @@ struct SessionProjectPanelSnapshot: Codable, Sendable {
 struct SessionPanelSnapshot: Codable, Sendable {
     var id: UUID
     var stableSurfaceId: UUID? = nil
+    var stableCoord: StableLayoutCoord? = nil
     var type: PanelType
     var title: String?
     var customTitle: String?
@@ -1737,6 +1738,7 @@ struct SessionCanvasPaneSnapshot: Codable, Equatable, Sendable {
 }
 
 struct SessionWorkspaceSnapshot: Codable, Sendable {
+    var layoutTabs: [String]? = nil  // ponytail: stub, Codable-compatible
     /// Original workspace ID captured when the snapshot comes from a live workspace.
     /// Restore uses this to remap closed-panel history onto the new workspace IDs;
     /// legacy or externally-created snapshots can leave it nil.

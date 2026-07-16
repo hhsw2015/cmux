@@ -26,9 +26,9 @@ enum WorkspaceTopTabsVisibility: String, CaseIterable, Sendable {
             // Resting baseline: bar hidden. Host view flips this to
             // .always while the pointer hovers the top edge sliver so the
             // bar reveals on demand.
-            return .never
+            return .multipleTabs
         case .never:
-            return .never
+            return .multipleTabs
         }
     }
 }
