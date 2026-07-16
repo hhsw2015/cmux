@@ -2,6 +2,13 @@
 
 All notable changes to cmux are documented here.
 
+## [0.91.0] - 2026-07-16
+
+### Changed
+- Full 3-way merge with upstream/main (140+ commits): fork modifications preserved via Workspace+ForkStubs / TerminalController+ForkStubs; conflicts resolved manually. Submodules bumped: ghostty→bb30526cd, bonsplit→10563e2fda. Fork's HerdrClient, cmux_term handlers, monolithic RemoteTmux stack all preserved. Deleted Zmx settings/hooks (fork-only Settings/ZmxSettingsView + HostsSettingsView + ZmxPanelBinder + ZmxCommandHooks — package API divergence too deep). Build: ** SUCCEEDED **.
+- Added CMUXSessionDaemon + CMUXSettingsCore SPM registration to cmux target. Restored 46 upstream new files. Wired 250+ orphan files to correct Sources phases.
+
+
 ## [0.64.19] - 2026-07-14
 
 ### Fixed
