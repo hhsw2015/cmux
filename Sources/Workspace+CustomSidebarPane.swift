@@ -89,7 +89,7 @@ extension Workspace {
         guard let newTabId = bonsplitController.createTab(
             title: customPanel.displayTitle,
             icon: customPanel.displayIcon,
-            kind: SurfaceKind.customSidebar,
+            kind: SurfaceKind.customSidebar.rawValue,
             isDirty: false,
             isLoading: false,
             isPinned: false,
@@ -144,7 +144,7 @@ extension Workspace {
         let newTab = Bonsplit.Tab(
             title: customPanel.displayTitle,
             icon: customPanel.displayIcon,
-            kind: SurfaceKind.customSidebar,
+            kind: SurfaceKind.customSidebar.rawValue,
             isDirty: false,
             isLoading: false,
             isPinned: false

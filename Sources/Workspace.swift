@@ -1934,6 +1934,12 @@ typealias ClosedBrowserPanelRestoreSnapshot = CmuxBrowser.ClosedBrowserPanelRest
 /// Each workspace contains one BonsplitController that manages split panes and nested surfaces.
 @MainActor
 final class Workspace: Identifiable, ObservableObject {
+    // ponytail: fork-only stubs
+    var isDeadHerdrStub: Bool { false }
+    func markAllTabsForceCloseable() {}
+    func bonsplitController(containingPaneId: PaneID) -> BonsplitController? { nil }
+    func herdrInboundSplit(direction: Any, panelId: UUID, source: String) {}
+
     enum BrowserPanelCreationPolicy {
         case userInitiated
         case automationPreload

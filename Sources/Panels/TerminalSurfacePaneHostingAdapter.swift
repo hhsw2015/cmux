@@ -21,6 +21,7 @@ final class TerminalSurfacePaneHostingAdapter: NSView, TerminalSurfacePaneHostin
     func setVisibleInUI(_ visible: Bool) { underlying.setVisibleInUI(visible) }
     func setActive(_ active: Bool) { underlying.setActive(active) }
     func syncKeyStateIndicator(text: String?) { underlying.syncKeyStateIndicator(text: text) }
+    func terminalSurfaceDidReceiveExplicitInput() {}
     func setMobileViewportBorder(size: CGSize?, drawRight: Bool, drawBottom: Bool) {
         underlying.setMobileViewportBorder(size: size, drawRight: drawRight, drawBottom: drawBottom)
     }

@@ -44,56 +44,13 @@ extension WorkspaceGroupNewPlacement {
 
 
 
-extension Workspace {
-    var canvasModel: CanvasModel { CanvasModel(metricsProvider: { CanvasMetrics() }) }
-}
-
-
-
 import CmuxCanvas
 import CmuxCanvasUI
 
-// ponytail: panelsPublisher / paneLayoutVersionPublisher now stored on Workspace
-// (P53 upstream restored them as CurrentValueSubject); stub overrides removed.
-
 func shouldRouteTerminalSelectAllToNaturalTextEngine(_ event: Any?) -> Bool { false }
-extension SessionPersistencePolicy {
-    static func resolvedMaxScrollbackLinesPerTerminal() -> Int { 1000 }
-}
 
-
-struct SessionCanvasPaneSnapshot: Codable, Sendable {
-    var id: UUID = UUID()
-    var panelId: UUID?
-    var x: Double
-    var y: Double
-    var width: Double
-    var height: Double
-    var panelIds: [UUID]?
-    var selectedPanelId: UUID?
-}
-
-extension SessionWorkspaceSnapshot {
-    var canvasPanes: [SessionCanvasPaneSnapshot]? { nil }
-    var layoutMode: String? { nil }
-}
 struct TerminalForegroundDirectoryResolver {
     init() {}
     func foregroundDirectory(forTTYName ttyName: String) -> String? { nil }
-}
-
-// MARK: - PaneTreeHosting
-extension Workspace: PaneTreeHosting {
-    @MainActor
-    public func panelsWillChange(to newValue: [UUID: any Panel]) {
-        objectWillChange.send()
-        panelsPublisher.send(newValue)
-    }
-
-    @MainActor
-    public func paneLayoutVersionWillChange(to newValue: Int) {
-        objectWillChange.send()
-        paneLayoutVersionPublisher.send(newValue)
-    }
 }
 
