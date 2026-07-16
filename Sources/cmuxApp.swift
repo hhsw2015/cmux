@@ -1,5 +1,4 @@
 import AppKit
-import CmuxWorkspaces
 import CmuxAppKitSupportUI
 import CmuxFoundation
 import CmuxPanes
@@ -7,6 +6,7 @@ import CmuxSidebarInterpreterClient
 import CmuxSidebarRemoteRender
 import CmuxSettings
 import CmuxSettingsUI
+import CmuxWorkspaces
 import CmuxTestSupport
 import CmuxUpdater
 import CmuxUpdaterUI
@@ -15,6 +15,7 @@ import Observation
 import Darwin
 import Bonsplit
 import UniformTypeIdentifiers
+import CmuxTerminal
 
 /// The process entry point. When the binary is launched with a sidebar worker
 /// flag (the app re-executes its own binary that way so a crash in the
@@ -27,6 +28,14 @@ import UniformTypeIdentifiers
 @main
 enum CmuxMain {
     static func main() {
+#if DEBUG
+        // Bonsplit's `dlog` and the app's `cmuxDebugLog` resolve the same
+        // debug log file. Route bonsplit through the shared writer so the
+        // file has exactly one serialized append path (single O_APPEND
+        // handle, monotonic #<seq> line prefixes); with two independent
+        // appenders, concurrent lines interleaved and landed out of order.
+        Bonsplit.DebugEventLog.setExternalSink { cmuxDebugLog($0) }
+#endif
         if CommandLine.arguments.contains(RenderWorkerClient.workerModeArgument) {
             runSidebarRenderWorker()
         }
@@ -54,7 +63,6 @@ struct cmuxApp: App {
     @StateObject var closedItemHistoryStore = ClosedItemHistoryStore.shared
     @StateObject private var sidebarState = SidebarState()
     @StateObject private var keyboardShortcutSettingsObserver = KeyboardShortcutSettingsObserver.shared
-    @StateObject private var herdrSessionDiscovery = HerdrSessionDiscovery.shared
     @AppStorage(AppearanceSettings.appearanceModeKey) private var appearanceMode = AppearanceSettings.defaultMode.rawValue
     @AppStorage(TitlebarControlsStyle.storageKey) private var titlebarControlsStyle = TitlebarControlsStyle.defaultRawValue
     @AppStorage(DevBuildBannerDebugSettings.sidebarBannerVisibleKey)
@@ -119,22 +127,6 @@ struct cmuxApp: App {
         let authComposition = MacAuthComposition()
         self.authComposition = authComposition
 
-        // [fork] inject Hosts + Persistence as sidebar entries in the SPM Settings UI.
-        SettingsExtraSectionsHost.entries = [
-            SettingsExtraSectionEntry(
-                id: "zmxPersistence",
-                title: String(localized: "settings.section.zmx", defaultValue: "Persistence"),
-                symbolName: "internaldrive",
-                viewBuilder: { AnyView(ZmxSettingsView()) }
-            ),
-            SettingsExtraSectionEntry(
-                id: "hosts",
-                title: String(localized: "settings.section.hosts", defaultValue: "Hosts"),
-                symbolName: "server.rack",
-                viewBuilder: { AnyView(HostsSettingsView()) }
-            ),
-        ]
-
         // If invoked with CLI-style arguments (e.g. `cmux hooks setup`), exec the
         // bundled CLI at Contents/Resources/bin/cmux. The GUI binary and the CLI
         // share the name `cmux`, so if the GUI's Contents/MacOS leaks onto $PATH
@@ -166,12 +158,6 @@ struct cmuxApp: App {
             Self.terminateForMissingLaunchTag()
         }
 
-        // Force overlay scrollers before any AppKit code resolves and caches
-        // NSScroller.preferredScrollerStyle (appearance/language work below). See #3241.
-        // ponytail: AppScrollerStylePolicy removed upstream; overlay-scroller
-        // forcing is now handled inside CmuxAppKitSupportUI auto-init.
-        UserDefaults.standard.set(false, forKey: "AppleShowScrollBars")
-        StartupBreadcrumbLog.append("app.init.scrollerStyle.forced")
         Self.configureGhosttyEnvironment()
         StartupBreadcrumbLog.append("app.init.ghosttyEnvironment.configured")
         _ = KeyboardShortcutSettings.settingsFileStore
@@ -480,148 +466,47 @@ struct cmuxApp: App {
             }
 #endif
 
-            Group {
-                CommandMenu(String(localized: "menu.notifications.title", defaultValue: "Notifications")) {
-                    let snapshot = notificationMenuSnapshot
+            CommandMenu(String(localized: "menu.notifications.title", defaultValue: "Notifications")) {
+                let snapshot = notificationMenuSnapshot
 
-                    Button(snapshot.stateHintTitle) {}
-                        .disabled(true)
+                Button(snapshot.stateHintTitle) {}
+                    .disabled(true)
 
-                    if !snapshot.recentNotifications.isEmpty {
-                        Divider()
+                if !snapshot.recentNotifications.isEmpty {
+                    Divider()
 
-                        ForEach(snapshot.recentNotifications) { notification in
-                            Button(notificationMenuItemTitle(for: notification)) {
-                                openNotificationFromMainMenu(notification)
-                            }
-                        }
-
-                        Divider()
-                    }
-
-                    splitCommandButton(title: String(localized: "menu.notifications.show", defaultValue: "Show Notifications"), shortcut: menuShortcut(for: .showNotifications)) {
-                        showNotificationsPopover()
-                    }
-
-                    splitCommandButton(title: String(localized: "menu.notifications.jumpToUnread", defaultValue: "Jump to Latest Unread"), shortcut: menuShortcut(for: .jumpToUnread)) {
-                        appDelegate.jumpToLatestUnread()
-                    }
-                    .disabled(!snapshot.hasUnreadNotifications)
-
-                    splitCommandButton(title: String(localized: "menu.notifications.toggleUnread", defaultValue: "Toggle Unread"), shortcut: menuShortcut(for: .toggleUnread)) {
-                        appDelegate.toggleFocusedNotificationUnread()
-                    }
-                    .disabled(activeTabManager.selectedWorkspace == nil)
-
-                    Button(String(localized: "menu.notifications.markAllRead", defaultValue: "Mark All Read")) {
-                        notificationStore.markAllRead()
-                    }
-                    .disabled(!snapshot.hasUnreadNotifications)
-
-                    Button(String(localized: "menu.notifications.clearAll", defaultValue: "Clear All")) {
-                        notificationStore.clearAll()
-                    }
-                    .disabled(!snapshot.hasNotifications)
-                }
-
-                CommandMenu(String(
-                    localized: "menu.workspaces.title",
-                    defaultValue: "Workspaces"
-                )) {
-                    Button(String(
-                        localized: "menu.workspaces.newOnThisMac",
-                        defaultValue: "New Persistent Workspace"
-                    )) {
-                        HerdrPanelOpener.openLocalhostWorkspace()
-                    }
-                    .keyboardShortcut("h", modifiers: [.command, .option])
-
-                    Menu(String(
-                        localized: "menu.workspaces.newOnComputer",
-                        defaultValue: "New Persistent Workspace on…"
-                    )) {
-                        ForEach(HostRegistry.shared.hosts) { host in
-                            Button(host.displayName) {
-                                HerdrPanelOpener.openWorkspace(host: host)
-                            }
-                        }
-                        let unregisteredSessions = herdrSessionDiscovery.sessions.filter {
-                            session in
-                            !HostRegistry.shared.hosts.contains { host in
-                                if case .localUDS = host.transport,
-                                   host.sessionName == session.name {
-                                    return true
-                                }
-                                return false
-                            }
-                        }
-                        if !unregisteredSessions.isEmpty {
-                            Divider()
-                            Section(String(
-                                localized: "menu.workspaces.discoveredSessions",
-                                defaultValue: "Detected herdr sessions"
-                            )) {
-                                ForEach(unregisteredSessions) { session in
-                                    Button(session.isRunning ? "● \(session.name)" : "○ \(session.name)") {
-                                        guard let host = HerdrSessionDiscovery.shared
-                                            .ensureHost(for: session) else { return }
-                                        HerdrPanelOpener.openWorkspace(host: host)
-                                    }
-                                }
-                            }
-                        }
-                        Divider()
-                        Button(String(
-                            localized: "menu.workspaces.refreshSessions",
-                            defaultValue: "Refresh detected sessions"
-                        )) {
-                            herdrSessionDiscovery.refresh()
-                        }
-                        // Discovery affordance: the submenu is the
-                        // natural place for a new user to wonder "where
-                        // would another computer live?". Sending them
-                        // to Settings → Computers is one click away.
-                        Button(String(
-                            localized: "menu.workspaces.addComputer",
-                            defaultValue: "Add a computer…"
-                        )) {
-                            AddComputerWindow.show()
+                    ForEach(snapshot.recentNotifications) { notification in
+                        Button(notificationMenuItemTitle(for: notification)) {
+                            openNotificationFromMainMenu(notification)
                         }
                     }
 
                     Divider()
-
-                    Button(String(
-                        localized: "menu.workspaces.jumpBlocked",
-                        defaultValue: "Jump to Next Workspace Waiting on You"
-                    )) {
-                        HerdrJumpCommands.jumpToNextBlockedWorkspace()
-                    }
-                    .keyboardShortcut("j", modifiers: [.command, .option])
-
-                    Button(String(
-                        localized: "menu.workspaces.killCurrent",
-                        defaultValue: "Close Current Workspace…"
-                    )) {
-                        HerdrKillCommands.killCurrentWorkspace()
-                    }
-                    .keyboardShortcut("k", modifiers: [.command, .option, .shift])
-
-                    Divider()
-
-                    Button(String(
-                        localized: "menu.workspaces.refreshAll",
-                        defaultValue: "Refresh Computers"
-                    )) {
-                        for host in HostRegistry.shared.hosts {
-                            HerdrWorkspaceListStore.shared.refresh(host: host)
-                        }
-                    }
-                    .keyboardShortcut("r", modifiers: [.command, .option])
-                    // "Install on first remote" was removed — every Add Computer
-                    // flow installs automatically on save. No explicit user action
-                    // is needed and exposing it created confusion.
                 }
+
+                splitCommandButton(title: String(localized: "menu.notifications.show", defaultValue: "Show Notifications"), shortcut: menuShortcut(for: .showNotifications)) {
+                    showNotificationsPopover()
+                }
+
+                splitCommandButton(title: String(localized: "menu.notifications.jumpToUnread", defaultValue: "Jump to Latest Unread"), shortcut: menuShortcut(for: .jumpToUnread)) {
+                    appDelegate.jumpToLatestUnread()
+                }
+                .disabled(!snapshot.hasUnreadNotifications)
+
+                splitCommandButton(title: String(localized: "menu.notifications.toggleUnread", defaultValue: "Toggle Unread"), shortcut: menuShortcut(for: .toggleUnread)) {
+                    appDelegate.toggleFocusedNotificationUnread()
+                }
+                .disabled(activeTabManager.selectedWorkspace == nil)
+
+                Button(String(localized: "menu.notifications.markAllRead", defaultValue: "Mark All Read")) {
+                    notificationStore.markAllRead()
+                }
+                .disabled(!snapshot.hasUnreadNotifications)
+
+                Button(String(localized: "menu.notifications.clearAll", defaultValue: "Clear All")) {
+                    notificationStore.clearAll()
+                }
+                .disabled(!snapshot.hasNotifications)
             }
 
 #if DEBUG
@@ -634,7 +519,7 @@ struct cmuxApp: App {
                     appDelegate.openDebugScrollbackTab(nil)
                 }
 
-                AgentSessionDebugMenuButtons(
+                IrohAndAgentSessionDebugMenuButtons(
                     openReact: { appDelegate.openDebugAgentSessionReact(nil) },
                     openSolid: { appDelegate.openDebugAgentSessionSolid(nil) }
                 )
@@ -650,10 +535,6 @@ struct cmuxApp: App {
                     }
                 )
 
-                Button("Export Session Blueprint to Pasteboard") {
-                    SessionBlueprintExportAction.copyCurrentBlueprintToPasteboard()
-                }
-
                 Divider()
                 Menu("Debug Windows") {
                     Button("Background Debug…") {
@@ -661,17 +542,6 @@ struct cmuxApp: App {
                     }
                     Button("Pro Badge Style…") {
                         ProBadgeDebugWindowController.shared.show()
-                    }
-                    Button(
-                        String(
-                            localized: "debug.menu.herdrEventPump",
-                            defaultValue: "Herdr Event Pump…"
-                        )
-                    ) {
-                        HerdrEventPumpDebugWindowController.shared.show()
-                    }
-                    Button("Open Herdr Panel (localhost)") {
-                        HerdrPanelOpener.openLocalhostPanel()
                     }
                     Button(
                         String(
@@ -1030,10 +900,6 @@ struct cmuxApp: App {
                 }
             }
 
-            splitCommandButton(title: String(localized: "menu.view.toggleQuickTerminal", defaultValue: "Toggle Quick Terminal"), shortcut: menuShortcut(for: .toggleQuickTerminal)) {
-                AppDelegate.shared?.toggleQuickTerminal(nil)
-            }
-
             splitCommandButton(title: String(localized: "menu.view.toggleRightSidebar", defaultValue: "Toggle Right Sidebar"), shortcut: menuShortcut(for: .toggleRightSidebar)) {
                 if AppDelegate.shared?.toggleRightSidebarInActiveMainWindow(
                     preferredWindow: NSApp.keyWindow ?? NSApp.mainWindow
@@ -1176,6 +1042,23 @@ struct cmuxApp: App {
             equalizeSplitsCommandButton()
             Divider()
 
+            splitCommandButton(title: String(localized: "menu.view.toggleCanvasLayout", defaultValue: "Toggle Canvas Layout"), shortcut: menuShortcut(for: .toggleCanvasLayout)) {
+                guard let workspace = activeTabManager.selectedWorkspace else { return }
+                CanvasActionExecutor(workspace: workspace).perform(.toggleLayout)
+            }
+
+            splitCommandButton(title: String(localized: "menu.view.canvasOverview", defaultValue: "Canvas Overview"), shortcut: menuShortcut(for: .canvasOverview)) {
+                guard let workspace = activeTabManager.selectedWorkspace else { return }
+                CanvasActionExecutor(workspace: workspace).perform(.toggleOverview)
+            }
+
+            splitCommandButton(title: String(localized: "menu.view.canvasTidy", defaultValue: "Tidy Canvas"), shortcut: menuShortcut(for: .canvasTidy)) {
+                guard let workspace = activeTabManager.selectedWorkspace else { return }
+                CanvasActionExecutor(workspace: workspace).perform(.alignment(.tidy))
+            }
+
+            Divider()
+
             // Numbered workspace selection (9 = last workspace)
             ForEach(1...9, id: \.self) { number in
                 // `menuShortcut(for:)` already returns `.unbound` when the action
@@ -1240,29 +1123,15 @@ struct cmuxApp: App {
     }
 
     private func updateSocketController() {
-        let mode = SocketControlSettings.effectiveMode(userMode: currentSocketMode)
-        if mode != .off {
-            let socketPath = TerminalController.shared.activeSocketPath(
-                preferredPath: SocketControlSettings.socketPath()
-            )
-            TerminalController.shared.start(
-                tabManager: activeTabManager,
-                socketPath: socketPath,
-                accessMode: mode
-            )
-        } else {
-            TerminalController.shared.stop()
-        }
+        appDelegate.reconcileSocketListenerConfiguration(
+            source: "settings.automation.socketControlMode.appStorage"
+        )
     }
 
     private func bootstrapMainWindowScene() {
         appDelegate.scheduleInitialMainWindowBootstrap(debugSource: "swiftUIBootstrap")
         appDelegate.installReloadConfigurationMenuItemAction()
         applyAppearance()
-    }
-
-    private var currentSocketMode: SocketControlMode {
-        SocketControlSettings.migrateMode(socketControlMode)
     }
 
     func menuShortcut(for action: KeyboardShortcutSettings.Action) -> StoredShortcut {
@@ -1575,14 +1444,12 @@ private let cmuxAuxiliaryWindowIdentifiers: Set<String> = [
     "cmux.browserProfilePopoverDebug",
     "cmux.configEditor",
     "cmux.defaultTerminalRegistrationError",
-    "cmux.quick-terminal",
     "cmux.feedButtonStyleDebug",
     "cmux.feedPreview",
     "cmux.feedTextEditorDebug",
     "cmux.fileExplorerStyleDebug",
     "cmux.folderDragIcon",
     "cmux.pdfPreviewChromeDebug",
-    "cmux.quickTerminal",
     "cmux.proBadgeDebug",
     "cmux.recentlyClosedHistory",
     "cmux.splitButtonLayoutDebug",
@@ -1598,7 +1465,6 @@ private let cmuxAuxiliaryWindowIdentifiers: Set<String> = [
     "cmux.backgroundDebug",
     "cmux.startupAppearanceDebug",
     "cmux.bonsplitTabBarDebug",
-    "cmux.herdrEventPumpDebug",
     "cmux.titlebarLayoutDebug",
     "cmux.devWindowDisplay",
     "cmux.mobilePairingWindow",
@@ -4539,73 +4405,6 @@ private struct AboutVisualEffectBackground: NSViewRepresentable {
     }
 }
 
-enum AppLanguage: String, CaseIterable, Identifiable {
-    case system
-    case en
-    case ar
-    case bs
-    case zhHans = "zh-Hans"
-    case zhHant = "zh-Hant"
-    case da
-    case de
-    case es
-    case fr
-    case it
-    case ja
-    case ko
-    case nb
-    case pl
-    case ptBR = "pt-BR"
-    case ru
-    case th
-    case tr
-
-    var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .system: return String(localized: "language.system", defaultValue: "System")
-        case .en: return "English"
-        case .ar: return "\u{200E}العربية (Arabic)"
-        case .bs: return "Bosanski (Bosnian)"
-        case .zhHans: return "简体中文 (Chinese Simplified)"
-        case .zhHant: return "繁體中文 (Chinese Traditional)"
-        case .da: return "Dansk (Danish)"
-        case .de: return "Deutsch (German)"
-        case .es: return "Español (Spanish)"
-        case .fr: return "Français (French)"
-        case .it: return "Italiano (Italian)"
-        case .ja: return "日本語 (Japanese)"
-        case .ko: return "한국어 (Korean)"
-        case .nb: return "Norsk (Norwegian)"
-        case .pl: return "Polski (Polish)"
-        case .ptBR: return "Português (Brasil)"
-        case .ru: return "Русский (Russian)"
-        case .th: return "ไทย (Thai)"
-        case .tr: return "Türkçe (Turkish)"
-        }
-    }
-}
-
-enum LanguageSettings {
-    static let languageKey = "appLanguage"
-    static let defaultLanguage: AppLanguage = .system
-
-    static func apply(_ language: AppLanguage) {
-        if language == .system {
-            UserDefaults.standard.removeObject(forKey: "AppleLanguages")
-        } else {
-            UserDefaults.standard.set([language.rawValue], forKey: "AppleLanguages")
-        }
-    }
-
-    static var languageAtLaunch: AppLanguage = {
-        let stored = UserDefaults.standard.string(forKey: languageKey)
-        guard let stored, let lang = AppLanguage(rawValue: stored) else { return .system }
-        return lang
-    }()
-}
-
 enum AppIconMode: String, CaseIterable, Identifiable {
     case automatic
     case light
@@ -4854,86 +4653,7 @@ final class AppIconAppearanceObserver: NSObject {
     }
 }
 
-enum QuitWarningSettings {
-    static let warnBeforeQuitKey = "warnBeforeQuitShortcut"
-    static let confirmQuitKey = "confirmQuit"
-    static let defaultWarnBeforeQuit = true
-    static let defaultConfirmQuitMode = QuitConfirmationMode.always
-
-    static func isEnabled(defaults: UserDefaults = .standard) -> Bool {
-        confirmQuitMode(defaults: defaults) != .never
-    }
-
-    static func shouldShowConfirmation(
-        isQuitWarningConfirmed: Bool,
-        defaults: UserDefaults = .standard
-    ) -> Bool {
-        shouldShowConfirmation(
-            isQuitWarningConfirmed: isQuitWarningConfirmed,
-            hasDirtyWorkspaces: true,
-            buildFlavor: .current,
-            defaults: defaults
-        )
-    }
-
-    static func shouldShowConfirmation(
-        isQuitWarningConfirmed: Bool,
-        hasDirtyWorkspaces: Bool,
-        buildFlavor: BuildFlavor,
-        defaults: UserDefaults = .standard
-    ) -> Bool {
-        guard !isQuitWarningConfirmed else { return false }
-        guard buildFlavor != .dev else { return false }
-
-        switch confirmQuitMode(defaults: defaults) {
-        case .always:
-            return true
-        case .dirtyOnly:
-            return hasDirtyWorkspaces
-        case .never:
-            return false
-        }
-    }
-
-    static func confirmQuitMode(defaults: UserDefaults = .standard) -> QuitConfirmationMode {
-        if let rawValue = defaults.string(forKey: confirmQuitKey),
-           let mode = QuitConfirmationMode(rawValue: rawValue) {
-            return mode
-        }
-        if defaults.object(forKey: warnBeforeQuitKey) == nil {
-            return defaultConfirmQuitMode
-        }
-        return defaults.bool(forKey: warnBeforeQuitKey) ? .always : .never
-    }
-
-    static func setMode(_ mode: QuitConfirmationMode, defaults: UserDefaults = .standard) {
-        defaults.set(mode.rawValue, forKey: confirmQuitKey)
-        defaults.set(mode != .never, forKey: warnBeforeQuitKey)
-    }
-
-    static func setEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
-        setMode(isEnabled ? .always : .never, defaults: defaults)
-    }
-}
-
-nonisolated enum QuitConfirmationMode: String, CaseIterable, Sendable {
-    case always
-    case dirtyOnly = "dirty-only"
-    case never
-
-    var localizedSettingsTitle: String {
-        switch self {
-        case .always:
-            return String(localized: "settings.app.confirmQuit.always", defaultValue: "Always")
-        case .dirtyOnly:
-            return String(localized: "settings.app.confirmQuit.dirtyOnly", defaultValue: "Dirty Only")
-        case .never:
-            return String(localized: "settings.app.confirmQuit.never", defaultValue: "Never")
-        }
-    }
-}
-
-nonisolated enum BuildFlavor: String, Sendable {
+enum BuildFlavor: String, Sendable {
     case dev
     case nightly
     case stable
@@ -4992,1031 +4712,17 @@ nonisolated enum BuildFlavor: String, Sendable {
     }
 }
 
-enum CloseTabWarningSettings {
-    static let warnBeforeClosingTabKey = "warnBeforeClosingTabShortcut"
-    static let defaultWarnBeforeClosingTab = true
-    static let warnBeforeClosingTabXButtonKey = "warnBeforeClosingTabXButton"
-    static let defaultWarnBeforeClosingTabXButton = false
-    static let hideTabCloseButtonKey = "hideTabCloseButton"
-    static let defaultHideTabCloseButton = false
-
-    static func isEnabled(defaults: UserDefaults = .standard) -> Bool {
-        if defaults.object(forKey: warnBeforeClosingTabKey) == nil {
-            return defaultWarnBeforeClosingTab
-        }
-        return defaults.bool(forKey: warnBeforeClosingTabKey)
-    }
-
-    static func warnsBeforeClosingTabXButton(defaults: UserDefaults = .standard) -> Bool {
-        if defaults.object(forKey: warnBeforeClosingTabXButtonKey) == nil {
-            return defaultWarnBeforeClosingTabXButton
-        }
-        return defaults.bool(forKey: warnBeforeClosingTabXButtonKey)
-    }
-
-    static func hidesTabCloseButton(defaults: UserDefaults = .standard) -> Bool {
-        if defaults.object(forKey: hideTabCloseButtonKey) == nil {
-            return defaultHideTabCloseButton
-        }
-        return defaults.bool(forKey: hideTabCloseButtonKey)
-    }
-
-    static func setEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
-        defaults.set(isEnabled, forKey: warnBeforeClosingTabKey)
-    }
-}
-
-enum CloseTabConfirmationPolicy {
-    enum Source: Equatable {
-        case shortcut
-        case tabCloseButton
-    }
-
-    enum Decision: Equatable {
-        case closeImmediately
-        case confirmBeforeClosing
-    }
-
-    static func decision(
-        requiresConfirmation: Bool,
-        source: Source,
-        defaults: UserDefaults = .standard
-    ) -> Decision {
-        let shouldConfirm: Bool
-        switch source {
-        case .shortcut:
-            shouldConfirm = requiresConfirmation && CloseTabWarningSettings.isEnabled(defaults: defaults)
-        case .tabCloseButton:
-            shouldConfirm = CloseTabWarningSettings.warnsBeforeClosingTabXButton(defaults: defaults)
-                || (requiresConfirmation && CloseTabWarningSettings.isEnabled(defaults: defaults))
-        }
-
-        guard shouldConfirm else {
-            return .closeImmediately
-        }
-        return .confirmBeforeClosing
-    }
-
-    static func shouldConfirm(
-        requiresConfirmation: Bool,
-        source: Source,
-        defaults: UserDefaults = .standard
-    ) -> Bool {
-        decision(
-            requiresConfirmation: requiresConfirmation,
-            source: source,
-            defaults: defaults
-        ) == .confirmBeforeClosing
-    }
-}
-
-enum CommandPaletteRenameSelectionSettings {
-    static let selectAllOnFocusKey = "commandPalette.renameSelectAllOnFocus"
-    static let defaultSelectAllOnFocus = true
-
-    static func selectAllOnFocusEnabled(defaults: UserDefaults = .standard) -> Bool {
-        if defaults.object(forKey: selectAllOnFocusKey) == nil {
-            return defaultSelectAllOnFocus
-        }
-        return defaults.bool(forKey: selectAllOnFocusKey)
-    }
-}
-
-enum CommandPaletteSwitcherSearchSettings {
-    static let searchAllSurfacesKey = "commandPalette.switcherSearchAllSurfaces"
-    static let defaultSearchAllSurfaces = false
-
-    static func searchAllSurfacesEnabled(defaults: UserDefaults = .standard) -> Bool {
-        if defaults.object(forKey: searchAllSurfacesKey) == nil {
-            return defaultSearchAllSurfaces
-        }
-        return defaults.bool(forKey: searchAllSurfacesKey)
-    }
-}
-
-enum ClaudeCodeIntegrationSettings {
-    static let hooksEnabledKey = "claudeCodeHooksEnabled"
-    static let defaultHooksEnabled = true
-    static let customClaudePathKey = "claudeCodeCustomClaudePath"
-
-    static func hooksEnabled(defaults: UserDefaults = .standard) -> Bool {
-        if defaults.object(forKey: hooksEnabledKey) == nil {
-            return defaultHooksEnabled
-        }
-        return defaults.bool(forKey: hooksEnabledKey)
-    }
-
-    static func customClaudePath(defaults: UserDefaults = .standard) -> String? {
-        let value = defaults.string(forKey: customClaudePathKey)?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return value.isEmpty ? nil : value
-    }
-}
-
-enum AgentSubagentNotificationSettings {
-    static let suppressNotificationsKey = "suppressSubagentNotifications"
-    static let defaultSuppressNotifications = true
-    static let environmentKey = "CMUX_SUPPRESS_SUBAGENT_NOTIFICATIONS"
-
-    static func suppressNotifications(defaults: UserDefaults = .standard) -> Bool {
-        if defaults.object(forKey: suppressNotificationsKey) == nil {
-            return defaultSuppressNotifications
-        }
-        return defaults.bool(forKey: suppressNotificationsKey)
-    }
-}
-
-enum CursorIntegrationSettings {
-    static let hooksEnabledKey = "cursorHooksEnabled"
-    static let defaultHooksEnabled = true
-
-    static func hooksEnabled(defaults: UserDefaults = .standard) -> Bool {
-        if defaults.object(forKey: hooksEnabledKey) == nil {
-            return defaultHooksEnabled
-        }
-        return defaults.bool(forKey: hooksEnabledKey)
-    }
-}
-
-enum GeminiIntegrationSettings {
-    static let hooksEnabledKey = "geminiHooksEnabled"
-    static let defaultHooksEnabled = true
-
-    static func hooksEnabled(defaults: UserDefaults = .standard) -> Bool {
-        if defaults.object(forKey: hooksEnabledKey) == nil {
-            return defaultHooksEnabled
-        }
-        return defaults.bool(forKey: hooksEnabledKey)
-    }
-}
-
-enum KiroIntegrationSettings {
-    enum NotificationLevel: String, CaseIterable, Identifiable {
-        case minimal
-        case standard
-        case verbose
-
-        var id: String { rawValue }
-
-        var title: String {
-            switch self {
-            case .minimal:
-                return String(localized: "settings.automation.kiro.notificationLevel.minimal", defaultValue: "Minimal")
-            case .standard:
-                return String(localized: "settings.automation.kiro.notificationLevel.standard", defaultValue: "Standard")
-            case .verbose:
-                return String(localized: "settings.automation.kiro.notificationLevel.verbose", defaultValue: "Verbose")
-            }
-        }
-    }
-
-    static let hooksEnabledKey = "kiroHooksEnabled"
-    static let defaultHooksEnabled = true
-    static let notificationLevelKey = "kiroNotificationLevel"
-    static let defaultNotificationLevel = NotificationLevel.standard
-
-    static func hooksEnabled(defaults: UserDefaults = .standard) -> Bool {
-        if defaults.object(forKey: hooksEnabledKey) == nil {
-            return defaultHooksEnabled
-        }
-        return defaults.bool(forKey: hooksEnabledKey)
-    }
-
-    static func notificationLevel(defaults: UserDefaults = .standard) -> NotificationLevel {
-        guard let raw = defaults.string(forKey: notificationLevelKey),
-              let level = NotificationLevel(rawValue: raw) else {
-            return defaultNotificationLevel
-        }
-        return level
-    }
-}
-
-enum AmpIntegrationSettings {
-    static let hooksEnabledKey = "ampHooksEnabled"
-    static let defaultHooksEnabled = true
-
-    static func hooksEnabled(defaults: UserDefaults = .standard) -> Bool {
-        if defaults.object(forKey: hooksEnabledKey) == nil {
-            return defaultHooksEnabled
-        }
-        return defaults.bool(forKey: hooksEnabledKey)
-    }
-}
-
-enum WelcomeSettings {
-    static let shownKey = "cmuxWelcomeShown"
-}
-
 enum TelemetrySettings {
-    static let sendAnonymousTelemetryKey = "sendAnonymousTelemetry"
-    static let defaultSendAnonymousTelemetry = true
-
-    static func isEnabled(defaults: UserDefaults = .standard) -> Bool {
-        if defaults.object(forKey: sendAnonymousTelemetryKey) == nil {
-            return defaultSendAnonymousTelemetry
-        }
-        return defaults.bool(forKey: sendAnonymousTelemetryKey)
-    }
-
-    // Freeze telemetry enablement once per launch. Settings changes apply on next restart.
-    static let enabledForCurrentLaunch = isEnabled()
-}
-
-enum CmdClickMarkdownRouteSettings {
-    static let key = "openMarkdownInCmuxViewer"
-    static let didChangeNotification = Notification.Name("cmux.cmdClickMarkdownRouteDidChange")
-    static let defaultValue = true
-
-    static func isEnabled(defaults: UserDefaults = .standard) -> Bool {
-        defaults.object(forKey: key) == nil ? defaultValue : defaults.bool(forKey: key)
-    }
-
-    static func setEnabled(
-        _ enabled: Bool,
-        defaults: UserDefaults = .standard,
-        notificationCenter: NotificationCenter = .default
-    ) {
-        defaults.set(enabled, forKey: key)
-        notifyDidChange(notificationCenter: notificationCenter)
-    }
-
-    static func notifyDidChange(notificationCenter: NotificationCenter = .default) {
-        notificationCenter.post(name: didChangeNotification, object: nil)
-    }
-
-    /// Cheap extension check. Safe to call off the main thread before any
-    /// filesystem probe so remote/non-markdown paths can be filtered early.
-    static func isMarkdownPath(_ path: String) -> Bool {
-        let ext = (path as NSString).pathExtension.lowercased()
-        return ext == "md" || ext == "markdown" || ext == "mkd" || ext == "mdx"
-    }
-
-    static func shouldRoute(path: String, defaults: UserDefaults = .standard) -> Bool {
-        guard isEnabled(defaults: defaults),
-              isMarkdownPath(path) else { return false }
-        // Match the `markdown.open` socket path: only route real, readable
-        // files. Rejects FIFOs, device nodes, sockets, symlinks to non-regular
-        // targets, and permission-denied paths so the viewer never opens into
-        // an unavailable state.
-        return CmdClickSupportedFileRouteSettings.isReadableRegularFile(path: path)
-    }
-}
-
-enum CmdClickSupportedFileRouteSettings {
-    static let key = "openSupportedFilesInCmux"
-    static let didChangeNotification = Notification.Name("cmux.cmdClickSupportedFileRouteDidChange")
-    static let defaultValue = true
-
-    static func isEnabled(defaults: UserDefaults = .standard) -> Bool {
-        return defaults.object(forKey: key) == nil ? defaultValue : defaults.bool(forKey: key)
-    }
-
-    static func setEnabled(
-        _ enabled: Bool,
-        defaults: UserDefaults = .standard,
-        notificationCenter: NotificationCenter = .default
-    ) {
-        defaults.set(enabled, forKey: key)
-        notifyDidChange(notificationCenter: notificationCenter)
-    }
-
-    static func notifyDidChange(notificationCenter: NotificationCenter = .default) {
-        notificationCenter.post(name: didChangeNotification, object: nil)
-    }
-
-    static func shouldRoute(path: String, defaults: UserDefaults = .standard) -> Bool {
-        guard isEnabled(defaults: defaults) else { return false }
-        return isReadableRegularFile(path: path)
-    }
-
-    static func isReadableRegularFile(path: String) -> Bool {
-        let resolved = (path as NSString).resolvingSymlinksInPath
-        guard FileManager.default.isReadableFile(atPath: resolved),
-              let attrs = try? FileManager.default.attributesOfItem(atPath: resolved),
-              (attrs[.type] as? FileAttributeType) == .typeRegular else {
-            return false
-        }
-        return true
-    }
-}
-
-enum CmuxUITestCapture {
-    static func appendLineIfConfigured(envKey: String, line: String) -> Bool {
-        guard let url = configuredURL(for: envKey) else { return false }
-        appendLine(line, to: url)
-        return true
-    }
-
-    static func mutateJSONObjectIfConfigured(
-        envKey: String,
-        _ update: (inout [String: Any]) -> Void
-    ) -> Bool {
-        guard let url = configuredURL(for: envKey) else { return false }
-        mutateJSONObject(at: url, update)
-        return true
-    }
-
-    private static func configuredURL(for envKey: String) -> URL? {
-        let env = ProcessInfo.processInfo.environment
-        guard let rawPath = env[envKey]?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !rawPath.isEmpty else {
-            return nil
-        }
-        return URL(fileURLWithPath: rawPath)
-    }
-
-    private static func appendLine(_ line: String, to url: URL) {
-        ensureParentDirectory(for: url)
-        let payload = (line + "\n").data(using: .utf8) ?? Data()
-
-        if FileManager.default.fileExists(atPath: url.path) {
-            do {
-                let handle = try FileHandle(forWritingTo: url)
-                defer { try? handle.close() }
-                try handle.seekToEnd()
-                try handle.write(contentsOf: payload)
-            } catch {
-                if let existing = try? Data(contentsOf: url) {
-                    var combined = existing
-                    combined.append(payload)
-                    try? combined.write(to: url, options: .atomic)
-                } else {
-                    try? payload.write(to: url, options: .atomic)
-                }
-            }
-            return
-        }
-
-        try? payload.write(to: url, options: .atomic)
-    }
-
-    private static func mutateJSONObject(
-        at url: URL,
-        _ update: (inout [String: Any]) -> Void
-    ) {
-        ensureParentDirectory(for: url)
-        var payload: [String: Any] = [:]
-        if let data = try? Data(contentsOf: url),
-           let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            payload = object
-        }
-        update(&payload)
-        guard let data = try? JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys]) else {
-            return
-        }
-        try? data.write(to: url, options: .atomic)
-    }
-
-    private static func ensureParentDirectory(for url: URL) {
-        let directory = url.deletingLastPathComponent()
-        guard !directory.path.isEmpty else { return }
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    }
+    // Launch-frozen telemetry enablement: read once at process start so settings
+    // changes apply on next restart. The persisted key, default, and read logic
+    // live in `CmuxSettings` (`AppCatalogSection().sendAnonymousTelemetry`) as the
+    // single source of truth; this anchor only freezes that read for the lifetime
+    // of the launch.
+    static let enabledForCurrentLaunch = AppCatalogSection().sendAnonymousTelemetry.value(in: .standard)
 }
 
 @MainActor
 func openCmuxSettingsFileInEditor() {
     let url = KeyboardShortcutSettings.settingsFileStore.settingsFileURLForEditing()
     PreferredEditorService(defaults: .standard).open(url)
-}
-private struct SurfaceResumeApprovalSettingsCard: View {
-    @State private var recordCount = 0
-
-    var body: some View {
-        SettingsCard {
-            SettingsCardRow(
-                configurationReview: .json("terminal.resumeCommands"),
-                String(localized: "settings.terminal.resumeCommands", defaultValue: "Resume Commands"),
-                subtitle: String(
-                    localized: "settings.terminal.resumeCommands.subtitle",
-                    defaultValue: "Review signed command prefixes that can restore non-agent terminal surfaces."
-                ),
-                controlWidth: 170,
-                searchAnchorID: SettingsSearchIndex.settingID(for: .terminal, idSuffix: "resume-commands")
-            ) {
-                HStack(spacing: 8) {
-                    Text(String(format: "%d", recordCount))
-                        .font(.caption.monospacedDigit())
-                        .foregroundColor(.secondary)
-
-                    Button(String(localized: "settings.settingsJSON.openButton", defaultValue: "Open")) {
-                        openCmuxSettingsFileInEditor()
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                }
-            }
-        }
-        .onAppear(perform: reload)
-        .onReceive(NotificationCenter.default.publisher(for: SurfaceResumeApprovalStore.didChangeNotification)) { _ in
-            reload()
-        }
-    }
-
-    private func reload() {
-        recordCount = SurfaceResumeApprovalStore.loadRecords().count
-    }
-}
-
-struct SettingsSectionHeader: View {
-    let title: String
-
-    var body: some View {
-        Text(title)
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundColor(.secondary)
-            .padding(.leading, 2)
-            .padding(.bottom, -2)
-    }
-}
-private struct WorkspaceGroupNewWorkspacePlacementSettingsRow: View {
-    let controlWidth: CGFloat
-    @Binding var selection: String
-
-    private var selectedPlacement: WorkspaceGroupNewPlacement {
-        WorkspaceGroupNewPlacement(rawString: selection) ?? WorkspaceGroupNewWorkspacePlacementSettings.defaultValue
-    }
-
-    var body: some View {
-        SettingsPickerRow(
-            configurationReview: .json("workspaceGroups.newWorkspacePlacement"),
-            String(localized: "settings.app.workspaceGroupNewWorkspacePlacement", defaultValue: "Group New Workspace Placement"),
-            subtitle: selectedPlacement.settingsDescription,
-            controlWidth: controlWidth,
-            selection: $selection
-        ) {
-            ForEach(WorkspaceGroupNewPlacement.allCases) { placement in
-                Text(placement.displayName).tag(placement.rawValue)
-            }
-        }
-    }
-}
-
-struct SettingsCard<Content: View>: View {
-    @ViewBuilder let content: Content
-
-    init(@ViewBuilder content: () -> Content) {
-        self.content = content()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            content
-        }
-        .background(
-            RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .fill(Color(nsColor: NSColor.controlBackgroundColor).opacity(0.76))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .stroke(Color(nsColor: NSColor.separatorColor).opacity(0.5), lineWidth: 1)
-                )
-        )
-    }
-}
-
-struct SettingsCardRow<Trailing: View>: View {
-    let configurationReview: SettingsConfigurationReview
-    let title: String
-    let subtitle: String?
-    let controlWidth: CGFloat?
-    let searchAnchorID: String?
-    @ViewBuilder let trailing: Trailing
-
-    init(
-        configurationReview: SettingsConfigurationReview,
-        _ title: String,
-        subtitle: String? = nil,
-        controlWidth: CGFloat? = nil,
-        searchAnchorID: String? = nil,
-        @ViewBuilder trailing: () -> Trailing
-    ) {
-        configurationReview.validate()
-        self.configurationReview = configurationReview
-        self.title = title
-        self.subtitle = subtitle
-        self.controlWidth = controlWidth
-        self.searchAnchorID = searchAnchorID
-        self.trailing = trailing()
-    }
-
-    private var searchAnchorIDs: [String] { searchAnchorID.map { [$0] } ?? configurationReview.searchAnchorIDs }
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: subtitle == nil ? 0 : 3) {
-                Text(title)
-                    .font(.system(size: 13, weight: .medium))
-                if let subtitle {
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(2)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            Group {
-                if let controlWidth {
-                    trailing
-                        .frame(width: controlWidth, alignment: .trailing)
-                } else {
-                    trailing
-                }
-            }
-                .layoutPriority(1)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 9)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .settingsSearchAnchors(searchAnchorIDs)
-    }
-}
-
-private struct SettingsPickerRow<SelectionValue: Hashable, PickerContent: View, ExtraTrailing: View>: View {
-    let configurationReview: SettingsConfigurationReview
-    let title: String
-    let subtitle: String?
-    let controlWidth: CGFloat
-    @Binding var selection: SelectionValue
-    let pickerContent: PickerContent
-    let extraTrailing: ExtraTrailing
-    let accessibilityId: String?
-
-    init(
-        configurationReview: SettingsConfigurationReview,
-        _ title: String,
-        subtitle: String? = nil,
-        controlWidth: CGFloat,
-        selection: Binding<SelectionValue>,
-        accessibilityId: String? = nil,
-        @ViewBuilder content: () -> PickerContent,
-        @ViewBuilder extraTrailing: () -> ExtraTrailing
-    ) {
-        configurationReview.validate()
-        self.configurationReview = configurationReview
-        self.title = title
-        self.subtitle = subtitle
-        self.controlWidth = controlWidth
-        self._selection = selection
-        self.pickerContent = content()
-        self.extraTrailing = extraTrailing()
-        self.accessibilityId = accessibilityId
-    }
-
-    var body: some View {
-        SettingsCardRow(configurationReview: configurationReview, title, subtitle: subtitle, controlWidth: controlWidth) {
-            HStack(spacing: 6) {
-                Picker("", selection: $selection) {
-                    pickerContent
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .applyIf(accessibilityId != nil) { $0.accessibilityIdentifier(accessibilityId!) }
-                extraTrailing
-            }
-        }
-    }
-}
-
-extension SettingsPickerRow where ExtraTrailing == EmptyView {
-    init(
-        configurationReview: SettingsConfigurationReview,
-        _ title: String,
-        subtitle: String? = nil,
-        controlWidth: CGFloat,
-        selection: Binding<SelectionValue>,
-        accessibilityId: String? = nil,
-        @ViewBuilder content: () -> PickerContent
-    ) {
-        self.init(configurationReview: configurationReview, title, subtitle: subtitle, controlWidth: controlWidth, selection: selection, accessibilityId: accessibilityId, content: content) {
-            EmptyView()
-        }
-    }
-}
-
-enum SettingsConfigurationReview: Equatable {
-    case settingsFile([String])
-    case settingsOnly
-    case action
-    case debugOnly
-
-    static func json(_ paths: String...) -> Self {
-        .settingsFile(paths)
-    }
-
-    var searchAnchorIDs: [String] {
-        guard case .settingsFile(let paths) = self else { return [] }
-        return paths.compactMap(SettingsSearchIndex.anchorID(forSettingsPath:))
-    }
-
-    func validate(file: StaticString = #fileID, line: UInt = #line) {
-        guard case .settingsFile(let paths) = self else { return }
-        let unknownPaths = paths.filter { !CmuxSettingsFileStore.supportedSettingsJSONPaths.contains($0) }
-        precondition(
-            unknownPaths.isEmpty,
-            "Unknown cmux.json settings path(s): \(unknownPaths.joined(separator: ", "))",
-            file: file,
-            line: line
-        )
-    }
-}
-
-private extension View {
-    @ViewBuilder
-    func applyIf(_ condition: Bool, transform: (Self) -> some View) -> some View {
-        if condition {
-            transform(self)
-        } else {
-            self
-        }
-    }
-}
-
-struct SettingsCardDivider: View {
-    var body: some View {
-        Rectangle()
-            .fill(Color(nsColor: NSColor.separatorColor).opacity(0.5))
-            .frame(height: 1)
-    }
-}
-
-private struct ThemeWindowThumbnail: View {
-    let isDark: Bool
-
-    var body: some View {
-        GeometryReader { geo in
-            let width = geo.size.width
-            let height = geo.size.height
-
-            ZStack {
-                // Wallpaper background
-                if isDark {
-                    LinearGradient(
-                        colors: [Color(red: 0.1, green: 0.1, blue: 0.3), Color(red: 0.05, green: 0.05, blue: 0.1)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    Path { path in
-                        path.move(to: CGPoint(x: 0, y: height * 0.5))
-                        path.addQuadCurve(to: CGPoint(x: width, y: height), control: CGPoint(x: width * 0.5, y: height * 0.2))
-                        path.addLine(to: CGPoint(x: width, y: 0))
-                        path.addLine(to: CGPoint(x: 0, y: 0))
-                    }
-                    .fill(LinearGradient(colors: [Color(red: 0.2, green: 0.2, blue: 0.6).opacity(0.5), .clear], startPoint: .topLeading, endPoint: .bottomTrailing))
-                } else {
-                    LinearGradient(
-                        colors: [Color(red: 0.6, green: 0.8, blue: 0.95), Color(red: 0.2, green: 0.4, blue: 0.8)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    Path { path in
-                        path.move(to: CGPoint(x: 0, y: height * 0.5))
-                        path.addQuadCurve(to: CGPoint(x: width, y: height), control: CGPoint(x: width * 0.5, y: height * 0.2))
-                        path.addLine(to: CGPoint(x: width, y: 0))
-                        path.addLine(to: CGPoint(x: 0, y: 0))
-                    }
-                    .fill(LinearGradient(colors: [Color(red: 0.8, green: 0.9, blue: 1.0).opacity(0.6), .clear], startPoint: .topLeading, endPoint: .bottomTrailing))
-                }
-
-                // Menu bar
-                VStack(spacing: 0) {
-                    HStack {
-                        Image(systemName: "applelogo")
-                            .font(.system(size: max(height * 0.08, 6)))
-                            .foregroundColor(isDark ? .white : .black)
-                            .opacity(0.8)
-                        Spacer()
-                    }
-                    .padding(.horizontal, max(width * 0.04, 4))
-                    .frame(height: max(height * 0.12, 8))
-                    .background(.ultraThinMaterial)
-                    Spacer()
-                }
-
-                // Back window
-                VStack(spacing: 0) {
-                    Rectangle()
-                        .fill(isDark ? Color(white: 0.2) : Color(white: 0.9))
-                        .frame(height: max(height * 0.15, 8))
-                    ZStack(alignment: .top) {
-                        Rectangle()
-                            .fill(isDark ? Color(white: 0.15) : Color(white: 0.98))
-                        RoundedRectangle(cornerRadius: max(width * 0.02, 2), style: .continuous)
-                            .fill(Color.accentColor)
-                            .frame(height: max(height * 0.12, 6))
-                            .padding(max(width * 0.04, 4))
-                    }
-                }
-                .clipShape(RoundedRectangle(cornerRadius: max(width * 0.04, 4), style: .continuous))
-                .frame(width: width * 0.65, height: height * 0.45)
-                .shadow(color: .black.opacity(isDark ? 0.4 : 0.15), radius: 4, x: 0, y: 2)
-                .offset(x: -width * 0.08, y: -height * 0.1)
-
-                // Front window with traffic lights
-                VStack(spacing: 0) {
-                    ZStack {
-                        Rectangle()
-                            .fill(isDark ? Color(white: 0.18) : Color(white: 0.92))
-                        HStack(spacing: max(width * 0.025, 2)) {
-                            Circle().fill(Color(red: 1.0, green: 0.37, blue: 0.34)).frame(width: max(width * 0.04, 3))
-                            Circle().fill(Color(red: 1.0, green: 0.74, blue: 0.18)).frame(width: max(width * 0.04, 3))
-                            Circle().fill(Color(red: 0.15, green: 0.79, blue: 0.25)).frame(width: max(width * 0.04, 3))
-                            Spacer()
-                        }
-                        .padding(.horizontal, max(width * 0.04, 4))
-                    }
-                    .frame(height: max(height * 0.18, 10))
-                    Rectangle()
-                        .fill(isDark ? Color(white: 0.1) : .white)
-                }
-                .clipShape(RoundedRectangle(cornerRadius: max(width * 0.05, 5), style: .continuous))
-                .shadow(color: .black.opacity(isDark ? 0.5 : 0.2), radius: 6, x: 0, y: 3)
-                .frame(width: width * 0.75, height: height * 0.55)
-                .offset(x: width * 0.12, y: height * 0.2)
-            }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.primary.opacity(0.1), lineWidth: 1)
-        )
-    }
-}
-
-private struct ThemePickerRow: View {
-    let configurationReview: SettingsConfigurationReview
-    let selectedMode: String
-    let onSelect: (AppearanceMode) -> Void
-
-    private let thumbWidth: CGFloat = 76
-    private let thumbHeight: CGFloat = 50
-
-    init(
-        configurationReview: SettingsConfigurationReview,
-        selectedMode: String,
-        onSelect: @escaping (AppearanceMode) -> Void
-    ) {
-        configurationReview.validate()
-        self.configurationReview = configurationReview
-        self.selectedMode = selectedMode
-        self.onSelect = onSelect
-    }
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Text(String(localized: "settings.app.theme", defaultValue: "Theme"))
-                .font(.system(size: 13, weight: .medium))
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            HStack(spacing: 8) {
-                ForEach(AppearanceMode.visibleCases) { mode in
-                    let isSelected = selectedMode == mode.rawValue
-                    Button {
-                        onSelect(mode)
-                    } label: {
-                        VStack(spacing: 4) {
-                            Group {
-                                if mode == .system {
-                                    ZStack {
-                                        ThemeWindowThumbnail(isDark: false)
-                                            .mask(
-                                                GeometryReader { geo in
-                                                    Rectangle()
-                                                        .frame(width: geo.size.width / 2, height: geo.size.height)
-                                                        .position(x: geo.size.width / 4, y: geo.size.height / 2)
-                                                }
-                                            )
-                                        ThemeWindowThumbnail(isDark: true)
-                                            .mask(
-                                                GeometryReader { geo in
-                                                    Rectangle()
-                                                        .frame(width: geo.size.width / 2, height: geo.size.height)
-                                                        .position(x: geo.size.width * 0.75, y: geo.size.height / 2)
-                                                }
-                                            )
-                                        GeometryReader { geo in
-                                            Rectangle()
-                                                .fill(Color.primary.opacity(0.15))
-                                                .frame(width: 1, height: geo.size.height)
-                                                .position(x: geo.size.width / 2, y: geo.size.height / 2)
-                                        }
-                                    }
-                                } else {
-                                    ThemeWindowThumbnail(isDark: mode == .dark)
-                                }
-                            }
-                            .frame(width: thumbWidth, height: thumbHeight)
-
-                            Text(mode.displayName)
-                                .font(.system(size: 10))
-                                .fontWeight(isSelected ? .semibold : .regular)
-                                .foregroundColor(isSelected ? .primary : .secondary)
-                        }
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 10)
-                        .contentShape(Rectangle())
-                        .background(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(isSelected
-                                    ? Color.accentColor.opacity(0.12)
-                                    : Color.clear)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .focusable(false)
-                    .accessibilityAddTraits(isSelected ? .isSelected : [])
-                }
-            }
-            .layoutPriority(1)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 9)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .settingsSearchAnchors(configurationReview.searchAnchorIDs)
-    }
-}
-
-private struct AppIconPickerRow: View {
-    let configurationReview: SettingsConfigurationReview
-    let selectedMode: String
-    let onSelect: (AppIconMode) -> Void
-
-    private let iconSize: CGFloat = 48
-    private let autoIconSize: CGFloat = 36
-
-    init(
-        configurationReview: SettingsConfigurationReview,
-        selectedMode: String,
-        onSelect: @escaping (AppIconMode) -> Void
-    ) {
-        configurationReview.validate()
-        self.configurationReview = configurationReview
-        self.selectedMode = selectedMode
-        self.onSelect = onSelect
-    }
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(String(localized: "settings.app.appIcon", defaultValue: "App Icon"))
-                    .font(.system(size: 13, weight: .medium))
-                Text(String(localized: "settings.app.appIcon.subtitle", defaultValue: "Dock and app switcher"))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            HStack(spacing: 8) {
-                ForEach(AppIconMode.allCases) { mode in
-                    let isSelected = selectedMode == mode.rawValue
-                    Button {
-                        onSelect(mode)
-                    } label: {
-                        VStack(spacing: 4) {
-                            Group {
-                                if mode == .automatic {
-                                    ZStack {
-                                        Image("AppIconLight")
-                                            .resizable()
-                                            .interpolation(.high)
-                                            .frame(width: autoIconSize, height: autoIconSize)
-                                            .clipShape(RoundedRectangle(cornerRadius: autoIconSize * 0.22, style: .continuous))
-                                            .offset(x: -10)
-                                        Image("AppIconDark")
-                                            .resizable()
-                                            .interpolation(.high)
-                                            .frame(width: autoIconSize, height: autoIconSize)
-                                            .clipShape(RoundedRectangle(cornerRadius: autoIconSize * 0.22, style: .continuous))
-                                            .offset(x: 10)
-                                    }
-                                    .frame(width: iconSize, height: iconSize)
-                                } else {
-                                    Image(mode.imageName ?? "AppIconLight")
-                                        .resizable()
-                                        .interpolation(.high)
-                                        .frame(width: iconSize, height: iconSize)
-                                        .clipShape(RoundedRectangle(cornerRadius: iconSize * 0.22, style: .continuous))
-                                }
-                            }
-
-                            Text(mode.displayName)
-                                .font(.system(size: 10))
-                                .foregroundColor(isSelected ? .primary : .secondary)
-                        }
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 10)
-                        .contentShape(Rectangle())
-                        .background(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(isSelected
-                                    ? Color.accentColor.opacity(0.12)
-                                    : Color.clear)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .focusable(false)
-                    .accessibilityAddTraits(isSelected ? .isSelected : [])
-                }
-            }
-            .layoutPriority(1)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 9)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .settingsSearchAnchors(configurationReview.searchAnchorIDs)
-    }
-}
-
-private struct GlobalHotkeySection: View {
-    @AppStorage(SystemWideHotkeySettings.enabledKey) private var isEnabled = SystemWideHotkeySettings.defaultEnabled
-    @State private var shortcut = KeyboardShortcutSettings.shortcut(for: SystemWideHotkeySettings.action)
-    @State private var isManagedBySettingsFile = SystemWideHotkeySettings.isManagedBySettingsFile()
-
-    private var enabledBinding: Binding<Bool> {
-        Binding(
-            get: { isEnabled },
-            set: { newValue in
-                isEnabled = newValue
-            }
-        )
-    }
-
-    private var enableSubtitle: String {
-        if isEnabled {
-            return String(
-                localized: "settings.globalHotkey.enable.subtitleOn",
-                defaultValue: "Press the shortcut from any app to show or hide Quick Terminal."
-            )
-        }
-        return String(
-            localized: "settings.globalHotkey.enable.subtitleOff",
-            defaultValue: "Turn this on to summon Quick Terminal from any app."
-        )
-    }
-
-    var body: some View {
-        SettingsSectionHeader(title: String(localized: "settings.section.globalHotkey", defaultValue: "Global Hotkey"))
-            .accessibilityIdentifier("SettingsGlobalHotkeySection")
-            .settingsSearchAnchor(SettingsSearchIndex.sectionID(for: .globalHotkey))
-
-        SettingsCard {
-            SettingsCardRow(
-                configurationReview: .settingsOnly,
-                String(localized: "settings.globalHotkey.enable", defaultValue: "Enable Quick Terminal Hotkey"),
-                subtitle: enableSubtitle,
-                searchAnchorID: SettingsSearchIndex.settingID(for: .globalHotkey, idSuffix: "enable-hotkey")
-            ) {
-                Toggle("", isOn: enabledBinding)
-                    .labelsHidden()
-                    .controlSize(.small)
-                    .accessibilityIdentifier("SettingsGlobalHotkeyToggle")
-            }
-
-            SettingsCardDivider()
-
-            ShortcutRecorderSettingsControl(
-                action: SystemWideHotkeySettings.action,
-                shortcut: $shortcut,
-                subtitle: isManagedBySettingsFile ? KeyboardShortcutSettings.settingsFileManagedSubtitle(for: SystemWideHotkeySettings.action) : nil,
-                isDisabled: isManagedBySettingsFile
-            )
-                .padding(.horizontal, 14)
-                .padding(.vertical, 9)
-                .accessibilityIdentifier("SettingsGlobalHotkeyRecorder")
-                .settingsSearchAnchor(SettingsSearchIndex.settingID(for: .globalHotkey, idSuffix: "shortcut"))
-        }
-        .onChange(of: shortcut) { _, newValue in
-            KeyboardShortcutSettings.setShortcut(newValue, for: SystemWideHotkeySettings.action)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: KeyboardShortcutSettings.didChangeNotification)) { _ in
-            syncFromDefaults()
-        }
-
-        SettingsCardNote(
-            String(
-                localized: "settings.globalHotkey.note",
-                defaultValue: "Quick Terminal slides from the active screen edge and keeps its session running while hidden."
-            )
-        )
-            .accessibilityIdentifier("SettingsGlobalHotkeyNote")
-    }
-
-    private func syncFromDefaults() {
-        let latestShortcut = KeyboardShortcutSettings.shortcut(for: SystemWideHotkeySettings.action)
-        let latestManagedState = SystemWideHotkeySettings.isManagedBySettingsFile()
-        if latestShortcut != shortcut {
-            shortcut = latestShortcut
-        }
-        if latestManagedState != isManagedBySettingsFile {
-            isManagedBySettingsFile = latestManagedState
-        }
-    }
 }

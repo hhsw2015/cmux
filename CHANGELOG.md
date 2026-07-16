@@ -2,441 +2,266 @@
 
 All notable changes to cmux are documented here.
 
-## [0.90.0] - 2026-07-16
-
-### Changed
-- P83 cherry-pick strategy: instead of the full 50-commit upstream merge (which required re-architecting Workspace/Panel/RemoteTmux APIs), picked 33 fork-compatible commits from upstream cmux — sidebar port stabilization, retain-background-workspace mount bounding, notification store, iOS gear icon, mobile viewport font floor, workspace last-textbox-mode, `pendingRemoteForegroundAuthToken`, `cancelPendingRemoteDisconnectReplacement`, `didTearDownWebViewForRelease`, hero image + docs cleanup, misc UI fixes. Skipped: workspaces-as-todos (needs `SurfaceKind.todo`, `todoState`, `openOrFocusWorkspaceTodoSurface`), canvas 2D layout (needs `canvasModel`), tmux mirror sizing (needs private-access breaks), full docs restructure, iOS TestFlight infra changes. Fork now 17 commits behind cmux upstream on the P82 target — a real narrowing.
-- Added Workspace/BrowserPanel/TabManager stubs to satisfy the picked commits' cross-file calls without pulling upstream refactor cascades.
-
-## [0.89.0] - 2026-07-15
-
-### Changed
-- Sync submodules: ghostty `5ae712a89→366c801e0` (29 upstream, incl. wrapped URL cmd-click v2, formatter improvements), bonsplit `992a0f5→53b62878c` (18 upstream, incl. BonsplitDividerCursors).
-- Fork side: `tabContextForkConversationAvailabilityProvider` now returns new `TabContextForkConversationAvailability` enum (`.hidden`/`.refreshing`/`.available`) instead of Bool.
-- cmux upstream merge (87 commits) not integrated in this release — deferred due to escalating RemoteTmux/Workspace/Panel API divergence. Will land in a future pass.
-
-## [0.88.0] - 2026-07-13
-
-### Changed
-- Merge upstream/main: 43 cmux commits + bonsplit `992a0f5→310d346` (18 upstream, incl. BonsplitDividerCursors) + ghostty `0e302eeeb→5ae712a89` (pin adjusted to inherit upstream cmux's PR #108 `ghostty_surface_read_screen_tail_vt` symbol).
-- Rebuilt GhosttyKit.xcframework locally with zig 0.15.2 for the `5ae712a89` ghostty pin.
-- Fork side: dropped ~10 upstream new files (RemoteTmuxController+Attach/+CommandFactories/+LifecycleMutations, RemoteTmuxSessionMirror+WindowReconciliation, TerminalController+MobileAttachTicket/+SocketListenerRearm/+SocketClientCapability, Workspace+RemoteTmuxTabOrder/+RemoteDisconnectPlaceholder, TerminalPanel+SessionScrollbackReplay, RemoteDisconnectPreparationService, BrowserAddressBarFocusSelectionIntent). Added Workspace stubs: `reorderSurface(panelId:toIndex:focus:)`, kept `setAgentLifecycle`/`clearAgentLifecycle`/`hasRunningAgentLifecycle` from P80.
-- Fixed fork's TerminalController: `MobileHostIdentity.displayName()` → `.instanceDisplayName()`.
-- Wired `RemoteTmuxSessionMirror+Helpers.swift`, `MobileTerminalByteTee.swift`; used SOURCE_ROOT paths for previously-broken file refs.
-- Fixed `TerminalMobileByteTeeBridge.installTee` signature to match package protocol (added `workspaceID:` param).
-- Dropped `workspace.reorderRemoteTmuxMirrorTabs` call site (fork doesn't ship the extension).
-- CommandPalette: `weak let observedWindow` → `weak var observedWindow` compile fix.
-
-## [0.87.0] - 2026-07-11
-
-### Changed
-- Merge upstream/main: 16 cmux commits + bonsplit `01cef60→992a0f5` (2 upstream, incl. BonsplitManagedSplitView). Fork kept monolithic RemoteTmuxControlConnection; dropped upstream extension splits (+ControlConnection.Observation/+Commands/+CommandResults/+LayoutPublication/+PaneSubscriptions/+Sizing).
-- Added Workspace agent-lifecycle helpers: `setAgentLifecycle(key:panelId?:lifecycle:)`, `clearAgentLifecycle(key:panelId?:)`, `hasRunningAgentLifecycle(key:)`, `agentHibernationLifecycleState(panelId:fallback:)`, `clearAllAgentLifecycleStates()`, `enterSurfaceHibernation(panelId:lastActivityAt:)` (stub — returns false since fork routes surface hibernation through Panel path).
-- Added `.completedAgentExit` case to `Workspace.RestoredAgentResumeState` for `RestoredAgentLifecycleCoordinator` compat; added `.herdrInbound` to `CustomTitleSource`.
-- Dropped upstream `TabItemView+WorkspaceContextMenu.swift` (conflicts with fork's inline `workspaceContextMenu`).
-- Wired `TerminalTabAgentIcon.swift`, `RemoteTmuxStdoutPipeReader.swift`, `RemoteTmuxSessionEndAction.swift`, `RemoteTmuxMirrorGeometry.swift`, `RemoteTmuxMirrorFrames.swift`, `RemoteTmuxPaneHeader.swift`, `RemoteTmuxWindowMirrorView.swift`, `RemoteTmuxLayoutContainer.swift` in pbxproj (some regained after take-theirs pruning).
-
-## [0.86.0] - 2026-07-10
-
-### Changed
-- Merge upstream/main: 43 cmux commits + bonsplit `01cef60→5e568dd` (6 upstream) + ghostty `85b831a0b→0e302eeeb` (9 upstream). Highlights: App Store profile fetch, live macOS appearance switches, Ghostty custom-shader black-terminal fix + revert, typed window handles, iOS MARKETING_VERSION 1.0.4, agent-chat notification helper split, native auth handoff redirect, macOS 15 blank icon fix, ssh-tmux focus-neutral bookkeeping.
-- Fork side: kept monolithic RemoteTmux stack (dropped upstream extension files + WindowMirrorSplitView + native-metrics + control-topology/mutations refs + Confirmation/TailFingerprintSample splits + NotificationsPopover* splits). Added `workspaceIds: []` to `.mirrored(windowId:)` sites; added `lifecycleID:` at `startPTYBridge` call site; qualified `windowId.windowId.uuidString` for new tuple return.
-- Restored fork's own RemoteTmuxWindowMirrorView.swift + RemoteTmuxLayoutContainer.swift wiring lost during take-theirs pbxproj merge.
-
-## [0.85.0] - 2026-07-10
-
-### Changed
-- Merge upstream/main: 35 cmux commits + bonsplit `01cef60` (9 upstream) + ghostty `85b831a0b` (126 upstream). Highlights: dynamic-port agent-chat + app-owned sidecar, macOS 15 blank icon fix, AppleLanguages own-writes for zh-Hant, iOS Sentry+MetricKit crash telemetry, iOS surface-teardown deadlock fix, ssh-tmux mirror focus-neutral bookkeeping, SSH PTY input loss + reattach retry fixes, feature-flagged agent-chat UI, plugin manager (mux install from git), reorganized new-workspace dropdown, native Translate Selection.
-- Fork side: kept monolithic RemoteTmuxControlConnection + related classes, mutations of detachingTabIds / activeDetachCloseTransactions / pendingDetachedSurfaces now go through `splitLayout.` (upstream moved them). Qualified `CmuxSettings.AppLanguage` where fork's local enum collided.
-- Dropped upstream RemoteTmuxControlConnection extension splits (+CommandResults/+LayoutPublication/+PaneSubscriptions/+Sizing/+Commands) — fork's monolith is source of truth.
-
-## [0.84.0] - 2026-07-09
-
-### Changed
-- Merge upstream/main: 48 cmux commits + bonsplit `ad4c94e` (mux pluggable sidebar plugins, tmux/zellij keybindings, iOS TestFlight production lane, agent-chat virtualization + scroll anchoring, fork-fallback residuals fixes, memoized process-arg reads, tab icon shift fix, cmux TUI `npx cmux`/`uvx cmux` distribution, ClaudeForkFallbackSessionIndexTests migration, Save Workspace Layout sanitize).
-- Fork side: kept monolithic `RemoteTmuxControlConnection.swift` + fork's `SurfaceKind` enum shim + `AgentHookNotificationStatus` enum in CLI; skipped upstream RemoteTmux mirror rewrite (fork build path unused; ponytail comment stays).
-- New file: `Sources/RemoteTmuxPaneHeader.swift` wired back after take-theirs pbxproj lost it.
-
-## [0.83.0] - 2026-07-08
+## [0.64.19] - 2026-07-14
 
 ### Fixed
-- Top tab group: switching a top tab now updates `selectedLayoutTabId`, so the previous group's inner tab strip is preserved and the ×/switch clicks route through the delegate (bonsplit `d69bd7f`).
-- Top tab bar restored auto-hide default (hover-reveal via NSTrackingArea probe that never wins hit-tests, so tab-strip clicks pass through).
+- Fix overflowed tab bar scrolling to the wrong place, right-edge tabs hiding their close buttons, and a misaligned active-tab indicator ([#8071](https://github.com/manaflow-ai/cmux/pull/8071))
+- Preserve the Claude Code permission mode when restoring, resuming, or forking a session, including interactively chosen auto-accept/plan/bypass modes; stop a one-word prompt after a boolean flag from being replayed on resume ([#8070](https://github.com/manaflow-ai/cmux/pull/8070))
 
-### Changed
-- Merge upstream/main: 37 cmux commits (WebKit-native DevTools redock between window and panel, docked Web Inspector redock, inspector focus handoff, DevTools lifecycle stabilization + close-chord routing + reattach intent preservation, main-window fit after display topology changes, cmuxTests access-level fixes).
-- Fork-side: kept `isVisibleSideDockSiblingCandidate` helper in `BrowserPanel.swift` (upstream refactor inlined it but fork still calls it explicitly).
+### Thanks to 1 contributor!
 
-## [0.82.0] - 2026-07-08
+- [@austinywang](https://github.com/austinywang)
 
-### Changed
-- Merge upstream/main: 72 cmux commits (mux server/client control commands including 8 protocol-6 verbs, agent-chat browser-surface UI, undo routing away from AppKit menu, sidebar scroll preservation on workspace close, billing team resolution for multi-team users, `stableId` for durable deep links, workspace `sessionRestoreIdentityExclusions` + `tabStripCloseButtonByTabId`, Codex Security scan fixes, macOS CI gated behind linux preflight, SDK OIDC publish workflows).
-- Fork-side dedup: dropped duplicate `panelIdFromSurfaceId` / `surfaceIdFromPanelId` / `paneId(forPanelId:)` / `indexInPane(forPanelId:)` inline copies from Workspace.swift (fork already provides them via `Workspace+WorkspaceSurfaceTreeReading.swift` extension).
-
-## [0.81.0] - 2026-07-08
-
-### Changed
-- Merge upstream/main: 49 cmux commits (per-monitor window geometry LRU + reconciliation, workspace notification submenu, notification scrollPosition, iOS native drag & drop in workspace list, Dock pane drop routing #7529 with bidirectional regression tests, display reconfiguration tracking, CoreGraphics mirror-state signatures).
-- Fork-side dedup after upstream extractions: dropped duplicate `TerminalNotification` struct + `TerminalNotificationKind` + `cmuxNotificationAppended` (upstream moved to standalone `Sources/TerminalNotification.swift`), removed union-merge duplicates of `PaneChromeSettings.swift` and `handleRemoteTmuxSessionEndedKeepingWorkspaceOpenIfNeeded()`.
-- Add `scrollPosition`, `kind` to `TerminalNotification` (merged both fork and upstream fields).
-- Add `configFrames` to `SessionWorkspaceSnapshot` for per-display-configuration remembered frames.
-- Stub `remoteTmuxKeepWorkspaceOpenAfterSessionEnd` + related state on `Workspace` so upstream's remote-tmux keep-open handlers compile against the fork.
-
-## [0.80.0] - 2026-07-08
-
-### Changed
-- Merge upstream/main: 154 cmux commits (memory-pressure renderer reclamation with `releaseRenderer()` mailbox handshake, cloudVMLoading surface kind, single-default cloud terminal session restore path, `onTabFullWidthToggleRequest` from Bonsplit, browser panel search-overlay focus yield + tear-down hardening, browser close review follow-ups, dashboard nav updates, sidebar / drag / tab context menu improvements, i18n).
-- Merge bonsplit submodule: 7 upstream commits (`SplitViewController+TabDrag` extraction, `TabContextAction` additions, tab bar + tab item rewrites, extensive tests).
-- Restore `closeTabWarningDefaults` / `agentSessionAutoResumeDefaults` stored properties on `Workspace` (previous release dropped them, but upstream's `WorkspaceCloseTabsBatching` extension needs them).
-- Add `.cloudVMLoading` case to `SurfaceKind` namespace + `SessionBlueprintEncoder` switch; strip `.rawValue` accesses since fork's `SurfaceKind` is a namespace of `static let` strings.
-- Fork's inline `GhosttyTerminalView.releaseRenderer()` now returns `Bool` (matches upstream `TerminalSurface+Renderer` API) so the memory-pressure controller can count reclaimed renderers.
-
-## [0.79.0] - 2026-07-07
-
-### Changed
-- Merge upstream/main: 50 cmux commits (fork validation cache/PID identity, TestFlight external review retries + auto-submit, remote agent cwd trust hardening, iOS terminal picker refresh scroll reset, VM lifecycle in `cloud ls`, `cmux ai-accounts` CLI upload, host-scoped custom terminal upload commands, mux TUI docs + API/CLI spec, dev toolchains baked into Cloud VM base image, main window stranded-screen re-clamp, closed window regression test, sidebar directory reports moved to support file).
-- Merge bonsplit submodule: 3 upstream commits (tab item view + BonsplitController tests).
-- Fork-side dedup after merge: dropped duplicate `SurfaceResumeBindingIndex` / `ProcessDetectedResumeIndexes` / `setCustomTitle` blocks that upstream extracted; dropped upstream's `closeTabWarningDefaults` / `agentSessionAutoResumeDefaults` stored properties on `Workspace` (fork's init discards those params).
-
-## [0.78.0] - 2026-07-06
-
-### Changed
-- Merge upstream/main: 2 cmux commits (Claude Code PushNotification tool bridged into cmux notifications, localized compare SEO pages).
-
-## [0.77.0] - 2026-07-06
-
-### Changed
-- Merge upstream/main: 50 cmux commits (Pro pricing + Stripe checkout with webhook-driven entitlements, subrouter tenant management with Stack teams + AI accounts dashboard, `__internal_flags` feature flag inspector, mobile connect titlebar accessory, symlink-aware settings config watcher, resume suspended Cloud VMs on demand).
-- Resolve `Sources/Update/UpdateTitlebarAccessory.swift` to keep both `rightSidebarToggleIdentifier` (fork) and `mobileConnectIdentifier` (upstream).
-- Resolve `Sources/cmuxApp.swift` to keep both `cmux.quickTerminal` (fork) and `cmux.proBadgeDebug` (upstream) shortcut ids.
-- Resolve `.github/swift-file-length-budget.tsv` conflicts with per-path max cap.
-
-## [0.76.0] - 2026-07-06
-
-### Changed
-- Merge upstream/main: 39 cmux commits (KeyboardShortcutsSection virtualized NSTableView list with recycling + wheel forwarding, ShortcutListModel extraction, serialized shortcut binding writes with rollback invalidation, workspace drag payload eager-materialization on main thread, sidebar inline rename enter-commit + font-magnification fixes).
-- Consolidate `SidebarTabDragPayload`: dropped fork's inline enum in ContentView.swift, extended upstream's extracted `Sources/Sidebar/SidebarTabDragPayload.swift` struct with `currentProcessMarkerType` + `hasTransferType(in:)`.
-
-## [0.75.0] - 2026-07-06
-
-### Changed
-- Merge upstream/main: 27 cmux commits (CMUX Vault cloud sync CLI + multi-tenant backend + dashboard, Codex session restore authority fix, control socket CLI handling off main thread, client config env guard for local builds, sidebar inline rename with IME + double-click support, macOS-15 CI → WarpBuild).
-- Resolve `.github/swift-file-length-budget.tsv` conflicts by keeping the max cap per path so fork's larger files stay tracked.
-
-## [0.74.0] - 2026-07-05
-
-### Changed
-- Merge upstream/main: 26 cmux commits (client config API, ssh RemoteCommand fix, mouse OSC 22 cursor shape, iOS chat/theme, cmuxd-remote v2 protocol, Fork Conversation menu).
-- ghostty submodule: 963fdcc92 → 261def7df (merge manaflow/main +276 including kitty/gfx generation stamps, selection gesture, glyf rasterize, VOUCHED updates).
-- Wire 14 new upstream Sources/*.swift files to pbxproj (PaneChromeSettings, ForkConversation menu, Mobile AgentChat lifecycle, MobileHostTerminalTheme, SurfaceResumeCommandCanonicalizer+CodexUpdateCheck).
-
-## [0.73.0] - 2026-07-03
+## [0.64.18] - 2026-07-14
 
 ### Added
-- Zoom shortcuts for text file previews (#7157).
-- Arc cookie import (#7224).
-- Configurable TextBox submit actions (#6656).
-- Give every window its own independent Dock (#7144).
-- RTL terminal shaping support (#7019).
-- Route terminal file URL links to the OS (#7122).
+- Saved workspace layouts: capture the current split arrangement as a named layout, reopen it from the + menu, and set a default layout for new workspaces ([#7414](https://github.com/manaflow-ai/cmux/pull/7414), [#7354](https://github.com/manaflow-ai/cmux/pull/7354)) -- thanks @azooz2003-bit!
+- Fork Conversation from an agent terminal's context menu into a new split, tab, or workspace ([#7259](https://github.com/manaflow-ai/cmux/pull/7259))
+- Manual SSH reconnect: press Enter in a disconnected pane, or use the Reconnect Pane menu ([#7250](https://github.com/manaflow-ai/cmux/pull/7250)) -- thanks @0xJord4n!
+- Remember and restore window position and size per monitor configuration ([#7477](https://github.com/manaflow-ai/cmux/pull/7477)) -- thanks @mxschmitt, and @kojitakemoto for the report!
+- Rename workspaces inline by double-clicking their sidebar row ([#7395](https://github.com/manaflow-ai/cmux/pull/7395))
+- Per-pane Full Width Tab mode via the command palette or tab context menu ([#7425](https://github.com/manaflow-ai/cmux/pull/7425)) -- thanks @azooz2003-bit!
+- Pane border color settings, including a distinct color for the active pane ([#7239](https://github.com/manaflow-ai/cmux/pull/7239))
+- Sleepy Mode: a menubar screensaver that keeps your Mac awake ([#6740](https://github.com/manaflow-ai/cmux/pull/6740))
+- Native Translate Selection in the terminal context menu ([#7510](https://github.com/manaflow-ai/cmux/pull/7510)) -- thanks @timothyliu!
+- Automatic compression of cold terminal scrollback to reduce memory use ([#7758](https://github.com/manaflow-ai/cmux/pull/7758))
+- A coordinated memory-pressure response that reclaims hidden terminal renderers ([#7496](https://github.com/manaflow-ai/cmux/pull/7496), [#7050](https://github.com/manaflow-ai/cmux/pull/7050))
+- Campfire agent support ([#5813](https://github.com/manaflow-ai/cmux/pull/5813)) -- thanks @NishantJoshi00!
+- Ollama agent support: detection, turn notifications, and relaunch resume ([#7907](https://github.com/manaflow-ai/cmux/pull/7907))
+- Kimi Code hook integration via `cmux hooks setup` ([#7201](https://github.com/manaflow-ai/cmux/pull/7201)) -- thanks @liruifengv!
+- Updated Pi hook integration and closed oh-my-pi (omp) gaps ([#7008](https://github.com/manaflow-ai/cmux/pull/7008), [#7568](https://github.com/manaflow-ai/cmux/pull/7568))
+- Per-category agent notification settings, gated on genuinely background work ([#7129](https://github.com/manaflow-ai/cmux/pull/7129))
+- Workspace notification submenu ([#7263](https://github.com/manaflow-ai/cmux/pull/7263)) and a `notifications.suppressOnlyFocusedSurface` setting ([#6893](https://github.com/manaflow-ai/cmux/pull/6893))
+- Bridge Claude Code's PushNotification tool into cmux notifications ([#7385](https://github.com/manaflow-ai/cmux/pull/7385))
+- Durable tab deep links that survive app restarts ([#5769](https://github.com/manaflow-ai/cmux/pull/5769))
+- Terminal tabs show the active agent's brand icon in a static slot ([#7607](https://github.com/manaflow-ai/cmux/pull/7607))
+- Browser: HTTP basic-auth prompt ([#2500](https://github.com/manaflow-ai/cmux/pull/2500)) -- thanks @lucaspiritogit!
+- Browser: proceed-anyway option on invalid TLS certificates ([#3711](https://github.com/manaflow-ai/cmux/pull/3711)) -- thanks @deftdawg!
+- Browser: Arc cookie import ([#7224](https://github.com/manaflow-ai/cmux/pull/7224))
+- TextBox (beta): configurable submit actions, and the last-used mode is remembered ([#6656](https://github.com/manaflow-ai/cmux/pull/6656), [#8008](https://github.com/manaflow-ai/cmux/pull/8008))
+- Smooth Vim and Emacs navigation in file viewers ([#7921](https://github.com/manaflow-ai/cmux/pull/7921))
+- Zoom shortcuts for text file previews ([#7157](https://github.com/manaflow-ai/cmux/pull/7157)) -- thanks @Nauxie!
+- Open `file://` links from the terminal in the OS default app ([#7122](https://github.com/manaflow-ai/cmux/pull/7122))
+- Entrypoints to create empty workspace groups ([#7061](https://github.com/manaflow-ai/cmux/pull/7061)) -- thanks @azooz2003-bit!
+- CLI: `cmux ssh-session-attach --split` anchors in the target workspace ([#7376](https://github.com/manaflow-ai/cmux/pull/7376)); shorter unknown-command errors with suggestions ([#7329](https://github.com/manaflow-ai/cmux/pull/7329))
 
 ### Changed
-- Merge upstream/main: 37 cmux commits + submodule bumps (P67).
-- ghostty submodule: 120c6c68c → 963fdcc92 (RTL shaping + render-grid span fix; renderer_realized retained).
-- vendor/bonsplit submodule: bump to include tab focus width fix (#155).
-- Keep managed default theme when user sets individual color keys (#7217).
-- Rescue split/new-tab cwd inheritance while a resumed agent holds the pane (#7155, #7165).
-- Gate agent notifications on background work + per-category settings (#7129).
-- perf(sidebar): throttle immediate observation publisher to coalesce agent title bursts (#6807).
-- Decouple scroll from full-window relayout (drop NSWindow.didUpdate follow-up wake) (#6801).
-- Keep forkable sessions with stale pids (#6803).
-- iOS: rebuild the disconnected Your Computers screen as a real list (#7156).
+- Settings opens in a reliable AppKit-owned window with modern chrome and a restored sidebar toggle ([#7783](https://github.com/manaflow-ai/cmux/pull/7783), [#8015](https://github.com/manaflow-ai/cmux/pull/8015), [#8047](https://github.com/manaflow-ai/cmux/pull/8047))
+- Remote tmux mirroring (beta) mirrors into the current window by default; `--new-window` keeps a dedicated window ([#7264](https://github.com/manaflow-ai/cmux/pull/7264)) -- thanks @0xJord4n!
+- Remote tmux mirroring (beta): mirror sessions as native workspaces ([#7406](https://github.com/manaflow-ai/cmux/pull/7406)); exact feed-forward pane sizing, live pane headers, and an active-pane indicator ([#7315](https://github.com/manaflow-ai/cmux/pull/7315)) -- thanks @ejc3!
+- Remote tmux mirroring (beta): a friendly install hint when the remote has no tmux ([#7368](https://github.com/manaflow-ai/cmux/issues/7368)), and a clear error below the tmux 3.2 minimum ([#6755](https://github.com/manaflow-ai/cmux/pull/6755)) -- thanks @mxschmitt!
+- Follow live macOS light/dark switches in system appearance mode ([#7206](https://github.com/manaflow-ai/cmux/pull/7206)) -- thanks @Diabl0269, and @gupsammy for the report!
+- Updates now install the newest available version at install time ([#6853](https://github.com/manaflow-ai/cmux/pull/6853)); Sparkle 2.9.3 stops auto-update from killing running agents on macOS 26 ([#6678](https://github.com/manaflow-ai/cmux/pull/6678))
+- The new-workspace (+) dropdown is reorganized into explicit sections ([#7709](https://github.com/manaflow-ai/cmux/pull/7709))
+- Notification popover leads with workspace names ([#7769](https://github.com/manaflow-ai/cmux/pull/7769)); the sidebar shows more notification content ([#7965](https://github.com/manaflow-ai/cmux/pull/7965))
+- Suppress codex's blocking startup update prompt on cmux-driven resumes ([#7222](https://github.com/manaflow-ai/cmux/pull/7222))
+- Continue a handed-off Safari sign-in in the default browser ([#7805](https://github.com/manaflow-ai/cmux/pull/7805)); allow account switching after native sign-in ([#7146](https://github.com/manaflow-ai/cmux/pull/7146))
+- Move CLI socket command handling off the main thread ([#7357](https://github.com/manaflow-ai/cmux/pull/7357))
+- Open local HTML previews without stealing focus ([#6717](https://github.com/manaflow-ai/cmux/pull/6717))
+- Preserve plain `ANTHROPIC_MODEL` inside cmux so Opus keeps the Max-plan 1M window ([#7059](https://github.com/manaflow-ai/cmux/pull/7059))
 
 ### Fixed
-- iOS render grid row replay after resize (#7176).
-- iOS terminal typing render-grid drift (#7175).
-- iOS terminal cold attach first paint (#7172).
-- iOS render-grid load garble (#7159, #7171).
-- iOS terminal: fill available vertical space; fix stale viewport echo letterbox (#7150).
-- Run file explorer git status without optional locks (#7173).
-- iOS toolbar glass and lifecycle (#7116).
-- Scrub Claude resume env before nested exec.
-- iOS GUI chat top flash (#7108).
-- iOS bottom-scroll viewport anchoring (#7153).
-- Tab bar width shift on surface focus (#6812).
-- Allow account switching after native sign-in (#7146).
-- iOS render grid column drift.
-- iOS workspace back button rendering as an oversized glass square (#7148).
-- remote-tmux: recover interactive SSH auth when a ProxyCommand transport closes silently (#7020).
-- Report_pwd display labels as file roots (#4608).
-- Browser pane: keep loopback bypass for *.localhost under "Exclude simple hostnames" (#6827).
-- Allow Cmd-Space IME switching in workspace description editor (#6956).
-- remote-tmux: strip the screen/tmux ESC k window-title escape from mirror output (#7023).
-- Open the ssh-tmux auth ControlMaster in the foreground (drop -f) for a deterministic handoff (#7063).
-- Keep iOS chat top edge visible during keyboard (#7112).
-- iOS: let sideloaded dev builds pair with release Macs (--prod-auth) and explain cross-channel QR failures truthfully (#7149).
-- Fix cmux iOS toolbar regression.
+- Fix runaway scrolling with high-resolution mice ([#6449](https://github.com/manaflow-ai/cmux/pull/6449)) -- thanks @samuelpatro!
+- Forward right/middle mouse drags to the terminal so tmux menus work ([#7319](https://github.com/manaflow-ai/cmux/pull/7319)); honor OSC 22 mouse-cursor-shape requests ([#7318](https://github.com/manaflow-ai/cmux/pull/7318))
+- Fix light-theme white-on-white terminal text ([#6896](https://github.com/manaflow-ai/cmux/pull/6896))
+- Fix malformed `LC_ALL` collapsing the spawned-shell locale to C ([#7183](https://github.com/manaflow-ai/cmux/pull/7183)) -- thanks @artisticmedic for the report!
+- Fix zsh shell integration printing `file exists` under noclobber ([#6815](https://github.com/manaflow-ai/cmux/pull/6815)) -- thanks @boolafish for the report!
+- Emit a fish-safe resume cwd-guard ([#6328](https://github.com/manaflow-ai/cmux/pull/6328)); pin BSD `nc` for shell-integration socket sends ([#7789](https://github.com/manaflow-ai/cmux/pull/7789))
+- Allow Cmd-Space IME switching in the workspace description editor ([#6956](https://github.com/manaflow-ai/cmux/pull/6956))
+- Rescue split/new-tab cwd inheritance while a resumed agent holds the pane ([#7165](https://github.com/manaflow-ai/cmux/pull/7165))
+- Prevent hibernation from reaping live agent processes ([#6576](https://github.com/manaflow-ai/cmux/pull/6576))
+- Fix agent hooks misrouting notifications to the focused tab ([#7228](https://github.com/manaflow-ai/cmux/pull/7228)) -- thanks @wowpotato!
+- Keep Claude hooks authorized after socket rebinds ([#7953](https://github.com/manaflow-ai/cmux/pull/7953)) -- thanks @belliedmonkey for the report!
+- Claude hook acks are silent JSON instead of a visible OK block in Claude Code ([#7963](https://github.com/manaflow-ai/cmux/pull/7963)) -- thanks @cameronsjo!
+- Resolve agent notification targets from live identity at delivery time ([#7946](https://github.com/manaflow-ai/cmux/pull/7946))
+- Fix the Claude shim mutual exec loop ([#7010](https://github.com/manaflow-ai/cmux/pull/7010)); fix oh-my-zsh agent auto-resume ([#7089](https://github.com/manaflow-ai/cmux/pull/7089))
+- Fix garbled Claude Code TUI in `cmux ssh` remote workspaces ([#6831](https://github.com/manaflow-ai/cmux/pull/6831))
+- Persist Claude transcript lookups across agent-index reloads ([#7350](https://github.com/manaflow-ai/cmux/pull/7350)); keep forkable sessions with stale pids ([#6803](https://github.com/manaflow-ai/cmux/pull/6803))
+- Fix SSH workspaces not reattaching after the Mac sleeps ([#7987](https://github.com/manaflow-ai/cmux/pull/7987)) -- thanks @petrcernansky for the report!
+- Preserve one-shot SSH output after disconnect ([#7914](https://github.com/manaflow-ai/cmux/pull/7914))
+- Fix `cmux ssh` against hosts configured with RemoteCommand/RequestTTY ([#7359](https://github.com/manaflow-ai/cmux/pull/7359))
+- Fix SSH PTY input loss and reordering at reconnect seams ([#7717](https://github.com/manaflow-ai/cmux/pull/7717)); stop the reattach loop aborting after one retry ([#7711](https://github.com/manaflow-ai/cmux/pull/7711)); fix a cleanup reconnect storm ([#7741](https://github.com/manaflow-ai/cmux/pull/7741))
+- Fix the stale "Connected" badge on dead remote SSH workspaces ([#7828](https://github.com/manaflow-ai/cmux/pull/7828)); fix remote SSH workspace cwd tracking ([#6747](https://github.com/manaflow-ai/cmux/pull/6747))
+- Remote tmux: open the shared ControlMaster before the attach burst so all sessions mirror ([#6839](https://github.com/manaflow-ai/cmux/pull/6839))
+- Fix macOS 27 launch crashes from SF Symbol rasterization ([#6890](https://github.com/manaflow-ai/cmux/pull/6890), [#6728](https://github.com/manaflow-ai/cmux/pull/6728)) -- thanks @azooz2003-bit, and @vk1356 for the report!
+- Fix blank app icon rendering on macOS 15 ([#7729](https://github.com/manaflow-ai/cmux/pull/7729)); restore titlebar icon sizing ([#8039](https://github.com/manaflow-ai/cmux/pull/8039))
+- Fix native fullscreen being unreachable on multi-monitor setups ([#6830](https://github.com/manaflow-ai/cmux/pull/6830)) -- thanks @xoxouser00 for the report!
+- Fix notification-list layout thrash on launch ([#6886](https://github.com/manaflow-ai/cmux/pull/6886)) -- thanks @sedghi for the report!
+- Guard the workspace sidebar against layout re-livelock ([#6870](https://github.com/manaflow-ai/cmux/pull/6870)) -- thanks @angelobruv for the report!
+- Never park the main thread waiting on a socket callback ([#6860](https://github.com/manaflow-ai/cmux/pull/6860))
+- Bound app termination with a force-exit watchdog ([#6837](https://github.com/manaflow-ai/cmux/pull/6837)) -- thanks @spaceshipmike for the report!
+- Fix a tab bar relayout feedback loop ([#7997](https://github.com/manaflow-ai/cmux/pull/7997)) -- thanks @nkbai for the report!
+- Fix workspace switch latency from hibernation portal reconcile ([#7236](https://github.com/manaflow-ai/cmux/pull/7236), [#7231](https://github.com/manaflow-ai/cmux/pull/7231))
+- Fix the minimal mode toggle relayout hang ([#7076](https://github.com/manaflow-ai/cmux/pull/7076))
+- Fix sidebar hangs from sustained process-title churn and hover lifecycle reentry ([#7754](https://github.com/manaflow-ai/cmux/pull/7754), [#8007](https://github.com/manaflow-ai/cmux/pull/8007))
+- Fix the sidebar scroll render storm and decouple scrolling from full-window relayout ([#7117](https://github.com/manaflow-ai/cmux/pull/7117), [#6801](https://github.com/manaflow-ai/cmux/pull/6801))
+- Preserve sidebar scroll when closing workspaces ([#7594](https://github.com/manaflow-ai/cmux/pull/7594)) -- thanks @azooz2003-bit!
+- Fix notification scroll restoration ([#7901](https://github.com/manaflow-ai/cmux/pull/7901))
+- Fix tab icon shift during pane resize ([#7637](https://github.com/manaflow-ai/cmux/pull/7637)); fix stale terminal agent tab icons ([#7740](https://github.com/manaflow-ai/cmux/pull/7740)); restore terminal-only tab icons ([#7824](https://github.com/manaflow-ai/cmux/pull/7824))
+- Fix workspace color picker hue drift ([#6762](https://github.com/manaflow-ai/cmux/pull/6762)); fix diff viewer transparency ([#6671](https://github.com/manaflow-ai/cmux/pull/6671))
+- Fix Cmd+I breaking italics in browser text editors ([#6862](https://github.com/manaflow-ai/cmux/pull/6862)); fix Canvas keyboard shortcut routing ([#6704](https://github.com/manaflow-ai/cmux/pull/6704)) -- thanks @azooz2003-bit!
+- Fix workspace number shortcut rebinding ([#5616](https://github.com/manaflow-ai/cmux/pull/5616))
+- Make pane-divider resize cursors easier to hit and stop cursor bleed-through from occluded windows ([#7816](https://github.com/manaflow-ai/cmux/pull/7816))
+- Fit main windows after display topology changes ([#7308](https://github.com/manaflow-ai/cmux/pull/7308))
+- Reassert Ghostty focus before physical input ([#7278](https://github.com/manaflow-ai/cmux/pull/7278))
+- Fix workspace group drag-drop intent ([#6724](https://github.com/manaflow-ai/cmux/pull/6724))
+- Run file explorer git status without optional locks ([#7173](https://github.com/manaflow-ai/cmux/pull/7173)); cache git dirty snapshots between watcher events ([#6795](https://github.com/manaflow-ai/cmux/pull/6795)); cut steady-state sysctl burn from process snapshots ([#7349](https://github.com/manaflow-ai/cmux/pull/7349))
+- Stabilize sidebar ports across transient scan misses ([#7952](https://github.com/manaflow-ai/cmux/pull/7952))
+- Route browser-pane file drops by intent so they never silently become previews ([#7634](https://github.com/manaflow-ai/cmux/pull/7634))
+- Fix browser downloads from subframes ([#6756](https://github.com/manaflow-ai/cmux/pull/6756)); fix mTLS client certificate challenges ([#7040](https://github.com/manaflow-ai/cmux/pull/7040))
+- Wire PDF preview download and print toolbar actions ([#4266](https://github.com/manaflow-ai/cmux/issues/4266))
+- Fix omnibar suggestion clicks falling through to the page ([#7468](https://github.com/manaflow-ai/cmux/pull/7468)); don't let an unfocused omnibar submit on physical Enter ([#6818](https://github.com/manaflow-ai/cmux/pull/6818)) -- thanks @LanceOlsen for the report!
+- Fix browser panes stuck black after a failed discard-restore ([#7533](https://github.com/manaflow-ai/cmux/pull/7533))
+- Keep loopback bypass for `*.localhost` under "Exclude simple hostnames" ([#6827](https://github.com/manaflow-ai/cmux/pull/6827))
+- Fix Traditional Chinese (zh-Hant) showing as Simplified ([#7698](https://github.com/manaflow-ai/cmux/pull/7698))
+- iOS (beta): view artifacts referenced in agent sessions ([#7674](https://github.com/manaflow-ai/cmux/pull/7674)) -- thanks @azooz2003-bit!
+- iOS (beta): GitHub sign-in ([#7493](https://github.com/manaflow-ai/cmux/pull/7493)); account deletion and legal links ([#7645](https://github.com/manaflow-ai/cmux/pull/7645)) -- thanks @azooz2003-bit!
+- iOS (beta): arbitrary terminal themes ([#6664](https://github.com/manaflow-ai/cmux/pull/6664))
+- iOS (beta): native drag & drop in the workspace list and create-workspace-in-group ([#7384](https://github.com/manaflow-ai/cmux/pull/7384)) -- thanks @azooz2003-bit!
+- iOS (beta): show which features a Mac update unlocks when the connected Mac is older ([#7960](https://github.com/manaflow-ai/cmux/pull/7960)) -- thanks @azooz2003-bit!
+- iOS (beta): full-height terminal output and render/viewport fixes ([#7071](https://github.com/manaflow-ai/cmux/pull/7071), [#7150](https://github.com/manaflow-ai/cmux/pull/7150), [#7172](https://github.com/manaflow-ai/cmux/pull/7172), [#7175](https://github.com/manaflow-ai/cmux/pull/7175)) -- thanks @azooz2003-bit!
+- iOS (beta): optimistically scroll to bottom when typing while scrolled up ([#7196](https://github.com/manaflow-ai/cmux/pull/7196))
+- iOS (beta): `cmux mobile set-font` live-resizes the mirrored terminal ([#6674](https://github.com/manaflow-ai/cmux/pull/6674))
 
-## [0.72.0] - 2026-07-01
+### Thanks to 29 contributors!
+
+- [@0xJord4n](https://github.com/0xJord4n)
+- [@angelobruv](https://github.com/angelobruv)
+- [@artisticmedic](https://github.com/artisticmedic)
+- [@austinywang](https://github.com/austinywang)
+- [@azooz2003-bit](https://github.com/azooz2003-bit)
+- [@belliedmonkey](https://github.com/belliedmonkey)
+- [@boolafish](https://github.com/boolafish)
+- [@cameronsjo](https://github.com/cameronsjo)
+- [@deftdawg](https://github.com/deftdawg)
+- [@Diabl0269](https://github.com/Diabl0269)
+- [@ejc3](https://github.com/ejc3)
+- [@gupsammy](https://github.com/gupsammy)
+- [@kojitakemoto](https://github.com/kojitakemoto)
+- [@LanceOlsen](https://github.com/LanceOlsen)
+- [@lawrencecchen](https://github.com/lawrencecchen)
+- [@liruifengv](https://github.com/liruifengv)
+- [@lucaspiritogit](https://github.com/lucaspiritogit)
+- [@mxschmitt](https://github.com/mxschmitt)
+- [@Nauxie](https://github.com/Nauxie)
+- [@NishantJoshi00](https://github.com/NishantJoshi00)
+- [@nkbai](https://github.com/nkbai)
+- [@petrcernansky](https://github.com/petrcernansky)
+- [@samuelpatro](https://github.com/samuelpatro)
+- [@sedghi](https://github.com/sedghi)
+- [@spaceshipmike](https://github.com/spaceshipmike)
+- [@timothyliu](https://github.com/timothyliu)
+- [@vk1356](https://github.com/vk1356)
+- [@wowpotato](https://github.com/wowpotato)
+- [@xoxouser00](https://github.com/xoxouser00)
+
+## [0.64.17] - 2026-06-23
 
 ### Added
-- Empty workspace group entrypoints (#7061).
+- Remote tmux mirroring over SSH using `-CC` control mode, in beta ([#5553](https://github.com/manaflow-ai/cmux/pull/5553)) -- thanks @robertnisipeanu!
+- Global font magnification to scale the whole interface ([#6554](https://github.com/manaflow-ai/cmux/pull/6554))
+- Right-sidebar custom sidebar tabs ([#6430](https://github.com/manaflow-ai/cmux/pull/6430))
+- Chrome-style audio-playing indicator on browser panes ([#6517](https://github.com/manaflow-ai/cmux/pull/6517))
+- Browser hard-refresh shortcut ([#6256](https://github.com/manaflow-ai/cmux/pull/6256))
+- Clear Screen (Keep Scrollback) command, bound to Cmd+Shift+K ([#6139](https://github.com/manaflow-ai/cmux/pull/6139))
+- Configurable terminal scroll-speed multiplier via `terminal.scrollSpeed` ([#5671](https://github.com/manaflow-ai/cmux/pull/5671)) -- thanks @RubiconPerform!
+- Open the selected file from the keyboard in the file explorer ([#6001](https://github.com/manaflow-ai/cmux/pull/6001))
+- One-step grouped workspace creation ([#6657](https://github.com/manaflow-ai/cmux/pull/6657))
+- Searchable, uncapped diff viewer branch-base picker with smart defaults ([#6484](https://github.com/manaflow-ai/cmux/pull/6484)) -- thanks @azooz2003-bit!
+- Mark workspaces read/unread and clear notifications from the workspace group menu ([#6535](https://github.com/manaflow-ai/cmux/pull/6535)) -- thanks @azooz2003-bit!
+- Profiling capture action with a live progress window ([#6433](https://github.com/manaflow-ai/cmux/pull/6433), [#6440](https://github.com/manaflow-ai/cmux/pull/6440))
+- `cmux remotes` CLI to manage device-registry routes ([#6096](https://github.com/manaflow-ai/cmux/pull/6096))
+- Flag "Needs input" for blocked AskUserQuestion and ExitPlanMode prompts under `--dangerously-skip-permissions` ([#6608](https://github.com/manaflow-ai/cmux/pull/6608))
+- iOS (beta): on-device voice dictation in the composer ([#6197](https://github.com/manaflow-ai/cmux/pull/6197))
+- iOS (beta): image attachments in the composer ([#6102](https://github.com/manaflow-ai/cmux/pull/6102))
+- iOS (beta): Return key on the terminal accessory bar ([#6101](https://github.com/manaflow-ai/cmux/pull/6101))
+- iOS (beta): mark workspaces read/unread from the terminal menu, with an unread-count badge on the back button ([#6362](https://github.com/manaflow-ai/cmux/pull/6362), [#6350](https://github.com/manaflow-ai/cmux/pull/6350))
 
 ### Changed
-- Merge upstream/main: 22 cmux commits (P66).
-- Use full-height primary terminal output on iOS (#7071).
+- Terminal and browser surface tabs hug their content instead of stretching to a fixed width ([#6653](https://github.com/manaflow-ai/cmux/pull/6653))
+- Prioritize full command-palette title matches over partial ones ([#6498](https://github.com/manaflow-ai/cmux/pull/6498))
+- Reduce UI lag from Settings, sidebar, git, and browser churn ([#6260](https://github.com/manaflow-ai/cmux/pull/6260)) -- thanks @azooz2003-bit!
+- Evict hidden browser WebViews under memory pressure and defer restored WebViews until visible ([#6585](https://github.com/manaflow-ai/cmux/pull/6585), [#6508](https://github.com/manaflow-ai/cmux/pull/6508))
+- Gate idle pollers to the active workspace ([#6583](https://github.com/manaflow-ai/cmux/pull/6583))
+- Diff viewer toolbar stays responsive and never overlaps at small widths ([#6550](https://github.com/manaflow-ai/cmux/pull/6550)) -- thanks @azooz2003-bit!
+- Allow `.m4r` files as notification sounds ([#6635](https://github.com/manaflow-ai/cmux/pull/6635))
+- iOS (beta): collapse workspace folders per device ([#6666](https://github.com/manaflow-ai/cmux/pull/6666))
 
 ### Fixed
-- Preserve iOS chat scroll momentum (#7109).
-- Refine iOS workspace picker loading state (#7114).
-- Sidebar scroll render storm (#7117).
-- Recover iOS terminal render pipeline stalls (#7098).
-- iOS Mac switching from workspace picker (#7096).
-- Revert "Flatten mobile terminal switcher menu" (#7097).
-- iOS workspace filter machine snapshots (#7095).
-- iOS workspace title toolbar island (#7092).
-- Minimal mode toggle relayout hang (#7076).
-- oh-my-zsh agent auto-resume (#7089).
-- Workspace number shortcut rebinding (#5616).
-- Mobile chat shortcut scroll edge blur (#7051).
-- iOS Mac picker device parity (#7083).
-- iOS chat keyboard scroll edge bleed (#7072).
-- Browser downloads from subframes (#6756).
-- Keep iOS workspace toolbar visible before sessions (#7078).
-- iOS chat transcript expansion anchoring (#7057).
-- Titlebar SF Symbol raster sizing (#7074).
-- Keep mobile chat GUI cached during reconnect (#7064).
+- Fix a sidebar lag regression from v0.64.16 by cutting per-row font-modifier and pin-state work ([#6613](https://github.com/manaflow-ai/cmux/pull/6613))
+- Fix the Codex sidebar status lifecycle and stale Claude notification sidebar status ([#6609](https://github.com/manaflow-ai/cmux/pull/6609), [#6473](https://github.com/manaflow-ai/cmux/pull/6473))
+- Fix sidebar tab selection highlight timing ([#6627](https://github.com/manaflow-ai/cmux/pull/6627))
+- Fix Cmd+T opening in home after an agent-resume session restore ([#6621](https://github.com/manaflow-ai/cmux/pull/6621))
+- Fix explicit surface routing for read-screen and send ([#6605](https://github.com/manaflow-ai/cmux/pull/6605))
+- Fix stale surface-to-panel rebinding and stale agent-resume executable paths ([#6581](https://github.com/manaflow-ai/cmux/pull/6581), [#6582](https://github.com/manaflow-ai/cmux/pull/6582))
+- Fix terminal input after a window key restore ([#6518](https://github.com/manaflow-ai/cmux/pull/6518))
+- Fix the Cmd+grave show/hide global hotkey ([#6477](https://github.com/manaflow-ai/cmux/pull/6477))
+- Fix vim copy-mode cursor, V/Y selection, and pasteboard ([#6221](https://github.com/manaflow-ai/cmux/pull/6221))
+- Fix copy-on-select parity with Ghostty ([#6200](https://github.com/manaflow-ai/cmux/pull/6200))
+- Fix the crash-diagnostic window restore ([#6596](https://github.com/manaflow-ai/cmux/pull/6596))
+- Fix a tab-switch crash in the vertical sidebar ([#6340](https://github.com/manaflow-ai/cmux/pull/6340))
+- Fix a ~100% CPU re-render loop when selecting a bundled extension sidebar ([#6341](https://github.com/manaflow-ai/cmux/pull/6341))
+- Fix blank SF Symbol controls on macOS 27 ([#6396](https://github.com/manaflow-ai/cmux/pull/6396))
+- Fix the audio indicator audibility signal ([#6566](https://github.com/manaflow-ai/cmux/pull/6566))
+- Fix browser download trigger parity ([#6258](https://github.com/manaflow-ai/cmux/pull/6258))
+- Recover Settings opened from offscreen frames, and stop a closed Settings window from reappearing ([#5806](https://github.com/manaflow-ai/cmux/pull/5806), [#6193](https://github.com/manaflow-ai/cmux/pull/6193))
+- Fix title-churn beachball in transcript adoption and sidebar rows ([#6460](https://github.com/manaflow-ai/cmux/pull/6460))
+- Restore the pane header title after a terminal restart ([#6333](https://github.com/manaflow-ai/cmux/pull/6333))
+- Recover a blank Markdown viewer pane after dragging it to another column ([#6331](https://github.com/manaflow-ai/cmux/pull/6331))
+- Vault sidebar always offers "Show more" so capped folder sections stay reachable ([#6327](https://github.com/manaflow-ai/cmux/pull/6327))
+- Fix the working directory after session-restore resume for Claude and other agents ([#6458](https://github.com/manaflow-ai/cmux/pull/6458), [#6205](https://github.com/manaflow-ai/cmux/pull/6205))
+- Fix Claude Code 2.1.183 agent-team teammates opening split panes again ([#6499](https://github.com/manaflow-ai/cmux/pull/6499))
+- Preserve Claude Teams restore flags ([#6242](https://github.com/manaflow-ai/cmux/pull/6242))
+- Fix right-sidebar surface shortcut spam routing ([#6472](https://github.com/manaflow-ai/cmux/pull/6472))
+- Fix Dia browser import profile detection ([#6478](https://github.com/manaflow-ai/cmux/pull/6478))
+- Fix zsh aliases after the agent return shell ([#6515](https://github.com/manaflow-ai/cmux/pull/6515))
+- Fix settings search for auto-naming and broaden fuzzy settings-search matching ([#6201](https://github.com/manaflow-ai/cmux/pull/6201), [#6196](https://github.com/manaflow-ai/cmux/pull/6196))
+- Fix terminal focus retry after a tiny responder handoff ([#6359](https://github.com/manaflow-ai/cmux/pull/6359))
+- Avoid DevTools teardown during redock ([#6559](https://github.com/manaflow-ai/cmux/pull/6559))
+- Fix hidden popover relayout and reduce hit-test CPU during SwiftUI updates and pointer movement ([#6589](https://github.com/manaflow-ai/cmux/pull/6589), [#6592](https://github.com/manaflow-ai/cmux/pull/6592))
+- Cache the settings search index per runtime ([#6591](https://github.com/manaflow-ai/cmux/pull/6591))
+- Move the open-diff baseline lookup off the main thread ([#6497](https://github.com/manaflow-ai/cmux/pull/6497))
+- Fix the macOS notification fallback identity ([#6000](https://github.com/manaflow-ai/cmux/pull/6000))
+- Fix a remote PTY restore probe reply leak ([#6070](https://github.com/manaflow-ai/cmux/pull/6070))
+- Fix OpenCode bunfs worker autoresume and OpenCode resume after a TUI-settings capture ([#6680](https://github.com/manaflow-ai/cmux/pull/6680), [#6397](https://github.com/manaflow-ai/cmux/pull/6397))
+- Fix notification jump-focus for nested tabs ([#6416](https://github.com/manaflow-ai/cmux/pull/6416))
+- Remove a sidebar rows measurement that re-livelocked layout at scale ([#6188](https://github.com/manaflow-ai/cmux/pull/6188))
+- Prevent quit hangs from analytics flushing ([#6232](https://github.com/manaflow-ai/cmux/pull/6232), [#6417](https://github.com/manaflow-ai/cmux/pull/6417)) -- thanks @azooz2003-bit!
+- Reduce Sentry CLI broken-pipe crashes and hangs ([#6254](https://github.com/manaflow-ai/cmux/pull/6254)) -- thanks @azooz2003-bit!
+- Release closed macOS helper windows ([#6368](https://github.com/manaflow-ai/cmux/pull/6368)) -- thanks @azooz2003-bit!
+- Fix canvas tab hover hit-testing, focus canvas panes from terminal body clicks, and fix canvas zoom-animation snap at low zoom ([#6555](https://github.com/manaflow-ai/cmux/pull/6555), [#6456](https://github.com/manaflow-ai/cmux/pull/6456), [#6538](https://github.com/manaflow-ai/cmux/pull/6538)) -- thanks @azooz2003-bit!
+- Avoid nested quit-confirmation modal loops ([#6461](https://github.com/manaflow-ai/cmux/pull/6461)) -- thanks @azooz2003-bit!
+- Reduce redundant panel title update work ([#6552](https://github.com/manaflow-ai/cmux/pull/6552)) -- thanks @Eridanus117!
+- Fix a QuickLook preview crash on a deactivated QLPreviewView ([#6402](https://github.com/manaflow-ai/cmux/pull/6402)) -- thanks @thiveeiyan!
+- Fix terminal content duplication on window resize ([#6386](https://github.com/manaflow-ai/cmux/pull/6386)) -- thanks @mvanhorn!
+- Stop the main window drifting down on sleep/wake ([#6305](https://github.com/manaflow-ai/cmux/pull/6305)) -- thanks @sergej-koscejev!
+- Fix stale cmux ssh pane resize by reconciling remote PTY size after arming SIGWINCH, and fix resize with SSH ControlMaster ([#5989](https://github.com/manaflow-ai/cmux/pull/5989), [#6432](https://github.com/manaflow-ai/cmux/pull/6432)) -- thanks @kylejcaron!
+- Sync remote tmux session renames to the mirror workspace title, and fix session discovery under a non-UTF-8 remote locale ([#6602](https://github.com/manaflow-ai/cmux/pull/6602), [#6568](https://github.com/manaflow-ai/cmux/pull/6568)) -- thanks @mxschmitt!
+- Fix the cmux ssh-tmux socket path being too long for AF_UNIX ([#6465](https://github.com/manaflow-ai/cmux/pull/6465)) -- thanks @mxschmitt!
+- Fix remote-tmux mirror buffer truncation on a cross-DPI display move, and restore the bonsplit pointer so ssh-tmux tab reorders sync to tmux ([#6393](https://github.com/manaflow-ai/cmux/pull/6393), [#6438](https://github.com/manaflow-ai/cmux/pull/6438)) -- thanks @robertnisipeanu!
+- Merge user `--settings` into injected hook settings in the claude wrapper ([#5388](https://github.com/manaflow-ai/cmux/pull/5388)) -- thanks @choi88andys!
+- Bound iOS pairing attempts and fix the Pair iPhone window (Cmd+W, sizing, layout, QR padding, failure copy) ([#6495](https://github.com/manaflow-ai/cmux/pull/6495), [#6038](https://github.com/manaflow-ai/cmux/pull/6038))
+- iOS (beta): fix native pairing sign-in failures ([#6457](https://github.com/manaflow-ai/cmux/pull/6457)) -- thanks @azooz2003-bit!
+- iOS (beta): fix the unread count badge contrast, stop pausing background music on text submit, and sustain hold-to-repeat Backspace ([#6524](https://github.com/manaflow-ai/cmux/pull/6524), [#6290](https://github.com/manaflow-ai/cmux/pull/6290), [#6299](https://github.com/manaflow-ai/cmux/pull/6299))
+- Fix the changelog title clipping ([#6425](https://github.com/manaflow-ai/cmux/pull/6425))
 
-## [0.71.0] - 2026-06-30
+### Removed
+- Remove the high-memory pane warning UI (the triangle indicator and popover); the underlying guardrail engine stays ([#6619](https://github.com/manaflow-ai/cmux/pull/6619))
 
-### Added
-- Make the right-sidebar Dock a full panel container (terminals + browsers + splits) (#6219).
-- Right-sidebar Dock: cross-container surface transfer (live drag between main split area and Dock).
-- agent-session: reliable tracking system + Codex picker GUI + debug trace (#6798).
-- Stream agent prose to the iOS chat as it generates (default-off) (#6731).
-- Bonsplit: icon-only display for pinned browser tabs (#157) + shortcut hint + click-to-mute preservation.
-- Present option to proceed anyway on invalid SSL cert error (#3711) — browser SSL trust bypass via message handler.
-- Re-land #6532: Fix workspace group drag drop intent (#6724) — same bug, new approach.
-- Always enable agent prose streaming for codex (#7066).
-- Update built-in Pi hook integration (#7008).
-- Add notifications.suppressOnlyFocusedSurface to narrow implicit notification withdraw (#6893).
+### Thanks to 12 contributors!
 
-### Changed
-- Merge upstream/main: 42 cmux commits + bonsplit submodule bump (P65).
-- Reclaim hidden terminal renderers on memory pressure (#7050).
-- Preserve plain ANTHROPIC_MODEL inside cmux so Opus keeps Max-plan 1M window (#7059).
-- Move logBackground I/O off the main thread (async background-log writer) (#6823).
-- Cache git dirty snapshots between watcher events (#6795).
-- Bound app termination with a force-exit watchdog (#6758) (#6837).
-- Gate DEV/staging builds off the public Sparkle update train (#6817).
-- Resolve update to the latest available version at install time (#6366) (#6853).
-
-### Fixed
-- Align iOS workspace toolbar titles (#7056).
-- Dock terminal reattach on move (#7055).
-- Browser mTLS client certificate challenges (#7040).
-- Browser webview divider resizing (#7038).
-- Claude shim mutual exec loop (#7010).
-- Browser: don't let unfocused omnibar submit on physical Enter (#6250) (#6818).
-- iOS: run voice-dictation audio activation off the main thread (fix mic-button animation lag) (#6868).
-- Guard workspace sidebar LazyVStack against layout re-livelock (#6384) (#6870).
-- iOS edge swipe-back over terminal/browser surfaces (#6824).
-- iOS: collapse composer band after send (fix stale-tall measurement) (#6811).
-- zsh shell integration printing `file exists` under noclobber (#6714) (#6815).
-- Remote tmux: open shared ControlMaster before the attach burst so all sessions mirror (#6732) (#6839).
-- macOS 27 launch crash in restore-path content views (#6745) (#6890).
-- Non-existent commands in /docs/api CLI reference (#5469) (#6851).
-- Notification-list layout thrash on launch (#5794) (#6886).
-- Never park the main thread waiting on a socket callback (#5830) (#6860).
-- Native fullscreen unreachable on the main window (#5933) (#6830).
-- Stale sidebar agent status refresh (#6804).
-- iOS pairing stuck on "Checking…": honor manual fallback sign-in callback after popup ends (#6819).
-- Garbled Claude Code TUI in cmux ssh remote workspaces (#6352) (#6831).
-- iOS: fit attachment/image chat bubble to capped width (#6355) (#6820).
-- Light-theme white-on-white from host/surface theme divergence (#6411) (#6896).
-- Workspace color picker hue drift (#6762).
-- Cmd+I (Show Notifications) breaking italics in browser text editors (#6862).
-- Emit fish-safe resume cwd-guard without POSIX brace grouping (#6328).
-- Deflake display resolution liveness UI test (#6062).
-
-## [0.70.0] - 2026-06-25
-
-### Added
-- Sleepy Mode: menubar screensaver + caffeinate (#6740).
-- iOS Computers: "Add Computer" row at end of list (#6802).
-- iOS landing: centered TestFlight + GitHub CTA at bottom (#6782).
-- Web Download button: platform picker (#6679).
-- Basic auth modal support (#2500).
-
-### Changed
-- Merge upstream/main: 35 cmux commits + bonsplit submodule bump (P64).
-- Bonsplit: stabilize tab shortcut hint width (#154).
-- Migrate TS typecheck to tsgo (TypeScript 7 native preview) (#6733).
-- Remove Cancel button from iOS sign-in screen (#6797).
-- iOS landing: size two hero phones like gallery images (#6779).
-- Remote-tmux: place mirror new tab per cmux newTabPosition, inheriting active tab cwd (#6439).
-- ci(reload-build): build CmuxIrohFFI xcframework on the iOS lane (#6716).
-
-### Fixed
-- Clear iOS workspaces when computers are forgotten (#6771).
-- Smooth iOS keyboard tracking.
-- Tab bar modifier-hold layout shift (#6786).
-- macOS 27 symbol launch crash (#6728).
-- ssh-tmux remote path and attach seeding (#6778).
-- Scope iOS workspaces by Mac and build tag (#6772).
-- Gate iOS onboarding only on seen state (#6783).
-- iOS Computers remove confirmation row anchoring (#6770).
-- Fit user prompt bubble width on first render (#6727).
-- Bound waitlist email validation with fail-open timeouts (#6765).
-- Assert minimum tmux 3.2 for cmux ssh-tmux (#6755).
-- Reject undeliverable waitlist emails (MX + disposable check) (#6735).
-- Default workspace-scoped commands to caller's workspace, not the focused one (#6757).
-- Remote SSH workspace cwd tracking (#6747).
-- Restore WebAuthn bridge injection (#6718).
-- iOS auth error handling (#6752).
-- Coalesce duplicate iOS paired Macs (#6737).
-- Only double precise scroll deltas for gesture devices (high-res mouse runaway scroll) (#6449).
-- iOS: accurate connection error + per-route Ping on Computers screen (#6730).
-- macOS auth handoff for non-Chrome browsers.
-- Animate iOS page images in on scroll like home page (#6729).
-- Open local HTML previews without stealing focus.
-- Canvas keyboard shortcut routing (#6704).
-
-## [0.69.0] - 2026-06-24
-
-### Added
-- iOS: don't lose saved hosts/IPs on upgrade (paired-Mac backup + restore) (#6405).
-- iOS: auto sign-in + auto-pair the device by default on reload (#6661).
-- iOS: workspace folder collapse is now device-local (#6666).
-- One-step grouped workspace creation (#6657).
-- `cmux mobile set-font` to live-resize the mirrored iOS terminal (#6674).
-- Allow `.m4r` notification sound files (#6635).
-- Smooth-fade home page typing caret (#6688).
-- Disable "Move to group" when there are no groups (#6662).
-- Web: agent landing pages under /agents with JSON-LD, redirects, full localization (#6683).
-- Web: built-on-Ghostty landing page.
-
-### Changed
-- Merge upstream/main: 37 cmux commits + bonsplit submodule bump (P63).
-- Bonsplit: hug tab content in fixed-width mode; tighten close slot (#153).
-- Make terminal/browser surface tabs hug their content (#6652, #6653).
-- Keep blocking browser automation off main (#6696).
-- Bump Sparkle to 2.9.3 to fix auto-update agent kill on macOS 26 (#6678).
-- CI: route all macOS runners through Blacksmith (#6650); align xcode-select with selected toolchain (#6624).
-
-### Fixed
-- Sidebar lag regression since v0.64.16 (#6612): cut per-row font-modifier + pin-state work (#6613).
-- Codex sidebar status lifecycle (#6609).
-- Sidebar tab selection highlight timing (#6627).
-- Cmd+T opening in home after agent-resume session restore (#6617, #6621).
-- Diff viewer transparency (#6671).
-- iOS initial loading and inline recovery UI (#6698).
-- OpenCode bunfs worker autoresume (#6680).
-- Duplicate iOS companion feature bullet (#6675).
-- Revert "Fix workspace group drag drop intent (#6532)" (#6713) — the original fix caused regressions.
-- Revert sidebar row-height layout feedback (#6625) — that fix regressed.
-
-## [0.68.0] - 2026-06-23
-
-### Changed
-- Merge upstream/main: 6 commits (P62).
-- Remove the high-memory pane warning UI (triangle + popover); the guardrail engine still runs (#6619).
-- CI: route all macOS compile/test gates to Swift 6.3 Xcode to match the shipping toolchain (#6603).
-
-### Fixed
-- Sync remote tmux session rename to the mirror workspace title (#6602).
-- Flag "Needs input" for blocked AskUserQuestion / ExitPlanMode under `--dangerously-skip-permissions` (#6608).
-- Fix explicit-surface routing for read-screen and send (#6605).
-- Fix canvas tab hover hit testing (#6555).
-
-## [0.67.0] - 2026-06-23
-
-### Added
-- Global font magnification — system-wide scale for terminal + UI font sizes (#6554).
-- Chrome-style audio-playing indicator on browser panes with click-to-mute (#6517).
-- Mark-read / Mark-unread / Clear notifications entries in the workspace group menu (#6535).
-- File Explorer: keyboard shortcut to open the highlighted selection (#6001).
-- Diff viewer: searchable, uncapped branch-base picker with smart defaults (#6484).
-- Diff viewer: responsive toolbar that no longer overlaps at small widths (#6550).
-- Show profiling progress window during profile capture (#6440).
-- iOS: auto-generate per-build TestFlight "What to Test" and stamp next beta version (#6544).
-- README: FAQ section mirroring the homepage (#6561).
-
-### Changed
-- Merge upstream/main: 43 commits across two passes (P60 + P61 in this release).
-- Evict hidden browser WebViews under memory pressure.
-- Defer restored browser WebViews until visible (#6508).
-- Cache settings search index per runtime (#6591).
-- Gate idle pollers to the active workspace (#6583).
-- Reduce redundant panel title update work (#6552).
-- Honor "keep workspace open on last surface close" preference (#6475).
-- Canvas: use pan arrows for the scroll hint (#6528).
-- ghostty submodule bumped to 120c6c68c (manaflow/main +5): adds absolute-screen-row read API and bounded screen-clipboard formatter.
-
-### Fixed
-- Vim copy-mode cursor, V/Y selection, and pasteboard parity (#6221).
-- Cmd+Grave show/hide global hotkey (#6477).
-- Terminal input after window key restore (#6518).
-- Copy-on-select parity with Ghostty (#6200).
-- Portal hit-test CPU spin on pointer movement (#6592).
-- Crash diagnostic window restore (#6596).
-- Stale agent-resume executable paths (#6582).
-- Stale Claude notification sidebar status (#6473).
-- Stale surface-to-panel rebinding (#6581).
-- Main app-host shard regressions (#6580).
-- Hidden popover relayout during SwiftUI updates (#6589).
-- Remote tmux session discovery under non-UTF-8 remote locale (#6568).
-- cmux ssh-tmux socket path too long for AF_UNIX (#6465).
-- Canvas zoom animation snap at low zoom (#6538).
-- Sidebar row-height layout feedback (#6558).
-- Audio indicator audibility signal (#6566).
-- DevTools teardown during redock no longer fires (#6559).
-- iOS unread count badge contrast (#6524).
-- Changelog title clipping (#6425).
-- Group plus button trailing inset alignment (#6531).
-- Bounded iOS pairing attempts (#6495).
-
-### Preserved (fork features)
-- All cmux_term socket handlers, chat_source.py, herdr inbound, `TerminalSurface.visibleSnapshot()`, `processHasExited()`.
-- Multi-layout-tab Workspace architecture (top-tab strip + per-layout BonsplitController).
-- v2CustomSidebar* methods inline in TerminalController (vs upstream's split-out file).
-- `SidebarWorkspaceGroupHeader{DropZone,DropAction,DropPolicy,DropDelegate}` inline (upstream removed/split).
-- Compat shims on Workspace: `bindSurface`, `removeSurfaceMapping(forSurfaceId:)`, `handleRemoteTmuxSessionEndedKeepingWorkspaceOpenIfNeeded`, `discardBrowserPanelSubscription`.
-
-## [0.66.8] - 2026-06-21
-
-### Changed
-- Merge upstream/main: 34 commits including right-sidebar custom sidebar tabs (#6430), terminal scroll-speed multiplier (#6422), Settings recovery from offscreen frames (#5770), Claude restore cwd drift fix (#6205), terminal content duplication on resize fix (#4765), stale ssh pane resize reconciliation, command palette title-match prioritization (#6498), and main window drift on sleep/wake (#6305).
-- vendor/bonsplit caught up: per-tab audio-playing indicator with click-to-mute (PR #150 + #151).
-- Re-wired 110 fork-only Swift files into pbxproj after taking upstream's project file wholesale.
-- Restored fork-only `CMUXSessionDaemon` + `CMUXSettingsCore` packages, now linked into both `cmux` and `cmux-cli` targets.
-
-### Preserved (fork features)
-- All cmux_term socket handlers, chat_source.py, herdr inbound, `TerminalSurface.visibleSnapshot()`, `processHasExited()`.
-- `SurfaceKind.customSidebar` added so Workspace+CustomSidebarPane (upstream) compiles against the fork's namespace-style enum.
-
-## [0.66.7] - 2026-06-20
-
-### Changed
-- Merge upstream/main: 36 commits including SSH ControlMaster PTY-resize fix, profiling capture action, hookless agent forking revert, notification jump-focus fix for nested tabs, Blacksmith CI consolidation, ~100% CPU re-render loop fix, and the big micro-package consolidation (PR #6356) that folded 20 narrow packages into their owning domains.
-- Restored fork-only `CMUXSessionDaemon` and `CMUXSettingsCore` packages under `Packages/macOS/`; rewired into pbxproj with `cmux` + `cmux-cli` consumers.
-- Wired 35 new upstream-introduced source files (3 CLI, 21 app, 11 tests) into pbxproj.
-
-### Preserved (fork features)
-- All cmux_term socket handlers, agent-bus dispatch, `TerminalSurface.visibleSnapshot()`, `processHasExited()`, herdr inbound section.
-- `TerminalNotificationKind` enum + `cmuxNotificationAppended` Notification.Name (re-added after upstream removed them in TerminalNotificationStore rewrite).
-
-## [0.66.4] - 2026-06-15
-
-### Changed
-- Merge upstream/main: 31 commits including stagger restored terminal surface spawns, configurable Dock max width, namespace-enum dissolution, surface browser Safari, terminal top-row mouse fix, iOS Shift key, and proxy disconnect state fix.
-
-### Preserved (fork features)
-- All cmux_term socket handlers: `surface.snapshot`, `surface.screen_text`, `surface.screen_hash`, `surface.wait_for_text`, `surface.wait_for_idle`, `surface.wait_for_screen_change`, `surface.wait_for_kind`, `surface.wait_for_cursor`, `surface.tui_probe`, `surface.expect`, `surface.screen_region`.
-- agent-bus dispatch (`notification.create` with `$bus`).
-- TerminalSurface `visibleSnapshot()` and `processHasExited()` helpers.
-- skills/cmux-terminal-control 3-layer Python API + ORCHESTRATOR_TEMPLATE.md.
-- HerdrWorkspaceSync + `CustomTitleSource.herdrInbound`.
+- [@austinywang](https://github.com/austinywang)
+- [@azooz2003-bit](https://github.com/azooz2003-bit)
+- [@choi88andys](https://github.com/choi88andys)
+- [@Eridanus117](https://github.com/Eridanus117)
+- [@kylejcaron](https://github.com/kylejcaron)
+- [@lawrencecchen](https://github.com/lawrencecchen)
+- [@mvanhorn](https://github.com/mvanhorn)
+- [@mxschmitt](https://github.com/mxschmitt)
+- [@robertnisipeanu](https://github.com/robertnisipeanu)
+- [@RubiconPerform](https://github.com/RubiconPerform)
+- [@sergej-koscejev](https://github.com/sergej-koscejev)
+- [@thiveeiyan](https://github.com/thiveeiyan)
 
 ## [0.64.16] - 2026-06-15
 

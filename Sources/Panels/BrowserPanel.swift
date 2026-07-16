@@ -22,26 +22,6 @@ import CommonCrypto
 import Security
 #endif
 
-func cmuxResponderChainContains(_ start: NSResponder?, target: NSResponder) -> Bool {
-    var responder = start
-    var hops = 0
-    while let current = responder, hops < 64 {
-        if current === target { return true }
-        responder = current.nextResponder
-        hops += 1
-    }
-    return false
-}
-
-enum BrowserAddressBarFocusSelectionIntent: Equatable {
-    case preserveFieldEditorSelection
-    case selectAll
-
-    var shouldSelectAll: Bool {
-        self == .selectAll
-    }
-}
-
 fileprivate func dedupedCanonicalURLs(_ urls: [URL]) -> [URL] {
     var seen = Set<String>()
     var result: [URL] = []
@@ -987,10 +967,13 @@ func browserReadAccessURL(forLocalFileURL fileURL: URL, fileManager: FileManager
 @discardableResult
 func browserLoadRequest(_ request: URLRequest, in webView: WKWebView) -> WKNavigation? {
     guard let url = request.url else { return nil }
+    let nudgeReason = "navigationStart:\(url.scheme?.lowercased() ?? "none")"
     if url.isFileURL {
         guard let readAccessURL = browserReadAccessURL(forLocalFileURL: url) else { return nil }
+        webView.browserPortalMarkFirstSizedRevealNudgeIfNavigationStartsWithoutPresentation(reason: nudgeReason)
         return webView.loadFileURL(url, allowingReadAccessTo: readAccessURL)
     }
+    webView.browserPortalMarkFirstSizedRevealNudgeIfNavigationStartsWithoutPresentation(reason: nudgeReason)
     return webView.load(browserPreparedNavigationRequest(request))
 }
 
@@ -1873,6 +1856,25 @@ final class CmuxDiffViewerURLSchemeHandler: NSObject, WKURLSchemeHandler {
         let token: String
         let filesByPath: [String: RegisteredFile]
         let createdAt: Date
+        let lease: SessionLease
+    }
+
+    private final class SessionLease {
+        let fileDescriptor: Int32
+
+        init(root: URL, token: String) throws {
+            let path = root.appendingPathComponent(".session-lease-\(token).lock").path
+            fileDescriptor = Darwin.open(path, O_CREAT | O_RDWR, mode_t(0o600))
+            guard fileDescriptor >= 0, flock(fileDescriptor, LOCK_SH | LOCK_NB) == 0 else {
+                if fileDescriptor >= 0 { Darwin.close(fileDescriptor) }
+                throw POSIXError(.EWOULDBLOCK)
+            }
+        }
+
+        deinit {
+            _ = flock(fileDescriptor, LOCK_UN)
+            Darwin.close(fileDescriptor)
+        }
     }
 
     private final class SchemeTaskState: @unchecked Sendable {
@@ -1946,9 +1948,10 @@ final class CmuxDiffViewerURLSchemeHandler: NSObject, WKURLSchemeHandler {
             )
         }
 
+        let lease = try SessionLease(root: trustedRootURL, token: token)
         lock.lock()
         pruneExpiredSessionsLocked(now: now)
-        sessions[token] = Session(token: token, filesByPath: byPath, createdAt: now)
+        sessions[token] = Session(token: token, filesByPath: byPath, createdAt: now, lease: lease)
         lock.unlock()
     }
 
@@ -2486,13 +2489,13 @@ final class CmuxDiffViewerURLSchemeHandler: NSObject, WKURLSchemeHandler {
                     urlSchemeTask.didReceive(response)
                 }) else { return }
 
-                let handle = try FileHandle(forReadingFrom: file.fileURL)
+                let reader = try DiffViewerAssetReader(fileURL: file.fileURL)
                 defer {
-                    try? handle.close()
+                    try? reader.close()
                 }
 
                 while self.isSchemeTaskActive(taskID) {
-                    let data = try handle.read(upToCount: 64 * 1024) ?? Data()
+                    let data = try reader.read(upToCount: 64 * 1024)
                     if data.isEmpty {
                         break
                     }
@@ -2588,7 +2591,6 @@ final class CmuxDiffViewerURLSchemeHandler: NSObject, WKURLSchemeHandler {
             now.timeIntervalSince(session.createdAt) <= maxSessionAge
         }
     }
-
     private func responseHeaders(for file: RegisteredFile) -> [String: String] {
         var headers = [
             "Content-Type": "\(file.mimeType); charset=utf-8",
@@ -2636,11 +2638,6 @@ final class BrowserPortalAnchorView: NSView {
 
 @MainActor
 final class BrowserPanel: Panel, ObservableObject {
-    // ponytail: stub from P83 cherry-picks
-    var didTearDownWebViewForRelease: Bool = false
-    func tearDownCurrentWebViewForRelease(_ webView: WKWebView, reason: String) {}
-    static func tearDownWebViewForRelease(_ webView: WKWebView, reason: String) {}
-
     /// Popup windows owned by this panel (for lifecycle cleanup)
     private var popupControllers: [BrowserPopupWindowController] = []
 
@@ -3591,7 +3588,7 @@ final class BrowserPanel: Panel, ObservableObject {
         // Review-comment persistence + TextBox attach for diff viewer pages.
         // The handler itself rejects every frame that is not a registered diff
         // viewer session, so installing it on all browser webviews is safe.
-        DiffCommentsBridge.installIfNeeded(on: configuration.userContentController)
+        DiffSidecarBridge.installViewerBridges(on: configuration.userContentController)
 
         // Enable developer extras (DevTools)
         configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
@@ -4286,6 +4283,7 @@ final class BrowserPanel: Panel, ObservableObject {
         window.contentView = contentView
         backgroundPreloadWindow = window
         window.orderFrontRegardless()
+        webView.browserPortalNotifyHidden(reason: "backgroundPreload:\(reason)")
 
 #if DEBUG
         cmuxDebugLog(
@@ -4671,7 +4669,6 @@ final class BrowserPanel: Panel, ObservableObject {
         hasCommittedDocumentSinceWebViewReplacement = false; userStoppedLoadSinceWebViewReplacement = false
         resetWebViewLifecycleMetadata(resetVisibility: false)
         webView = replacement
-        didTearDownWebViewForRelease = false
         currentURL = restoreURL
         shouldRenderWebView = wasRenderable
         refreshWebViewLifecycleState()
@@ -5186,7 +5183,6 @@ final class BrowserPanel: Panel, ObservableObject {
         hasCommittedDocumentSinceWebViewReplacement = false; userStoppedLoadSinceWebViewReplacement = false
         resetWebViewLifecycleMetadata(resetVisibility: false)
         webView = replacement
-        didTearDownWebViewForRelease = false
         shouldRenderWebView = wasRenderable
         refreshWebViewLifecycleState()
 
@@ -5287,7 +5283,7 @@ final class BrowserPanel: Panel, ObservableObject {
             }
         }
 
-        if cmuxResponderChainContains(window.firstResponder, target: webView) {
+        if Self.responderChainContains(window.firstResponder, target: webView) {
             noteWebViewFocused()
             return
         }
@@ -5306,7 +5302,7 @@ final class BrowserPanel: Panel, ObservableObject {
 
         guard let window = webView.window, !webView.isHiddenOrHasHiddenAncestor else { return false }
 
-        if cmuxResponderChainContains(window.firstResponder, target: webView) {
+        if Self.responderChainContains(window.firstResponder, target: webView) {
             // Prevent omnibar auto-focus from immediately stealing first responder back.
             suppressOmnibarAutofocus(for: 1.5)
             noteWebViewFocused()
@@ -5321,7 +5317,7 @@ final class BrowserPanel: Panel, ObservableObject {
         DispatchQueue.main.async { [weak self, weak window, weak webView] in
             guard let self, let window, let webView else { return }
             guard webView.window === window else { return }
-            if !cmuxResponderChainContains(window.firstResponder, target: webView),
+            if !Self.responderChainContains(window.firstResponder, target: webView),
                window.makeFirstResponder(webView) {
                 self.suppressOmnibarAutofocus(for: 1.5)
                 self.noteWebViewFocused()
@@ -5338,7 +5334,7 @@ final class BrowserPanel: Panel, ObservableObject {
         if BrowserWindowPortalRegistry.yieldSearchOverlayFocusIfOwned(by: id, in: window) {
             return
         }
-        if cmuxResponderChainContains(window.firstResponder, target: webView) {
+        if Self.responderChainContains(window.firstResponder, target: webView) {
             window.makeFirstResponder(nil)
         }
     }
@@ -5360,16 +5356,7 @@ final class BrowserPanel: Panel, ObservableObject {
         closeBackgroundPreloadHost(reason: "close")
         let popupsToClose = popupControllers; popupControllers.removeAll()
         for popup in popupsToClose { popup.closeAllChildPopups(); popup.closePopup() }
-
-        webViewObservers.removeAll()
-        webViewCancellables.removeAll()
-        loadingEndWorkItem?.cancel()
-        loadingEndWorkItem = nil
-        faviconTask?.cancel()
-        faviconTask = nil
-        webAuthnCoordinator.tearDown(from: webView)
-        webView.stopLoading()
-        tearDownCurrentWebViewForRelease(webView, reason: "panelClose")
+        webAuthnCoordinator.tearDown(from: webView); webView.stopLoading()
         isMainFrameProvisionalNavigationActive = false
         webView.navigationDelegate = nil
         webView.uiDelegate = nil
@@ -5378,6 +5365,7 @@ final class BrowserPanel: Panel, ObservableObject {
         uiDelegate = nil
         webViewDidRequestClose = nil
         detachWebViewObservers()
+        faviconTask?.cancel(); faviconTask = nil
     }
 
     // MARK: - Popup window management
@@ -6034,11 +6022,8 @@ final class BrowserPanel: Panel, ObservableObject {
         webViewObservers.removeAll()
         webViewCancellables.removeAll()
         let webView = webView
-        let shouldTearDownWebView = !didTearDownWebViewForRelease
-        if shouldTearDownWebView {
-            Task { @MainActor in
-                Self.tearDownWebViewForRelease(webView, reason: "panelDeinit")
-            }
+        Task { @MainActor in
+            BrowserWindowPortalRegistry.detach(webView: webView)
         }
     }
 }
@@ -6199,7 +6184,6 @@ extension BrowserPanel {
         webViewInstanceID = UUID()
         hasCommittedDocumentSinceWebViewReplacement = false; userStoppedLoadSinceWebViewReplacement = false
         webView = replacement
-        didTearDownWebViewForRelease = false
         shouldRenderWebView = false
         refreshWebViewLifecycleState()
         bindWebView(replacement)
@@ -7657,7 +7641,7 @@ extension BrowserPanel {
         }
 
         if let window,
-           cmuxResponderChainContains(window.firstResponder, target: webView) {
+           Self.responderChainContains(window.firstResponder, target: webView) {
             return .browser(.webView)
         }
 
@@ -7734,7 +7718,7 @@ extension BrowserPanel {
             return .browser(.findField)
         }
 
-        if cmuxResponderChainContains(responder, target: webView) {
+        if Self.responderChainContains(responder, target: webView) {
             return .browser(.webView)
         }
 
@@ -7768,7 +7752,7 @@ extension BrowserPanel {
 #endif
             return true
         case .webView:
-            guard cmuxResponderChainContains(window.firstResponder, target: webView) else { return false }
+            guard Self.responderChainContains(window.firstResponder, target: webView) else { return false }
             return window.makeFirstResponder(nil)
         }
     }
@@ -8033,39 +8017,6 @@ private extension BrowserPanel {
         }
     }
 
-    func hasSideDockedDeveloperToolsLayout() -> Bool {
-        guard let container = webView.superview else { return false }
-        return Self.visibleDescendants(in: container)
-            .filter { Self.isVisibleSideDockInspectorCandidate($0) && Self.isInspectorView($0) }
-            .contains { inspectorCandidate in
-                hasSideDockedInspectorSibling(startingAt: inspectorCandidate, root: container)
-            }
-    }
-
-    func hasSideDockedInspectorSibling(startingAt inspectorLeaf: NSView, root: NSView) -> Bool {
-        var current: NSView? = inspectorLeaf
-
-        while let inspectorView = current, inspectorView !== root {
-            guard let containerView = inspectorView.superview else { break }
-            let hasSideDockedSibling = containerView.subviews.contains { candidate in
-                guard Self.isVisibleSideDockSiblingCandidate(candidate) else { return false }
-                guard candidate !== inspectorView else { return false }
-                let horizontallyAdjacent =
-                    candidate.frame.maxX <= inspectorView.frame.minX + 1 ||
-                    candidate.frame.minX >= inspectorView.frame.maxX - 1
-                guard horizontallyAdjacent else { return false }
-                return Self.verticalOverlap(between: candidate.frame, and: inspectorView.frame) > 8
-            }
-            if hasSideDockedSibling {
-                return true
-            }
-
-            current = containerView
-        }
-
-        return false
-    }
-
     static func responderChainContains(_ start: NSResponder?, target: NSResponder) -> Bool {
         var r = start
         var hops = 0
@@ -8092,13 +8043,6 @@ private extension BrowserPanel {
     }
 
     static func isVisibleSideDockInspectorCandidate(_ view: NSView) -> Bool {
-        !view.isHidden &&
-            view.alphaValue > 0 &&
-            view.frame.width > 1 &&
-            view.frame.height > 1
-    }
-
-    static func isVisibleSideDockSiblingCandidate(_ view: NSView) -> Bool {
         !view.isHidden &&
             view.alphaValue > 0 &&
             view.frame.width > 1 &&

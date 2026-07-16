@@ -1775,7 +1775,6 @@ final class SocketClient {
     private var socketFD: Int32 = -1
     private var lastConfiguredReceiveTimeout: TimeInterval?
     private var lastOperationTelemetry: CLISocketOperationTelemetry.State?
-    private var reconnectAuthCommand: String?
     private static let defaultResponseTimeoutSeconds: TimeInterval = 15.0
     private static let multilineResponseIdleTimeoutSeconds: TimeInterval = 0.12
     private static let maxSocketTimeoutSeconds: TimeInterval = 9_007_199_254_740_991
@@ -1918,43 +1917,10 @@ final class SocketClient {
         lastConfiguredReceiveTimeout = nil
     }
 
-    /// Remembers the auth line to replay when a dead cached connection is
-    /// transparently re-established: the server authenticates each socket
-    /// connection independently, so a reconnect must repeat the login.
-    func rememberReconnectAuth(command: String) {
-        reconnectAuthCommand = command
-    }
-
-    /// The control socket server applies a receive timeout to each accepted
-    /// connection and closes it once idle, so for a long-lived cached client
-    /// (such as the ssh-pty-attach SIGWINCH resize source) a peer-closed
-    /// connection is the expected steady state rather than an error.
-    /// Re-establish the connection — and replay password auth when configured
-    /// — before sending instead of failing the request on a dead socket.
-    /// Clients that were never connected still surface "Not connected".
-    /// The auth replay goes through `performSend` directly (not `send`), so
-    /// this never re-enters itself and needs no reentrancy sentinel.
-    private func reestablishConnectionIfPeerClosed(responseTimeout: TimeInterval? = nil) throws {
-        guard socketFD >= 0, !connectionAppearsOpen() else { return }
-        close()
-        try connect()
-        guard let authCommand = reconnectAuthCommand else { return }
-        let response = try performSend(command: authCommand, responseTimeout: responseTimeout)
-        if response.hasPrefix("ERROR:") {
-            throw CLIError(message: response)
-        }
-    }
-
     func send(command: String, responseTimeout: TimeInterval? = nil) throws -> String {
         if relayEndpoint != nil, socketFD < 0 {
             try connect()
         }
-        try reestablishConnectionIfPeerClosed(responseTimeout: responseTimeout)
-        guard socketFD >= 0 else { throw CLIError(message: "Not connected") }
-        return try performSend(command: command, responseTimeout: responseTimeout)
-    }
-
-    private func performSend(command: String, responseTimeout: TimeInterval? = nil) throws -> String {
         guard socketFD >= 0 else { throw CLIError(message: "Not connected") }
         let shouldCloseAfterSend = relayEndpoint != nil
         defer {
@@ -4440,6 +4406,15 @@ struct CMUXCLI {
                 windowOverride: windowId
             )
 
+        case "todo":
+            try runTodoNamespace(
+                commandArgs: commandArgs,
+                client: client,
+                jsonOutput: jsonOutput,
+                idFormat: idFormat,
+                windowOverride: windowId
+            )
+
         case "layout": try runLayoutNamespace(commandArgs: commandArgs, client: client, jsonOutput: jsonOutput, idFormat: idFormat, windowOverride: windowId)
 
         case "list-workspaces":
@@ -5980,9 +5955,6 @@ struct CMUXCLI {
             if authResponse.hasPrefix("ERROR:"),
                !authResponse.contains("Unknown command 'auth'") {
                 throw CLIError(message: authResponse)
-            }
-            if !authResponse.hasPrefix("ERROR:") {
-                client.rememberReconnectAuth(command: "auth \(socketPassword)")
             }
         }
     }
@@ -8168,7 +8140,7 @@ struct CMUXCLI {
         guard let sub = commandArgs.first?.lowercased() else {
             throw CLIError(message: String(
                 localized: "cli.error.workspaceSubcommandRequired",
-                defaultValue: "workspace requires a subcommand. Try: list, create, env, close, rename, select, reconnect, disconnect, loading, group"
+                defaultValue: "workspace requires a subcommand. Try: list, create, env, close, rename, select, status, reconnect, disconnect, loading, group"
             ))
         }
         let rest = Array(commandArgs.dropFirst())
@@ -8227,6 +8199,14 @@ struct CMUXCLI {
                 windowOverride: windowOverride,
                 mode: .namespace
             )
+        case "status":
+            try runWorkspaceStatusCommand(
+                commandArgs: rest,
+                client: client,
+                jsonOutput: jsonOutput,
+                idFormat: idFormat,
+                windowOverride: windowOverride
+            )
         case "select":
             try runWorkspaceSelectCommand(
                 commandName: "workspace select",
@@ -8263,7 +8243,7 @@ struct CMUXCLI {
             throw CLIError(message: String(
                 format: String(
                     localized: "cli.error.workspaceSubcommandUnknown",
-                    defaultValue: "Unknown workspace subcommand: %@. Try: list, create, env, close, rename, select, reconnect, disconnect, loading, group"
+                    defaultValue: "Unknown workspace subcommand: %@. Try: list, create, env, close, rename, select, status, reconnect, disconnect, loading, group"
                 ),
                 locale: .current,
                 sub
@@ -8740,16 +8720,8 @@ struct CMUXCLI {
         )
     }
 
-    /// `cmux ssh-tmux <destination>` — mirror a remote host's tmux sessions as
-    /// workspaces in the current window over `tmux -CC` (the remote-tmux beta).
-    ///
-    /// Unlike `cmux ssh`, this carries no cmuxd-remote/relay bootstrap: it only
-    /// drives the SSH ControlMaster the mirror multiplexes over. The app's mirror
-    /// control client uses plain pipes and cannot service interactive auth, so if
-    /// the host needs a password / host-key confirmation / MFA / FIDO touch, the
-    /// app returns the `ssh` argv and this CLI runs it **inline in the user's
-    /// terminal** (which supplies the tty), then retries the mirror over the
-    /// now-authenticated master.
+    /// Mirrors a remote host's tmux sessions; interactive SSH authentication runs
+    /// inline in the caller's terminal before retrying over the shared master.
     private func runRemoteTmux(
         commandArgs: [String],
         client: SocketClient,
@@ -8759,11 +8731,10 @@ struct CMUXCLI {
         var port: Int?
         var identityFile: String?
         var noFocus = false
+        var newWindow = false
 
-        // Intentional subset of parseSSHCommandOptions: the mirror verb has a
-        // different pipeline (no relay/cmuxd bootstrap, no `--` passthrough, no
-        // --ssh-option/--name/--window), so it parses only the flags it supports
-        // rather than reusing the heavier SSH-workspace parser.
+        // Intentional subset of parseSSHCommandOptions: ssh-tmux has no relay,
+        // passthrough, --ssh-option, --name, or --window support.
         var index = 0
         while index < commandArgs.count {
             let arg = commandArgs[index]
@@ -8785,6 +8756,9 @@ struct CMUXCLI {
                 index += 2
             case "--no-focus":
                 noFocus = true
+                index += 1
+            case "--new-window":
+                newWindow = true
                 index += 1
             default:
                 if arg.hasPrefix("-") {
@@ -8809,21 +8783,20 @@ struct CMUXCLI {
         if let port { params["port"] = port }
         if let identityFile, !identityFile.isEmpty { params["identity_file"] = identityFile }
         params["activate"] = !noFocus
-        try applyWindowOrCallerContext(to: &params, client: client, windowRaw: nil)
-
-        // The first call runs a non-interactive (BatchMode) discovery in the app,
-        // which can take a couple of seconds; show progress so it doesn't look idle.
+        if !newWindow {
+            try applyWindowOrCallerContext(to: &params, client: client, windowRaw: nil)
+        }
+        // BatchMode discovery can take a couple of seconds; show progress.
         if !jsonOutput {
             print("Connecting to \(destination)…")
         }
 
-        // The app reports `auth_required` at most once per attempt; run the
-        // returned interactive ssh, then retry exactly once. `didAuthenticate`
-        // bounds the loop so a host that keeps reporting auth-required can't spin.
+        // Retry interactive authentication once; never spin on auth-required.
+        let method = newWindow ? "remote.tmux.window" : "remote.tmux.mirror"
         var didAuthenticate = false
         while true {
             let result = try client.sendV2(
-                method: "remote.tmux.mirror",
+                method: method,
                 params: params,
                 responseTimeout: 75  // > the app-side 60s timeout, so the app's result/error always arrives first
             )
@@ -8850,8 +8823,7 @@ struct CMUXCLI {
                 }
                 try runInteractiveAuthSSH(sshArgv: sshArgv, destination: destination)
                 didAuthenticate = true
-                // Retry immediately so the just-opened ControlMaster (ControlPersist)
-                // is still warm; tell the user we're proceeding.
+                // Retry while the just-opened ControlMaster is warm.
                 if !jsonOutput {
                     print("Authenticated; opening remote tmux mirror for \(destination)…")
                 }
@@ -15055,6 +15027,8 @@ struct CMUXCLI {
         switch command {
         case "remotes", "remote":
             return Self.remotesUsage
+        case "todo":
+            return Self.todoUsage
         case "ai-accounts":
             return Self.aiAccountsUsage
         case "ping":
@@ -15798,40 +15772,7 @@ struct CMUXCLI {
               cmux list-workspaces
             """
         case "workspace":
-            return String(localized: "cli.workspace.usage", defaultValue: """
-            Usage: cmux workspace <subcommand> [flags]
-
-            Canonical noun for workspace operations. Legacy verbs
-            (new-workspace, list-workspaces, close-workspace,
-            rename-workspace, select-workspace) keep working and print a
-            one-time deprecation hint pointing here.
-
-            Subcommands:
-              list                    List workspaces in a window
-              create [flags]          Create a workspace (same flags as new-workspace)
-              env [workspace] [--mask]
-                                      Print a workspace's configured environment
-                                      variables (--mask redacts the values)
-              close <workspace>       Close a workspace
-              rename <workspace> --title <new>
-              select <workspace>      Make a workspace active
-              reconnect [workspace]   Reconnect a remote (SSH) workspace, including one
-                                      whose automatic reconnect paused because the host
-                                      was unreachable
-              disconnect [workspace]  Stop a remote (SSH) workspace's connection
-              loading <on|off> [--id <name>] Toggle the workspace loading spinner.
-              group <subcommand>      Workspace group operations (see cmux workspace-group --help)
-            env/reconnect/disconnect accept a positional handle or --workspace
-            <id|ref|index>, defaulting to the caller's workspace, then the
-            selected one (of --window's window when given).
-            Examples:
-              cmux workspace list --json
-              cmux workspace create --name Build --cwd ~/projects/myapp
-              cmux workspace env workspace:3 --mask
-              cmux workspace close workspace:3
-              cmux workspace reconnect
-              cmux workspace disconnect --workspace workspace:3
-            """)
+            return Self.workspaceCommandUsage
         case "layout":
             return Self.layoutHelpText()
         case "workspace-group":
@@ -15902,7 +15843,7 @@ struct CMUXCLI {
               cmux ssh dev@my-host --ssh-option UserKnownHostsFile=/dev/null --ssh-option StrictHostKeyChecking=no
             """)
         case "ssh-tmux":
-            return String(localized: "cli.help.ssh-tmux", defaultValue: """
+            let help = String(localized: "cli.help.ssh-tmux", defaultValue: """
             Usage: cmux ssh-tmux <destination> [--port <n>] [--identity <path>] [--no-focus]
 
             Mirror a remote host's tmux sessions into the current window's sidebar over
@@ -15925,6 +15866,14 @@ struct CMUXCLI {
               cmux ssh-tmux dev@my-host
               cmux ssh-tmux dev@my-host --port 2222 --identity ~/.ssh/id_ed25519
             """)
+            let newWindowHelp = String(
+                localized: "cli.help.ssh-tmux.newWindow",
+                defaultValue: """
+                Additional flag:
+                  --new-window        Open the mirror in a dedicated new window
+                """
+            )
+            return "\(help)\n\n\(newWindowHelp)"
         case "ssh-session-list":
             return """
             Usage: cmux ssh-session-list [--workspace <id|ref|index> | --all-workspaces]
@@ -30738,7 +30687,7 @@ export default CMUXSessionRestore;
             let transcriptPathForStore = input.transcriptPath ?? mapped?.transcriptPath
             let resumeLaunchCommand = preferredAgentHookResumeLaunchCommand(
                 kind: def.name, current: launchCommand, mapped: mapped,
-                transcriptPath: transcriptPathForStore, currentPID: pid
+                transcriptPath: transcriptPathForStore, currentPID: inferredPID
             )
             let activePromptTurnStack = mapped?.activePromptTurnIds?
                 .compactMap({ normalizedHookValue($0) }) ?? []
@@ -31110,7 +31059,7 @@ export default CMUXSessionRestore;
             let cwd = preferredAgentHookResumeWorkingDirectory(kind: def.name, current: launchCommand, currentCwd: hookCwd, mapped: mapped)
             let resumeLaunchCommand = preferredAgentHookResumeLaunchCommand(
                 kind: def.name, current: launchCommand, mapped: mapped,
-                transcriptPath: input.transcriptPath ?? mapped?.transcriptPath, currentPID: pid
+                transcriptPath: input.transcriptPath ?? mapped?.transcriptPath, currentPID: inferredPID
             )
             let grokAssistantMessage: String? = {
                 guard def.name == "grok" else { return nil }
@@ -31421,7 +31370,7 @@ export default CMUXSessionRestore;
             )
             let resumeLaunchCommand = preferredAgentHookResumeLaunchCommand(
                 kind: def.name, current: launchCommand, mapped: mapped,
-                transcriptPath: input.transcriptPath ?? mapped?.transcriptPath, currentPID: pid
+                transcriptPath: input.transcriptPath ?? mapped?.transcriptPath, currentPID: inferredPID
             )
             let suppressVisibleMutations = shouldSuppressNestedAgentVisibleMutations(currentAgentPID: pid, env: env)
             if !sessionId.isEmpty, !suppressVisibleMutations {
@@ -35294,11 +35243,13 @@ export default CMUXSessionRestore;
           reorder-workspace --workspace <id|ref|index> (--index <n> | --before <id|ref|index> | --after <id|ref|index>) [--window <id|ref|index>] [--dry-run]
           reorder-workspaces --order <id|ref|index>,<id|ref|index>,... [--window <id|ref|index>] [--dry-run]
           workspace-action --action <name> [--workspace <id|ref|index>] [--window <id|ref|index>] [--title <text>] [--color <name|#hex>] [--description <text>]
+          workspace status [set <lane|auto>] [--workspace <id|ref|index>] [--window <id|ref|index>]
+          todo <add|list|check|uncheck|start|rm|clear> [args] [--workspace <id|ref|index>] [--window <id|ref|index>]
           move-tab-to-new-workspace [--tab <id|ref|index>] [--surface <id|ref|index>] [--workspace <id|ref|index>] [--window <id|ref|index>] [--title <text>] [--focus <true|false>]
           list-workspaces [--window <id|ref|index>]
           new-workspace [--name <title>] [--description <text>] [--cwd <path>] [--command <text>] [--layout <json>] [--window <id|ref|index>] [--focus <true|false>] [--group <id|ref>] [--group-placement afterCurrent|top|end] [--group-reference <workspace>]
           ssh <destination> [--name <title>] [--port <n>] [--identity <path>] [-A|--forward-agent] [-a|--no-forward-agent] [--ssh-option <opt>] [--window <id|ref|index>] [--no-focus] [-- <remote-command-args>]
-          ssh-tmux <destination> [--port <n>] [--identity <path>] [--no-focus]
+          ssh-tmux <destination> [--port <n>] [--identity <path>] [--no-focus] [--new-window]
           ssh-session-list [--workspace <id|ref|index> | --all-workspaces]
           ssh-session-attach --session-id <id> [--workspace <id|ref|index>] [--pane <id|ref|index> | --split <left|right|up|down>]
           ssh-session-cleanup [--workspace <id|ref|index> | --all-workspaces] (--session-id <id> | --all)

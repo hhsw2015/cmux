@@ -1,6 +1,4 @@
-import CMUXSessionDaemon
 import SwiftUI
-
 import Foundation
 import AppKit
 import Bonsplit
@@ -8,19 +6,24 @@ import CmuxAppKitSupportUI
 import CmuxTestSupport
 import CmuxTerminal
 import CmuxFoundation
+import CmuxSettings
 
 /// View for rendering a terminal panel
 struct TerminalPanelView: View {
     @ObservedObject var panel: TerminalPanel
-    @ObservedObject var exitTracker: SessionExitTracker = .shared
     @AppStorage(NotificationPaneRingSettings.enabledKey)
     private var notificationPaneRingEnabled = NotificationPaneRingSettings.defaultEnabled
     @AppStorage(TerminalTextBoxInputSettings.maxLinesKey)
     private var textBoxMaxLines = TerminalTextBoxInputSettings.defaultMaxLines
+    @AppStorage(SessionContentWidthSettings.maxWidthKey)
+    private var storedSessionContentMaximumWidth = SessionContentWidthSettings.noMaximumWidth
+    @AppStorage(SessionContentWidthSettings.alignmentKey)
+    private var storedSessionContentAlignment = SessionContentAlignment.center.rawValue
     @State private var terminalFontSize = GhosttyConfig.load(globalFontMagnificationPercent: GlobalFontMagnification.storedPercent).fontSize
     let paneId: PaneID
     let isFocused: Bool
     let isVisibleInUI: Bool
+    var portalPaneOwnershipResolver: (@MainActor () -> Bool)? = nil
     let portalPriority: Int
     let isSplit: Bool
     let appearance: PanelAppearance
@@ -30,11 +33,6 @@ struct TerminalPanelView: View {
     let onResumeAgentHibernation: () -> Void
     let onAutoResumeAgentHibernation: () -> Void
     let onTriggerFlash: () -> Void
-
-    private var exitEntry: SessionExitTracker.ExitEntry? {
-        guard let session = panel.zmxSessionName, !session.isEmpty else { return nil }
-        return exitTracker.exitedSessions[session]
-    }
 
     var body: some View {
         if let hibernationState = panel.agentHibernationState {
@@ -79,6 +77,8 @@ struct TerminalPanelView: View {
                 paneId: paneId,
                 isActive: isFocused,
                 isVisibleInUI: isVisibleInUI,
+                ownershipGeneration: panel.portalHostOwnershipGeneration,
+                isCurrentPaneOwner: currentPortalPaneOwner,
                 portalZPriority: portalPriority,
                 showsInactiveOverlay: isSplit && !isFocused,
                 showsUnreadNotificationRing: hasUnreadNotification && notificationPaneRingEnabled,
@@ -86,6 +86,7 @@ struct TerminalPanelView: View {
                 inactiveOverlayOpacity: appearance.unfocusedOverlayOpacity,
                 searchState: panel.searchState,
                 reattachToken: panel.viewReattachToken,
+                sessionContentWidthPresentation: sessionContentWidthPresentation,
                 onFocus: { _ in
                     panel.terminalDidBecomeFocused()
                     onFocus()
@@ -151,46 +152,38 @@ struct TerminalPanelView: View {
                         panel.preserveTextBoxContentForUnmount(from: view)
                     }
                 )
+                .sessionContentWidth(fillsHeight: false)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .overlay(alignment: .topTrailing) {
-            VStack(alignment: .trailing, spacing: 4) {
-                if let session = panel.zmxSessionName, !session.isEmpty {
-                    ZmxPanelBadge(sessionName: session)
-                        .allowsHitTesting(false)
-                }
-                if panel.herdrPaneExited {
-                    HerdrPaneExitedBadge()
-                        .allowsHitTesting(false)
-                }
-            }
-            .padding(.top, 4)
-            .padding(.trailing, 6)
-        }
-        .overlay(alignment: .bottom) {
-            if let exit = exitEntry {
-                SessionExitBannerView(
-                    cmd: exit.sessionName,
-                    exitCode: exit.exitCode,
-                    onRestart: { restartExitedSession(exit) },
-                    onClose: { exitTracker.clear(sessionName: exit.sessionName) }
-                )
-            }
-        }
+        .background(Color(nsColor: appearance.contentBackgroundColor))
         .onReceive(NotificationCenter.default.publisher(for: .ghosttyConfigDidReload)) { _ in
             terminalFontSize = GhosttyConfig.load(globalFontMagnificationPercent: GlobalFontMagnification.storedPercent).fontSize
         }
     }
 
-    private func restartExitedSession(_ exit: SessionExitTracker.ExitEntry) {
-        exitTracker.clear(sessionName: exit.sessionName)
-        // Type the attach command into the panel's PTY. The user can also
-        // edit it before pressing return; the trailing newline executes
-        // it immediately when no edits are made.
-        let engine = SessionDaemonResolver.shared.selectedKind() ?? .tsm
-        let binary = engine == .tsm ? "tsm" : "zmx"
-        _ = panel.surface.sendText("\(binary) attach \(exit.sessionName)\n")
+    private var sessionContentWidthPresentation: SessionContentWidthPresentation {
+        SessionContentWidthPresentation(
+            storedMaximumWidth: storedSessionContentMaximumWidth,
+            storedAlignment: storedSessionContentAlignment
+        )
+    }
+
+    @MainActor
+    private func currentPortalPaneOwner() -> Bool {
+        if let portalPaneOwnershipResolver {
+            return portalPaneOwnershipResolver()
+        }
+        guard let app = AppDelegate.shared,
+              let manager = app.tabManagerFor(tabId: panel.workspaceId),
+              let workspace = manager.tabs.first(where: { $0.id == panel.workspaceId }),
+              let livePanel = workspace.panels[panel.id],
+              livePanel === panel,
+              let currentPane = workspace.paneId(forPanelId: panel.id),
+              currentPane.id == paneId.id,
+              let tabId = workspace.surfaceIdFromPanelId(panel.id) else {
+            return false
+        }
+        return workspace.bonsplitController.selectedTab(inPane: currentPane)?.id == tabId
     }
 
     private var effectiveTerminalAgentContext: String {
@@ -230,65 +223,6 @@ struct TerminalPanelView: View {
         } else {
             context += "\n\(marker)"
         }
-    }
-}
-
-/// Pill shown in a herdr-backed panel's top-right corner once the
-/// daemon broadcasts `pane.exited` for that pane. The pane itself
-/// stays alive (tmux semantics: scrollback is intact, the user can
-/// dismiss it explicitly via Close Pane); the badge tells the user
-/// the underlying process is gone.
-struct HerdrPaneExitedBadge: View {
-    var body: some View {
-        HStack(spacing: 3) {
-            Image(systemName: "xmark.octagon.fill")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.red)
-            Text(
-                String(
-                    localized: "panel.herdr.exited",
-                    defaultValue: "Process exited"
-                )
-            )
-            .font(.system(size: 10, weight: .medium, design: .monospaced))
-            .foregroundStyle(.primary)
-        }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 2)
-        .background(.thinMaterial, in: Capsule())
-        .accessibilityLabel(
-            String(
-                localized: "panel.herdr.exited.a11y",
-                defaultValue: "Workspace pane has exited"
-            )
-        )
-    }
-}
-
-/// Lightweight ⚡ pill rendered in a terminal panel's top-right corner when
-/// the panel's foreground process is a tracked `zmx attach`. Read-only —
-/// reattach / kill flows live in the command palette.
-struct ZmxPanelBadge: View {
-    let sessionName: String
-
-    var body: some View {
-        HStack(spacing: 3) {
-            Image(systemName: "bolt.horizontal.circle.fill")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.yellow)
-            Text(sessionName)
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
-                .foregroundStyle(.primary)
-        }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 2)
-        .background(.thinMaterial, in: Capsule())
-        .accessibilityLabel(
-            String(
-                localized: "panel.zmx.badge",
-                defaultValue: "Persistent zmx session: \(sessionName)"
-            )
-        )
     }
 }
 

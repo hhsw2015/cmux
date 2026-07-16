@@ -16,16 +16,6 @@ struct AgentHibernationPanelState {
     }
 }
 
-/// State for a panel whose Ghostty runtime surface was freed while the panel
-/// stayed open (plain-shell surface hibernation). Restoring starts a fresh
-/// shell in `workingDirectory` and replays `scrollback` into it.
-struct SurfaceHibernationPanelState {
-    let hibernatedAt: Date
-    let lastActivityAt: Date
-    let scrollback: String?
-    let workingDirectory: String?
-}
-
 enum AgentHibernationResumePreparation: Equatable {
     case unavailable
     case resumed(queuedStartupInput: Bool)
@@ -61,6 +51,7 @@ final class TerminalPanel: Panel, ObservableObject {
     /// The workspace ID this panel belongs to
     private(set) var workspaceId: UUID
 
+    var ownedSessionScrollbackReplayFileURL: URL? = nil
     /// The workspace-env key/value pairs this panel inherited from its workspace's
     /// `workspaceEnvironment` at creation. The same panel travels when a surface is
     /// moved between workspaces, so a respawn uses these to drop the (possibly
@@ -78,25 +69,6 @@ final class TerminalPanel: Panel, ObservableObject {
     @Published private(set) var directory: String = ""
 
     @Published private(set) var tmuxLayoutReport: TmuxPaneLayoutReport?
-    /// Latest known zmx session name this panel is attached to. Nil when
-    /// the panel's foreground process is not a tracked `zmx attach`.
-    /// Updated by `ZmxPanelBinder` during periodic sweeps; SwiftUI views can
-    /// observe it to render a "⚡ session-name" badge.
-    @Published private(set) var zmxSessionName: String?
-
-    /// User-visible "Keep Alive" toggle. Phase 2.3 surfaces it in the
-    /// right-click menu + Settings default. When on, closing this panel
-    /// detaches the underlying session daemon process instead of killing
-    /// it, so reopening cmux reattaches without losing scrollback.
-    @Published var keepAlive: Bool = false
-
-    /// True when this panel is herdr-backed and its underlying child
-    /// process exited. The herdr daemon keeps the pane alive (tmux
-    /// semantics: history scrollable, can still type Enter to dismiss
-    /// the dead shell), so the panel remains; the flag drives a small
-    /// "exited" overlay so the user knows the process is gone.
-    @Published private(set) var herdrPaneExited: Bool = false
-
     let shellActivity = TerminalPanelShellActivityModel()
     let textBoxState = TerminalPanelTextBoxState()
     @Published var isTextBoxActive: Bool = false
@@ -144,13 +116,11 @@ final class TerminalPanel: Panel, ObservableObject {
     @Published var viewReattachToken: UInt64 = 0
 
     @Published private(set) var agentHibernationState: AgentHibernationPanelState?
-    @Published private(set) var surfaceHibernationState: SurfaceHibernationPanelState?
 
     var onRequestWorkspacePaneFlash: ((WorkspaceAttentionFlashReason) -> Void)?
     var onRequestAgentHibernationResume: ((Bool) -> Bool)?
 
     private var cancellables = Set<AnyCancellable>()
-    private var herdrPaneExitedObserver: NSObjectProtocol?
 
     var displayTitle: String {
         title.isEmpty ? "Terminal" : title
@@ -192,10 +162,6 @@ final class TerminalPanel: Panel, ObservableObject {
         agentHibernationState != nil
     }
 
-    var isSurfaceHibernated: Bool {
-        surfaceHibernationState != nil
-    }
-
     /// The hosted NSView for embedding in SwiftUI
     var hostedView: GhosttySurfaceScrollView {
         surface.hostedView
@@ -205,49 +171,10 @@ final class TerminalPanel: Panel, ObservableObject {
         surface.requestedWorkingDirectory
     }
 
-    private let zmxPanelBox: ZmxPanelRegistry.PanelBox
-    private var zmxBinderSweepObserver: NSObjectProtocol?
-
     init(workspaceId: UUID, surface: TerminalSurface) {
         self.id = surface.id
         self.workspaceId = workspaceId
         self.surface = surface
-        // Apply user's "Keep new panels alive" default. Off by default so
-        // existing behavior is unchanged.
-        if SessionPersistenceFeatureFlags.effective(.keepAlive),
-           UserDefaults.standard.bool(forKey: "zmx.integration.defaultKeepAlive") {
-            self.keepAlive = true
-        }
-        self.zmxPanelBox = ZmxPanelRegistry.PanelBox(
-            workspaceId: workspaceId,
-            surface: surface.surface,
-            surfaceLive: surface.hasLiveSurface,
-            workingDirectory: surface.requestedWorkingDirectory
-        )
-        // After self is fully initialized, install a publisher closure that
-        // forwards session-name changes from the binder back to this panel.
-        zmxPanelBox.publishSessionName = { [weak self] name in
-            self?.updateZmxSessionName(name)
-        }
-        ZmxPanelRegistry.shared.register(
-            workspaceId: workspaceId,
-            panelId: surface.id,
-            box: zmxPanelBox
-        )
-
-        // Refresh the registry box whenever the binder sweeps so it sees the
-        // latest live surface handle, liveness flag, and cwd for this panel.
-        zmxBinderSweepObserver = NotificationCenter.default.addObserver(
-            forName: .zmxPanelBinderSweepRequested,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            guard let self else { return }
-            self.zmxPanelBox.surface = self.surface.surface
-            self.zmxPanelBox.surfaceLive = self.surface.hasLiveSurface
-            self.zmxPanelBox.workingDirectory = self.surface.requestedWorkingDirectory
-        }
-
         // Subscribe to surface's search state changes
         surface.$searchState
             .sink { [weak self] state in
@@ -256,22 +183,6 @@ final class TerminalPanel: Panel, ObservableObject {
                 }
             }
             .store(in: &cancellables)
-
-        // Listen for `pane.exited` events broadcast by HerdrPanelRegistry.
-        // Captures self.id so the observer matches only this panel.
-        let panelId = self.id
-        herdrPaneExitedObserver = NotificationCenter.default.addObserver(
-            forName: .cmuxHerdrPaneExited,
-            object: nil,
-            queue: .main
-        ) { [weak self] note in
-            guard let self else { return }
-            guard let exitedId = note.userInfo?["panelId"] as? UUID,
-                  exitedId == panelId else { return }
-            if !self.herdrPaneExited {
-                self.herdrPaneExited = true
-            }
-        }
     }
 
     /// Create a new terminal panel with a fresh surface
@@ -288,8 +199,7 @@ final class TerminalPanel: Panel, ObservableObject {
         initialEnvironmentOverrides: [String: String] = [:],
         additionalEnvironment: [String: String] = [:],
         focusPlacement: TerminalSurfaceFocusPlacement = .workspace,
-        runtimeSpawnPolicy: TerminalSurfaceRuntimeSpawnPolicy = .immediate,
-        externalIo: TerminalSurface.ExternalIoBinding? = nil
+        runtimeSpawnPolicy: TerminalSurfaceRuntimeSpawnPolicy = .immediate
     ) {
         let surface = TerminalSurface(
             id: id,
@@ -303,8 +213,8 @@ final class TerminalPanel: Panel, ObservableObject {
             initialInput: initialInput,
             initialEnvironmentOverrides: initialEnvironmentOverrides,
             additionalEnvironment: additionalEnvironment,
-            focusPlacement: focusPlacement,
-            externalIo: externalIo
+            focusPlacement: focusPlacement, runtimeSpawnPolicy: runtimeSpawnPolicy,
+            preparePaneHost: { Self.prepareNotificationScrollReplay(for: $0, environment: additionalEnvironment) }
         )
         self.init(workspaceId: workspaceId, surface: surface)
         if Self.startsAtOwnedPrompt(
@@ -338,12 +248,6 @@ final class TerminalPanel: Panel, ObservableObject {
         let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty && title != trimmed {
             title = trimmed
-        }
-    }
-
-    func updateZmxSessionName(_ newValue: String?) {
-        if zmxSessionName != newValue {
-            zmxSessionName = newValue
         }
     }
 
@@ -690,9 +594,6 @@ final class TerminalPanel: Panel, ObservableObject {
             _ = requestAgentHibernationResume(focus: true)
             return
         }
-        if isSurfaceHibernated {
-            prepareSurfaceHibernationRestore()
-        }
         focusTerminalSurface(respectForeignFirstResponder: true)
     }
 
@@ -755,24 +656,10 @@ final class TerminalPanel: Panel, ObservableObject {
         hostedView.setActive(false)
     }
 
-    deinit {
-        if let observer = zmxBinderSweepObserver {
-            NotificationCenter.default.removeObserver(observer)
-        }
-        if let observer = herdrPaneExitedObserver {
-            NotificationCenter.default.removeObserver(observer)
-        }
-        ZmxPanelRegistry.shared.scheduleUnregister(panelId: id)
-        let panelId = id
-        Task { @MainActor in
-            ZmxPanelBindingCache.clear(panelId: panelId)
-        }
-    }
-
     func close() {
         isClosingPanel = true
         discardTextBoxContentForClose()
-        // The surface will be cleaned up by its deinit
+        removeOwnedSessionScrollbackReplayArtifact()
         // Detach from the window portal on real close so stale hosted views
         // cannot remain above browser panes after split close.
         surface.beginPortalCloseLifecycle(reason: "panel.close")
@@ -809,52 +696,11 @@ final class TerminalPanel: Panel, ObservableObject {
             hibernatedAt: hibernatedAt,
             lastActivityAt: lastActivityAt
         )
-        suspendSurfaceForHibernation(reason: "agentHibernation")
-    }
-
-    /// Free the runtime surface of a plain-shell panel while keeping the panel
-    /// in the layout. The captured scrollback and working directory are
-    /// replayed into a fresh shell when the panel is restored.
-    func enterSurfaceHibernation(
-        scrollback: String?,
-        workingDirectory: String?,
-        lastActivityAt: Date,
-        hibernatedAt: Date = Date()
-    ) {
-        guard !isAgentHibernated, !isSurfaceHibernated else { return }
-        surfaceHibernationState = SurfaceHibernationPanelState(
-            hibernatedAt: hibernatedAt,
-            lastActivityAt: lastActivityAt,
-            scrollback: scrollback,
-            workingDirectory: workingDirectory
-        )
-        suspendSurfaceForHibernation(reason: "surfaceHibernation")
-    }
-
-    /// Bring a surface-hibernated panel back: stage scrollback replay and the
-    /// captured working directory, then let the surface start on the next view
-    /// attach (or immediately when already visible).
-    @discardableResult
-    func prepareSurfaceHibernationRestore() -> Bool {
-        guard let state = surfaceHibernationState else { return false }
-        surfaceHibernationState = nil
-        surface.stageHibernationRestore(
-            scrollback: state.scrollback,
-            workingDirectory: state.workingDirectory
-        )
-        surface.prepareHibernationResume(initialInput: nil)
-        requestViewReattach()
-        surface.requestBackgroundSurfaceStartIfNeeded()
-        AgentHibernationController.shared.recordTerminalFocus(workspaceId: workspaceId, panelId: id)
-        return true
-    }
-
-    private func suspendSurfaceForHibernation(reason: String) {
         unfocus()
         searchState = nil
         hostedView.setVisibleInUI(false)
         TerminalWindowPortalRegistry.detach(hostedView: hostedView)
-        surface.suspendRuntimeSurfaceForHibernation(reason: reason)
+        surface.suspendRuntimeSurfaceForAgentHibernation(reason: "agentHibernation")
         requestViewReattach()
     }
 
@@ -865,7 +711,7 @@ final class TerminalPanel: Panel, ObservableObject {
         }
         let resumeStartupInput = state.agent.resumeStartupInput()
         agentHibernationState = nil
-        surface.prepareHibernationResume(initialInput: resumeStartupInput)
+        surface.prepareAgentHibernationResume(initialInput: resumeStartupInput)
         requestViewReattach()
         surface.requestBackgroundSurfaceStartIfNeeded()
         return .resumed(queuedStartupInput: resumeStartupInput != nil)
@@ -873,6 +719,17 @@ final class TerminalPanel: Panel, ObservableObject {
 
     func requestViewReattach() {
         viewReattachToken &+= 1
+    }
+
+    /// Monotonic model ownership epoch across container transfers and local
+    /// representable reattachments. This takes precedence over host creation
+    /// order when a move rolls back to an earlier view.
+    var portalHostOwnershipGeneration: UInt64 {
+        surface.currentPortalHostOwnershipGeneration() &+ viewReattachToken
+    }
+
+    func recordPortalHostOwnershipChange() {
+        requestViewReattach()
     }
 
     // MARK: - Terminal-specific methods
@@ -910,8 +767,8 @@ final class TerminalPanel: Panel, ObservableObject {
     }
 
     func performBindingAction(_ action: String) -> Bool {
-        guard !isAgentHibernated, !isSurfaceHibernated else { return false }
-        return surface.performBindingAction(action)
+        guard !isAgentHibernated else { return false }
+        return surface.performExplicitInputBindingAction(action)
     }
 
     @discardableResult
@@ -921,11 +778,8 @@ final class TerminalPanel: Panel, ObservableObject {
     }
 
     private func resumeForExplicitInputIfNeeded() {
-        if isAgentHibernated {
-            _ = requestAgentHibernationResume(focus: false)
-            return
-        }
-        prepareSurfaceHibernationRestore()
+        guard isAgentHibernated else { return }
+        _ = requestAgentHibernationResume(focus: false)
     }
 
     @discardableResult
@@ -975,7 +829,7 @@ final class TerminalPanel: Panel, ObservableObject {
     }
 
     func captureFocusIntent(in window: NSWindow?) -> PanelFocusIntent {
-        guard !isAgentHibernated, !isSurfaceHibernated else { return .panel }
+        guard !isAgentHibernated else { return .panel }
         if textBoxOwnsResponder(window?.firstResponder) {
             return .terminal(.textBoxInput)
         }
@@ -983,7 +837,7 @@ final class TerminalPanel: Panel, ObservableObject {
     }
 
     func preferredFocusIntentForActivation() -> PanelFocusIntent {
-        guard !isAgentHibernated, !isSurfaceHibernated else { return .panel }
+        guard !isAgentHibernated else { return .panel }
         if isTextBoxActive, textBoxInputFocusIntent == .textBox {
             return .terminal(.textBoxInput)
         }
@@ -991,7 +845,7 @@ final class TerminalPanel: Panel, ObservableObject {
     }
 
     func prepareFocusIntentForActivation(_ intent: PanelFocusIntent) {
-        guard !isAgentHibernated, !isSurfaceHibernated else { return }
+        guard !isAgentHibernated else { return }
         guard case .terminal(let target) = intent else { return }
         switch target {
         case .surface, .findField:
@@ -1012,11 +866,6 @@ final class TerminalPanel: Panel, ObservableObject {
         if isAgentHibernated {
             return requestAgentHibernationResume(focus: true)
         }
-        if isSurfaceHibernated {
-            prepareSurfaceHibernationRestore()
-            focus()
-            return true
-        }
         switch intent {
         case .panel:
             focus()
@@ -1036,7 +885,7 @@ final class TerminalPanel: Panel, ObservableObject {
     }
 
     func ownedFocusIntent(for responder: NSResponder, in window: NSWindow) -> PanelFocusIntent? {
-        guard !isAgentHibernated, !isSurfaceHibernated else { return nil }
+        guard !isAgentHibernated else { return nil }
         _ = window
         if textBoxOwnsResponder(responder) {
             return .terminal(.textBoxInput)
@@ -1047,7 +896,7 @@ final class TerminalPanel: Panel, ObservableObject {
 
     @discardableResult
     func yieldFocusIntent(_ intent: PanelFocusIntent, in window: NSWindow) -> Bool {
-        guard !isAgentHibernated, !isSurfaceHibernated else { return false }
+        guard !isAgentHibernated else { return false }
         guard case .terminal(let target) = intent else { return false }
         if target == .textBoxInput {
             guard let firstResponder = window.firstResponder,

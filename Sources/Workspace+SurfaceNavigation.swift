@@ -12,25 +12,27 @@ extension Workspace {
     func surfaceKind(for panel: any Panel) -> String {
         switch panel.panelType {
         case .terminal:
-            return SurfaceKind.terminal
+            return SurfaceKind.terminal.rawValue
         case .browser:
-            return SurfaceKind.browser
+            return SurfaceKind.browser.rawValue
         case .markdown:
-            return SurfaceKind.markdown
+            return SurfaceKind.markdown.rawValue
         case .filePreview:
-            return SurfaceKind.filePreview
+            return SurfaceKind.filePreview.rawValue
         case .rightSidebarTool:
-            return SurfaceKind.rightSidebarTool
+            return SurfaceKind.rightSidebarTool.rawValue
         case .customSidebar:
-            return SurfaceKind.customSidebar
+            return SurfaceKind.customSidebar.rawValue
         case .agentSession:
-            return SurfaceKind.agentSession
+            return SurfaceKind.agentSession.rawValue
         case .project:
-            return SurfaceKind.project
+            return SurfaceKind.project.rawValue
         case .extensionBrowser:
-            return SurfaceKind.extensionBrowser
+            return SurfaceKind.extensionBrowser.rawValue
+        case .workspaceTodo:
+            return SurfaceKind.todo.rawValue
         case .cloudVMLoading:
-            return SurfaceKind.cloudVMLoading
+            return SurfaceKind.cloudVMLoading.rawValue
         }
     }
 

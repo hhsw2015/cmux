@@ -69,6 +69,10 @@ GhosttyKit.xcframework/
 
 # Local dogfood scratch (screenshots, recordings) — never commit
 artifacts/
+!Packages/Shared/CmuxAgentChat/Sources/CmuxAgentChat/Artifacts/
+!Packages/Shared/CmuxAgentChat/Sources/CmuxAgentChat/Artifacts/*.swift
+!Packages/iOS/CmuxAgentChatUI/Sources/CmuxAgentChatUI/Artifacts/
+!Packages/iOS/CmuxAgentChatUI/Sources/CmuxAgentChatUI/Artifacts/*.swift
 
 # tmux verbose debug logs (tmux -v) that land in the cwd
 tmux-*.log

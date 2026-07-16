@@ -4,6 +4,7 @@ import Combine
 import CmuxAppKitSupportUI
 import CmuxCore
 import CmuxTerminal
+import CmuxWorkspaces
 import Observation
 import SwiftUI
 
@@ -32,7 +33,6 @@ final class DockSplitStore: BonsplitDelegate {
     private let baseDirectoryProvider: () -> String?
     private let remoteBrowserSettingsProvider: () -> DockRemoteBrowserSettings
     private let browserAvailabilityProvider: () -> Bool
-    // Internal so cross-container transfers can move live panels without tearing them down.
     var panels: [UUID: any Panel] = [:]
     var surfaceIdToPanelId: [TabID: UUID] = [:]
     var panelCancellables: [UUID: AnyCancellable] = [:]
@@ -62,6 +62,7 @@ final class DockSplitStore: BonsplitDelegate {
     @ObservationIgnored var tabCloseButtonCloseDockTabIds: Set<TabID> = []
     @ObservationIgnored var terminalViewReattachCoalescingDepth = 0
     @ObservationIgnored var pendingTerminalViewReattachPanelIds: Set<UUID> = []
+    @ObservationIgnored let focusHistoryNavigation: any FocusHistoryNavigating = FocusHistoryModel()
 
     /// Weak registry of every live Dock store. Lets control-surface routing
     /// resolve a Dock surface/pane by querying only the workspaces that actually
@@ -70,7 +71,6 @@ final class DockSplitStore: BonsplitDelegate {
     /// automatically when a store deallocates; accessed on the main actor only.
     @MainActor private static let liveStoresTable = NSHashTable<DockSplitStore>.weakObjects()
 
-    /// Snapshot of the currently live Dock stores.
     @MainActor static var liveStores: [DockSplitStore] { liveStoresTable.allObjects }
 
     init(
@@ -117,7 +117,7 @@ final class DockSplitStore: BonsplitDelegate {
         for tabId in bonsplitController.allTabIds {
             _ = bonsplitController.closeTab(tabId)
         }
-        // Register only after every stored property is initialized.
+        focusHistoryNavigation.attach(host: self)
         Self.liveStoresTable.add(self)
     }
 
