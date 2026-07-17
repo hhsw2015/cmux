@@ -1930,6 +1930,24 @@ extension Workspace {
 /// decomposition, Wave 3). This typealias keeps call sites byte-identical.
 typealias ClosedBrowserPanelRestoreSnapshot = CmuxBrowser.ClosedBrowserPanelRestoreSnapshot
 
+/// One top-level layout tab within a Workspace. Each layout tab owns its own
+/// bonsplit tree and its corresponding tab in the workspace's top-tab bar
+/// controller. Fork feature: a workspace can hold multiple parallel split
+/// trees, switched via the top-tab bar; upstream ships one tree per workspace.
+@MainActor
+final class WorkspaceLayoutTab: Identifiable {
+    let id: UUID
+    let topTabId: TabID
+    let bonsplitController: BonsplitController
+    var surfaceIdToPanelId: [TabID: UUID] = [:]
+
+    init(topTabId: TabID, bonsplitController: BonsplitController) {
+        self.id = topTabId.uuid
+        self.topTabId = topTabId
+        self.bonsplitController = bonsplitController
+    }
+}
+
 /// Workspace represents a sidebar tab.
 /// Each workspace contains one BonsplitController that manages split panes and nested surfaces.
 @MainActor
@@ -2014,8 +2032,45 @@ final class Workspace: Identifiable, ObservableObject {
     /// Ordinal for CMUX_PORT range assignment (monotonically increasing per app session)
     var portOrdinal: Int = 0
 
-    /// The bonsplit controller managing the split panes for this workspace
-    let bonsplitController: BonsplitController
+    /// The bonsplit controller managing the split panes for the CURRENTLY
+    /// SELECTED top-level layout tab. Fork feature: a workspace can have
+    /// multiple parallel split trees (`layoutTabs`), each with its own
+    /// bonsplit controller; this property points to the currently selected
+    /// one and is swapped in place when the user switches top tabs.
+    ///
+    /// Kept as a `var` (not computed) so the 200+ existing access sites keep
+    /// working without churn — `Workspace+TopTabs.swift` reassigns it inside
+    /// `selectLayoutTab(_:)` and other tab-switch entry points.
+    var bonsplitController: BonsplitController
+
+    /// The bonsplit controller used to render the workspace's top-tab bar
+    /// (each tab in this controller corresponds to one `WorkspaceLayoutTab`
+    /// entry in `layoutTabs`). Lives at the workspace level so its geometry
+    /// and configuration survive top-tab switches. `Workspace+TopTabs.swift`
+    /// wires its delegate.
+    let topTabController: BonsplitController
+
+    /// All top-level layout tabs for this workspace. `layoutTabs.count == 1`
+    /// mirrors the pre-fork "single split tree" layout; when the user opens
+    /// a second top tab a new entry appears here with its own bonsplit tree.
+    @Published private(set) var layoutTabs: [WorkspaceLayoutTab] = []
+
+    /// The id of the currently selected `WorkspaceLayoutTab` (matches
+    /// `layoutTabs[i].id`). `nil` only before the initial layout tab has
+    /// been created; after that always non-nil.
+    @Published private(set) var selectedLayoutTabId: UUID?
+
+    /// The currently selected `WorkspaceLayoutTab`. Convenience getter used
+    /// by fork call sites that need both id and bonsplit; falls back to the
+    /// first tab so tests and startup paths that touch it before selection
+    /// don't crash.
+    var activeLayoutTab: WorkspaceLayoutTab {
+        if let id = selectedLayoutTabId,
+           let found = layoutTabs.first(where: { $0.id == id }) {
+            return found
+        }
+        return layoutTabs.first ?? layoutTabs[layoutTabs.startIndex] // trap-on-empty by design
+    }
 
     /// Backing store for `dockSplit`, created on first access. Kept optional so
     /// workspace teardown can tear down the Dock only when it was actually used
@@ -2939,6 +2994,32 @@ final class Workspace: Identifiable, ObservableObject {
             appearance: appearance
         )
         self.bonsplitController = BonsplitController(configuration: config)
+
+        // Fork feature: initialize the top-tab bar controller with a single
+        // implicit tab representing the workspace's initial layout. The tab
+        // bar stays hidden while there is only one entry (see
+        // WorkspaceTopTabsVisibilitySettings); a second `newTopLevelTerminalTab`
+        // grows this list.
+        let topTabConfig = BonsplitConfiguration(
+            allowSplits: false,
+            allowCloseTabs: true,
+            allowCloseLastPane: false,
+            allowTabReordering: true,
+            allowCrossPaneTabMove: false,
+            autoCloseEmptyPanes: false,
+            contentViewLifecycle: .keepAllAlive,
+            newTabPosition: .end,
+            appearance: appearance
+        )
+        self.topTabController = BonsplitController(configuration: topTabConfig)
+        let initialTopTabId = topTabController.allTabIds.first ?? TabID(uuid: UUID())
+        let initialLayoutTab = WorkspaceLayoutTab(
+            topTabId: initialTopTabId,
+            bonsplitController: bonsplitController
+        )
+        self.layoutTabs = [initialLayoutTab]
+        self.selectedLayoutTabId = initialLayoutTab.id
+
         paneTree.attach(host: self)
         surfaceList.attach(tree: self)
         bonsplitController.contextMenuShortcuts = Self.buildContextMenuShortcuts()
