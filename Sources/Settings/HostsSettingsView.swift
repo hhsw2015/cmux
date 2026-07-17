@@ -1,4 +1,5 @@
 import AppKit
+import CmuxSettingsUI
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -25,7 +26,7 @@ struct HostsSettingsView: View {
 
     var body: some View {
         SettingsSectionHeader(
-            title: String(localized: "settings.section.hosts", defaultValue: "Computers")
+            String(localized: "settings.section.hosts", defaultValue: "Computers")
         )
         .settingsSearchAnchor(SettingsSearchIndex.sectionID(for: .hosts))
 

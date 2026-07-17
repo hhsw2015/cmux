@@ -1,5 +1,6 @@
 
 import CMUXSessionDaemon
+import CmuxSettingsUI
 import SwiftUI
 
 /// User-facing surface for the session-persistence integration. Picks an
@@ -17,19 +18,19 @@ struct ZmxSettingsView: View {
 
     var body: some View {
         SettingsSectionHeader(
-            title: String(localized: "settings.section.zmx", defaultValue: "Session Persistence")
+            String(localized: "settings.section.zmx", defaultValue: "Session Persistence")
         )
         .settingsSearchAnchor(SettingsSearchIndex.sectionID(for: .zmx))
 
         SettingsCard {
             SettingsCardRow(
                 configurationReview: .settingsOnly,
+                searchAnchorID: "zmx.engine",
                 String(
                     localized: "settings.zmx.engine",
                     defaultValue: "Engine"
                 ),
-                subtitle: engineSubtitle,
-                searchAnchorID: "zmx.engine"
+                subtitle: engineSubtitle
             ) {
                 Picker("", selection: $engineRaw) {
                     Text(String(localized: "settings.zmx.engine.none", defaultValue: "None")).tag("none")
@@ -46,12 +47,12 @@ struct ZmxSettingsView: View {
 
             SettingsCardRow(
                 configurationReview: .settingsOnly,
+                searchAnchorID: "zmx.enable",
                 String(
                     localized: "settings.zmx.enable",
                     defaultValue: "Track session attachments"
                 ),
-                subtitle: enableSubtitle,
-                searchAnchorID: "zmx.enable"
+                subtitle: enableSubtitle
             ) {
                 Toggle("", isOn: $integrationEnabled)
                     .labelsHidden()
@@ -64,6 +65,7 @@ struct ZmxSettingsView: View {
 
             SettingsCardRow(
                 configurationReview: .settingsOnly,
+                searchAnchorID: "zmx.defaultKeepAlive",
                 String(
                     localized: "settings.zmx.defaultKeepAlive",
                     defaultValue: "Keep new terminals alive by default"
@@ -71,8 +73,7 @@ struct ZmxSettingsView: View {
                 subtitle: String(
                     localized: "settings.zmx.defaultKeepAlive.subtitle",
                     defaultValue: "New panels start with keep-alive on. Individual panels can override from their context menu."
-                ),
-                searchAnchorID: "zmx.defaultKeepAlive"
+                )
             ) {
                 Toggle("", isOn: $defaultKeepAlive)
                     .labelsHidden()
@@ -85,12 +86,12 @@ struct ZmxSettingsView: View {
 
             SettingsCardRow(
                 configurationReview: .settingsOnly,
+                searchAnchorID: "zmx.detection",
                 String(
                     localized: "settings.zmx.detection",
                     defaultValue: "Engine binary"
                 ),
-                subtitle: detectionSubtitle,
-                searchAnchorID: "zmx.detection"
+                subtitle: detectionSubtitle
             ) {
                 EmptyView()
             }
@@ -99,6 +100,7 @@ struct ZmxSettingsView: View {
                 SettingsCardDivider()
                 SettingsCardRow(
                     configurationReview: .settingsOnly,
+                searchAnchorID: "zmx.reconcile",
                     String(
                         localized: "settings.zmx.reconcile",
                         defaultValue: "Reconcile bindings"
@@ -106,8 +108,7 @@ struct ZmxSettingsView: View {
                     subtitle: reconcileMessage ?? String(
                         localized: "settings.zmx.reconcile.subtitle",
                         defaultValue: "Refresh state of every persistent panel."
-                    ),
-                    searchAnchorID: "zmx.reconcile"
+                    )
                 ) {
                     Button(action: runReconcile) {
                         Text(String(
