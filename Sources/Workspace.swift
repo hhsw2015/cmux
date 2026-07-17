@@ -11789,6 +11789,7 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, shouldCloseTab tab: Bonsplit.Tab, inPane pane: PaneID) -> Bool {
+        if controller === topTabController { return handleTopTabBarDelegate(shouldReturnBool: true) }
         func recordPostCloseState() {
             if controller.zoomedPaneId == pane,
                controller.selectedTab(inPane: pane)?.id == tab.id {
@@ -12017,6 +12018,7 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didCloseTab tabId: TabID, fromPane pane: PaneID) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
         forceCloseTabIds.remove(tabId)
         tabStripCloseButtonByTabId.removeValue(forKey: tabId)
         let remoteTmuxWorkspaceCloseButton = remoteTmuxWorkspaceCloseButtonByTabId.removeValue(forKey: tabId)
@@ -12182,12 +12184,14 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didSelectTab tab: Bonsplit.Tab, inPane pane: PaneID) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
         // Mirror bookkeeping restores selection from its transaction snapshot.
         guard !remoteTmuxMirrorMutations.suppressesFocusActivation else { return }
         applyTabSelection(tabId: tab.id, inPane: pane)
     }
 
     func splitTabBar(_ controller: BonsplitController, shouldSplitPane pane: PaneID, orientation: SplitOrientation) -> Bool {
+        if controller === topTabController { return handleTopTabBarDelegate(shouldReturnBool: true) }
         // In a remote tmux mirror, split means tmux `split-window`; always veto
         // local splits so the mirror never gains an orphan pane.
         guard isRemoteTmuxMirror else { return true }
@@ -12201,6 +12205,7 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didReorderTabsInPane pane: PaneID, orderedTabIds: [TabID]) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
         // A remote tmux mirror tab reorder propagates to tmux window order.
         guard isRemoteTmuxMirror else { return }
         let orderedPanelIds = orderedTabIds.compactMap { panelIdFromSurfaceId($0) }
@@ -12209,6 +12214,7 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didMoveTab tab: Bonsplit.Tab, fromPane source: PaneID, toPane destination: PaneID) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
 #if DEBUG
         let now = ProcessInfo.processInfo.systemUptime
         let sincePrev: String
@@ -12263,6 +12269,7 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didFocusPane pane: PaneID) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
         // Mirror bookkeeping restores pane focus without re-running activation.
         guard !remoteTmuxMirrorMutations.suppressesFocusActivation else { return }
         // When a pane is focused, focus its selected tab's panel
@@ -12282,6 +12289,7 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didClosePane paneId: PaneID) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
         let closedPanelIds = pendingPaneClosePanelIds.removeValue(forKey: paneId.id) ?? []
         let closedHistoryEntries = pendingPaneCloseHistoryEntries.removeValue(forKey: paneId.id) ?? []
         let shouldScheduleFocusReconcile = !isDetachingCloseTransaction
@@ -12332,6 +12340,7 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, shouldClosePane pane: PaneID) -> Bool {
+        if controller === topTabController { return handleTopTabBarDelegate(shouldReturnBool: true) }
         // Check if any panel in this pane needs close confirmation
         let tabs = controller.tabs(inPane: pane)
         for tab in tabs {
@@ -12365,6 +12374,7 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didSplitPane originalPane: PaneID, newPane: PaneID, orientation: SplitOrientation) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
 #if DEBUG
         let panelKindForTab: (TabID) -> String = { tabId in
             guard let panelId = self.panelIdFromSurfaceId(tabId),
@@ -12679,6 +12689,7 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didRequestNewTab kind: String, inPane pane: PaneID) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
         switch kind {
         case "terminal":
             _ = newTerminalSurface(inPane: pane, inheritWorkingDirectoryFallback: true)
@@ -12690,6 +12701,7 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didRequestCustomAction identifier: String, inPane pane: PaneID) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
 #if DEBUG
         cmuxDebugLog(
             "split.customAction.request workspace=\(id.uuidString.prefix(5)) " +
@@ -12700,6 +12712,7 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didRequestTabContextAction action: TabContextAction, for tab: Bonsplit.Tab, inPane pane: PaneID) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
         switch action {
         case .rename:
             promptRenamePanel(tabId: tab.id)
@@ -12791,10 +12804,12 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didRequestTabMoveToDestination destinationId: String, for tab: Bonsplit.Tab, inPane pane: PaneID) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
         _ = moveBonsplitTab(tab.id, toMoveDestination: destinationId)
     }
 
     func splitTabBar(_ controller: BonsplitController, didChangeGeometry snapshot: LayoutSnapshot) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
         tmuxLayoutSnapshot = snapshot
         NotificationCenter.default.post(
             name: .workspacePaneGeometryDidChange,

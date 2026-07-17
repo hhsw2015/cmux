@@ -405,3 +405,31 @@ extension Workspace {
         set { topTabState.forceCloseTopTabIds = newValue }
     }
 }
+
+// MARK: - Top-tab bar delegate handlers
+
+@MainActor
+extension Workspace {
+    /// Universal void-return handler for delegate callbacks originating from
+    /// the `topTabController` (workspace top-bar). Bonsplit fires these when
+    /// the user clicks a top tab, drags, etc. We intercept in Workspace's
+    /// splitTabBar delegate methods and route here.
+    func handleTopTabBarDelegateVoid() {
+        // Re-sync selected layout tab from top-bar selection.
+        guard let paneId = topTabController.focusedPaneId,
+              let selectedTopTab = topTabController.selectedTab(inPane: paneId) else {
+            return
+        }
+        let layoutId = selectedTopTab.id.uuid
+        if selectedLayoutTabId != layoutId {
+            _ = selectTopLevelTab(id: layoutId, reassertAppKitFocus: true)
+        }
+    }
+
+    /// Universal bool-return handler for top-tab delegate callbacks. Returns
+    /// the provided default; specific policy (like allowing close only via
+    /// `removeTopLevelLayoutTab`) is delegated to that codepath.
+    func handleTopTabBarDelegate(shouldReturnBool value: Bool) -> Bool {
+        value
+    }
+}
