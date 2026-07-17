@@ -64,6 +64,7 @@ extension TabManager {
                 workingDirectory: normalizedWorkingDirectory(detached.directory) ?? snapshot.preferredWorkingDirectory,
                 portOrdinal: ordinal,
                 configTemplate: inheritedConfig,
+                browserWebExtensionHost: browserWebExtensionHost,
                 initialDetachedSurface: detached
             )
             guard newWorkspace.panels[detached.panelId] != nil,
