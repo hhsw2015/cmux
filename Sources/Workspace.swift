@@ -2053,12 +2053,12 @@ final class Workspace: Identifiable, ObservableObject {
     /// All top-level layout tabs for this workspace. `layoutTabs.count == 1`
     /// mirrors the pre-fork "single split tree" layout; when the user opens
     /// a second top tab a new entry appears here with its own bonsplit tree.
-    @Published private(set) var layoutTabs: [WorkspaceLayoutTab] = []
+    @Published var layoutTabs: [WorkspaceLayoutTab] = []
 
     /// The id of the currently selected `WorkspaceLayoutTab` (matches
     /// `layoutTabs[i].id`). `nil` only before the initial layout tab has
     /// been created; after that always non-nil.
-    @Published private(set) var selectedLayoutTabId: UUID?
+    @Published var selectedLayoutTabId: UUID?
 
     /// The currently selected `WorkspaceLayoutTab`. Convenience getter used
     /// by fork call sites that need both id and bonsplit; falls back to the
@@ -3393,7 +3393,7 @@ final class Workspace: Identifiable, ObservableObject {
     /// Tab IDs that are allowed to close even if they would normally require confirmation.
     /// This is used by app-level confirmation prompts (for example, Close Tab) so the
     /// Bonsplit delegate doesn't block the close after the user already confirmed.
-    private var forceCloseTabIds: Set<TabID> = []
+    var forceCloseTabIds: Set<TabID> = []
 
     /// Tab IDs that are currently showing (or about to show) a close confirmation prompt.
     /// Prevents repeated close gestures (e.g., middle-click spam) from stacking dialogs.
@@ -3990,7 +3990,7 @@ final class Workspace: Identifiable, ObservableObject {
         }
     }
 
-    private func hasVisibleNotificationIndicator(panelId: UUID) -> Bool {
+    func hasVisibleNotificationIndicator(panelId: UUID) -> Bool {
         AppDelegate.shared?.notificationStore?.hasVisibleNotificationIndicator(forTabId: id, surfaceId: panelId) ?? false
     }
 
@@ -10798,7 +10798,7 @@ final class Workspace: Identifiable, ObservableObject {
     private static let bonsplitMoveNewWorkspaceDestinationId = "new-workspace"
     private static let bonsplitMoveExistingWorkspacePrefix = "workspace:"
 
-    private func bonsplitTabMoveDestinations(for tabId: TabID) -> [TabContextMoveDestination] {
+    func bonsplitTabMoveDestinations(for tabId: TabID) -> [TabContextMoveDestination] {
         guard let panelId = panelIdFromSurfaceId(tabId),
               let app = AppDelegate.shared else { return [] }
 
