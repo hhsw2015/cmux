@@ -119,7 +119,24 @@ extension Workspace {
             (notificationStore?.hasUnreadNotification(forTabId: id, surfaceId: nil) ?? false) ||
             (notificationStore?.hasRestoredUnreadIndicator(forTabId: id) ?? false)
         let workspaceNotificationSnapshots = notificationSnapshots(surfaceId: nil)
+        // Fork top-tab feature: capture every layout tab as its own snapshot so
+        // reopening cmux restores every top-level tab (each with its own split
+        // tree), not just the active one. Falls back to a single implicit tab
+        // wrapping `layout` for legacy consumers via SessionWorkspaceSnapshot's
+        // default (`layoutTabs = nil`).
+        let layoutTabSnapshots: [SessionWorkspaceLayoutTabSnapshot] = layoutTabs.map { layoutTab in
+            let tree = layoutTab.bonsplitController.treeSnapshot()
+            let raw = sessionLayoutSnapshot(from: tree)
+            let pruned = prunedSessionLayoutSnapshot(raw, keeping: persistedPanelIds) ?? .pane(
+                SessionPaneLayoutSnapshot(panelIds: [], selectedPanelId: nil)
+            )
+            let title = topTabController.tab(layoutTab.topTabId)?.title
+            return SessionWorkspaceLayoutTabSnapshot(id: layoutTab.id, title: title, layout: pruned)
+        }
+
         var snapshot = SessionWorkspaceSnapshot(
+            layoutTabs: layoutTabSnapshots.isEmpty ? nil : layoutTabSnapshots,
+            selectedLayoutTabId: selectedLayoutTabId,
             workspaceId: id,
             stableId: stableId,
             processTitle: processTitle,
@@ -226,6 +243,35 @@ extension Workspace {
 
         pruneSurfaceMetadata(validSurfaceIds: Set(panels.keys))
         applySessionDividerPositions(snapshotNode: snapshot.layout, liveNode: bonsplitController.treeSnapshot())
+
+        // Fork top-tab feature: if the snapshot recorded multiple layout tabs,
+        // recreate the extras (the primary layout is already restored above via
+        // snapshot.layout / restoreSessionLayout). Extras get an empty bonsplit
+        // for now — a follow-up will hydrate their layouts from
+        // SessionWorkspaceLayoutTabSnapshot.layout so terminals restore into
+        // them too.
+        if let snapshotTabs = snapshot.layoutTabs, snapshotTabs.count > 1 {
+            let selectedIndex = snapshot.selectedLayoutTabId.flatMap { targetId in
+                snapshotTabs.firstIndex(where: { $0.id == targetId })
+            } ?? 0
+            // Skip the first snapshot tab — the workspace's initial layoutTab
+            // already covers it via snapshot.layout above.
+            for (index, tabSnapshot) in snapshotTabs.enumerated() where index != 0 {
+                let title = tabSnapshot.title
+                    ?? String(localized: "workspace.topTab.newTerminal.title", defaultValue: "Terminal")
+                guard let layout = Self.makeLayoutTab(
+                    title: title,
+                    surfaceConfiguration: bonsplitController.configuration,
+                    topTabController: topTabController
+                ) else { continue }
+                layoutTabs.append(layout)
+                configureLayoutController(layout.bonsplitController)
+            }
+            let targetTab = layoutTabs.indices.contains(selectedIndex)
+                ? layoutTabs[selectedIndex]
+                : (layoutTabs.first ?? activeLayoutTab)
+            _ = selectTopLevelTab(id: targetTab.id, reassertAppKitFocus: false)
+        }
 
         applyProcessTitle(snapshot.processTitle)
         setCustomTitle(snapshot.customTitle, source: snapshot.customTitleSource ?? .user)
@@ -1930,6 +1976,24 @@ extension Workspace {
 /// decomposition, Wave 3). This typealias keeps call sites byte-identical.
 typealias ClosedBrowserPanelRestoreSnapshot = CmuxBrowser.ClosedBrowserPanelRestoreSnapshot
 
+/// One top-level layout tab within a Workspace. Each layout tab owns its own
+/// bonsplit tree and its corresponding tab in the workspace's top-tab bar
+/// controller. Fork feature: a workspace can hold multiple parallel split
+/// trees, switched via the top-tab bar; upstream ships one tree per workspace.
+@MainActor
+final class WorkspaceLayoutTab: Identifiable {
+    let id: UUID
+    let topTabId: TabID
+    let bonsplitController: BonsplitController
+    var surfaceIdToPanelId: [TabID: UUID] = [:]
+
+    init(topTabId: TabID, bonsplitController: BonsplitController) {
+        self.id = topTabId.uuid
+        self.topTabId = topTabId
+        self.bonsplitController = bonsplitController
+    }
+}
+
 /// Workspace represents a sidebar tab.
 /// Each workspace contains one BonsplitController that manages split panes and nested surfaces.
 @MainActor
@@ -2014,8 +2078,45 @@ final class Workspace: Identifiable, ObservableObject {
     /// Ordinal for CMUX_PORT range assignment (monotonically increasing per app session)
     var portOrdinal: Int = 0
 
-    /// The bonsplit controller managing the split panes for this workspace
-    let bonsplitController: BonsplitController
+    /// The bonsplit controller managing the split panes for the CURRENTLY
+    /// SELECTED top-level layout tab. Fork feature: a workspace can have
+    /// multiple parallel split trees (`layoutTabs`), each with its own
+    /// bonsplit controller; this property points to the currently selected
+    /// one and is swapped in place when the user switches top tabs.
+    ///
+    /// Kept as a `var` (not computed) so the 200+ existing access sites keep
+    /// working without churn — `Workspace+TopTabs.swift` reassigns it inside
+    /// `selectLayoutTab(_:)` and other tab-switch entry points.
+    var bonsplitController: BonsplitController
+
+    /// The bonsplit controller used to render the workspace's top-tab bar
+    /// (each tab in this controller corresponds to one `WorkspaceLayoutTab`
+    /// entry in `layoutTabs`). Lives at the workspace level so its geometry
+    /// and configuration survive top-tab switches. `Workspace+TopTabs.swift`
+    /// wires its delegate.
+    let topTabController: BonsplitController
+
+    /// All top-level layout tabs for this workspace. `layoutTabs.count == 1`
+    /// mirrors the pre-fork "single split tree" layout; when the user opens
+    /// a second top tab a new entry appears here with its own bonsplit tree.
+    @Published var layoutTabs: [WorkspaceLayoutTab] = []
+
+    /// The id of the currently selected `WorkspaceLayoutTab` (matches
+    /// `layoutTabs[i].id`). `nil` only before the initial layout tab has
+    /// been created; after that always non-nil.
+    @Published var selectedLayoutTabId: UUID?
+
+    /// The currently selected `WorkspaceLayoutTab`. Convenience getter used
+    /// by fork call sites that need both id and bonsplit; falls back to the
+    /// first tab so tests and startup paths that touch it before selection
+    /// don't crash.
+    var activeLayoutTab: WorkspaceLayoutTab {
+        if let id = selectedLayoutTabId,
+           let found = layoutTabs.first(where: { $0.id == id }) {
+            return found
+        }
+        return layoutTabs.first ?? layoutTabs[layoutTabs.startIndex] // trap-on-empty by design
+    }
 
     /// Backing store for `dockSplit`, created on first access. Kept optional so
     /// workspace teardown can tear down the Dock only when it was actually used
@@ -2939,6 +3040,32 @@ final class Workspace: Identifiable, ObservableObject {
             appearance: appearance
         )
         self.bonsplitController = BonsplitController(configuration: config)
+
+        // Fork feature: initialize the top-tab bar controller with a single
+        // implicit tab representing the workspace's initial layout. The tab
+        // bar stays hidden while there is only one entry (see
+        // WorkspaceTopTabsVisibilitySettings); a second `newTopLevelTerminalTab`
+        // grows this list.
+        let topTabConfig = BonsplitConfiguration(
+            allowSplits: false,
+            allowCloseTabs: true,
+            allowCloseLastPane: false,
+            allowTabReordering: true,
+            allowCrossPaneTabMove: false,
+            autoCloseEmptyPanes: false,
+            contentViewLifecycle: .keepAllAlive,
+            newTabPosition: .end,
+            appearance: appearance
+        )
+        self.topTabController = BonsplitController(configuration: topTabConfig)
+        let initialTopTabId = topTabController.allTabIds.first ?? TabID(uuid: UUID())
+        let initialLayoutTab = WorkspaceLayoutTab(
+            topTabId: initialTopTabId,
+            bonsplitController: bonsplitController
+        )
+        self.layoutTabs = [initialLayoutTab]
+        self.selectedLayoutTabId = initialLayoutTab.id
+
         paneTree.attach(host: self)
         surfaceList.attach(tree: self)
         bonsplitController.contextMenuShortcuts = Self.buildContextMenuShortcuts()
@@ -3312,7 +3439,7 @@ final class Workspace: Identifiable, ObservableObject {
     /// Tab IDs that are allowed to close even if they would normally require confirmation.
     /// This is used by app-level confirmation prompts (for example, Close Tab) so the
     /// Bonsplit delegate doesn't block the close after the user already confirmed.
-    private var forceCloseTabIds: Set<TabID> = []
+    var forceCloseTabIds: Set<TabID> = []
 
     /// Tab IDs that are currently showing (or about to show) a close confirmation prompt.
     /// Prevents repeated close gestures (e.g., middle-click spam) from stacking dialogs.
@@ -3909,7 +4036,7 @@ final class Workspace: Identifiable, ObservableObject {
         }
     }
 
-    private func hasVisibleNotificationIndicator(panelId: UUID) -> Bool {
+    func hasVisibleNotificationIndicator(panelId: UUID) -> Bool {
         AppDelegate.shared?.notificationStore?.hasVisibleNotificationIndicator(forTabId: id, surfaceId: panelId) ?? false
     }
 
@@ -10717,7 +10844,7 @@ final class Workspace: Identifiable, ObservableObject {
     private static let bonsplitMoveNewWorkspaceDestinationId = "new-workspace"
     private static let bonsplitMoveExistingWorkspacePrefix = "workspace:"
 
-    private func bonsplitTabMoveDestinations(for tabId: TabID) -> [TabContextMoveDestination] {
+    func bonsplitTabMoveDestinations(for tabId: TabID) -> [TabContextMoveDestination] {
         guard let panelId = panelIdFromSurfaceId(tabId),
               let app = AppDelegate.shared else { return [] }
 
@@ -11708,6 +11835,7 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, shouldCloseTab tab: Bonsplit.Tab, inPane pane: PaneID) -> Bool {
+        if controller === topTabController { return handleTopTabBarDelegate(shouldReturnBool: true) }
         func recordPostCloseState() {
             if controller.zoomedPaneId == pane,
                controller.selectedTab(inPane: pane)?.id == tab.id {
@@ -11936,6 +12064,7 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didCloseTab tabId: TabID, fromPane pane: PaneID) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
         forceCloseTabIds.remove(tabId)
         tabStripCloseButtonByTabId.removeValue(forKey: tabId)
         let remoteTmuxWorkspaceCloseButton = remoteTmuxWorkspaceCloseButtonByTabId.removeValue(forKey: tabId)
@@ -12101,12 +12230,14 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didSelectTab tab: Bonsplit.Tab, inPane pane: PaneID) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
         // Mirror bookkeeping restores selection from its transaction snapshot.
         guard !remoteTmuxMirrorMutations.suppressesFocusActivation else { return }
         applyTabSelection(tabId: tab.id, inPane: pane)
     }
 
     func splitTabBar(_ controller: BonsplitController, shouldSplitPane pane: PaneID, orientation: SplitOrientation) -> Bool {
+        if controller === topTabController { return handleTopTabBarDelegate(shouldReturnBool: true) }
         // In a remote tmux mirror, split means tmux `split-window`; always veto
         // local splits so the mirror never gains an orphan pane.
         guard isRemoteTmuxMirror else { return true }
@@ -12120,6 +12251,7 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didReorderTabsInPane pane: PaneID, orderedTabIds: [TabID]) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
         // A remote tmux mirror tab reorder propagates to tmux window order.
         guard isRemoteTmuxMirror else { return }
         let orderedPanelIds = orderedTabIds.compactMap { panelIdFromSurfaceId($0) }
@@ -12128,6 +12260,7 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didMoveTab tab: Bonsplit.Tab, fromPane source: PaneID, toPane destination: PaneID) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
 #if DEBUG
         let now = ProcessInfo.processInfo.systemUptime
         let sincePrev: String
@@ -12182,6 +12315,7 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didFocusPane pane: PaneID) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
         // Mirror bookkeeping restores pane focus without re-running activation.
         guard !remoteTmuxMirrorMutations.suppressesFocusActivation else { return }
         // When a pane is focused, focus its selected tab's panel
@@ -12201,6 +12335,7 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didClosePane paneId: PaneID) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
         let closedPanelIds = pendingPaneClosePanelIds.removeValue(forKey: paneId.id) ?? []
         let closedHistoryEntries = pendingPaneCloseHistoryEntries.removeValue(forKey: paneId.id) ?? []
         let shouldScheduleFocusReconcile = !isDetachingCloseTransaction
@@ -12251,6 +12386,7 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, shouldClosePane pane: PaneID) -> Bool {
+        if controller === topTabController { return handleTopTabBarDelegate(shouldReturnBool: true) }
         // Check if any panel in this pane needs close confirmation
         let tabs = controller.tabs(inPane: pane)
         for tab in tabs {
@@ -12284,6 +12420,7 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didSplitPane originalPane: PaneID, newPane: PaneID, orientation: SplitOrientation) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
 #if DEBUG
         let panelKindForTab: (TabID) -> String = { tabId in
             guard let panelId = self.panelIdFromSurfaceId(tabId),
@@ -12598,6 +12735,7 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didRequestNewTab kind: String, inPane pane: PaneID) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
         switch kind {
         case "terminal":
             _ = newTerminalSurface(inPane: pane, inheritWorkingDirectoryFallback: true)
@@ -12609,6 +12747,7 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didRequestCustomAction identifier: String, inPane pane: PaneID) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
 #if DEBUG
         cmuxDebugLog(
             "split.customAction.request workspace=\(id.uuidString.prefix(5)) " +
@@ -12619,6 +12758,7 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didRequestTabContextAction action: TabContextAction, for tab: Bonsplit.Tab, inPane pane: PaneID) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
         switch action {
         case .rename:
             promptRenamePanel(tabId: tab.id)
@@ -12710,10 +12850,12 @@ extension Workspace: BonsplitDelegate {
     }
 
     func splitTabBar(_ controller: BonsplitController, didRequestTabMoveToDestination destinationId: String, for tab: Bonsplit.Tab, inPane pane: PaneID) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
         _ = moveBonsplitTab(tab.id, toMoveDestination: destinationId)
     }
 
     func splitTabBar(_ controller: BonsplitController, didChangeGeometry snapshot: LayoutSnapshot) {
+        if controller === topTabController { handleTopTabBarDelegateVoid(); return }
         tmuxLayoutSnapshot = snapshot
         NotificationCenter.default.post(
             name: .workspacePaneGeometryDidChange,

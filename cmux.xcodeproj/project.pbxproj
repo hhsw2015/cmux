@@ -2218,6 +2218,7 @@ C0DE71B10000000000000001 /* AppDelegate+AgentChatNotifications.swift in Sources 
 		98AF1C7DA779A65C32350D04 /* ZmxSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C145501C4B71FB15A47B9B4A /* ZmxSettingsView.swift */; };
 		8566F2EC14668BF3B3B6BCDE /* ZmxPanelBinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FEE33F2196D343DD79924DA /* ZmxPanelBinder.swift */; };
 		6D8C38F0E160D42FD58669FC /* ZmxCommandHooks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30E9C984B0A54CBC4D138683 /* ZmxCommandHooks.swift */; };
+		ABCD01230000000000000001 /* Workspace+TopTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCD01230000000000000002 /* Workspace+TopTabs.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -4420,6 +4421,7 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 		C145501C4B71FB15A47B9B4A /* ZmxSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Settings/ZmxSettingsView.swift"; sourceTree = "<group>"; };
 		5FEE33F2196D343DD79924DA /* ZmxPanelBinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZmxPanelBinder.swift"; sourceTree = "<group>"; };
 		30E9C984B0A54CBC4D138683 /* ZmxCommandHooks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZmxCommandHooks.swift"; sourceTree = "<group>"; };
+		ABCD01230000000000000002 /* Workspace+TopTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Workspace+TopTabs.swift"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -6988,6 +6990,7 @@ C0DE71B10000000000000002 /* AppDelegate+AgentChatNotifications.swift */ = {isa =
 				CC89E050D3EEA2EE5FCCA9EA /* TerminalController+RemoteTmuxControlTopology.swift in Sources */,
 				173D30176BD8DA53DA0C9E1A /* TerminalController+ForkStubs.swift in Sources */,
 				6EA23F844D8FCF040599519E /* Workspace+ForkStubs.swift in Sources */,
+				ABCD01230000000000000001 /* Workspace+TopTabs.swift in Sources */,
 				4F95CDF1B656C25D221001FA /* Workspace+TitleOwnership.swift in Sources */,
 				9D8715B19F4A3DAA54B7C6F1 /* BrowserAddressBarFocusSelectionIntent.swift in Sources */,
 				2F21A5A88B1F38F3AF5F61A5 /* HerdrForkTypes+Stubs.swift in Sources */,

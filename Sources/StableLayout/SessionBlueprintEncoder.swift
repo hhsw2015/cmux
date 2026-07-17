@@ -60,7 +60,16 @@ enum SessionBlueprintEncoder {
         let panelsById = Dictionary(uniqueKeysWithValues: ws.panels.map { ($0.id, $0) })
 
         var topTabs: [SessionBlueprint.TopTab] = []
-        if false, let _ = ws.layoutTabs {  // ponytail: fork stubs layoutTabs
+        if let layoutTabs = ws.layoutTabs, layoutTabs.count > 1 {
+            // Fork top-tab feature: emit one blueprint TopTab per layout tab,
+            // preserving user-visible titles so the on-disk blueprint mirrors
+            // the workspace's top-bar structure.
+            for layoutTab in layoutTabs {
+                topTabs.append(SessionBlueprint.TopTab(
+                    name: layoutTab.title,
+                    entries: entries(layout: layoutTab.layout, panelsById: panelsById)
+                ))
+            }
         } else {
             topTabs.append(SessionBlueprint.TopTab(
                 name: nil,
