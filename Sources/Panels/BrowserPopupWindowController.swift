@@ -36,7 +36,7 @@ final class BrowserPopupWindowController: NSObject, NSWindowDelegate {
     private let webAuthnCoordinator: BrowserWebAuthnCoordinator
     private var didTearDownWebView = false
     private var sslTrustBypassMessageHandler: BrowserSSLTrustBypassMessageHandler?
-    private var globalFontObserver: GlobalFontMagnificationChangeObserver?, onClose: (() -> Void)?
+    private var globalFontObserver: GlobalFontMagnificationChangeObserver?
 
     private static var associatedObjectKey: UInt8 = 0
 
@@ -46,12 +46,12 @@ final class BrowserPopupWindowController: NSObject, NSWindowDelegate {
         browserContext: BrowserPopupBrowserContext,
         openerPanel: BrowserPanel?,
         parentPopupController: BrowserPopupWindowController? = nil,
-        nestingDepth: Int = 0, onClose: (() -> Void)? = nil
+        nestingDepth: Int = 0
     ) {
         self.browserContext = browserContext
         self.openerPanel = openerPanel
         self.parentPopupController = parentPopupController
-        self.nestingDepth = nestingDepth; self.onClose = onClose
+        self.nestingDepth = nestingDepth
 
         BrowserPanel.configureWebViewConfiguration(
             configuration,
@@ -296,7 +296,7 @@ final class BrowserPopupWindowController: NSObject, NSWindowDelegate {
 
         // Unregister from parent (opener panel or parent popup)
         openerPanel?.removePopupController(self)
-        parentPopupController?.removeChildPopup(self); let closeAction = onClose; onClose = nil; closeAction?()
+        parentPopupController?.removeChildPopup(self)
 
         // Release self-retention
         objc_setAssociatedObject(panel, &Self.associatedObjectKey, nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
@@ -444,7 +444,7 @@ private class PopupUIDelegate: BrowserPDFPreviewActionUIDelegate {
         windowFeatures: WKWindowFeatures
     ) -> WKWebView? {
         if let url = navigationAction.request.url,
-           url.browserShouldRouteExternalNavigation {
+           browserShouldRouteExternalNavigation(url) {
             browserHandleExternalNavigation(
                 url,
                 source: "popupUIDelegate",
@@ -670,7 +670,7 @@ private class PopupUIDelegate: BrowserPDFPreviewActionUIDelegate {
         }
 
         // External URL schemes → hand off to macOS
-        if url.browserShouldRouteExternalNavigation {
+        if browserShouldRouteExternalNavigation(url) {
             clearAttemptedRequest(discardPendingBypasses: true)
             browserHandleExternalNavigation(
                 url,
