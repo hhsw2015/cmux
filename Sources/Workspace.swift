@@ -119,7 +119,24 @@ extension Workspace {
             (notificationStore?.hasUnreadNotification(forTabId: id, surfaceId: nil) ?? false) ||
             (notificationStore?.hasRestoredUnreadIndicator(forTabId: id) ?? false)
         let workspaceNotificationSnapshots = notificationSnapshots(surfaceId: nil)
+        // Fork top-tab feature: capture every layout tab as its own snapshot so
+        // reopening cmux restores every top-level tab (each with its own split
+        // tree), not just the active one. Falls back to a single implicit tab
+        // wrapping `layout` for legacy consumers via SessionWorkspaceSnapshot's
+        // default (`layoutTabs = nil`).
+        let layoutTabSnapshots: [SessionWorkspaceLayoutTabSnapshot] = layoutTabs.map { layoutTab in
+            let tree = layoutTab.bonsplitController.treeSnapshot()
+            let raw = sessionLayoutSnapshot(from: tree)
+            let pruned = prunedSessionLayoutSnapshot(raw, keeping: persistedPanelIds) ?? .pane(
+                SessionPaneLayoutSnapshot(panelIds: [], selectedPanelId: nil)
+            )
+            let title = topTabController.tab(layoutTab.topTabId)?.title
+            return SessionWorkspaceLayoutTabSnapshot(id: layoutTab.id, title: title, layout: pruned)
+        }
+
         var snapshot = SessionWorkspaceSnapshot(
+            layoutTabs: layoutTabSnapshots.isEmpty ? nil : layoutTabSnapshots,
+            selectedLayoutTabId: selectedLayoutTabId,
             workspaceId: id,
             stableId: stableId,
             processTitle: processTitle,
@@ -226,6 +243,35 @@ extension Workspace {
 
         pruneSurfaceMetadata(validSurfaceIds: Set(panels.keys))
         applySessionDividerPositions(snapshotNode: snapshot.layout, liveNode: bonsplitController.treeSnapshot())
+
+        // Fork top-tab feature: if the snapshot recorded multiple layout tabs,
+        // recreate the extras (the primary layout is already restored above via
+        // snapshot.layout / restoreSessionLayout). Extras get an empty bonsplit
+        // for now — a follow-up will hydrate their layouts from
+        // SessionWorkspaceLayoutTabSnapshot.layout so terminals restore into
+        // them too.
+        if let snapshotTabs = snapshot.layoutTabs, snapshotTabs.count > 1 {
+            let selectedIndex = snapshot.selectedLayoutTabId.flatMap { targetId in
+                snapshotTabs.firstIndex(where: { $0.id == targetId })
+            } ?? 0
+            // Skip the first snapshot tab — the workspace's initial layoutTab
+            // already covers it via snapshot.layout above.
+            for (index, tabSnapshot) in snapshotTabs.enumerated() where index != 0 {
+                let title = tabSnapshot.title
+                    ?? String(localized: "workspace.topTab.newTerminal.title", defaultValue: "Terminal")
+                guard let layout = Self.makeLayoutTab(
+                    title: title,
+                    surfaceConfiguration: bonsplitController.configuration,
+                    topTabController: topTabController
+                ) else { continue }
+                layoutTabs.append(layout)
+                configureLayoutController(layout.bonsplitController)
+            }
+            let targetTab = layoutTabs.indices.contains(selectedIndex)
+                ? layoutTabs[selectedIndex]
+                : (layoutTabs.first ?? activeLayoutTab)
+            _ = selectTopLevelTab(id: targetTab.id, reassertAppKitFocus: false)
+        }
 
         applyProcessTitle(snapshot.processTitle)
         setCustomTitle(snapshot.customTitle, source: snapshot.customTitleSource ?? .user)

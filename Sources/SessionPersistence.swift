@@ -1737,8 +1737,23 @@ struct SessionCanvasPaneSnapshot: Codable, Equatable, Sendable {
     var selectedPanelId: UUID? = nil
 }
 
+/// One entry in a workspace's top-tab bar. Persisted so that reopening cmux
+/// restores every layout tab (each with its own bonsplit tree) instead of
+/// collapsing back to a single tab.
+struct SessionWorkspaceLayoutTabSnapshot: Codable, Sendable {
+    var id: UUID? = nil
+    var title: String? = nil
+    var layout: SessionWorkspaceLayoutSnapshot
+}
+
 struct SessionWorkspaceSnapshot: Codable, Sendable {
-    var layoutTabs: [String]? = nil  // ponytail: stub, Codable-compatible
+    /// Fork top-tab feature: per-workspace layout tabs. Optional so pre-fork
+    /// or single-tab snapshots decode cleanly (treated as one implicit tab
+    /// wrapping the top-level `layout` field).
+    var layoutTabs: [SessionWorkspaceLayoutTabSnapshot]? = nil
+    /// Which layout tab was selected when the snapshot was taken. Nil in
+    /// legacy snapshots or when only one tab exists.
+    var selectedLayoutTabId: UUID? = nil
     /// Original workspace ID captured when the snapshot comes from a live workspace.
     /// Restore uses this to remap closed-panel history onto the new workspace IDs;
     /// legacy or externally-created snapshots can leave it nil.
