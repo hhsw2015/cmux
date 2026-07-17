@@ -399,17 +399,33 @@ struct WorkspaceContentView: View {
             )
         }
 
-        Group {
-            if workspace.layoutMode == .canvas {
-                WorkspaceCanvasHostView(
-                    workspace: workspace,
-                    isWorkspaceVisible: isWorkspaceVisible,
-                    isWorkspaceInputActive: isWorkspaceInputActive,
-                    portalPriority: workspacePortalPriority,
-                    appearance: appearance, windowAppearance: windowAppearance
-                )
-            } else {
-                bonsplitView
+        VStack(spacing: 0) {
+            // Fork top-tab bar: only visible once the workspace has more than
+            // one layout tab. Renders the workspace's topTabController as its
+            // own bonsplit (single pane, N tabs). Clicking a tab flips the
+            // workspace's activeLayoutTab and the content below refreshes.
+            if workspace.layoutTabs.count > 1 {
+                BonsplitView(controller: workspace.topTabController) { _, _ in
+                    // Top-bar tab bodies are never displayed — the workspace
+                    // renders the layout tab's content in the panel below, not
+                    // inside the top bar itself.
+                    Color.clear
+                }
+                .frame(height: 32)
+            }
+
+            Group {
+                if workspace.layoutMode == .canvas {
+                    WorkspaceCanvasHostView(
+                        workspace: workspace,
+                        isWorkspaceVisible: isWorkspaceVisible,
+                        isWorkspaceInputActive: isWorkspaceInputActive,
+                        portalPriority: workspacePortalPriority,
+                        appearance: appearance, windowAppearance: windowAppearance
+                    )
+                } else {
+                    bonsplitView
+                }
             }
         }
         .modifier(WorkspaceContentMinimalModeSafeAreaModifier(isFullScreen: isFullScreen))
